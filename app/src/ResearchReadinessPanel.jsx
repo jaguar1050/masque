@@ -3,6 +3,7 @@ import {
   Activity, BarChart3, Check, ChevronDown, ClipboardCheck, Copy, Database,
   Download, FileJson, Gauge, Info, Scale, ShieldCheck, TriangleAlert, Upload
 } from "lucide-react";
+import PopulationArtifact from "./PopulationArtifact.jsx";
 
 /*
   Shared research-readiness layer for MASQUE, VOICED, and BREATHE.
@@ -399,36 +400,10 @@ function weightedMean(rows, key) {
   }
   return { value: d?n/d:NaN, n: used };
 }
-/*  Renderer for a design-aware population-estimates artifact.
-
-    Deliberately dumb: it formats and displays. Every number, interval, degrees of
-    freedom and suppression decision was made by the ETL, which had the strata and
-    the PSUs. The panel adding any arithmetic of its own here would reintroduce
-    exactly the naive-variance problem the split exists to avoid.
-*/
-function PopulationArtifact({art,onClear}){
-  const src=art.source||{}, d=art.design||{}, ph=art.phenotype||{};
-  const rows=art.estimates||[];
-  const total=rows.filter(e=>!e.domain), byDomain=rows.filter(e=>e.domain);
-  const show=e=>e.suppress?<span className="rrp-mid">suppressed</span>:<>{pct(e.estimate)}<div className="rrp-small">95% CI {pct(e.ci?.[0])}–{pct(e.ci?.[1])}</div></>;
-  return <>
-    <div className="rrp-grid">
-      {total.map((e,i)=><K key={i} label="Phenotype prevalence" value={e.suppress?"—":pct(e.estimate)}
-        detail={e.suppress?e.suppressReason:`95% CI ${pct(e.ci?.[0])}–${pct(e.ci?.[1])} · unweighted n=${e.unweightedN} · df=${e.df}`}/>)}
-      <K label="Source" value={`${src.dataset} ${src.cycle}`} detail={src.file}/>
-      <K label="Variance method" value={d.varianceMethod||"—"} detail={`weight ${d.weight} · strata ${d.strata} · PSU ${d.psu}${d.nest?" · nested":""}`}/>
-    </div>
-    {byDomain.length>0&&<table className="rrp-table"><thead><tr><th>Subgroup</th><th>Prevalence</th><th>Unweighted n</th><th>df</th></tr></thead>
-      <tbody>{byDomain.map((e,i)=><tr key={i}><td>{e.domain}</td><td>{show(e)}</td><td>{e.unweightedN}</td><td>{e.df}</td></tr>)}</tbody></table>}
-    <div className="rrp-call"><b>Phenotype.</b> {ph.definition||"not stated"}
-      {ph.mapFile&&<div className="rrp-small" style={{marginTop:4}}>map {ph.mapFile} v{ph.mapVersion}</div>}</div>
-    {ph.unmapped?.length>0&&<div className="rrp-call rrp-warn"><b>Narrower than proposal §7.1.</b> This cycle could not express: {ph.unmapped.join(", ")}. The phenotype measured here is not the phenotype defined in the proposal, and the difference is stated rather than absorbed.</div>}
-    {art.caveats?.length>0&&<div className="rrp-call rrp-warn"><b>Caveats (from the producing script).</b><ul style={{margin:"6px 0 0 18px"}}>{art.caveats.map((c,i)=><li key={i}>{c}</li>)}</ul></div>}
-    <div className="rrp-call"><b>Provenance.</b> {art.producedBy} · generated {art.generatedAt}
-      {src.sha256&&<div className="rrp-small" style={{marginTop:4}}>source sha256 {String(src.sha256).slice(0,24)}…</div>}</div>
-    <div className="rrp-btnrow"><button className="rrp-btn ghost" onClick={onClear}>Clear artifact and show cohort figures</button></div>
-  </>;
-}
+/*  The renderer for a design-aware population-estimates artifact lives in
+    ./PopulationArtifact.jsx so the Population page (app/population.html) and this
+    panel render one artifact the same way. It formats and displays; every number,
+    interval, degrees of freedom and suppression decision was made by the ETL. */
 
 function population(rows, cfg) {
   const scored = rows.filter(r => Number.isFinite(r.score));
@@ -988,7 +963,7 @@ export default function ResearchReadinessPanel({
       {fair.suppressedGroups>0&&<div className="rrp-call"><b>{fair.suppressedGroups} group{fair.suppressedGroups===1?"":"s"} suppressed.</b> Small strata are shown with their size but without rates — both because the estimates would be uninformative and because small-cell rates risk re-identification.</div>}
     </>:<div className="rrp-call rrp-warn">Add a <code>sex</code> and/or <code>gender</code> column to enable subgroup reporting. They are audited as separate axes — supplying one does not stand in for the other.</div>}</>}
 
-    {tab==="population"&&<>{popArtifact?<PopulationArtifact art={popArtifact} onClear={()=>setPopArtifact(null)}/>:pop?<><div className="rrp-grid"><K label="Scored rows" value={pop.n} detail={pop.dropped?`${pop.dropped} excluded — no score`:"all imported rows scored"}/><K label="Weighted denominator" value={num(pop.weightedN,1)}/><K label="Screen-positive estimate" value={pct(pop.prevalence)} detail="screening-level, not diagnosed prevalence"/><K label="Mean annual cost" value={pop.annualCostN?money(pop.annualCost):"—"} detail={pop.annualCostN?`from ${pop.annualCostN} row${pop.annualCostN===1?"":"s"}`:"no cost data"}/><K label="Mean avoidable cost" value={pop.avoidableCostN?money(pop.avoidableCost):"—"} detail={pop.avoidableCostN?`from ${pop.avoidableCostN} row${pop.avoidableCostN===1?"":"s"}`:"no cost data"}/><K label="Potential avoidable share" value={pop.annualCostN&&pop.avoidableCostN?pct(pop.avoidableCost/pop.annualCost):"—"}/></div><div className="rrp-call rrp-warn"><b>These are cohort figures, not survey estimates.</b> They are weighted means with no variance estimation — no strata, no PSUs, no design degrees of freedom. Uploading a survey public-use file here would produce a plausible point estimate and no honest interval. For national estimates run <code>etl/masque_population_etl.R</code> and load the artifact it writes; this panel will render it instead of this block.</div><div className="rrp-call"><b>Survey readiness:</b> a <code>weight</code> or <code>survey_weight</code> column is honored; rows without one default to 1 at computation time and are still reported as missing above. Final NHANES/NHIS/MEPS estimates still require their design variables, strata/PSUs, cycle pooling rules, inflation adjustments, and source-specific variance methods.</div></>:<div className="rrp-call rrp-warn">No rows carry a usable score, so no population summary is calculated.</div>}</>}
+    {tab==="population"&&<>{popArtifact?<PopulationArtifact art={popArtifact} onClear={()=>setPopArtifact(null)}/>:pop?<><div className="rrp-grid"><K label="Scored rows" value={pop.n} detail={pop.dropped?`${pop.dropped} excluded — no score`:"all imported rows scored"}/><K label="Weighted denominator" value={num(pop.weightedN,1)}/><K label="Screen-positive estimate" value={pct(pop.prevalence)} detail="screening-level, not diagnosed prevalence"/><K label="Mean annual cost" value={pop.annualCostN?money(pop.annualCost):"—"} detail={pop.annualCostN?`from ${pop.annualCostN} row${pop.annualCostN===1?"":"s"}`:"no cost data"}/><K label="Mean avoidable cost" value={pop.avoidableCostN?money(pop.avoidableCost):"—"} detail={pop.avoidableCostN?`from ${pop.avoidableCostN} row${pop.avoidableCostN===1?"":"s"}`:"no cost data"}/><K label="Potential avoidable share" value={pop.annualCostN&&pop.avoidableCostN?pct(pop.avoidableCost/pop.annualCost):"—"}/></div><div className="rrp-call rrp-warn"><b>These are cohort figures, not survey estimates.</b> They are weighted means with no variance estimation — no strata, no PSUs, no design degrees of freedom. Uploading a survey public-use file here would produce a plausible point estimate and no honest interval. For national estimates run <code>app/etl/masque_population_etl.R</code> and commit the artifact it writes under <code>app/data/</code> — the Population page renders it — or load it here to preview it; this panel will render it instead of this block.</div><div className="rrp-call"><b>Survey readiness:</b> a <code>weight</code> or <code>survey_weight</code> column is honored; rows without one default to 1 at computation time and are still reported as missing above. Final NHANES/NHIS/MEPS estimates still require their design variables, strata/PSUs, cycle pooling rules, inflation adjustments, and source-specific variance methods.</div></>:<div className="rrp-call rrp-warn">No rows carry a usable score, so no population summary is calculated.</div>}</>}
 
     {tab==="model"&&<><div className="rrp-btnrow"><button className="rrp-btn" onClick={()=>downloadJson(`${project.toLowerCase()}-model-card.json`,modelCard)}><Download size={14}/> Download model card</button><button className="rrp-btn ghost" onClick={()=>downloadJson(`${project.toLowerCase()}-provenance.json`,manifest.provenance)}><Download size={14}/> Provenance</button><button className="rrp-btn ghost" onClick={()=>navigator.clipboard?.writeText(JSON.stringify(modelCard,null,2))}><Copy size={14}/> Copy JSON</button></div><pre className="rrp-code">{JSON.stringify(modelCard,null,2)}</pre></>}
 

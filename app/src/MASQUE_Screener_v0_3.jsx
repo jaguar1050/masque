@@ -569,7 +569,7 @@ function buildDataDictionary() {
     an exported cohort correctly reports "validation withheld" until a clinician
     fills the diagnosis in at follow-up. The empty column IS the pilot instrument.
 */
-function screenToCohortRow({ patient, answers, total, coverage, scorable, band, activeFlags, complaint }) {
+function screenToCohortRow({ patient, answers, total, coverage, scorable, band, activeFlags, complaint, ctx = {} }) {
   const row = {
     screen_id: `masque-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
     captured_at: new Date().toISOString(),
@@ -958,7 +958,7 @@ export default function MasqueScreener() {
   );
 
   function captureScreen() {
-    const row = screenToCohortRow({ patient, answers, total, coverage, scorable, band, activeFlags, complaint });
+    const row = screenToCohortRow({ patient, answers, total, coverage, scorable, band, activeFlags, complaint, ctx });
     setCohort(c => [...c, row]);
     setToast(`Screen appended — ${cohort.length + 1} in session cohort`);
   }

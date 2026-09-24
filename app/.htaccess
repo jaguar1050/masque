@@ -4,7 +4,11 @@
   # .jsx is fetched as text and compiled in the browser, so it only needs to
   # arrive as UTF-8 text rather than as an octet-stream download.
   AddType text/javascript .js .mjs .jsx
-  AddCharset UTF-8 .js .mjs .jsx .html .css
+  # The population page fetches the estimates index, the schema and the variable
+  # map; the ETL script and its README are published alongside them as source.
+  AddType application/json .json
+  AddType text/plain .R .md .csv
+  AddCharset UTF-8 .js .mjs .jsx .html .css .json .R .md .csv
 </IfModule>
 
 # No directory listing of src/.
@@ -13,7 +17,7 @@ Options -Indexes
 <IfModule mod_headers.c>
   # Prototype tooling: keep it out of search indexes at the header level too,
   # for crawlers that fetch .jsx directly and never see the <meta> tag.
-  <FilesMatch "\.(jsx|mjs)$">
+  <FilesMatch "\.(jsx|mjs|json|R|md|csv)$">
     Header set X-Robots-Tag "noindex, nofollow"
   </FilesMatch>
 </IfModule>

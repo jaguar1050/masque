@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Artifact check &middot; MASQUE (local only)</title>
+<meta name="robots" content="noindex, nofollow">
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #EDF3F1; color: #0C2B2F; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: #5C6E6C; font-size: 13px; margin: 0 0 18px; }
+  .card { background: #fff; border: 1px solid #D7E1DF; border-radius: 12px; padding: 14px 16px; margin-top: 14px; }
+  .drop { border: 2px dashed #B7C4C2; border-radius: 12px; padding: 22px; text-align: center; color: #5C6E6C; }
+  .drop.over { border-color: #137A80; background: #F1F5F4; }
+  label { display: block; font-size: 12px; color: #5C6E6C; margin: 10px 0 4px; }
+  code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+  pre { background: #0C2B2F; color: #CFE6E2; border-radius: 10px; padding: 12px; overflow: auto; max-height: 300px; white-space: pre-wrap; }
+  .ok { color: #2C7A57; font-weight: 600; } .bad { color: #B84A33; font-weight: 600; }
+  ul { margin: 6px 0 0 18px; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid #D7E1DF; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #5C6E6C; }
+  .proto { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: #8E3520; background: #fbe4d8; border: 1px solid #f0c3ad; padding: 6px 12px; border-radius: 999px; display: inline-block; margin-top: 18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Population-estimates artifact check</h1>
+  <p class="sub">Local tooling, never deployed. Validates an artifact against <code>app/etl/population_estimates.schema.json</code>
+     — the same check <code>population.html</code> runs before rendering — and optionally verifies the source-file hash
+     the artifact claims. Runs entirely in the browser; nothing is uploaded. No Node, no R needed.</p>
+
+  <div class="card">
+    <div class="drop" id="drop">Drop an artifact JSON here, or choose one below.</div>
+    <label for="art">Artifact JSON (what the ETL wrote)</label>
+    <input type="file" id="art" accept=".json,application/json">
+    <label for="src">Optional: the public-use source file, to verify <code>source.sha256</code> (hashed locally, not read otherwise)</label>
+    <input type="file" id="src">
+  </div>
+
+  <div class="card" id="out" hidden></div>
+  <span class="proto">Prototype &middot; not for clinical use</span>
+</div>
+
+<script type="module">
+  import { checkSchema, checkArtifactMarker } from "../src/MASQUE_SchemaCheck.js";
+
+  const out = document.getElementById("out");
+  const drop = document.getElementById("drop");
+  const artInput = document.getElementById("art");
+  const srcInput = document.getElementById("src");
+  let schema = null, schemaError = null, art = null, artName = "";
+
+  try {
+    const res = await fetch(new URL("../etl/population_estimates.schema.json", document.baseURI), { cache: "no-cache" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    schema = await res.json();
+  } catch (e) { schemaError = e.message; }
+
+  const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+  async function sha256Hex(file) {
+    const buf = await file.arrayBuffer();
+    const h = await crypto.subtle.digest("SHA-256", buf);
+    return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  async function render() {
+    if (!art) return;
+    out.hidden = false;
+    const errors = [...checkArtifactMarker(art), ...(schema ? checkSchema(schema, art) : [`schema could not be loaded (${schemaError}); structural check not run`])];
+    let html = `<div><b>${esc(artName)}</b> — ${errors.length ? `<span class="bad">REFUSED · ${errors.length} problem${errors.length === 1 ? "" : "s"}</span>` : `<span class="ok">valid against the artifact contract</span>`}</div>`;
+    if (errors.length) html += `<ul>${errors.map(e => `<li><code>${esc(e)}</code></li>`).join("")}</ul>`;
+    const rows = Array.isArray(art.estimates) ? art.estimates : [];
+    if (rows.length) {
+      html += `<table><thead><tr><th>name</th><th>domain</th><th>unit</th><th>estimate</th><th>ci</th><th>unweighted n</th><th>suppress</th></tr></thead><tbody>` +
+        rows.map(e => `<tr><td><code>${esc(e.name)}</code></td><td><code>${esc(typeof e.domain === "string" ? e.domain : (e.domain === undefined ? "(total)" : JSON.stringify(e.domain)))}</code></td><td>${esc(e.unit ?? "—")}</td><td>${esc(e.estimate)}</td><td>${Array.isArray(e.ci) ? esc(e.ci.join(" – ")) : "—"}</td><td>${esc(e.unweightedN)}</td><td>${e.suppress ? "yes" : "no"}</td></tr>`).join("") + `</tbody></table>`;
+    }
+    const srcFile = srcInput.files && srcInput.files[0];
+    if (srcFile) {
+      const claimed = art.source && art.source.sha256;
+      const actual = await sha256Hex(srcFile);
+      html += `<div style="margin-top:10px"><b>Source hash</b> (${esc(srcFile.name)}, ${srcFile.size.toLocaleString()} bytes)<br>` +
+        `claimed <code>${esc(claimed || "none in artifact")}</code><br>actual&nbsp;&nbsp; <code>${actual}</code><br>` +
+        (claimed ? (claimed === actual ? `<span class="ok">MATCH — this artifact was produced from this file</span>` : `<span class="bad">MISMATCH — the artifact was not produced from this file</span>`) : `<span class="bad">the artifact records no source hash, so nothing can be verified</span>`) + `</div>`;
+    }
+    html += `<details style="margin-top:10px"><summary>Raw artifact</summary><pre>${esc(JSON.stringify(art, null, 2))}</pre></details>`;
+    out.innerHTML = html;
+  }
+
+  async function loadArtifact(file) {
+    artName = file.name;
+    try { art = JSON.parse(await file.text()); }
+    catch (e) { art = null; out.hidden = false; out.innerHTML = `<span class="bad">Not JSON:</span> ${esc(e.message)}`; return; }
+    render();
+  }
+
+  artInput.addEventListener("change", () => artInput.files[0] && loadArtifact(artInput.files[0]));
+  srcInput.addEventListener("change", render);
+  for (const ev of ["dragenter", "dragover"]) drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); });
+  for (const ev of ["dragleave", "drop"]) drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); });
+  drop.addEventListener("drop", e => { const f = e.dataTransfer.files && e.dataTransfer.files[0]; if (f) loadArtifact(f); });
+</script>
+</body>
+</html>

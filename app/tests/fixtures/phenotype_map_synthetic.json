@@ -1,0 +1,110 @@
+{
+  "_meta": {
+    "mapFile": "phenotype_map_synthetic.json",
+    "mapVersion": "0.0.0-synthetic",
+    "dataset": "SYNTHETIC",
+    "cycle": "fixture",
+    "file": "synthetic_nhis_like.csv",
+    "url": "",
+    "codebook": "none \u2014 invented codes",
+    "steward": "none (test fixture)",
+    "WHY_THIS_IS_A_DATA_FILE_AND_NOT_CODE": "NHIS variable names change between cycles, and rotating content means a concept present in one year is absent the next. Hard-coding names into the ETL guarantees it silently breaks or silently mismeasures on the next cycle. Keeping the map as versioned data means a cycle change is a diff you can review, and the ETL can refuse to run when a required concept is unmapped.",
+    "STATUS": "SYNTHETIC TEST FIXTURE. Every variable is invented. Exists only so the ETL and the renderer can be exercised without a public-use file. Never quote a number from its output."
+  },
+  "design": {
+    "_verified": "Confirmed against NCHS documentation for the 2019+ NHIS redesign.",
+    "weight": "WTFA_A",
+    "strata": "PSTRAT",
+    "psu": "PPSU",
+    "nest": true,
+    "lonelyPsu": "adjust",
+    "note": "Sample Adult file. Use WTFA_C for the Sample Child file. Applying simple-random-sample methods to NHIS produces standard errors that are too small \u2014 this is stated explicitly in the NCHS survey description."
+  },
+  "demographics": {
+    "sex": {
+      "var": "SEX_A",
+      "recode": {
+        "1": "male",
+        "2": "female"
+      },
+      "missing": [
+        7,
+        8,
+        9
+      ],
+      "_note": "Verify the code frame in the codebook. NHIS uses 7=Refused, 8=Not Ascertained, 9=Don't Know across most items \u2014 these must become NA, never 0."
+    },
+    "gender": {
+      "var": null,
+      "_status": "TODO",
+      "_note": "The 2019+ core does not carry a gender-identity item every cycle. If the chosen cycle has none, leave null \u2014 the ETL will emit gender estimates as unavailable rather than reusing SEX_A. Substituting one for the other is the exact defect fix #16 removed from the panel."
+    },
+    "age": {
+      "var": "AGEP_A",
+      "topcode": 85,
+      "_status": "TODO-verify"
+    }
+  },
+  "phenotype_concepts": {
+    "_instruction": "Each concept maps to one or more variables plus the codes that count as positive. Open the codebook PDF, search the concept keyword, and record the variable name, the exact question wording, and the positive code set. Record the wording \u2014 a phenotype defined by variable names alone is not reviewable.",
+    "headache_migraine": {
+      "vars": [
+        "SYN_HEAD"
+      ],
+      "positiveCodes": [
+        1
+      ],
+      "_status": "mapped",
+      "_hint": "NHIS has carried severe headache/migraine in rotating rather than annual core content, so confirm presence in the chosen cycle before assuming it. NHANES 1999-2004 carried a severe-headache/migraine item and is a well-trodden alternative for this concept specifically.",
+      "questionText": "SYNTHETIC: invented headache item"
+    },
+    "dizziness_balance": {
+      "vars": [
+        "SYN_DIZZ"
+      ],
+      "positiveCodes": [
+        1
+      ],
+      "_status": "mapped",
+      "_hint": "NHIS balance/dizziness content has appeared as a supplement (e.g. 2008, 2016) rather than annual core. If the chosen cycle lacks it, list 'dizziness_balance' in unmapped rather than approximating it from a general dizziness/functioning item \u2014 the vestibular arm of the \u00a77.1 phenotype is not optional decoration.",
+      "questionText": "SYNTHETIC: invented dizziness item"
+    },
+    "hearing_difficulty": {
+      "vars": [
+        "SYN_HEAR"
+      ],
+      "positiveCodes": [
+        1
+      ],
+      "_status": "mapped",
+      "_hint": "Functioning and Disability section carries hearing items in the annual core. Confirm whether the item is difficulty-based (Washington Group style) or condition-based \u2014 they are not interchangeable.",
+      "questionText": "SYNTHETIC: invented hearing item"
+    },
+    "sinus_condition": {
+      "vars": [],
+      "positiveCodes": [],
+      "_status": "unmapped",
+      "_hint": "Look for a sinusitis item in conditions. Note it is self-reported, physician-told status \u2014 not the recalcitrance construct.",
+      "questionText": ""
+    },
+    "recalcitrance_proxy": {
+      "vars": [],
+      "positiveCodes": [],
+      "_status": "unmapped",
+      "_hint": "This is the concept NHIS most likely cannot express. \u00a77.1 defines recalcitrance by repeat antibiotic/steroid courses, prior procedure, and persistence \u2014 that is a claims/utilization construct. MEPS (prescribed medicines + events + conditions) can approximate it; NHIS almost certainly cannot. Listing it as unmapped is the honest outcome and the panel is built to display that.",
+      "questionText": ""
+    }
+  },
+  "cost_concepts": {
+    "_note": "NHIS carries no expenditure data. Cost estimates require MEPS, which needs its own map file and its own design variables (MEPS uses VARSTR, VARPSU, and a person-level weight such as PERWTyyF). Do not attempt to carry a cost figure across from a different survey into an NHIS artifact \u2014 they are different samples with different design.",
+    "annual_cost": {
+      "var": null,
+      "_status": "N/A for NHIS"
+    },
+    "avoidable_cost": {
+      "var": null,
+      "_status": "N/A for NHIS"
+    }
+  },
+  "phenotype_definition": "SYNTHETIC FIXTURE: headache_migraine positive AND (dizziness_balance positive OR hearing_difficulty positive). Invented variables; not a survey estimate."
+}

@@ -1,0 +1,4 @@
+{
+  "_note": "Adding a population estimate is a data commit, not a code change: run app/etl/masque_population_etl.R, commit the JSON it writes into this folder, and add its path here. app/population.html validates each listed file against app/etl/population_estimates.schema.json before rendering it and refuses anything that fails. Paths are relative to app/.",
+  "artifacts": []
+}

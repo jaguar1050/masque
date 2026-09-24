@@ -732,6 +732,7 @@ export default function MasqueScribe() {
   const [ctx, setCtx] = useState({});
   const [vmp, setVmp] = useState({});                  // informational VM-PATHI coverage
   const [asked, setAsked] = useState({});              // items the MD explicitly addressed via prompts
+  const [skipped, setSkipped] = useState({});          // prompts dismissed without an answer — NOT denials
   const [cohort, setCohort] = useState([]);            // captured screens (pilot loop, §8)
   const [rf, setRf] = useState({});                    // id -> "nlp" | "md"
   const [safetyReviewed, setSafetyReviewed] = useState(false);
@@ -833,7 +834,7 @@ export default function MasqueScribe() {
   function reset() {
     stopVoice(); setInterim(""); setVoiceErr(null);
     setTranscript([]); setCursor(0); setPlaying(false); setAnswers({}); setCtx({});
-    setVmp({}); setAsked({}); setRf({}); setSafetyReviewed(false); setView("safety");
+    setVmp({}); setAsked({}); setSkipped({}); setRf({}); setSafetyReviewed(false); setView("safety");
     setProbeAns({}); setProbeNotes([]); setCohort([]);
     setToast("Encounter cleared");
   }
@@ -856,7 +857,7 @@ export default function MasqueScribe() {
     const active = new Set(["migraine","impact","recalcitrance","discriminators"]);
     if (complaint === "otologic" || complaint === "both") active.add("vestibular");
     if ((answers.n_burn ?? "no") !== "no" || answers.n_viral === "yes") active.add("neuro");
-    const open = ALL_ITEMS.filter(it => answers[it.id] === undefined && (scorable || active.has(it.domain)));
+    const open = ALL_ITEMS.filter(it => answers[it.id] === undefined && !skipped[it.id] && (scorable || active.has(it.domain)));
     // rank: active pathway first, then VM-PATHI-tagged when vestibular active, then weight
     const vestActive = active.has("vestibular");
     open.sort((a, b) => {
@@ -875,7 +876,7 @@ export default function MasqueScribe() {
     if (vestActive) for (const info of VMPATHI_INFO) if (vmp[info.id] === undefined && items.length < 6)
       items.push({ id: info.id, ask: info.ask, tag: info.tag, kind: "info" });
     return items;
-  }, [answers, complaint, vmp, scorable]);
+  }, [answers, complaint, vmp, scorable, skipped]);
 
   /*  Contextual probes — what to ask or do next, ranked by what the answer could change.
 
@@ -900,9 +901,14 @@ export default function MasqueScribe() {
     if (s.kind === "info") { setVmp(v => ({ ...v, [s.id]: value })); }
     else { setAnswers(a => ({ ...a, [s.id]: value })); setAsked(k => ({ ...k, [s.id]: true })); }
   }
+  // Skipping a prompt hides it; it never writes an answer. A skipped item stays
+  // unanswered — it keeps its headroom in the attainable range, is not counted toward
+  // coverage, and is absent from the note and the QuestionnaireResponse. Recording it
+  // as "no" would turn "the physician chose not to ask" into "the patient denied it",
+  // which is the absent-data-as-negative-data error the whole codebase is built against.
   function skipPrompt(s) {
     if (s.kind === "info") setVmp(v => ({ ...v, [s.id]: "skip" }));
-    else setAnswers(a => ({ ...a, [s.id]: "no" }));
+    else setSkipped(k => ({ ...k, [s.id]: true }));
   }
 
   const bandMeta = { low:{c:"var(--green)",bg:"var(--greenbg)",l:"Low"}, moderate:{c:"var(--amber)",bg:"var(--amberbg)",l:"Moderate"}, high:{c:"var(--coral)",bg:"var(--coralbg)",l:"High"}, indeterminate:{c:"var(--slate)",bg:"#E3EAE9",l:"Not scorable"} }[band];
