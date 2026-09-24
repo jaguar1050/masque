@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import {
   Mic, Square, Play, Pause, RotateCcw, ArrowRight, ArrowLeft, Stethoscope,
   Activity, ShieldCheck, TriangleAlert, HelpCircle, Check, Copy, FileJson,
@@ -7,6 +7,7 @@ import {
 import ResearchReadinessPanel from "./ResearchReadinessPanel.jsx";
 import { extract, LEXICON_VERSION, RF_PHRASES } from "./MASQUE_Extraction.js";
 import { liveProbes, validateProbes, PROBE_KIND, PROBE_SET_VERSION } from "./MASQUE_Probes.js";
+import { createVoiceCapture, isVoiceSupported, VOICE_ENGINE, VOICE_LANG, VOICE_ERRORS } from "./MASQUE_Voice.js";
 
 /*  Project MASQUE — Ambient Scribe prototype
     ------------------------------------------------------------------
@@ -20,8 +21,10 @@ import { liveProbes, validateProbes, PROBE_KIND, PROBE_SET_VERSION } from "./MAS
     cognition, affect). They are NOT the VM-PATHI items themselves — the validated
     instrument is named as the licensed confirmatory step.
 
-    Prototype only. Screening aid, not a diagnosis. The transcript here is simulated;
-    a deployment plugs in ambient ASR at the edge with no raw audio retained.
+    Prototype only. Screening aid, not a diagnosis. The transcript comes from the
+    scripted demo, from typed statements, or live from the microphone through the
+    browser's own speech recognition (MASQUE_Voice.js). A deployment plugs in ambient
+    ASR at the edge with no raw audio retained.
 */
 
 // ------------------------- MASQUE model (shared with the screener) -------------
@@ -688,6 +691,27 @@ details.about[open] .chev{transform:rotate(180deg)}.chev{transition:.2s}
 .abgrid{font-size:12px;color:#33474A;margin-top:9px;display:grid;gap:7px}
 :focus-visible{outline:2px solid var(--petrol2);outline-offset:2px;border-radius:6px}
 @media (max-width:820px){.grid{grid-template-columns:1fr}}
+
+/* voice capture */
+.tbtn.rec{background:var(--coral);border-color:var(--coral)}.tbtn.rec:hover{background:#A03F2A;border-color:#A03F2A}
+.voice{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:-4px 0 12px;background:#F7FAF9}
+.vrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.vstate{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.vstate.on{color:var(--coral)}
+.vstate.on::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--coral);animation:pulse 1.1s infinite}
+.vmeter{flex:1 1 80px;min-width:60px;height:6px;border-radius:4px;background:var(--line);overflow:hidden}
+.vfill{height:100%;background:var(--green);border-radius:4px;transition:width .08s linear}
+.spk{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-left:auto}
+.spkb{font:inherit;font-size:11.5px;cursor:pointer;padding:5px 9px;border:0;background:#fff;color:var(--muted);display:inline-flex;align-items:center;gap:5px}
+.spkb.on{background:var(--petrol);color:#fff}
+.verr{font-size:11.5px;color:#8E3520;display:flex;gap:6px;align-items:flex-start;margin-top:6px}
+.vhint{font-size:11px;color:var(--muted);margin-top:5px}
+.bub.interim{opacity:.72;border-style:dashed}
+.row.md .bub.interim{border:1px dashed rgba(255,255,255,.6)}
+.captag.pending{background:#fff;border:1px dashed var(--green);color:var(--green)}
+.dbar.hit .dl{color:var(--green);font-weight:650}.dbar.hit .dfill{background:var(--green)}
+@keyframes scorepop{0%{transform:scale(1.05)}100%{transform:scale(1)}}
+.score{animation:scorepop .3s ease-out;transform-origin:left bottom}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 `;
 
@@ -718,24 +742,74 @@ export default function MasqueScribe() {
   const [toast, setToast] = useState("");
   const scrollRef = useRef(null);
 
+  // native voice capture — see MASQUE_Voice.js
+  const [voiceState, setVoiceState] = useState("idle"); // idle | starting | listening | restarting | stopped | error
+  const [voiceErr, setVoiceErr] = useState(null);
+  const [voiceUsed, setVoiceUsed] = useState(false);
+  const [interim, setInterim] = useState("");           // text the recogniser has not committed yet
+  const [speaker, setSpeaker] = useState("pt");         // who the microphone is hearing: pt | md
+  const [pulse, setPulse] = useState({ domains: [], at: 0 }); // domains touched by the latest capture
+  const voiceRef = useRef(null);
+  const ingestRef = useRef(null);
+  const speakerRef = useRef("pt");
+  const levelSink = useRef(null);
+  const voiceSupported = useMemo(() => isVoiceSupported(), []);
+  const listening = voiceState === "starting" || voiceState === "listening" || voiceState === "restarting";
+  speakerRef.current = speaker;
+
   const { domains, total, floor, ceiling, coverage, scorable, band } =
     useMemo(() => computeScore(answers), [answers]);
 
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(""), 2400); return () => clearTimeout(t); }, [toast]);
-  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [transcript]);
+  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [transcript, interim]);
+  useEffect(() => { if (!pulse.at) return; const t = setTimeout(() => setPulse({ domains: [], at: 0 }), 1800); return () => clearTimeout(t); }, [pulse]);
+  useEffect(() => () => { if (voiceRef.current) voiceRef.current.destroy(); }, []);
 
-  // ingest one utterance: run extraction, update state, return captures
-  function ingest(role, text) {
+  // ingest one utterance: run extraction, update state, return captures.
+  // src records where the utterance came from — demo | typed | voice — for the transcript only;
+  // capture rules are identical for all three.
+  function ingest(role, text, src = "demo") {
     const caps = role === "pt" ? extract(text) : [];
     if (caps.length) {
+      const touched = [...new Set(caps.map(c => ITEM_BY_ID[c.id]?.domain).filter(Boolean))];
+      if (touched.length) setPulse({ domains: touched, at: Date.now() });
       setAnswers(a => { const n = { ...a }; caps.filter(c => c.kind === "item").forEach(c => { if (n[c.id] === undefined) n[c.id] = c.value; }); return n; });
       setCtx(c => { const n = { ...c }; caps.filter(x => x.kind === "ctx").forEach(x => { n[x.id] = x.value; }); return n; });
       // Only ever additive, and only ever marked as heard — a clinician decision
       // already on the record is not downgraded by a later phrase match.
       setRf(v => { const n = { ...v }; caps.filter(x => x.kind === "redflag").forEach(x => { if (!n[x.id]) n[x.id] = "nlp"; }); return n; });
     }
-    setTranscript(t => [...t, { id: t.length, role, text, caps: caps.map(c => ({ id: c.id, value: c.value })) }]);
+    setTranscript(t => [...t, { id: t.length, role, text, src, caps: caps.map(c => ({ id: c.id, value: c.value })) }]);
   }
+  ingestRef.current = ingest;
+
+  /*  Microphone. The capture object lives outside React state; its callbacks reach the
+      current ingest and speaker through refs so a session started minutes ago does not
+      write through a stale closure. Final segments are ingested exactly like a typed
+      statement; interim text is only previewed (see MASQUE_Voice.js for why).
+  */
+  const bindLevel = useCallback((fn) => { levelSink.current = fn; }, []);
+  function startVoice() {
+    if (voiceRef.current) voiceRef.current.destroy();
+    setVoiceErr(null); setInterim(""); setPlaying(false); setVoiceUsed(true);
+    const vc = createVoiceCapture({
+      lang: VOICE_LANG,
+      onState: setVoiceState,
+      onInterim: setInterim,
+      onError: setVoiceErr,
+      onLevel: (v) => { if (levelSink.current) levelSink.current(v); },
+      onFinal: (text) => ingestRef.current(speakerRef.current, text, "voice"),
+    });
+    voiceRef.current = vc;
+    vc.start();
+  }
+  function stopVoice() { if (voiceRef.current) voiceRef.current.stop(); }
+
+  // What the extractor would capture from the words still being recognised. Preview only —
+  // nothing is written until the recogniser commits the segment.
+  const previewCaps = useMemo(
+    () => (interim && speaker === "pt") ? extract(interim).map(c => ({ id: c.id, value: c.value })) : [],
+    [interim, speaker]);
 
   // playback
   useEffect(() => {
@@ -757,6 +831,7 @@ export default function MasqueScribe() {
   }
 
   function reset() {
+    stopVoice(); setInterim(""); setVoiceErr(null);
     setTranscript([]); setCursor(0); setPlaying(false); setAnswers({}); setCtx({});
     setVmp({}); setAsked({}); setRf({}); setSafetyReviewed(false); setView("safety");
     setProbeAns({}); setProbeNotes([]); setCohort([]);
@@ -764,7 +839,7 @@ export default function MasqueScribe() {
   }
   function submitInput() {
     const v = input.trim(); if (!v) return;
-    ingest("pt", v); setInput("");
+    ingest("pt", v, "typed"); setInput("");
   }
 
   const complaint = useMemo(() => {
@@ -865,8 +940,9 @@ export default function MasqueScribe() {
             <div className="meta num">{PATIENT.age} yr · {PATIENT.sex} · {PATIENT.mrn} · synthetic sandbox record</div>
           </div>
           <div className="spacer" />
-          {playing ? <span className="badge live"><span className="dot" /> Listening</span>
-                   : <span className="badge">Ambient scribe · on-device</span>}
+          {listening ? <span className="badge live"><span className="dot" /> Listening · microphone</span>
+           : playing ? <span className="badge live"><span className="dot" /> Listening · demo</span>
+                     : <span className="badge">Ambient scribe · {voiceUsed ? "browser speech" : "on-device"}</span>}
           <span className="badge">SMART on FHIR · sandbox</span>
         </div>
 
@@ -883,6 +959,11 @@ export default function MasqueScribe() {
           <div className="card">
             <div className="chdr"><MessageSquare size={16} color="var(--petrol)" /><div><div className="ce">Live</div><div className="ct">Encounter</div></div></div>
             <div className="transport">
+              {listening
+                ? <button className="tbtn rec" onClick={stopVoice}><Square size={15} /> Stop listening</button>
+                : <button className="tbtn" onClick={startVoice} disabled={!voiceSupported}
+                          title={voiceSupported ? "Capture the encounter from this device's microphone" : VOICE_ERRORS.unsupported}>
+                    <Mic size={15} /> Listen</button>}
               {!playing
                 ? <button className="tbtn" onClick={() => setPlaying(true)} disabled={cursor >= SCRIPT.length}><Play size={15} /> {cursor === 0 ? "Play demo visit" : "Resume"}</button>
                 : <button className="tbtn" onClick={() => setPlaying(false)}><Pause size={15} /> Pause</button>}
@@ -890,13 +971,34 @@ export default function MasqueScribe() {
               <button className="tbtn ghost" onClick={reset}><RotateCcw size={15} /> Reset</button>
             </div>
 
+            {(listening || voiceErr) && (
+              <div className="voice" aria-live="polite">
+                <div className="vrow">
+                  <span className={"vstate" + (listening ? " on" : "")}>
+                    {voiceState === "starting" ? "Starting microphone…" : listening ? `Listening · ${VOICE_LANG}` : "Stopped"}
+                  </span>
+                  {listening && <VoiceMeter bind={bindLevel} />}
+                  <div className="spk" role="radiogroup" aria-label="Who is speaking">
+                    <button className={"spkb" + (speaker === "pt" ? " on" : "")} role="radio" aria-checked={speaker === "pt"} onClick={() => setSpeaker("pt")}><User size={13} /> Patient</button>
+                    <button className={"spkb" + (speaker === "md" ? " on" : "")} role="radio" aria-checked={speaker === "md"} onClick={() => setSpeaker("md")}><Stethoscope size={13} /> Physician</button>
+                  </div>
+                </div>
+                {voiceErr && <div className="verr"><TriangleAlert size={13} style={{flex:"0 0 auto",marginTop:2}} /><span>{voiceErr.message}</span></div>}
+                {listening && !voiceErr && (speaker === "md"
+                  ? <div className="vhint">Physician turn — transcribed, not captured. Switch to Patient before they answer.</div>
+                  : <div className="vhint">Patient turn — each committed phrase is captured as it lands. Switch to Physician while you speak so your questions are not read as their symptoms.</div>)}
+              </div>
+            )}
+
             <div className="tsc" ref={scrollRef}>
-              {!hasContent && <div className="empty">Press <b>Play demo visit</b> to watch the scribe capture symptoms live — or type what the patient says below.</div>}
+              {!hasContent && !interim && <div className="empty">
+                {voiceSupported ? <>Press <b>Listen</b> to capture the encounter from the microphone, </> : <>Press </>}
+                <b>Play demo visit</b> to watch a scripted one — or type what the patient says below.</div>}
               {transcript.map(m => (
                 <div key={m.id}>
                   <div className={"row " + m.role}>
                     <div style={{maxWidth:"82%"}}>
-                      <div className="who" style={{textAlign: m.role === "md" ? "right" : "left"}}>{m.role === "md" ? "Physician" : "Patient"}</div>
+                      <div className="who" style={{textAlign: m.role === "md" ? "right" : "left"}}>{m.role === "md" ? "Physician" : "Patient"}{m.src === "voice" ? " · voice" : ""}</div>
                       <div className="bub">{m.text}</div>
                       {m.caps.length > 0 && (
                         <div className="cap">
@@ -907,6 +1009,19 @@ export default function MasqueScribe() {
                   </div>
                 </div>
               ))}
+              {interim && (
+                <div className={"row " + speaker}>
+                  <div style={{maxWidth:"82%"}}>
+                    <div className="who" style={{textAlign: speaker === "md" ? "right" : "left"}}>{speaker === "md" ? "Physician" : "Patient"} · hearing…</div>
+                    <div className="bub interim">{interim}</div>
+                    {previewCaps.length > 0 && (
+                      <div className="cap">
+                        {previewCaps.map((c, i) => <span className="captag pending" key={i}>? {capLabel(c)}</span>)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="entry">
@@ -914,7 +1029,11 @@ export default function MasqueScribe() {
                      onKeyDown={e => e.key === "Enter" && submitInput()} />
               <button className="mini" onClick={submitInput}><Plus size={14} /> Capture</button>
             </div>
-            <div className="notew"><Info size={13} style={{flex:"0 0 auto",marginTop:1}} /><span>Rule-based capture for the prototype; a deployment plugs in ambient ASR + clinical NLP at the edge. No audio is retained.</span></div>
+            <div className="notew"><Info size={13} style={{flex:"0 0 auto",marginTop:1}} /><span>
+              Rule-based capture for the prototype. With the microphone on, transcription is the browser's own speech
+              recognition ({VOICE_ENGINE.split(" — ")[0]}): Chrome and Edge send audio to the vendor's speech service for that step,
+              Safari may process on-device. This app retains no audio — only text and structured findings, in this tab.
+              A deployment plugs in ambient ASR + clinical NLP at the edge.</span></div>
           </div>
 
           {/* RIGHT — screen + prompts */}
@@ -922,7 +1041,7 @@ export default function MasqueScribe() {
             <div className="chdr"><Activity size={16} color="var(--petrol)" /><div><div className="ce">Live screen</div><div className="ct">MASQUE index</div></div></div>
 
             <div className="readout">
-              <div><div className="score" style={{color:bandMeta.c,fontSize:scorable?undefined:38}}>
+              <div><div className="score" key={scorable ? `t${total}` : `r${floor}-${ceiling}`} style={{color:bandMeta.c,fontSize:scorable?undefined:38}}>
                 {scorable ? total : `${floor}–${ceiling}`}
               </div></div>
               <div style={{flex:"1 1 auto"}}>
@@ -940,7 +1059,7 @@ export default function MasqueScribe() {
 
             <div style={{marginTop:12}}>
               {DOMAIN_ORDER.map(k => (
-                <div className="dbar" key={k}>
+                <div className={"dbar" + (pulse.domains.includes(k) ? " hit" : "")} key={k}>
                   <div className="dl">{domains[k].label}</div>
                   <div className="dtrack"><div className="dfill" style={{width:domains[k].pct+"%"}} /></div>
                   <div className="dpts num">{domains[k].pts}/{domains[k].max}</div>
@@ -1131,7 +1250,7 @@ export default function MasqueScribe() {
         <details className="about card" style={{marginTop:14}}>
           <summary><Info size={14} /> How the scribe fits the visit <ChevronDown className="chev" size={14} /></summary>
           <div className="abgrid">
-            <div><b>Listen.</b> Ambient ASR transcribes the encounter on-device; clinical NLP maps what the patient says to MASQUE items in real time (shown as green capture tags).</div>
+            <div><b>Listen.</b> In this prototype the browser's own speech recognition transcribes the microphone (a deployment runs ambient ASR on-device); rule-based extraction maps what the patient says to MASQUE items as each phrase lands (shown as green capture tags — dashed while a phrase is still being recognised).</div>
             <div><b>Prompt.</b> The scribe computes coverage and surfaces only the highest-yield unasked questions for the active pathway — pulling in the VM-PATHI vestibular domains once otologic symptoms appear — so the physician asks what matters without reading a 25-item form aloud.</div>
             <div><b>Document.</b> Captured findings, the MASQUE index, and the plan assemble into a draft note and a FHIR bundle (QuestionnaireResponse, Observation, ServiceRequest, DocumentReference) for one-tap sign-off.</div>
             <div><b>Protect.</b> No raw audio is retained; only structured findings persist.</div>
@@ -1145,7 +1264,9 @@ export default function MasqueScribe() {
           instrumentVersion={INSTRUMENT_VERSION}
           modelVersion={`masque-scribe-prototype-${APP_VERSION}`} />
 
-        <p className="foot">PROTOTYPE · not for clinical use · ambient capture is simulated · no PHI leaves this browser<br/>app {APP_VERSION} · instrument {INSTRUMENT_VERSION} · extraction lexicon {LEXICON_VERSION} · probe set {PROBE_SET_VERSION} — benchmarked in-sample only, see EXTRACTION_BENCHMARK</p>
+        <p className="foot">PROTOTYPE · not for clinical use · {voiceUsed
+          ? "microphone capture via the browser's speech service · this app stores no audio and no PHI"
+          : "ambient capture is simulated · no PHI leaves this browser"}<br/>app {APP_VERSION} · instrument {INSTRUMENT_VERSION} · extraction lexicon {LEXICON_VERSION} · probe set {PROBE_SET_VERSION} — benchmarked in-sample only, see EXTRACTION_BENCHMARK</p>
       </div>
       {toast && <div className="toast"><Check size={15} /> {toast}</div>}
     </div>
@@ -1153,6 +1274,21 @@ export default function MasqueScribe() {
 }
 
 // ------------------------- helpers --------------------------------------------
+
+/*  Microphone level bar. Holds its own state so the ~15 Hz level ticks re-render this
+    one element rather than the whole scribe. `bind` hands it the setter; MASQUE_Voice
+    sends null once if the meter cannot run, and the bar simply disappears.
+*/
+function VoiceMeter({ bind }) {
+  const [level, setLevel] = useState(0);
+  useEffect(() => { bind(setLevel); return () => bind(null); }, [bind]);
+  if (level === null) return null;
+  return (
+    <div className="vmeter" role="meter" aria-label="Microphone level" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(level * 100)}>
+      <div className="vfill" style={{width: Math.round(level * 100) + "%"}} />
+    </div>
+  );
+}
 
 function capLabel(c) {
   if (c.id.startsWith("rf_")) return "RED FLAG: " + (RF_BY_ID[c.id]?.points || c.id);
