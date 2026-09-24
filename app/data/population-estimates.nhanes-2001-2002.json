@@ -1,0 +1,98 @@
+{
+  "masqueArtifact": "population-estimates",
+  "generatedAt": "2026-09-24T22:29:33Z",
+  "producedBy": "masque_population_etl.R 0.3.0 / R survey 4.2.1",
+  "source": {
+    "dataset": "NHANES",
+    "cycle": "2001-2002",
+    "file": "nhanes_2001_2002.csv",
+    "steward": "CDC/NCHS",
+    "url": "https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2001/DataFiles/",
+    "sha256": "5df31484844aa27e620b8020994bdd3d068e956b22592b9e1ef1b4d0eabe8d93",
+    "downloadedAt": "2026-09-24"
+  },
+  "design": {
+    "weight": "WTINT2YR",
+    "strata": "SDMVSTRA",
+    "psu": "SDMVPSU",
+    "nest": true,
+    "lonelyPsu": "adjust",
+    "varianceMethod": "Taylor linearization",
+    "domainAnalysis": true
+  },
+  "phenotype": {
+    "definition": "Severe headaches or migraines (MPQ090 = yes) AND at least one of: dizziness or balance problems in the past year (BAQ020A or BAQ020B = yes; a 'no' to the gate question BAQ010 counts as no), any reported hearing trouble (AUQ130 = a little trouble, a lot of trouble, or deaf), or ears ringing, roaring or buzzing in the past year (AUQ190 = yes). Adults aged 40 and over; complete cases only. This is the proposal <U+00A7>7.1 phenotype narrowed to what NHANES 1999-2004 can express: no sinonasal arm and no recalcitrance (utilization) arm.",
+    "rule": {
+      "all": ["headache_migraine"],
+      "any": ["dizziness_balance", "hearing_difficulty", "tinnitus"],
+      "completeCase": true
+    },
+    "eligibility": {
+      "var": "RIDAGEYR",
+      "min": 40,
+      "reason": "The Balance questionnaire (BAQ) was administered to respondents aged 40 and over; the pain and audiometry questionnaire items used were asked of ages 20 and over, so adults 40+ are the population with every phenotype item. Verified in the data: BAQ010 is answered by ages 40-85 only.",
+      "eligibleRespondents": 3486,
+      "allRespondents": 11039
+    },
+    "variableMap": {
+      "headache_migraine": "MPQ090",
+      "dizziness_balance": ["BAQ020A", "BAQ020B"],
+      "hearing_difficulty": "AUQ130",
+      "sinus_condition": null,
+      "recalcitrance_proxy": null,
+      "tinnitus": "AUQ190"
+    },
+    "questionText": {
+      "headache_migraine": "File label: \"Severe headaches or migraines\" (Miscellaneous Pain questionnaire, MPQ090; asked of ages 20+; 1 = yes, 2 = no).",
+      "dizziness_balance": "File labels: \"Dizziness problems in past year\" (BAQ020A) and \"Balance problems in past year\" (BAQ020B), Balance questionnaire, ages 40+; either = yes counts. Falling problems alone (BAQ020C) do not count.",
+      "hearing_difficulty": "File label: \"General condition of hearing\" (Audiometry questionnaire, AUQ130). Codes 2, 3 and 4 (a little trouble / a lot of trouble / deaf, per the NHANES AUQ code frame) count as difficulty; 1 = good. Code frame to be re-verified against the codebook by the clinical lead.",
+      "sinus_condition": "",
+      "recalcitrance_proxy": "",
+      "tinnitus": "File label: \"Ears ringing, roaring, buzzing past year\" (Audiometry questionnaire, AUQ190; asked of ages 20+; 1 = yes, 2 = no)."
+    },
+    "mapFile": "phenotype_map_nhanes_2001_2002.json",
+    "mapVersion": "0.2.0",
+    "unmapped": ["sinus_condition", "recalcitrance_proxy"]
+  },
+  "estimates": [
+    {
+      "name": "phenotype_prevalence",
+      "unit": "proportion",
+      "estimate": 0.114702972359261,
+      "se": 0.0097501893211771,
+      "ci": [0.0939209357615164, 0.135485008957006],
+      "unweightedN": 3466,
+      "weightedN": 117041743.961939,
+      "df": 15,
+      "rse": 0.085003806968825,
+      "suppress": false
+    },
+    {
+      "name": "phenotype_prevalence",
+      "unit": "proportion",
+      "domain": "sex=male",
+      "estimate": 0.0987585141355204,
+      "se": 0.0118554239921075,
+      "ci": [0.0734892760551243, 0.124027752215916],
+      "unweightedN": 1710,
+      "weightedN": 56238686.488281,
+      "df": 15,
+      "rse": 0.120044576367756,
+      "suppress": false
+    },
+    {
+      "name": "phenotype_prevalence",
+      "unit": "proportion",
+      "domain": "sex=female",
+      "estimate": 0.129450510139889,
+      "se": 0.0125148863717829,
+      "ci": [0.10277566127002, 0.156125359009758],
+      "unweightedN": 1756,
+      "weightedN": 60803057.473658,
+      "df": 15,
+      "rse": 0.096676995388113,
+      "suppress": false
+    }
+  ],
+  "caveats": ["Screening-level phenotype prevalence, not diagnosed prevalence. No vestibular-testing or ICHD/Barany reference standard exists in these data.", "Self-reported survey items; coding inconsistency may bias phenotype capture.", "Hypothesis-generating estimate, not a diagnostic count.", "Respondents coded Refused / Not Ascertained / Don't Know on a phenotype item are excluded from the denominator, never counted as negative.", "Complete-case phenotype: a respondent missing any item the rule uses is excluded from the denominator.", "Estimated within the eligible subpopulation only (RIDAGEYR >= 40): The Balance questionnaire (BAQ) was administered to respondents aged 40 and over; the pain and audiometry questionnaire items used were asked of ages 20 and over, so adults 40+ are the population with every phenotype item. Verified in the data: BAQ010 is answered by ages 40-85 only..", "Concepts this cycle could not express: sinus_condition, recalcitrance_proxy. The phenotype reported here is narrower than the one defined in proposal 7.1.", "No gender-identity item in this cycle: estimates are stratified by sex only. Gender is not substituted from sex."]
+}

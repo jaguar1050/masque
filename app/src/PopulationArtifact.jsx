@@ -118,13 +118,20 @@ export default function PopulationArtifact({ art, onClear }) {
       )}
 
       <div className="pa-call"><b>Phenotype.</b> {ph.definition || "not stated"}
+        {ph.rule && <div className="pa-small" style={{marginTop:4}}>rule: all of [{(ph.rule.all || []).join(", ")}] and any of [{(ph.rule.any || []).join(", ")}]{ph.rule.completeCase ? " · complete cases only" : ""}</div>}
         {ph.mapFile && <div className="pa-small" style={{marginTop:4}}>map {ph.mapFile} v{ph.mapVersion}</div>}
         {varMap.length > 0 && (
           <ul>{varMap.map(([concept, vars]) => (
-            <li key={concept} className="pa-code">{concept}: {Array.isArray(vars) && vars.length ? vars.join(", ") : (typeof vars === "string" && vars ? vars : "unmapped")}</li>
+            <li key={concept} className="pa-code">{concept}: {Array.isArray(vars) && vars.length ? vars.join(", ") : (typeof vars === "string" && vars ? vars : "unmapped")}
+              {ph.questionText && ph.questionText[concept] ? <span style={{fontFamily:"inherit",color:"#5C6E6C"}}> — “{ph.questionText[concept]}”</span> : null}</li>
           ))}</ul>
         )}
       </div>
+      {ph.eligibility && ph.eligibility.var && (
+        <div className="pa-call"><b>Population.</b> {ph.eligibility.var}{ph.eligibility.min != null ? ` ≥ ${ph.eligibility.min}` : ""}{ph.eligibility.max != null ? ` ≤ ${ph.eligibility.max}` : ""} — {ph.eligibility.reason}
+          {Number.isFinite(ph.eligibility.eligibleRespondents) && <div className="pa-small">{ph.eligibility.eligibleRespondents.toLocaleString()} of {Number(ph.eligibility.allRespondents).toLocaleString()} respondents eligible; the denominator below is the eligible respondents with complete phenotype items</div>}
+        </div>
+      )}
       {ph.unmapped?.length > 0 && <div className="pa-call pa-warn"><b>Narrower than proposal §7.1.</b> This cycle could not express: {ph.unmapped.join(", ")}. The phenotype measured here is not the phenotype defined in the proposal, and the difference is stated rather than absorbed.</div>}
       {art.caveats?.length > 0 && <div className="pa-call pa-warn"><b>Caveats (from the producing script).</b><ul>{art.caveats.map((c, i) => <li key={i}>{c}</li>)}</ul></div>}
       <div className="pa-call"><b>Provenance.</b> {art.producedBy || "producer not stated"} · generated {art.generatedAt || "—"}{src.downloadedAt ? ` · source downloaded ${src.downloadedAt}` : " · source download date not recorded"}

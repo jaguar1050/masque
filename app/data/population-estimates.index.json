@@ -1,4 +1,20 @@
 {
-  "_note": "Adding a population estimate is a data commit, not a code change: run app/etl/masque_population_etl.R, commit the JSON it writes into this folder, and add its path here. app/population.html validates each listed file against app/etl/population_estimates.schema.json before rendering it and refuses anything that fails. Paths are relative to app/.",
-  "artifacts": []
+  "_note": "Adding a population estimate is a data commit, not a code change: run app/etl/masque_population_etl.R, commit the JSON it writes into this folder, and add its path here. app/population.html validates each listed file against app/etl/population_estimates.schema.json before rendering it and refuses anything that fails. Paths are relative to app/. One artifact per survey cycle; cycles are not pooled.",
+  "artifacts": [
+    {
+      "path": "./data/population-estimates.nhanes-1999-2000.json",
+      "addedOn": "2026-09-24",
+      "note": "NHANES 1999-2000, adults 40+, household-interview items (MPQ, BAQ, AUQ); provenance in ./data/provenance/"
+    },
+    {
+      "path": "./data/population-estimates.nhanes-2001-2002.json",
+      "addedOn": "2026-09-24",
+      "note": "NHANES 2001-2002, adults 40+, household-interview items (MPQ, BAQ, AUQ); provenance in ./data/provenance/"
+    },
+    {
+      "path": "./data/population-estimates.nhanes-2003-2004.json",
+      "addedOn": "2026-09-24",
+      "note": "NHANES 2003-2004, adults 40+, household-interview items (MPQ, BAQ, AUQ); provenance in ./data/provenance/"
+    }
+  ]
 }

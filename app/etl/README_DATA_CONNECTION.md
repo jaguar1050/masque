@@ -53,7 +53,7 @@ Each concept carries a `_status` the ETL reads:
 | `unmapped` (with `vars: []`) | this cycle cannot express it | runs; the artifact lists it under `unmapped` and the page shows the "narrower than §7.1" banner |
 | `mapped` (with `vars` filled) | in use | runs |
 
-The map is data rather than code on purpose: a cycle change becomes a reviewable diff, and the ETL refuses to run while anything is still TODO. It also refuses to run while `phenotype_definition` is still TODO, and while the conjunction in the script references a concept you declared unmapped — because `NA | TRUE` is `TRUE` and `NA & TRUE` is `NA`, an unmapped arm would silently narrow the phenotype and shrink the denominator instead of being reported as absent. When you declare a concept unmapped, edit `PHENOTYPE_USES` and `phenotype_of()` in the script to drop it, and say so in `phenotype_definition`.
+The map is data rather than code on purpose: a cycle change becomes a reviewable diff, and the ETL refuses to run while anything is still TODO. Three more things the map declares, all read by the ETL: `phenotype_rule` `{"all": [...], "any": [...]}` — positive when every `all` concept is positive and at least one `any` concept is positive, complete cases only, and every concept it names must be mapped (an unmapped arm would otherwise silently narrow the phenotype instead of being reported as absent); `eligibility` `{"var", "min", "max", "reason"}` — the subpopulation the items were asked of, applied as a design subset; and per-concept `skipNegative` `{"var", "codes"}` — a gate answer that routed respondents past the detail items counts as no, not as missing. When you declare a concept unmapped, drop it from the rule and say so in `phenotype_definition`.
 
 Two things to expect while you do this:
 
@@ -105,7 +105,7 @@ To preview an artifact before committing it, upload it into the research panel o
 | Dizziness / balance | **NHANES 1999–2004** or an NHIS supplement year | Not in NHIS annual core |
 | Cost of illness (§2, §7.3) | **MEPS** | The only one with expenditures. Own design variables, own map file — never carry a cost figure from one survey into another survey's artifact |
 
-**If you only do one thing:** NHANES 1999–2004 is the strongest single starting point for MASQUE specifically, because it's the one cycle range where the headache item, audiometry, and the balance questionnaire coexist in the same respondents. That route is the **second map file**, `phenotype_map_nhanes_1999_2004.json` (design block filled; concepts TODO with component hints), not a fill-in of the NHIS map, and the phenotype conjunction may be able to keep all three arms.
+**If you only do one thing:** NHANES 1999–2004 is the strongest single starting point for MASQUE specifically, because it's the one cycle range where the headache item, audiometry, and the balance questionnaire coexist in the same respondents. That route is the **second map**, `phenotype_map_nhanes_<cycle>.json` (one per cycle, filled on 24 September 2026 from the files' own variable labels and the components' eligibility), not a fill-in of the NHIS map; it keeps all three §7.1 arms plus a tinnitus item NHIS lacks.
 
 ### The NHANES route, step by step
 
@@ -127,7 +127,7 @@ NHANES ships one SAS XPORT file per component per cycle rather than one CSV, so 
    python app/etl/nhanes_prepare.py --dir C:\Healthcare_Data_Extract\NHANES\2001-2002 --out .\nhanes_2001_2002.csv
    ```
 
-3. **Fill the map** — copy `phenotype_map_nhanes_1999_2004.json` per cycle, set `_meta.cycle` and `_meta.file`, look up each concept in the component the hint names (MPQ for headache/migraine, BAQ for dizziness/balance, AUQ for hearing), record the wording, set `_status`. If audiometry exam data (AUX) rather than the questionnaire is mapped, switch the design weight to `WTMEC2YR`.
+3. **Review the map** — `phenotype_map_nhanes_<cycle>.json` is filled: MPQ090 for headache/migraine, BAQ020A/B for dizziness/balance with BAQ010 = no as a skip-pattern negative, AUQ130 codes 2–4 for hearing difficulty, AUQ190 for tinnitus; adults 40+ as the eligible population; complete cases only. Each choice quotes the file's variable label under `questionText`. Change a choice, re-run, re-commit. If audiometry exam data (AUX) rather than the questionnaire is mapped, switch the design weight to `WTMEC2YR`.
 
 4. **Run the ETL** exactly as above, with the NHANES map and `--downloaded-at` from the fetch manifest, then commit and index the artifact. One artifact per cycle; pooling cycles needs cycle-specific weight adjustment and is out of scope.
 

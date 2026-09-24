@@ -1,15 +1,15 @@
 {
   "_meta": {
-    "mapFile": "phenotype_map_nhanes_synthetic.json",
-    "mapVersion": "0.0.0-synthetic",
-    "dataset": "SYNTHETIC-NHANES-SHAPED",
-    "cycle": "fixture",
-    "file": "nhanes_synthetic.csv",
-    "url": "https://wwwn.cdc.gov/nchs/nhanes/",
+    "mapFile": "phenotype_map_nhanes_2001_2002.json",
+    "mapVersion": "0.2.0",
+    "dataset": "NHANES",
+    "cycle": "2001-2002",
+    "file": "nhanes_2001_2002.csv",
+    "url": "https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2001/DataFiles/",
     "codebook": "https://wwwn.cdc.gov/nchs/nhanes/search/variablelist.aspx?Component=Questionnaire",
     "steward": "CDC/NCHS",
     "WHY_NHANES_1999_2004": "This is the one cycle range where a severe-headache/migraine item (Miscellaneous Pain questionnaire, MPQ), the Balance questionnaire (BAQ) and audiometry (AUQ / AUX) coexist in the same respondents, so all three arms of the §7.1 phenotype can be expressed. Later cycles carry audiometry but not the balance questionnaire or the headache item, which is why the NHIS map has those arms as TODO-or-unmapped.",
-    "STATUS": "SYNTHETIC TEST FIXTURE — invented variables; never quote a number from its output."
+    "STATUS": "FILLED 24 September 2026 from the variable labels embedded in the public-use files (quoted verbatim under questionText) and the components' documented eligibility. Every variable choice is listed for clinical-lead review; change a choice here, re-run, re-commit."
   },
   "design": {
     "_verified": "NHANES 1999-2004 public-use design variables, per NCHS analytic guidelines. Two-year files: interview weight WTINT2YR for questionnaire-only items; MEC exam weight WTMEC2YR when any item comes from the MEC (audiometry AUX, balance exam BAX). If every mapped concept below is questionnaire-based, use WTINT2YR; if audiometry or the balance exam is mapped, use WTMEC2YR. Pooling cycles needs cycle-specific weight adjustment and is out of scope here.",
@@ -42,58 +42,79 @@
     "age": {
       "var": "RIDAGEYR",
       "topcode": 85,
-      "_status": "mapped"
+      "_status": "mapped",
+      "_note": "File label: \"Age at Screening Adjudicated - Recode\"; top-coded at 85."
     }
   },
   "phenotype_concepts": {
     "_instruction": "Each concept maps to one or more variables plus the codes that count as positive. Open the variable list, search the concept keyword within the component named in the hint, and record the variable name, the exact question wording, and the positive code set. Record the wording — a phenotype defined by variable names alone is not reviewable. Status vocabulary, read by the ETL: any value beginning TODO refuses to run; \"unmapped\" with empty vars declares that this cycle cannot express the concept and is reported in the artifact; \"mapped\" with vars filled is used. Remember NHANES uses 7 = Refused and 9 = Don't know on most yes/no items; the ETL recodes 7/8/9 to NA.",
     "headache_migraine": {
       "vars": [
-        "SYN_MPQ1"
+        "MPQ090"
       ],
       "positiveCodes": [
         1
       ],
       "_status": "mapped",
       "_hint": "Component MPQ (Miscellaneous Pain), 1999-2004: an item asking about severe headaches or migraines in the past 3 months. Look it up by wording; do not trust a remembered variable name.",
-      "questionText": "SYNTHETIC"
+      "questionText": "File label: \"Severe headaches or migraines\" (Miscellaneous Pain questionnaire, MPQ090; asked of ages 20+; 1 = yes, 2 = no)."
     },
     "dizziness_balance": {
       "vars": [
-        "SYN_BAQ1",
-        "SYN_BAQ2"
+        "BAQ020A",
+        "BAQ020B"
       ],
       "positiveCodes": [
         1
       ],
       "_status": "mapped",
       "_hint": "Component BAQ (Balance questionnaire), 1999-2004: items on dizziness, balance problems and falling in the past 12 months. Choose the item(s) that express recurrent dizziness/imbalance; if you combine several, list them all in vars — the ETL treats any positive as positive.",
-      "questionText": "SYNTHETIC"
+      "questionText": "File labels: \"Dizziness problems in past year\" (BAQ020A) and \"Balance problems in past year\" (BAQ020B), Balance questionnaire, ages 40+; either = yes counts. Falling problems alone (BAQ020C) do not count.",
+      "skipNegative": {
+        "var": "BAQ010",
+        "codes": [
+          2
+        ],
+        "_note": "BAQ020A/B are asked only when BAQ010 \"Dizzy/balance/falling problems/past yr\" = 1. A respondent answering no at the gate is negative, not missing. Verified in the data: no respondent with BAQ010 = 1 lacks BAQ020A."
+      }
     },
     "hearing_difficulty": {
       "vars": [
-        "SYN_AUQ1"
+        "AUQ130"
       ],
       "positiveCodes": [
-        1
+        2,
+        3,
+        4
       ],
       "_status": "mapped",
       "_hint": "Component AUQ (Audiometry questionnaire): the general hearing-condition item. AUX (exam) carries measured thresholds and, if used, moves the design weight to WTMEC2YR.",
-      "questionText": "SYNTHETIC"
+      "questionText": "File label: \"General condition of hearing\" (Audiometry questionnaire, AUQ130). Codes 2, 3 and 4 (a little trouble / a lot of trouble / deaf, per the NHANES AUQ code frame) count as difficulty; 1 = good. Code frame to be re-verified against the codebook by the clinical lead."
     },
     "sinus_condition": {
       "vars": [],
       "positiveCodes": [],
       "_status": "unmapped",
-      "_hint": "NHANES has no sinusitis item in 1999-2004 that we are aware of; declare unmapped unless the variable list shows one. Self-reported physician-told status only — not the recalcitrance construct.",
+      "_hint": "No sinonasal item in the DEMO, BAQ, MPQ or AUQ components. Declared unmapped; the artifact reports it and the page shows the narrower-than-§7.1 banner.",
       "questionText": ""
     },
     "recalcitrance_proxy": {
       "vars": [],
       "positiveCodes": [],
       "_status": "unmapped",
-      "_hint": "A utilization construct (repeat antibiotic/steroid courses, prior procedure, persistence). NHANES cannot express it; MEPS can approximate it. Declaring it unmapped is the honest outcome and the page renders that.",
+      "_hint": "A utilization construct (repeat antibiotic/steroid courses, prior procedure, persistence). NHANES cannot express it; MEPS can approximate it. BAQ070 \"Received treatment for dizziness/balance\" is treatment-seeking, not recalcitrance, and is deliberately not used.",
       "questionText": ""
+    },
+    "tinnitus": {
+      "vars": [
+        "AUQ190"
+      ],
+      "positiveCodes": [
+        1
+      ],
+      "_status": "mapped",
+      "_hint": "Not in the NHIS map: NHANES carries a tinnitus item and proposal §7.1 names tinnitus in the otologic arm.",
+      "questionText": "File label: \"Ears ringing, roaring, buzzing past year\" (Audiometry questionnaire, AUQ190; asked of ages 20+; 1 = yes, 2 = no)."
     }
   },
   "cost_concepts": {
@@ -107,14 +128,21 @@
       "_status": "N/A for NHANES"
     }
   },
-  "phenotype_definition": "SYNTHETIC FIXTURE: headache_migraine positive AND (dizziness_balance positive OR hearing_difficulty positive). Invented variables; not a survey estimate.",
+  "phenotype_definition": "Severe headaches or migraines (MPQ090 = yes) AND at least one of: dizziness or balance problems in the past year (BAQ020A or BAQ020B = yes; a 'no' to the gate question BAQ010 counts as no), any reported hearing trouble (AUQ130 = a little trouble, a lot of trouble, or deaf), or ears ringing, roaring or buzzing in the past year (AUQ190 = yes). Adults aged 40 and over; complete cases only. This is the proposal §7.1 phenotype narrowed to what NHANES 1999-2004 can express: no sinonasal arm and no recalcitrance (utilization) arm.",
   "phenotype_rule": {
     "all": [
       "headache_migraine"
     ],
     "any": [
       "dizziness_balance",
-      "hearing_difficulty"
-    ]
+      "hearing_difficulty",
+      "tinnitus"
+    ],
+    "_note": "Positive when every `all` concept is positive and at least one `any` concept is positive. Complete cases only."
+  },
+  "eligibility": {
+    "var": "RIDAGEYR",
+    "min": 40,
+    "reason": "The Balance questionnaire (BAQ) was administered to respondents aged 40 and over; the pain and audiometry questionnaire items used were asked of ages 20 and over, so adults 40+ are the population with every phenotype item. Verified in the data: BAQ010 is answered by ages 40-85 only."
   }
 }

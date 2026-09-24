@@ -152,6 +152,59 @@
             "type": "string"
           },
           "description": "Concepts the chosen cycle cannot express. NEVER silently dropped — a phenotype missing its vestibular component is a different phenotype and the panel must say so."
+        },
+        "rule": {
+          "type": "object",
+          "description": "The boolean rule applied, from the map: positive when every `all` concept is positive and at least one `any` concept is positive; complete cases only.",
+          "properties": {
+            "all": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "any": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "completeCase": {
+              "type": "boolean"
+            }
+          }
+        },
+        "eligibility": {
+          "type": "object",
+          "description": "The subpopulation the estimate is restricted to, applied as a design subset. Absent when the whole file was eligible.",
+          "required": [
+            "var",
+            "reason"
+          ],
+          "properties": {
+            "var": {
+              "type": "string"
+            },
+            "min": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "eligibleRespondents": {
+              "type": "integer"
+            },
+            "allRespondents": {
+              "type": "integer"
+            }
+          }
+        },
+        "questionText": {
+          "type": "object",
+          "description": "Concept -> the question wording recorded in the map, so a reader can judge what was measured."
         }
       }
     },

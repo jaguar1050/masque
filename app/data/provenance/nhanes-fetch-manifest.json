@@ -1,0 +1,113 @@
+{
+    "fetchedBy": "nhanes_fetch.py 1.0",
+    "files": [
+        {
+            "cycle": "1999-2000",
+            "component": "DEMO",
+            "file": "DEMO.xpt",
+            "url": "https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/1999/DataFiles/DEMO.xpt",
+            "bytes": 11500560,
+            "sha256": "a17bd1ebfd6007b8dc93f16259cb090678eb6c467a39363b7e932bba15febf89",
+            "fetched_at": "2026-09-24T22:22:53.214301+00:00"
+        },
+        {
+            "cycle": "1999-2000",
+            "component": "BAQ",
+            "file": "BAQ.xpt",
+            "url": "https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/1999/DataFiles/BAQ.xpt",
+            "bytes": 615600,
+            "sha256": "a94805281f4ec899e72996265d35c5dfd5cb6d6df7258111bee01100270f53cb",
+            "fetched_at": "2026-09-24T22:22:53.398151+00:00"
+        },
+        {
+            "cycle": "1999-2000",
+            "component": "MPQ",
+            "file": "MPQ.xpt",
+            "url": "https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/1999/DataFiles/MPQ.xpt",
+            "bytes": 2351520,
+            "sha256": "4cf525ea492c5afe395913c306c238a29e600d069e4dddc633cf88ff33fd1960",
+            "fetched_at": "2026-09-24T22:22:53.938078+00:00"
+        },
+        {
+            "cycle": "1999-2000",
+            "component": "AUQ",
+            "file": "AUQ.xpt",
+            "url": "https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/1999/DataFiles/AUQ.xpt",
+            "bytes": 989840,
+            "sha256": "7ce6cca24c86a08388c5bef31a5be78eeaa3e1ce368e4951b02ffca1acc21302",
+            "fetched_at": "2026-09-24T22:22:54.122937+00:00"
+        },
+        {
+            "cycle": "2001-2002",
+            "component": "DEMO",
+            "file": "DEMO_B.xpt",
+            "url": "https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2001/DataFiles/DEMO_B.xpt",
+            "bytes": 3273520,
+            "sha256": "6458dc2307cee244ab6ba26f70ec78c7b842ffc68e668bc43f0ab6b9737937d9",
+            "fetched_at": "2026-09-24T22:22:54.451901+00:00"
+        },
+        {
+            "cycle": "2001-2002",
+            "component": "BAQ",
+            "file": "BAQ_B.xpt",
+            "url": "https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2001/DataFiles/BAQ_B.xpt",
+            "bytes": 673440,
+            "sha256": "1b2df48cc8d48074ba9a29cc15323ed8981843be78d0f34db4095cf40e8d4d84",
+            "fetched_at": "2026-09-24T22:22:54.619209+00:00"
+        },
+        {
+            "cycle": "2001-2002",
+            "component": "MPQ",
+            "file": "MPQ_B.xpt",
+            "url": "https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2001/DataFiles/MPQ_B.xpt",
+            "bytes": 2563040,
+            "sha256": "348b684d960b2c50f9d22b77b833f6b6b16793551c5dd776abf946d225ea7e46",
+            "fetched_at": "2026-09-24T22:22:54.849137+00:00"
+        },
+        {
+            "cycle": "2001-2002",
+            "component": "AUQ",
+            "file": "AUQ_B.xpt",
+            "url": "https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2001/DataFiles/AUQ_B.xpt",
+            "bytes": 1091440,
+            "sha256": "1fb8dd4d22e7191e9064f34278710c500fa8cd5b4bffa732b6fdd5d1f919c796",
+            "fetched_at": "2026-09-24T22:22:55.045590+00:00"
+        },
+        {
+            "cycle": "2003-2004",
+            "component": "DEMO",
+            "file": "DEMO_C.xpt",
+            "url": "https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2003/DataFiles/DEMO_C.xpt",
+            "bytes": 3569840,
+            "sha256": "2a2fdb88263337bfa06f0516bfb419631595f0a0ee88fb96069bed13d1857c6f",
+            "fetched_at": "2026-09-24T22:22:55.364728+00:00"
+        },
+        {
+            "cycle": "2003-2004",
+            "component": "BAQ",
+            "file": "BAQ_C.xpt",
+            "url": "https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2003/DataFiles/BAQ_C.xpt",
+            "bytes": 637520,
+            "sha256": "0bde1bb4d3e3b2e12e310a53f9010ddb6fd461c9703294da3c1f418a986b2003",
+            "fetched_at": "2026-09-24T22:22:55.566263+00:00"
+        },
+        {
+            "cycle": "2003-2004",
+            "component": "MPQ",
+            "file": "MPQ_C.xpt",
+            "url": "https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2003/DataFiles/MPQ_C.xpt",
+            "bytes": 2388400,
+            "sha256": "bf74035ac6bcd334e0b683b748ffc3140dfc7944f19f56daa1d98b6bce261f13",
+            "fetched_at": "2026-09-24T22:22:55.897919+00:00"
+        },
+        {
+            "cycle": "2003-2004",
+            "component": "AUQ",
+            "file": "AUQ_C.xpt",
+            "url": "https://wwwn.cdc.gov/Nchs/Data/Nhanes/Public/2003/DataFiles/AUQ_C.xpt",
+            "bytes": 1005680,
+            "sha256": "fb0773be257dcc33dda27ea17c7f63751d1770a6f3b484c628cad7890cb906fb",
+            "fetched_at": "2026-09-24T22:22:56.258251+00:00"
+        }
+    ]
+}

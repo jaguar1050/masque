@@ -1,7 +1,7 @@
 {
   "masqueArtifact": "population-estimates",
-  "generatedAt": "2026-09-24T15:42:38Z",
-  "producedBy": "masque_population_etl.R 0.2.0 / R survey 4.2.1",
+  "generatedAt": "2026-09-24T22:29:28Z",
+  "producedBy": "masque_population_etl.R 0.3.0 / R survey 4.2.1",
   "source": {
     "dataset": "SYNTHETIC-NHANES-SHAPED",
     "cycle": "fixture",
@@ -22,12 +22,24 @@
   },
   "phenotype": {
     "definition": "SYNTHETIC FIXTURE: headache_migraine positive AND (dizziness_balance positive OR hearing_difficulty positive). Invented variables; not a survey estimate.",
+    "rule": {
+      "all": ["headache_migraine"],
+      "any": ["dizziness_balance", "hearing_difficulty"],
+      "completeCase": true
+    },
     "variableMap": {
       "headache_migraine": "SYN_MPQ1",
       "dizziness_balance": ["SYN_BAQ1", "SYN_BAQ2"],
       "hearing_difficulty": "SYN_AUQ1",
       "sinus_condition": null,
       "recalcitrance_proxy": null
+    },
+    "questionText": {
+      "headache_migraine": "SYNTHETIC",
+      "dizziness_balance": "SYNTHETIC",
+      "hearing_difficulty": "SYNTHETIC",
+      "sinus_condition": "",
+      "recalcitrance_proxy": ""
     },
     "mapFile": "phenotype_map_nhanes_synthetic.json",
     "mapVersion": "0.0.0-synthetic",
@@ -37,41 +49,41 @@
     {
       "name": "phenotype_prevalence",
       "unit": "proportion",
-      "estimate": 0.0640802697613222,
-      "se": 0.00703711407021892,
-      "ci": [0.0490810161743018, 0.0790795233483426],
-      "unweightedN": 855,
-      "weightedN": 26043546.73,
+      "estimate": 0.0684545173714548,
+      "se": 0.00705838357611832,
+      "ci": [0.0534099289057509, 0.0834991058371588],
+      "unweightedN": 769,
+      "weightedN": 23457532.12,
       "df": 15,
-      "rse": 0.109817172999269,
+      "rse": 0.103110559348734,
       "suppress": false
     },
     {
       "name": "phenotype_prevalence",
       "unit": "proportion",
       "domain": "sex=male",
-      "estimate": 0.0468324715042565,
-      "se": 0.0119981366205036,
-      "ci": [0.0212590486569201, 0.0724058943515929],
-      "unweightedN": 304,
-      "weightedN": 9070131.82,
+      "estimate": 0.0429617201093342,
+      "se": 0.0106186331171723,
+      "ci": [0.0203286393772714, 0.065594800841397],
+      "unweightedN": 279,
+      "weightedN": 8418499.75,
       "df": 15,
-      "rse": 0.256192685013711,
+      "rse": 0.2471649899061,
       "suppress": false
     },
     {
       "name": "phenotype_prevalence",
       "unit": "proportion",
       "domain": "sex=female",
-      "estimate": 0.0732970245879649,
-      "se": 0.00795042320934545,
-      "ci": [0.0563510986513976, 0.0902429505245322],
-      "unweightedN": 551,
-      "weightedN": 16973414.91,
+      "estimate": 0.0827247910232406,
+      "se": 0.00873581952588568,
+      "ci": [0.0641048324646993, 0.101344749581782],
+      "unweightedN": 490,
+      "weightedN": 15039032.37,
       "df": 15,
-      "rse": 0.108468566821618,
+      "rse": 0.10560098632865,
       "suppress": false
     }
   ],
-  "caveats": ["Screening-level phenotype prevalence, not diagnosed prevalence. No vestibular-testing or ICHD/Barany reference standard exists in these data.", "Self-reported survey items; coding inconsistency may bias phenotype capture.", "Hypothesis-generating estimate, not a diagnostic count.", "Respondents coded Refused / Not Ascertained / Don't Know on a phenotype item are excluded from the denominator, never counted as negative.", "Concepts this cycle could not express: sinus_condition, recalcitrance_proxy. The phenotype reported here is narrower than the one defined in proposal 7.1.", "No gender-identity item in this cycle: estimates are stratified by sex only. Gender is not substituted from sex."]
+  "caveats": ["Screening-level phenotype prevalence, not diagnosed prevalence. No vestibular-testing or ICHD/Barany reference standard exists in these data.", "Self-reported survey items; coding inconsistency may bias phenotype capture.", "Hypothesis-generating estimate, not a diagnostic count.", "Respondents coded Refused / Not Ascertained / Don't Know on a phenotype item are excluded from the denominator, never counted as negative.", "Complete-case phenotype: a respondent missing any item the rule uses is excluded from the denominator.", "Concepts this cycle could not express: sinus_condition, recalcitrance_proxy. The phenotype reported here is narrower than the one defined in proposal 7.1.", "No gender-identity item in this cycle: estimates are stratified by sex only. Gender is not substituted from sex."]
 }

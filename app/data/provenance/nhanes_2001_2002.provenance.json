@@ -1,0 +1,44 @@
+{
+  "preparedBy": "nhanes_prepare.py 0.1.0",
+  "preparedAt": "2026-09-24T22:23:50Z",
+  "directory": "/tmp/claude-0/-home-user-masque/32c8b7fb-e1ca-506f-a6e4-bc37888a621b/scratchpad/nhanes4/NHANES/2001-2002",
+  "demographicsComponent": "DEMO_B",
+  "components": [
+    {
+      "file": "AUQ_B.xpt",
+      "member": "AUQ_B",
+      "bytes": 1091440,
+      "sha256": "1fb8dd4d22e7191e9064f34278710c500fa8cd5b4bffa732b6fdd5d1f919c796",
+      "rows": 10470,
+      "columns": 13
+    },
+    {
+      "file": "BAQ_B.xpt",
+      "member": "BAQ_B",
+      "bytes": 673440,
+      "sha256": "1b2df48cc8d48074ba9a29cc15323ed8981843be78d0f34db4095cf40e8d4d84",
+      "rows": 3486,
+      "columns": 24
+    },
+    {
+      "file": "DEMO_B.xpt",
+      "member": "DEMO_B",
+      "bytes": 3273520,
+      "sha256": "6458dc2307cee244ab6ba26f70ec78c7b842ffc68e668bc43f0ab6b9737937d9",
+      "rows": 11039,
+      "columns": 37
+    },
+    {
+      "file": "MPQ_B.xpt",
+      "member": "MPQ_B",
+      "bytes": 2563040,
+      "sha256": "348b684d960b2c50f9d22b77b833f6b6b16793551c5dd776abf946d225ea7e46",
+      "rows": 5411,
+      "columns": 59
+    }
+  ],
+  "mergedRows": 11039,
+  "mergedColumns": 130,
+  "output": "nhanes_2001_2002.csv",
+  "outputSha256": "5df31484844aa27e620b8020994bdd3d068e956b22592b9e1ef1b4d0eabe8d93"
+}
