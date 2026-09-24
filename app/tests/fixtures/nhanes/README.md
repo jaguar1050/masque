@@ -1,0 +1,1 @@
+Synthetic NHANES-shaped SAS XPORT v5 components (written by pyreadstat) with invented variables, for testing app/etl/nhanes_prepare.py and the NHANES map route. Never deployed; never a source of numbers.

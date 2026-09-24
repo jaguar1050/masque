@@ -1,0 +1,72 @@
+{
+  "_meta": {
+    "mapFile": "phenotype_map_nhanes_1999_2004.json",
+    "mapVersion": "0.1.0-draft",
+    "dataset": "NHANES",
+    "cycle": "TODO — one of 1999-2000, 2001-2002, 2003-2004 (one map per cycle; copy this file per cycle and set the cycle here)",
+    "file": "TODO — the merged CSV written by nhanes_prepare.R, e.g. nhanes_2001_2002.csv",
+    "url": "https://wwwn.cdc.gov/nchs/nhanes/",
+    "codebook": "https://wwwn.cdc.gov/nchs/nhanes/search/variablelist.aspx?Component=Questionnaire",
+    "steward": "CDC/NCHS",
+
+    "WHY_NHANES_1999_2004": "This is the one cycle range where a severe-headache/migraine item (Miscellaneous Pain questionnaire, MPQ), the Balance questionnaire (BAQ) and audiometry (AUQ / AUX) coexist in the same respondents, so all three arms of the §7.1 phenotype can be expressed. Later cycles carry audiometry but not the balance questionnaire or the headache item, which is why the NHIS map has those arms as TODO-or-unmapped.",
+
+    "STATUS": "DRAFT — the design block below is filled from NCHS documentation for the 1999-2004 cycles. The symptom block is NOT: every variable name is a hint to look up, not a fact. Fill it from the variable list above (search each component), record the exact question wording, and set _status to mapped. The ETL refuses to run while anything is TODO."
+  },
+
+  "design": {
+    "_verified": "NHANES 1999-2004 public-use design variables, per NCHS analytic guidelines. Two-year files: interview weight WTINT2YR for questionnaire-only items; MEC exam weight WTMEC2YR when any item comes from the MEC (audiometry AUX, balance exam BAX). If every mapped concept below is questionnaire-based, use WTINT2YR; if audiometry or the balance exam is mapped, use WTMEC2YR. Pooling cycles needs cycle-specific weight adjustment and is out of scope here.",
+    "weight": "WTINT2YR",
+    "strata": "SDMVSTRA",
+    "psu": "SDMVPSU",
+    "nest": true,
+    "lonelyPsu": "adjust",
+    "note": "SDMVSTRA and SDMVPSU are masked variance units; nest = TRUE because PSU numbers repeat across strata."
+  },
+
+  "demographics": {
+    "sex": { "var": "RIAGENDR", "recode": { "1": "male", "2": "female" }, "missing": [7, 8, 9],
+      "_note": "RIAGENDR is the NHANES sex variable in every cycle. Verify the code frame in the DEMO codebook for the chosen cycle." },
+    "gender": { "var": null, "_status": "unmapped",
+      "_note": "NHANES 1999-2004 carries no gender-identity item. Left null: the ETL omits gender estimates rather than reusing sex, and the artifact says so." },
+    "age": { "var": "RIDAGEYR", "topcode": 85, "_status": "TODO-verify" }
+  },
+
+  "phenotype_concepts": {
+    "_instruction": "Each concept maps to one or more variables plus the codes that count as positive. Open the variable list, search the concept keyword within the component named in the hint, and record the variable name, the exact question wording, and the positive code set. Record the wording — a phenotype defined by variable names alone is not reviewable. Status vocabulary, read by the ETL: any value beginning TODO refuses to run; \"unmapped\" with empty vars declares that this cycle cannot express the concept and is reported in the artifact; \"mapped\" with vars filled is used. Remember NHANES uses 7 = Refused and 9 = Don't know on most yes/no items; the ETL recodes 7/8/9 to NA.",
+
+    "headache_migraine": {
+      "vars": [], "positiveCodes": [], "_status": "TODO",
+      "_hint": "Component MPQ (Miscellaneous Pain), 1999-2004: an item asking about severe headaches or migraines in the past 3 months. Look it up by wording; do not trust a remembered variable name.",
+      "questionText": ""
+    },
+    "dizziness_balance": {
+      "vars": [], "positiveCodes": [], "_status": "TODO",
+      "_hint": "Component BAQ (Balance questionnaire), 1999-2004: items on dizziness, balance problems and falling in the past 12 months. Choose the item(s) that express recurrent dizziness/imbalance; if you combine several, list them all in vars — the ETL treats any positive as positive.",
+      "questionText": ""
+    },
+    "hearing_difficulty": {
+      "vars": [], "positiveCodes": [], "_status": "TODO",
+      "_hint": "Component AUQ (Audiometry questionnaire): the general hearing-condition item. AUX (exam) carries measured thresholds and, if used, moves the design weight to WTMEC2YR.",
+      "questionText": ""
+    },
+    "sinus_condition": {
+      "vars": [], "positiveCodes": [], "_status": "TODO-OR-ACCEPT-UNMAPPED",
+      "_hint": "NHANES has no sinusitis item in 1999-2004 that we are aware of; declare unmapped unless the variable list shows one. Self-reported physician-told status only — not the recalcitrance construct.",
+      "questionText": ""
+    },
+    "recalcitrance_proxy": {
+      "vars": [], "positiveCodes": [], "_status": "TODO-OR-ACCEPT-UNMAPPED",
+      "_hint": "A utilization construct (repeat antibiotic/steroid courses, prior procedure, persistence). NHANES cannot express it; MEPS can approximate it. Declaring it unmapped is the honest outcome and the page renders that.",
+      "questionText": ""
+    }
+  },
+
+  "cost_concepts": {
+    "_note": "NHANES carries no expenditure data. Cost estimates require MEPS with its own map file and design variables.",
+    "annual_cost": { "var": null, "_status": "N/A for NHANES" },
+    "avoidable_cost": { "var": null, "_status": "N/A for NHANES" }
+  },
+
+  "phenotype_definition": "TODO — write the boolean combination in words once the variables above are filled, e.g. 'headache_migraine positive AND (dizziness_balance positive OR hearing_difficulty positive)'. This string is copied verbatim into the artifact and rendered by the page, so it must be readable by someone who has never seen the code."
+}

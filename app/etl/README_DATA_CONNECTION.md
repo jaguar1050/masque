@@ -105,7 +105,31 @@ To preview an artifact before committing it, upload it into the research panel o
 | Dizziness / balance | **NHANES 1999–2004** or an NHIS supplement year | Not in NHIS annual core |
 | Cost of illness (§2, §7.3) | **MEPS** | The only one with expenditures. Own design variables, own map file — never carry a cost figure from one survey into another survey's artifact |
 
-**If you only do one thing:** NHANES 1999–2004 is the strongest single starting point for MASQUE specifically, because it's the one cycle range where the headache item, audiometry, and the balance exam coexist in the same respondents. Its design variables are `WTMEC2YR`, `SDMVSTRA`, `SDMVPSU`, also nested. That route is a **second map file** (copy this one, change `_meta` and the design block, fill the concepts from the NHANES codebooks), not a fill-in of the NHIS map, and the phenotype conjunction may be able to keep all three arms.
+**If you only do one thing:** NHANES 1999–2004 is the strongest single starting point for MASQUE specifically, because it's the one cycle range where the headache item, audiometry, and the balance questionnaire coexist in the same respondents. That route is the **second map file**, `phenotype_map_nhanes_1999_2004.json` (design block filled; concepts TODO with component hints), not a fill-in of the NHIS map, and the phenotype conjunction may be able to keep all three arms.
+
+### The NHANES route, step by step
+
+NHANES ships one SAS XPORT file per component per cycle rather than one CSV, so two helper scripts sit in front of the ETL. Both are standard-library Python — they run on the project machine with no packages — and both refuse to pass on anything that is not real data.
+
+1. **Fetch and verify.** A previous scrape saved 28 CDC "Page Not Found" pages under `.XPT` names because the URL pattern had changed; the fetcher checks the SAS XPORT signature of every download, rejects HTML, tries the current and legacy CDC URL patterns, and writes a manifest with URL, bytes, SHA-256 and time.
+
+   ```
+   python app/etl/nhanes_fetch.py --out C:\Healthcare_Data_Extract\NHANES ^
+     --cycle 1999-2000 --cycle 2001-2002 --cycle 2003-2004 ^
+     --component DEMO --component BAQ --component MPQ --component AUQ
+   ```
+
+   A component reported "HTTP 404" for a cycle usually means it was not fielded that cycle; an "HTML page — REJECTED" means the URL pattern is stale again and `candidate_urls()` needs the new one from the NHANES data-files page.
+
+2. **Merge one cycle.** Left-joins every component onto DEMO by `SEQN` and writes the CSV the ETL reads plus a provenance JSON tying it back to the component hashes.
+
+   ```
+   python app/etl/nhanes_prepare.py --dir C:\Healthcare_Data_Extract\NHANES\2001-2002 --out .\nhanes_2001_2002.csv
+   ```
+
+3. **Fill the map** — copy `phenotype_map_nhanes_1999_2004.json` per cycle, set `_meta.cycle` and `_meta.file`, look up each concept in the component the hint names (MPQ for headache/migraine, BAQ for dizziness/balance, AUQ for hearing), record the wording, set `_status`. If audiometry exam data (AUX) rather than the questionnaire is mapped, switch the design weight to `WTMEC2YR`.
+
+4. **Run the ETL** exactly as above, with the NHANES map and `--downloaded-at` from the fetch manifest, then commit and index the artifact. One artifact per cycle; pooling cycles needs cycle-specific weight adjustment and is out of scope.
 
 ---
 

@@ -1,0 +1,44 @@
+{
+  "preparedBy": "nhanes_prepare.py 0.1.0",
+  "preparedAt": "2026-09-24T15:42:35Z",
+  "directory": "/home/user/masque/app/tests/fixtures/nhanes",
+  "demographicsComponent": "DEMO_X",
+  "components": [
+    {
+      "file": "AUQ_X.xpt",
+      "member": "AUQ_X",
+      "bytes": 15440,
+      "sha256": "b7a5129fe82ff1d4a5767df0fb600331bc1867319d411ac2a00da4ed3cc9a8d9",
+      "rows": 900,
+      "columns": 2
+    },
+    {
+      "file": "BAQ_X.xpt",
+      "member": "BAQ_X",
+      "bytes": 22800,
+      "sha256": "e36a56b29d6c75b29a32d5583b571f730410f1b7ed3ba38cc8683f292fe8f09b",
+      "rows": 900,
+      "columns": 3
+    },
+    {
+      "file": "DEMO_X.xpt",
+      "member": "DEMO_X",
+      "bytes": 44800,
+      "sha256": "1ed3dba94bf16df7c7b48eada68d88458e3e0cb0905f6201299f1876eb52b2ae",
+      "rows": 900,
+      "columns": 6
+    },
+    {
+      "file": "MPQ_X.xpt",
+      "member": "MPQ_X",
+      "bytes": 14720,
+      "sha256": "6281fbd91b3a7544c43dd911371c6de3df965cb58975a69885eecfe0011e69fc",
+      "rows": 855,
+      "columns": 2
+    }
+  ],
+  "mergedRows": 900,
+  "mergedColumns": 10,
+  "output": "nhanes_synthetic.csv",
+  "outputSha256": "4c8ecf15ad51ca93b2d559f5c63c028520e755b409ca22946eb1dce773418206"
+}

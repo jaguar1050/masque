@@ -1,0 +1,77 @@
+{
+  "masqueArtifact": "population-estimates",
+  "generatedAt": "2026-09-24T15:42:38Z",
+  "producedBy": "masque_population_etl.R 0.2.0 / R survey 4.2.1",
+  "source": {
+    "dataset": "SYNTHETIC-NHANES-SHAPED",
+    "cycle": "fixture",
+    "file": "nhanes_synthetic.csv",
+    "steward": "CDC/NCHS",
+    "url": "https://wwwn.cdc.gov/nchs/nhanes/",
+    "sha256": "4c8ecf15ad51ca93b2d559f5c63c028520e755b409ca22946eb1dce773418206",
+    "downloadedAt": "2026-09-24"
+  },
+  "design": {
+    "weight": "WTINT2YR",
+    "strata": "SDMVSTRA",
+    "psu": "SDMVPSU",
+    "nest": true,
+    "lonelyPsu": "adjust",
+    "varianceMethod": "Taylor linearization",
+    "domainAnalysis": true
+  },
+  "phenotype": {
+    "definition": "SYNTHETIC FIXTURE: headache_migraine positive AND (dizziness_balance positive OR hearing_difficulty positive). Invented variables; not a survey estimate.",
+    "variableMap": {
+      "headache_migraine": "SYN_MPQ1",
+      "dizziness_balance": ["SYN_BAQ1", "SYN_BAQ2"],
+      "hearing_difficulty": "SYN_AUQ1",
+      "sinus_condition": null,
+      "recalcitrance_proxy": null
+    },
+    "mapFile": "phenotype_map_nhanes_synthetic.json",
+    "mapVersion": "0.0.0-synthetic",
+    "unmapped": ["sinus_condition", "recalcitrance_proxy"]
+  },
+  "estimates": [
+    {
+      "name": "phenotype_prevalence",
+      "unit": "proportion",
+      "estimate": 0.0640802697613222,
+      "se": 0.00703711407021892,
+      "ci": [0.0490810161743018, 0.0790795233483426],
+      "unweightedN": 855,
+      "weightedN": 26043546.73,
+      "df": 15,
+      "rse": 0.109817172999269,
+      "suppress": false
+    },
+    {
+      "name": "phenotype_prevalence",
+      "unit": "proportion",
+      "domain": "sex=male",
+      "estimate": 0.0468324715042565,
+      "se": 0.0119981366205036,
+      "ci": [0.0212590486569201, 0.0724058943515929],
+      "unweightedN": 304,
+      "weightedN": 9070131.82,
+      "df": 15,
+      "rse": 0.256192685013711,
+      "suppress": false
+    },
+    {
+      "name": "phenotype_prevalence",
+      "unit": "proportion",
+      "domain": "sex=female",
+      "estimate": 0.0732970245879649,
+      "se": 0.00795042320934545,
+      "ci": [0.0563510986513976, 0.0902429505245322],
+      "unweightedN": 551,
+      "weightedN": 16973414.91,
+      "df": 15,
+      "rse": 0.108468566821618,
+      "suppress": false
+    }
+  ],
+  "caveats": ["Screening-level phenotype prevalence, not diagnosed prevalence. No vestibular-testing or ICHD/Barany reference standard exists in these data.", "Self-reported survey items; coding inconsistency may bias phenotype capture.", "Hypothesis-generating estimate, not a diagnostic count.", "Respondents coded Refused / Not Ascertained / Don't Know on a phenotype item are excluded from the denominator, never counted as negative.", "Concepts this cycle could not express: sinus_condition, recalcitrance_proxy. The phenotype reported here is narrower than the one defined in proposal 7.1.", "No gender-identity item in this cycle: estimates are stratified by sex only. Gender is not substituted from sex."]
+}
