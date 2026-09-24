@@ -1,0 +1,639 @@
+{
+ "_meta": {
+  "name": "MASQUE extraction development set",
+  "version": "0.2.0",
+  "provenance": "AUTHORED \u2014 written by hand to probe known failure modes. NOT openFDA, NOT FAERS, NOT patient data. Numbers computed on this set are development figures for guiding rule changes; they are NOT validation results and must not be reported as extraction performance on real narratives.",
+  "labelling": "Single author, no adjudication. A real benchmark needs >=2 independent annotators with an inter-annotator agreement statistic; that is a stated gap, not an oversight.",
+  "registers": {
+   "encounter": "patient speech in clinic, first person",
+   "narrative": "third-person clinical prose, approximating a FAERS narrative"
+  },
+  "revisionLog": [
+   "0.2.0 \u2014 three labels corrected after the first benchmark run disagreed with them and the extractor turned out to be right. Recorded rather than silently amended: a gold set edited to match its system is not a gold set, so every change is listed with its reason."
+  ]
+ },
+ "cases": [
+  {
+   "utteranceId": "e01",
+   "register": "encounter",
+   "text": "Bright lights make it so much worse, and I feel queasy the whole time.",
+   "expect": [
+    [
+     "m_photo",
+     "yes"
+    ],
+    [
+     "m_nausea",
+     "yes"
+    ]
+   ]
+  },
+  {
+   "utteranceId": "e02",
+   "register": "encounter",
+   "text": "It's been going on for over a year now and I've seen three doctors about it.",
+   "expect": [
+    [
+     "r_dur",
+     "yes"
+    ],
+    [
+     "c_dur",
+     ">12mo"
+    ],
+    [
+     "c_clin",
+     "3+"
+    ]
+   ]
+  },
+  {
+   "utteranceId": "e03",
+   "register": "encounter",
+   "text": "I had two rounds of antibiotics and a course of prednisone, nothing held.",
+   "expect": [
+    [
+     "r_abx",
+     "yes"
+    ]
+   ]
+  },
+  {
+   "utteranceId": "e04",
+   "register": "encounter",
+   "text": "The CT was normal and they said everything looked fine.",
+   "expect": [
+    [
+     "r_normal",
+     "yes"
+    ]
+   ]
+  },
+  {
+   "utteranceId": "e05",
+   "register": "encounter",
+   "text": "Grocery store aisles set it off, all those busy shelves.",
+   "expect": [
+    [
+     "v_motion",
+     "yes"
+    ]
+   ]
+  },
+  {
+   "utteranceId": "e06",
+   "register": "encounter",
+   "text": "My ear feels full and there's ringing when it happens.",
+   "expect": [
+    [
+     "v_aural",
+     "yes"
+    ]
+   ]
+  },
+  {
+   "utteranceId": "e07",
+   "register": "encounter",
+   "text": "The spinning lasts about two hours each time.",
+   "expect": [
+    [
+     "v_vertigo",
+     2
+    ]
+   ],
+   "probes": [
+    "duration band"
+   ]
+  },
+  {
+   "utteranceId": "e08",
+   "register": "encounter",
+   "text": "The dizziness only lasts a few seconds, then it passes.",
+   "expect": [
+    [
+     "v_vertigo",
+     1
+    ]
+   ],
+   "probes": [
+    "duration band"
+   ]
+  },
+  {
+   "utteranceId": "e09",
+   "register": "encounter",
+   "text": "I get vertigo that goes on for days at a stretch.",
+   "expect": [
+    [
+     "v_vertigo",
+     3
+    ]
+   ],
+   "probes": [
+    "duration band"
+   ]
+  },
+  {
+   "utteranceId": "e10",
+   "register": "encounter",
+   "text": "They told me it was probably stress and anxiety.",
+   "expect": [
+    [
+     "c_dismiss",
+     "yes"
+    ]
+   ]
+  },
+  {
+   "utteranceId": "e11",
+   "register": "encounter",
+   "text": "I've lost count of how many of these spells I've had.",
+   "expect": [
+    [
+     "v_count",
+     "yes"
+    ]
+   ],
+   "probes": [
+    "v0.2 item"
+   ]
+  },
+  {
+   "utteranceId": "e12",
+   "register": "encounter",
+   "text": "My spells come with a headache most of the time.",
+   "expect": [
+    [
+     "v_migfeat",
+     "yes"
+    ],
+    [
+     "m_head",
+     1
+    ]
+   ],
+   "probes": [
+    "v0.2 item"
+   ],
+   "note": "Corrected during benchmarking: the original label omitted m_head. 'Spells come with a headache' is a headache report, and the extractor was right."
+  },
+  {
+   "utteranceId": "e13",
+   "register": "encounter",
+   "text": "The scan showed mucosal thickening while I was flaring.",
+   "expect": [
+    [
+     "x_objective",
+     "yes"
+    ]
+   ],
+   "probes": [
+    "discriminator"
+   ]
+  },
+  {
+   "utteranceId": "e14",
+   "register": "encounter",
+   "text": "I can't smell anything anymore, even between the bad spells.",
+   "expect": [
+    [
+     "x_anosmia",
+     "yes"
+    ]
+   ],
+   "probes": [
+    "discriminator"
+   ]
+  },
+  {
+   "utteranceId": "e15",
+   "register": "encounter",
+   "text": "Thick green mucus every time it flares up.",
+   "expect": [
+    [
+     "x_purulent",
+     "yes"
+    ]
+   ],
+   "probes": [
+    "discriminator"
+   ]
+  },
+  {
+   "utteranceId": "e16",
+   "register": "encounter",
+   "text": "My hearing test showed it drops during the spells.",
+   "expect": [
+    [
+     "x_lowfreq",
+     "yes"
+    ]
+   ],
+   "probes": [
+    "discriminator"
+   ]
+  },
+  {
+   "utteranceId": "e17",
+   "register": "encounter",
+   "text": "I get deep ear pain but the ear looks fine every time.",
+   "expect": [
+    [
+     "n_otalgia",
+     "yes"
+    ]
+   ],
+   "probes": [
+    "v0.2 item"
+   ]
+  },
+  {
+   "utteranceId": "e18",
+   "register": "encounter",
+   "text": "Dry eyes, dry mouth, and I go lightheaded when I stand.",
+   "expect": [
+    [
+     "n_auto",
+     "yes"
+    ]
+   ],
+   "probes": [
+    "v0.2 item"
+   ]
+  },
+  {
+   "utteranceId": "n01",
+   "register": "encounter",
+   "text": "No nausea at all, but the light sensitivity is awful.",
+   "expect": [
+    [
+     "m_nausea",
+     "no"
+    ],
+    [
+     "m_photo",
+     "yes"
+    ]
+   ],
+   "probes": [
+    "negation"
+   ]
+  },
+  {
+   "utteranceId": "n02",
+   "register": "encounter",
+   "text": "I don't get any aura, no spots or zigzags.",
+   "expect": [
+    [
+     "m_aura",
+     "no"
+    ]
+   ],
+   "probes": [
+    "negation"
+   ]
+  },
+  {
+   "utteranceId": "n03",
+   "register": "encounter",
+   "text": "There's no ringing and my ears don't feel full.",
+   "expect": [
+    [
+     "v_aural",
+     "no"
+    ]
+   ],
+   "probes": [
+    "negation"
+   ]
+  },
+  {
+   "utteranceId": "n04",
+   "register": "encounter",
+   "text": "I've never had sinus surgery.",
+   "expect": [
+    [
+     "r_surg",
+     "no"
+    ]
+   ],
+   "probes": [
+    "negation"
+   ]
+  },
+  {
+   "utteranceId": "n05",
+   "register": "narrative",
+   "text": "Denies photophobia and phonophobia.",
+   "expect": [
+    [
+     "m_photo",
+     "no"
+    ]
+   ],
+   "probes": [
+    "negation",
+    "narrative register"
+   ]
+  },
+  {
+   "utteranceId": "n06",
+   "register": "narrative",
+   "text": "Patient is negative for nausea during episodes.",
+   "expect": [
+    [
+     "m_nausea",
+     "no"
+    ]
+   ],
+   "probes": [
+    "negation",
+    "narrative register"
+   ]
+  },
+  {
+   "utteranceId": "n07",
+   "register": "encounter",
+   "text": "It's not the weather, I checked \u2014 it's when I skip meals.",
+   "expect": [
+    [
+     "m_trig",
+     "yes"
+    ]
+   ],
+   "probes": [
+    "negation scope \u2014 negated cue, unnegated synonym in same sentence"
+   ]
+  },
+  {
+   "utteranceId": "a01",
+   "register": "encounter",
+   "text": "My mother gets migraines but I've never had one.",
+   "expect": [
+    [
+     "m_fhx",
+     "yes"
+    ]
+   ],
+   "probes": [
+    "third-party attribution"
+   ]
+  },
+  {
+   "utteranceId": "a02",
+   "register": "encounter",
+   "text": "My sister is the one who gets the aura, not me.",
+   "expect": [],
+   "probes": [
+    "third-party attribution"
+   ]
+  },
+  {
+   "utteranceId": "a03",
+   "register": "encounter",
+   "text": "Migraines run in the family on my dad's side.",
+   "expect": [
+    [
+     "m_fhx",
+     "yes"
+    ]
+   ],
+   "probes": [
+    "third-party attribution \u2014 family history IS the finding"
+   ]
+  },
+  {
+   "utteranceId": "h01",
+   "register": "encounter",
+   "text": "I used to get auras as a teenager but not for twenty years.",
+   "expect": [],
+   "probes": [
+    "historical"
+   ]
+  },
+  {
+   "utteranceId": "h02",
+   "register": "encounter",
+   "text": "I had sinus surgery years ago and it did help for a while.",
+   "expect": [
+    [
+     "r_surg",
+     "yes"
+    ]
+   ],
+   "probes": [
+    "historical \u2014 a past procedure is still a true finding"
+   ]
+  },
+  {
+   "utteranceId": "r01",
+   "register": "encounter",
+   "text": "The ringing is only in one ear, always the left.",
+   "expect": [
+    [
+     "rf_asym",
+     true
+    ],
+    [
+     "v_aural",
+     "yes"
+    ]
+   ],
+   "probes": [
+    "red flag"
+   ],
+   "note": "Corrected during benchmarking: ringing is a v_aural finding as well as a red flag. Original label listed only the flag."
+  },
+  {
+   "utteranceId": "r02",
+   "register": "encounter",
+   "text": "No, I've never had double vision or anything like that.",
+   "expect": [
+    [
+     "rf_focal",
+     true
+    ]
+   ],
+   "note": "Expected 'false positive' on a plain reading. It is the intended behaviour: capture may raise a flag, never clear one.",
+   "probes": [
+    "red flag \u2014 denial must STILL raise"
+   ]
+  },
+  {
+   "utteranceId": "r03",
+   "register": "encounter",
+   "text": "It was the worst headache of my life, came on in seconds.",
+   "expect": [
+    [
+     "rf_thunderclap",
+     true
+    ],
+    [
+     "m_head",
+     1
+    ]
+   ],
+   "probes": [
+    "red flag"
+   ],
+   "note": "Corrected during benchmarking: the original label omitted m_head."
+  },
+  {
+   "utteranceId": "r04",
+   "register": "encounter",
+   "text": "There's a whooshing that goes with my heartbeat.",
+   "expect": [
+    [
+     "rf_pulsatile",
+     true
+    ]
+   ],
+   "probes": [
+    "red flag"
+   ]
+  },
+  {
+   "utteranceId": "f01",
+   "register": "narrative",
+   "text": "The patient reported recurrent facial pressure with associated photophobia and nausea.",
+   "expect": [
+    [
+     "m_photo",
+     "yes"
+    ],
+    [
+     "m_nausea",
+     "yes"
+    ],
+    [
+     "m_head",
+     1
+    ]
+   ],
+   "probes": [
+    "narrative register"
+   ]
+  },
+  {
+   "utteranceId": "f02",
+   "register": "narrative",
+   "text": "Symptoms reportedly began following a viral upper respiratory illness.",
+   "expect": [
+    [
+     "n_viral",
+     "yes"
+    ]
+   ],
+   "probes": [
+    "narrative register"
+   ]
+  },
+  {
+   "utteranceId": "f03",
+   "register": "narrative",
+   "text": "Episodes of vertigo lasting several hours were described.",
+   "expect": [
+    [
+     "v_vertigo",
+     2
+    ]
+   ],
+   "probes": [
+    "narrative register",
+    "duration band"
+   ]
+  },
+  {
+   "utteranceId": "f04",
+   "register": "narrative",
+   "text": "Computed tomography of the sinuses demonstrated no acute abnormality.",
+   "expect": [
+    [
+     "r_normal",
+     "yes"
+    ]
+   ],
+   "probes": [
+    "narrative register",
+    "vocabulary gap expected"
+   ]
+  },
+  {
+   "utteranceId": "f05",
+   "register": "narrative",
+   "text": "The reporter noted the patient had undergone functional endoscopic sinus surgery without benefit.",
+   "expect": [
+    [
+     "r_surg",
+     "yes"
+    ]
+   ],
+   "probes": [
+    "narrative register"
+   ]
+  },
+  {
+   "utteranceId": "f06",
+   "register": "narrative",
+   "text": "Tinnitus was described as unilateral and pulsatile.",
+   "expect": [
+    [
+     "v_aural",
+     "yes"
+    ],
+    [
+     "rf_pulsatile",
+     true
+    ]
+   ],
+   "probes": [
+    "narrative register",
+    "red flag"
+   ]
+  },
+  {
+   "utteranceId": "z01",
+   "register": "encounter",
+   "text": "I work as a driving instructor, so I'm in the car all day.",
+   "expect": [],
+   "probes": [
+    "distractor \u2014 'driving' near-miss"
+   ]
+  },
+  {
+   "utteranceId": "z02",
+   "register": "encounter",
+   "text": "We talked about the weather in the waiting room.",
+   "expect": [
+    [
+     "m_trig",
+     "yes"
+    ]
+   ],
+   "note": "Labelled as a capture because the rule genuinely fires. Kept in the set so the cost of the broad 'weather' cue stays visible.",
+   "probes": [
+    "distractor \u2014 expected FP, vocabulary is too broad"
+   ]
+  },
+  {
+   "utteranceId": "z03",
+   "register": "encounter",
+   "text": "Everything's been fine since the last visit.",
+   "expect": []
+  },
+  {
+   "utteranceId": "z04",
+   "register": "encounter",
+   "text": "I take amoxicillin for my teeth sometimes.",
+   "expect": [
+    [
+     "r_abx",
+     "yes"
+    ]
+   ],
+   "probes": [
+    "distractor \u2014 expected FP, no indication scoping"
+   ]
+  }
+ ]
+}

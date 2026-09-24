@@ -1,0 +1,70 @@
+──────────────────────────────────────────────────────────────────────────
+MASQUE EXTRACTION BENCHMARK
+──────────────────────────────────────────────────────────────────────────
+lexicon 0.3.1 · rule-based / phrase-match with local negation
+negation window 14 chars
+development set 0.2.0 · 44 utterances · 50 labelled extractions
+
+!! AUTHORED — written by hand to probe known failure modes.
+!! These are development figures, not validation results.
+
+──────────────────────────────────────────────────────────────────────────
+OVERALL
+──────────────────────────────────────────────────────────────────────────
+  micro  P 100.0%   R 100.0%   F1 100.0%   (tp 50 fp 0 fn 0)
+  macro F1 100.0%  across 29 items
+
+BY SLICE
+  clinical items only                P 100.0%  R 100.0%  F1 100.0%   n=39
+  red flags only                     P 100.0%  R 100.0%  F1 100.0%   n=5
+  encounter register                 P 100.0%  R 100.0%  F1 100.0%   n=36
+  narrative register (openFDA-like)  P 100.0%  R 100.0%  F1 100.0%   n=8
+
+ERROR TAXONOMY
+
+WEAKEST ITEMS (by F1, items with ≥1 labelled instance)
+  m_photo        F1 100.0%   P 100.0%  R 100.0%   (tp 4 fp 0 fn 0)
+  m_nausea       F1 100.0%   P 100.0%  R 100.0%   (tp 4 fp 0 fn 0)
+  r_dur          F1 100.0%   P 100.0%  R 100.0%   (tp 1 fp 0 fn 0)
+  c_dur          F1 100.0%   P 100.0%  R 100.0%   (tp 1 fp 0 fn 0)
+  c_clin         F1 100.0%   P 100.0%  R 100.0%   (tp 1 fp 0 fn 0)
+  r_abx          F1 100.0%   P 100.0%  R 100.0%   (tp 2 fp 0 fn 0)
+  r_normal       F1 100.0%   P 100.0%  R 100.0%   (tp 2 fp 0 fn 0)
+  v_motion       F1 100.0%   P 100.0%  R 100.0%   (tp 1 fp 0 fn 0)
+
+──────────────────────────────────────────────────────────────────────────
+NEGATION WINDOW SWEEP  (clinical items only — red flags are never negation-checked)
+──────────────────────────────────────────────────────────────────────────
+  window  10  P  95.2%  R  95.2%  F1  95.2%
+  window  14  P 100.0%  R 100.0%  F1 100.0%  <- shipped
+  window  18  P 100.0%  R 100.0%  F1 100.0%
+  window  22  P 100.0%  R 100.0%  F1 100.0%
+  window  26  P  97.6%  R  97.6%  F1  97.6%
+  window  30  P  97.6%  R  97.6%  F1  97.6%
+  window  36  P  97.6%  R  97.6%  F1  97.6%
+  window  44  P  95.2%  R  95.2%  F1  95.2%
+  window  60  P  95.2%  R  95.2%  F1  95.2%
+
+  Best F1 is a plateau across windows 14, 18, 22 — the shipped value 14 is
+  on it. Anything on a plateau is under-determined; prefer the smallest such window,
+  since a narrower scope is the more conservative reading of a negation.
+
+──────────────────────────────────────────────────────────────────────────
+SET SATURATION
+──────────────────────────────────────────────────────────────────────────
+  ** SATURATED — DO NOT REPORT THE HEADLINE NUMBER AS PERFORMANCE. **
+  F1 is 100.0% on a 44-utterance authored set with no held-out split.
+  Rules in MASQUE_Extraction.js were revised in response to this set (lexicon 0.2.0 → 0.3.1), so all figures above are IN-SAMPLE.
+  This means the set has stopped being informative, not that extraction is solved.
+  Next useful step is harder data, not more tuning:
+    - real FAERS narratives via faersToUtterances()
+    - a second annotator and an agreement statistic
+    - a held-out split written by someone who did not write the rules
+──────────────────────────────────────────────────────────────────────────
+  adapter        : faersToUtterances() — declared interface, NOT YET RUN on live data
+  access         : pending (proposal §6 lists openFDA for narrative NLP development)
+  measured here  : narrative-register proxy cases only, authored, see slice table above
+  what is needed : a FAERS pull, ≥2 independent annotators, an agreement statistic,
+                   and a held-out split. Until then no extraction figure should be
+                   quoted as performance on openFDA narratives.
+

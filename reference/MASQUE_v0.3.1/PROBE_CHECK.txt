@@ -1,0 +1,15 @@
+──────────────────────────────────────────────────────────────────
+MASQUE PROBE SET 1.0.0
+──────────────────────────────────────────────────────────────────
+  32 probes · 18 encounter + 14 vestibular-migraine
+  safety 7 · re-ask 4 · criteria 4 · rule-out 4 · supporting 9 · exam 4
+  checked against 30 instrument items and 12 red flags
+
+  referential integrity: pass
+  phenotype probes writing to a scored item: 0 (must be 0)
+  rescues live after a negative answer: 4/4 (must be all)
+  red flags reachable by asking: 7/12
+  safety ranked first: pass (20 live on the demo state)
+
+  ALL CHECKS PASS
+──────────────────────────────────────────────────────────────────

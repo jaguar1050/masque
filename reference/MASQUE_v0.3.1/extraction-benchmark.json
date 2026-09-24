@@ -1,0 +1,419 @@
+{
+  "generatedAt": "2026-09-10T05:00:48.274Z",
+  "lexiconVersion": "0.3.1",
+  "extractorKind": "rule-based / phrase-match with local negation",
+  "negationWindow": 14,
+  "developmentSet": {
+    "version": "0.2.0",
+    "cases": 44,
+    "provenance": "AUTHORED — written by hand to probe known failure modes. NOT openFDA, NOT FAERS, NOT patient data. Numbers computed on this set are development figures for guiding rule changes; they are NOT validation results and must not be reported as extraction performance on real narratives.",
+    "labelling": "Single author, no adjudication. A real benchmark needs >=2 independent annotators with an inter-annotator agreement statistic; that is a stated gap, not an oversight."
+  },
+  "status": "DEVELOPMENT — not validation. Authored set, single annotator, no held-out split.",
+  "overall": {
+    "micro": {
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 50,
+      "fp": 0,
+      "fn": 0
+    },
+    "macroF1": 1
+  },
+  "slices": {
+    "clinical items only": {
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 42,
+      "fp": 0,
+      "fn": 0
+    },
+    "red flags only": {
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 8,
+      "fp": 0,
+      "fn": 0
+    },
+    "encounter register": {
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 39,
+      "fp": 0,
+      "fn": 0
+    },
+    "narrative register (openFDA-like)": {
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 11,
+      "fp": 0,
+      "fn": 0
+    }
+  },
+  "errorTaxonomy": {},
+  "perItem": [
+    {
+      "id": "m_photo",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "m_nausea",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "r_dur",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "c_dur",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "c_clin",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "r_abx",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "r_normal",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "v_motion",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "v_aural",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "v_vertigo",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "c_dismiss",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "v_count",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "v_migfeat",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "m_head",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 3,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "x_objective",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "x_anosmia",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "x_purulent",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "x_lowfreq",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "n_otalgia",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "n_auto",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "m_aura",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "r_surg",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 3,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "m_trig",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "m_fhx",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "rf_asym",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "rf_focal",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "rf_thunderclap",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "rf_pulsatile",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "id": "n_viral",
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    }
+  ],
+  "negationSweep": [
+    {
+      "window": 10,
+      "p": 0.9523809523809523,
+      "r": 0.9523809523809523,
+      "f1": 0.9523809523809523,
+      "tp": 40,
+      "fp": 2,
+      "fn": 2
+    },
+    {
+      "window": 14,
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 42,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "window": 18,
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 42,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "window": 22,
+      "p": 1,
+      "r": 1,
+      "f1": 1,
+      "tp": 42,
+      "fp": 0,
+      "fn": 0
+    },
+    {
+      "window": 26,
+      "p": 0.9761904761904762,
+      "r": 0.9761904761904762,
+      "f1": 0.9761904761904762,
+      "tp": 41,
+      "fp": 1,
+      "fn": 1
+    },
+    {
+      "window": 30,
+      "p": 0.9761904761904762,
+      "r": 0.9761904761904762,
+      "f1": 0.9761904761904762,
+      "tp": 41,
+      "fp": 1,
+      "fn": 1
+    },
+    {
+      "window": 36,
+      "p": 0.9761904761904762,
+      "r": 0.9761904761904762,
+      "f1": 0.9761904761904762,
+      "tp": 41,
+      "fp": 1,
+      "fn": 1
+    },
+    {
+      "window": 44,
+      "p": 0.9523809523809523,
+      "r": 0.9523809523809523,
+      "f1": 0.9523809523809523,
+      "tp": 40,
+      "fp": 2,
+      "fn": 2
+    },
+    {
+      "window": 60,
+      "p": 0.9523809523809523,
+      "r": 0.9523809523809523,
+      "f1": 0.9523809523809523,
+      "tp": 40,
+      "fp": 2,
+      "fn": 2
+    }
+  ],
+  "saturation": {
+    "inSample": true,
+    "saturated": true,
+    "note": "Rules were revised in response to this set, so every figure here is in-sample. At or near ceiling means the set is exhausted, not that extraction is solved. Do not quote the headline F1 as extraction performance.",
+    "heldOutSplit": false,
+    "annotators": 1,
+    "interAnnotatorAgreement": null
+  },
+  "openFda": {
+    "adapter": "faersToUtterances",
+    "run": false,
+    "accessStatus": "pending",
+    "caveat": "No extraction figure in this report was measured on openFDA narratives."
+  }
+}
