@@ -36,5 +36,40 @@
       "addedOn": "2026-09-24",
       "note": "NHANES 2003-2004, adults 40+, household-interview items (MPQ, BAQ, AUQ); provenance in ./data/provenance/"
     }
-  ]
+  ],
+  "reviewed": [
+    {
+      "source": "NHIS",
+      "cycle": "2020",
+      "status": "not expressible",
+      "reviewedOn": "2026-09-27",
+      "reason": "No headache item: the NHIS pain module, which carries PAIHDFC3M_A, is fielded in odd years only. The phenotype requires the headache arm, so no estimate is possible for this year.",
+      "wouldChange": "Nothing in this file; use the adjacent odd-year cycles."
+    },
+    {
+      "source": "NHIS",
+      "cycle": "2022",
+      "status": "not expressible",
+      "reviewedOn": "2026-09-27",
+      "reason": "No headache item, for the same reason as 2020.",
+      "wouldChange": "Nothing in this file; use the adjacent odd-year cycles."
+    },
+    {
+      "source": "BRFSS",
+      "cycle": "2022 (condensed extract)",
+      "status": "not estimable",
+      "reviewedOn": "2026-09-27",
+      "reason": "The extract (445,200 adults, 72 of the survey's columns) keeps the weight _LLCPWT but drops the stratum _STSTR and PSU _PSU, so no design-based interval can be computed. BRFSS 2022 also has no headache, dizziness or tinnitus item; the only ear item is DEAF (serious difficulty hearing). The extract codes 'not asked' as 0 (DEAF = 0 for 18,644 adults), which would read as a negative answer.",
+      "wouldChange": "The full LLCP2022 file would restore the design and the blanks, but still could not express the phenotype: it would support a hearing-difficulty component estimate only."
+    },
+    {
+      "source": "NAMCS",
+      "cycle": "2015, 2016, 2018, 2019",
+      "status": "awaiting record layout",
+      "reviewedOn": "2026-09-27",
+      "reason": "The public-use files are fixed-width text with no column names or positions, so diagnoses, reasons for visit, weights (PATWT) and design variables (CSTRATM, CPSUM) cannot be located without the NCHS record layout. NAMCS counts physician office visits, not people: an estimate would be a share of visits, not a population prevalence.",
+      "wouldChange": "The NCHS layout for each year (the SAS or Stata input program, or the Stata .dta release of the same files). NAMCS diagnosis codes would also make the sinonasal arm expressible for the first time."
+    }
+  ],
+  "_reviewedNote": "Datasets examined that produced no estimate, with the reason and what would change it. Rendered on the Population page so an absent source is visible, never silently missing."
 }

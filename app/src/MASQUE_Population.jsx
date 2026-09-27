@@ -76,6 +76,12 @@ const CSS = `
 .pop table.sum td.src b{display:block;font-size:12.5px}
 .pop table.sum td.src span{font-size:11px;color:var(--muted)}
 .pop .arm{display:inline-block;font-family:var(--mono);font-size:10px;border:1px solid var(--line);border-radius:5px;padding:1px 5px;margin:1px 3px 1px 0;background:#fff}
+.pop .rev{display:grid;gap:10px;margin-top:4px}
+.pop .revi{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;font-size:12.5px}
+.pop .revh{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px}
+.pop .revh b{font-size:13px}
+.pop .revi p{margin:4px 0 0}
+.pop .revi .wc{color:var(--muted)}
 .pop pre{font-family:var(--mono);font-size:11.5px;line-height:1.55;white-space:pre;overflow:auto;background:#0C2B2F;color:#CFE6E2;border-radius:11px;padding:13px;margin:8px 0 0}
 .pop ul{margin:6px 0 0 18px;padding:0}.pop li{margin:2px 0}
 .pop code{font-family:var(--mono);font-size:11.5px;background:#F1F5F4;border:1px solid var(--line);border-radius:5px;padding:1px 5px}
@@ -171,6 +177,8 @@ export default function MasquePopulation() {
             <PopulationArtifact art={a.art} />
           </div>
         ))}
+
+        {st.phase === "ready" && Array.isArray(st.index?.reviewed) && st.index.reviewed.length > 0 && <ReviewedSources items={st.index.reviewed} />}
 
         {st.phase === "ready" && refused.map(a => (
           <div className="card" key={a.path}>
@@ -288,6 +296,27 @@ function SummaryTable({ artifacts }) {
       <div className="notew"><Info size={13} style={{flex:"0 0 auto",marginTop:1}} /><span>
         Each row is its own phenotype definition. Rows differ by survey, age floor, headache item and otologic arms, so compare figures across rows only where those columns match. Weighted estimates with 95% intervals as produced by the ETL; this table computes nothing.
       </span></div>
+    </div>
+  );
+}
+
+/*  Sources examined that produced no estimate. Listed so an absent dataset is a
+    stated finding with its reason, not a silent gap a reader has to notice.
+*/
+function ReviewedSources({ items }) {
+  const cls = status => /awaiting/i.test(status) ? "todo" : "unmapped";
+  return (
+    <div className="card">
+      <div className="chdr"><Database size={16} color="var(--petrol)" /><div><div className="ce">Sources reviewed</div><div className="ct">Examined, no estimate produced</div></div></div>
+      <div className="rev">
+        {items.map((r, i) => (
+          <div className="revi" key={i}>
+            <div className="revh"><b>{r.source} {r.cycle}</b><span className={"st " + cls(r.status)}>{r.status}</span>{r.reviewedOn && <span style={{fontSize:11,color:"var(--muted)"}}>reviewed {r.reviewedOn}</span>}</div>
+            <p>{r.reason}</p>
+            {r.wouldChange && <p className="wc"><b>What would change this:</b> {r.wouldChange}</p>}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
