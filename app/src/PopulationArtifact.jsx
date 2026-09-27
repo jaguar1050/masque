@@ -29,18 +29,27 @@ import React from "react";
 
 const QUANTITIES = {
   phenotype_prevalence: { label: "Phenotype prevalence", unit: "proportion" },
+  phenotype_visit_share: { label: "Share of adult office visits", unit: "proportion" },
+  headache_share_of_sinusitis_visits: { label: "Headache share of sinusitis visits", unit: "proportion" },
   annual_cost_mean:     { label: "Mean annual cost",     unit: "usd" },
   avoidable_cost_mean:  { label: "Mean avoidable cost",  unit: "usd" },
 };
 
 // One decimal: national surveys give intervals narrower than a percentage point, and
 // whole-percent rounding would hide the differences the table exists to show.
-export function pct(v)   { return Number.isFinite(v) ? `${(v * 100).toFixed(1)}%` : "—"; }
+export function pct(v)   { if (!Number.isFinite(v)) return "—"; const p = v * 100; return `${p !== 0 && Math.abs(p) < 1 ? p.toFixed(2) : p.toFixed(1)}%`; }
 export function money(v) { return Number.isFinite(v) ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v) : "—"; }
 
 export function isTotal(e)  { return !(typeof e.domain === "string" && e.domain.length > 0); }
 export function unitOf(e)   { return e.unit || QUANTITIES[e.name]?.unit || null; }
 export function labelOf(e)  { return QUANTITIES[e.name]?.label || e.name; }
+export function eligibilityText(el) {
+  if (!el) return "";
+  const parts = [];
+  if (el.var) parts.push(`${el.var}${el.min != null ? ` ≥ ${el.min}` : ""}${el.max != null ? ` ≤ ${el.max}` : ""}`);
+  if (el.concept) parts.push(`${el.concept} recorded`);
+  return parts.join(", ");
+}
 export function hasCostRows(art) { return (art?.estimates || []).some(e => unitOf(e) === "usd"); }
 
 export function fmtValue(e, v = e.estimate) {
@@ -124,14 +133,17 @@ export default function PopulationArtifact({ art, onClear }) {
         {ph.mapFile && <div className="pa-small" style={{marginTop:4}}>map {ph.mapFile} v{ph.mapVersion}</div>}
         {varMap.length > 0 && (
           <ul>{varMap.map(([concept, vars]) => (
-            <li key={concept} className="pa-code">{concept}: {Array.isArray(vars) && vars.length ? vars.join(", ") : (typeof vars === "string" && vars ? vars : "unmapped")}
+            <li key={concept} className="pa-code">{concept}: {ph.codeMap && Array.isArray(ph.codeMap[concept]) ? `diagnosis codes ${ph.codeMap[concept].join(", ")}` : Array.isArray(vars) && vars.length ? vars.join(", ") : (typeof vars === "string" && vars ? vars : "unmapped")}
               {ph.questionText && ph.questionText[concept] ? <div style={{fontFamily:"inherit",color:"#5C6E6C",marginTop:2}}>{ph.questionText[concept]}</div> : null}</li>
           ))}</ul>
         )}
       </div>
-      {ph.eligibility && ph.eligibility.var && (
-        <div className="pa-call"><b>Population.</b> {ph.eligibility.var}{ph.eligibility.min != null ? ` ≥ ${ph.eligibility.min}` : ""}{ph.eligibility.max != null ? ` ≤ ${ph.eligibility.max}` : ""} — {ph.eligibility.reason}
-          {Number.isFinite(ph.eligibility.eligibleRespondents) && <div className="pa-small">{ph.eligibility.eligibleRespondents.toLocaleString()} of {Number(ph.eligibility.allRespondents).toLocaleString()} respondents eligible; the denominator below is the eligible respondents with complete phenotype items</div>}
+      {art.unitOfAnalysis === "visit" && (
+        <div className="pa-call pa-warn"><b>Office visits, not people.</b> Each record is one sampled physician office visit. A patient seen several times counts several times, and a condition not coded at that visit counts as absent, so this is a share of visits and is not comparable to a population prevalence.</div>
+      )}
+      {ph.eligibility && (ph.eligibility.var || ph.eligibility.concept) && (
+        <div className="pa-call"><b>Population.</b> {eligibilityText(ph.eligibility)} — {ph.eligibility.reason}
+          {Number.isFinite(ph.eligibility.eligibleRespondents) && <div className="pa-small">{ph.eligibility.eligibleRespondents.toLocaleString()} of {Number(ph.eligibility.allRespondents).toLocaleString()} {art.unitOfAnalysis === "visit" ? "visits" : "respondents"} eligible; the denominator below is the eligible {art.unitOfAnalysis === "visit" ? "visits" : "respondents with complete phenotype items"}</div>}
         </div>
       )}
       {ph.unmapped?.length > 0 && <div className="pa-call pa-warn"><b>Narrower than proposal §7.1.</b> This cycle could not express: {ph.unmapped.join(", ")}. The phenotype measured here is not the phenotype defined in the proposal, and the difference is stated rather than absorbed.</div>}

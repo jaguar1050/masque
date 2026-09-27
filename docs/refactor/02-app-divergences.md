@@ -46,9 +46,26 @@ Dated 24 September 2026. Instrument, lexicon, probe set and gold set are untouch
 
 The NHANES 1999–2004 estimates for adults 40+ (11.5–12.9%, "severe headaches or migraines") sit between the two, consistent with NHANES's severity qualifier making its item narrower than the NHIS item as primarily scored and broader than its strict reading.
 
-## Sources reviewed without an estimate (27 September 2026)
+## Sources reviewed without an estimate, and NAMCS (27 September 2026)
 
-`app/data/population-estimates.index.json` gains a `reviewed` list, rendered by `MASQUE_Population.jsx` as a "Sources reviewed" card: NHIS 2020 and 2022 (no headache item), the BRFSS 2022 condensed extract (design variables `_STSTR`/`_PSU` dropped, no headache/dizziness/tinnitus item, "not asked" coded as 0), and NAMCS 2015/2016/2018/2019 (fixed-width files delivered without the NCHS record layout; visit-level, not person-level). Each entry states what would change it. No estimate was produced from any of them, and no column position was guessed.
+`app/data/population-estimates.index.json` gains a `reviewed` list, rendered by `MASQUE_Population.jsx` as a "Sources reviewed" card: NHIS 2020 and 2022 (no headache item), the BRFSS 2022 condensed extract (design variables `_STSTR`/`_PSU` dropped, no headache/dizziness/tinnitus item, "not asked" coded as 0), and NAMCS single years (each below the NCHS 30-record standard; 2017 not collected because no codebook was available). Each entry states what would change it.
+
+NAMCS 2015/2016/2018/2019 were analysed once the NCHS documentation arrived:
+
+| File | What it is |
+|---|---|
+| `app/etl/namcs_layout.json` | Record positions for the fields used, transcribed from each year's documentation. |
+| `app/etl/namcs_prepare.py` | Standard-library fixed-width reader: validates every field against its code frame and refuses a mismatch (it caught the zero-padded probable-diagnosis flag and the documented `ZZZ` non-diagnosis entries before any number was produced); writes `DIAGn_CONF` excluding probable/rule-out diagnoses; `--stack` pools years with weights divided by the number of years. |
+| `phenotype_map_namcs_2015_2019.json`, `..._sinus.json` | ICD-9/ICD-10 prefix lists per concept; visits as the unit; adults 18+; the sinus map restricts the domain to sinusitis visits. |
+| `masque_population_etl.R` 0.4.0 | `positivePrefixes` + `absentIsNegative`, `eligibility.concept`, `unitOfAnalysis`, `estimateName`, `minPositiveCases`, map-supplied caveats, `unweightedPositives` on every estimate. Re-running NHANES 2001–2002 and NHIS 2023 (40+) reproduces their committed estimates exactly. |
+| `PopulationArtifact.jsx`, `MASQUE_Population.jsx` | Visit-unit warning on NAMCS artifacts; diagnosis codes listed instead of field names; concept eligibility shown; proportions under 1% shown to two decimals; summary column renamed "Rule: any of". |
+
+Pooled NAMCS results, adult office visits, annual-average weights:
+
+| Estimate | All | Women | Men |
+|---|---|---|---|
+| Headache diagnosis + dizziness, hearing loss or tinnitus diagnosis, share of visits | 0.09% (0.05–0.12), 65 positive visits | 0.11% | suppressed |
+| Among sinusitis visits, share also diagnosed with headache or migraine | 3.6% (1.7–5.5), 54 of 960 visits | suppressed | suppressed |
 
 ## Verification
 

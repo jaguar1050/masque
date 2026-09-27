@@ -35,6 +35,16 @@
       "path": "./data/population-estimates.nhanes-2003-2004.json",
       "addedOn": "2026-09-24",
       "note": "NHANES 2003-2004, adults 40+, household-interview items (MPQ, BAQ, AUQ); provenance in ./data/provenance/"
+    },
+    {
+      "path": "./data/population-estimates.namcs-2015-2019.json",
+      "addedOn": "2026-09-27",
+      "note": "NAMCS 2015-2019 pooled (no 2017), adult office visits: headache diagnosis + dizziness, hearing loss or tinnitus diagnosis"
+    },
+    {
+      "path": "./data/population-estimates.namcs-2015-2019-sinus.json",
+      "addedOn": "2026-09-27",
+      "note": "NAMCS 2015-2019 pooled, adult sinusitis visits: share also diagnosed with headache or migraine"
     }
   ],
   "reviewed": [
@@ -64,11 +74,11 @@
     },
     {
       "source": "NAMCS",
-      "cycle": "2015, 2016, 2018, 2019",
-      "status": "awaiting record layout",
+      "cycle": "2015, 2016, 2018, 2019 as single years",
+      "status": "below reliability standard",
       "reviewedOn": "2026-09-27",
-      "reason": "The public-use files are fixed-width text with no column names or positions, so diagnoses, reasons for visit, weights (PATWT) and design variables (CSTRATM, CPSUM) cannot be located without the NCHS record layout. NAMCS counts physician office visits, not people: an estimate would be a share of visits, not a population prevalence.",
-      "wouldChange": "The NCHS layout for each year (the SAS or Stata input program, or the Stata .dta release of the same files). NAMCS diagnosis codes would also make the sinonasal arm expressible for the first time."
+      "reason": "In every single year fewer than 30 sample visits carry the phenotype (headache plus dizziness, hearing or tinnitus diagnosis at one visit: 28, 30, 5 and 6 visits of all ages) or the sinusitis-with-headache overlap (31, 10, 8 and 11), so single-year estimates fail the NCHS standard. The four years are pooled instead, as NCHS recommends for rare conditions; the pooled estimates are listed above. 2017 is absent: no codebook was available for that year when the files were collected (reported by the project lead).",
+      "wouldChange": "NAMCS 2017 and later years, which would add sample visits to the pool."
     }
   ],
   "_reviewedNote": "Datasets examined that produced no estimate, with the reason and what would change it. Rendered on the Population page so an absent source is visible, never silently missing."

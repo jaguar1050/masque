@@ -1,0 +1,173 @@
+{
+  "_meta": {
+    "mapFile": "phenotype_map_namcs_2015_2019.json",
+    "mapVersion": "0.1.0",
+    "dataset": "NAMCS",
+    "cycle": "2015-2019 pooled",
+    "file": "namcs_2015_2019.csv (namcs_prepare.py --stack of 2015, 2016, 2018, 2019)",
+    "url": "https://www.cdc.gov/nchs/namcs/",
+    "steward": "CDC/NCHS",
+    "codebook": "NAMCS public-use file documentation 2015, 2016, 2018, 2019 (record positions in app/etl/namcs_layout.json)",
+    "unitOfAnalysis": "visit",
+    "estimateName": "phenotype_visit_share",
+    "minPositiveCases": 30,
+    "STATUS": "FILLED 27 September 2026. Record positions transcribed from the NCHS documentation for each year and verified field by field against the files (namcs_prepare.py refuses a mismatch). Diagnosis code lists are standard ICD-9-CM and ICD-10-CM categories, listed per concept for clinical-lead review."
+  },
+  "design": {
+    "_verified": "NCHS NAMCS documentation: PATWT visit weight; CSTRATM masked clustered stratum marker; CPSUM sampled provider marker. CPSUM repeats across years, CSTRATM encodes the year, so nest = TRUE.",
+    "weight": "PATWT",
+    "strata": "CSTRATM",
+    "psu": "CPSUM",
+    "nest": true,
+    "lonelyPsu": "adjust"
+  },
+  "demographics": {
+    "sex": {
+      "var": "SEX",
+      "recode": {
+        "1": "female",
+        "2": "male"
+      },
+      "missing": [],
+      "_note": "NAMCS codes SEX 1 = female, 2 = male: the reverse of NHIS and NHANES. Imputed by NCHS where missing (about 1%)."
+    },
+    "gender": {
+      "var": null,
+      "_status": "unmapped",
+      "_note": "No gender-identity item in NAMCS."
+    },
+    "age": {
+      "var": "AGE",
+      "_status": "mapped",
+      "_note": "Age in years, top-coded by NCHS."
+    }
+  },
+  "phenotype_concepts": {
+    "_instruction": "NAMCS concepts are physician diagnoses, not survey answers. Each concept lists ICD code prefixes matched against the five diagnosis fields (DIAGn_CONF: the recorded code, blank when flagged probable, questionable or rule out). The lists cover ICD-9-CM (2015) and ICD-10-CM truncated to 4 characters (2016-2019); ICD-9 codes are numeric and ICD-10 codes start with a letter, so the two never collide. absentIsNegative: no matching code means the condition was not recorded at that visit.",
+    "headache_migraine": {
+      "vars": [
+        "DIAG1_CONF",
+        "DIAG2_CONF",
+        "DIAG3_CONF",
+        "DIAG4_CONF",
+        "DIAG5_CONF"
+      ],
+      "positivePrefixes": [
+        "G43",
+        "G44",
+        "R51",
+        "346",
+        "339",
+        "7840"
+      ],
+      "absentIsNegative": true,
+      "_status": "mapped",
+      "questionText": "Migraine or other headache diagnosis. ICD-10-CM G43 migraine, G44 other headache syndromes, R51 headache; ICD-9-CM 346 migraine, 339 other headache syndromes, 784.0 headache."
+    },
+    "dizziness_balance": {
+      "vars": [
+        "DIAG1_CONF",
+        "DIAG2_CONF",
+        "DIAG3_CONF",
+        "DIAG4_CONF",
+        "DIAG5_CONF"
+      ],
+      "positivePrefixes": [
+        "R42",
+        "H81",
+        "H82",
+        "7804",
+        "386"
+      ],
+      "absentIsNegative": true,
+      "_status": "mapped",
+      "questionText": "Dizziness or vestibular diagnosis. ICD-10-CM R42 dizziness and giddiness, H81 disorders of vestibular function (including BPPV, vestibular neuronitis and Meniere disease), H82 vertiginous syndromes in diseases classified elsewhere; ICD-9-CM 780.4 dizziness and giddiness, 386 vertiginous syndromes. Meniere disease is a MASQUE discriminator in the screener but counts here as a dizziness diagnosis, matching the symptom-level surveys."
+    },
+    "hearing_difficulty": {
+      "vars": [
+        "DIAG1_CONF",
+        "DIAG2_CONF",
+        "DIAG3_CONF",
+        "DIAG4_CONF",
+        "DIAG5_CONF"
+      ],
+      "positivePrefixes": [
+        "H90",
+        "H91",
+        "389"
+      ],
+      "absentIsNegative": true,
+      "_status": "mapped",
+      "questionText": "Hearing loss diagnosis. ICD-10-CM H90 conductive and sensorineural hearing loss, H91 other and unspecified hearing loss; ICD-9-CM 389 hearing loss."
+    },
+    "tinnitus": {
+      "vars": [
+        "DIAG1_CONF",
+        "DIAG2_CONF",
+        "DIAG3_CONF",
+        "DIAG4_CONF",
+        "DIAG5_CONF"
+      ],
+      "positivePrefixes": [
+        "H931",
+        "3883"
+      ],
+      "absentIsNegative": true,
+      "_status": "mapped",
+      "questionText": "Tinnitus diagnosis. ICD-10-CM H93.1 tinnitus; ICD-9-CM 388.3 tinnitus."
+    },
+    "sinus_condition": {
+      "vars": [
+        "DIAG1_CONF",
+        "DIAG2_CONF",
+        "DIAG3_CONF",
+        "DIAG4_CONF",
+        "DIAG5_CONF"
+      ],
+      "positivePrefixes": [
+        "J01",
+        "J32",
+        "461",
+        "473"
+      ],
+      "absentIsNegative": true,
+      "_status": "mapped",
+      "questionText": "Sinusitis diagnosis. ICD-10-CM J01 acute sinusitis, J32 chronic sinusitis; ICD-9-CM 461 acute sinusitis, 473 chronic sinusitis. The first source in which the proposal 7.1 sinonasal arm is expressible."
+    },
+    "recalcitrance_proxy": {
+      "vars": [],
+      "positiveCodes": [],
+      "_status": "unmapped",
+      "questionText": "",
+      "_hint": "Recalcitrance is repeat courses and persistence across visits. NAMCS samples single visits with no patient linkage, so it cannot be expressed."
+    }
+  },
+  "cost_concepts": {
+    "_note": "NAMCS has no expenditure data."
+  },
+  "caveats": [
+    "Share of adult physician office visits in which the listed diagnoses were recorded, not a prevalence among people: a patient seen several times counts several times, and a condition not coded at the visit counts as absent.",
+    "Physician diagnoses abstracted from the visit record, up to five per visit; codes flagged probable, questionable or rule-out are excluded.",
+    "2015 is coded in ICD-9-CM and 2016-2019 in ICD-10-CM truncated to four characters. The code lists cover both, but the transition changes coding detail, so comparability across it is approximate.",
+    "Four survey years pooled (2015, 2016, 2018, 2019; 2017 not available) with weights divided by four, so totals are annual averages; proportions are unaffected by the division. Strata (CSTRATM) are year-specific.",
+    "Reason-for-visit codes are not used: the reason-for-visit classification list was not in the documentation supplied, so a complaint such as dizziness that was not also diagnosed is not counted.",
+    "Estimates are suppressed unless RSE is 30% or less, at least 30 visits are in the denominator, and at least 30 sample visits carry the phenotype (NCHS reliability standard for NAMCS visit estimates, applied to the numerator; stricter than NCHS's 2017 standard for proportions, which this ETL does not implement).",
+    "Hypothesis-generating estimate, not a diagnostic count."
+  ],
+  "phenotype_rule": {
+    "all": [
+      "headache_migraine"
+    ],
+    "any": [
+      "dizziness_balance",
+      "hearing_difficulty",
+      "tinnitus"
+    ]
+  },
+  "eligibility": {
+    "var": "AGE",
+    "min": 18,
+    "reason": "Adult visits, for comparability with the adult surveys."
+  },
+  "phenotype_definition": "Adult office visits with a recorded (not probable or rule-out) headache or migraine diagnosis AND a recorded dizziness/vestibular, hearing loss or tinnitus diagnosis at the same visit. The proposal 7.1 phenotype as it appears in physician diagnoses at a single visit; the sinusitis arm is reported separately."
+}

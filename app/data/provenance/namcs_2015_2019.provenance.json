@@ -1,0 +1,42 @@
+{
+  "stackedBy": "namcs_prepare.py 0.1.0 --stack",
+  "years": [
+    "2015",
+    "2016",
+    "2018",
+    "2019"
+  ],
+  "weightDivisor": 4,
+  "components": [
+    {
+      "year": "2015",
+      "source": "namcs2015",
+      "sourceSha256": "90aaafc99f6644e0f4dd61906a69d376eba049a6b7bd73770e825b7a49e304e3",
+      "records": 28332,
+      "outputSha256": "a0be09d8e3e751df9e81070077ddd688a08bd5f4d9814ce4cdc4858b93f6cc62"
+    },
+    {
+      "year": "2016",
+      "source": "namcs2016",
+      "sourceSha256": "e3be623b0e7ecc4cb6178c7ef08c85ef4679e898aee4f979b5ff035b85765587",
+      "records": 13165,
+      "outputSha256": "2a8c7ddb239fdd29bb2f559b4310e556edaebdc76a35a7046f1423f9cb0210af"
+    },
+    {
+      "year": "2018",
+      "source": "namcs2018",
+      "sourceSha256": "2950e213a5d82cbd1318b75c850fb1d327a39470614337530c7b75fe1d7d0daf",
+      "records": 9953,
+      "outputSha256": "6fcffb66445e84e822786071dfd3d8f02392e4b0e9ba3fa1adcb3b3aed1e7df7"
+    },
+    {
+      "year": "2019",
+      "source": "namcs2019",
+      "sourceSha256": "2516b2b2ea679be52d012352deed74d00047f4fa2c0a8086872296cacbcd478b",
+      "records": 8250,
+      "outputSha256": "767da6a16daa7ebb3eb1f46e9b146c34a6241cfa2494ce9f52184cacfbf14432"
+    }
+  ],
+  "records": 59700,
+  "outputSha256": "eed9fcc88e83c59d92b487bed115345a77ef9b5991e1fb061a3b347dbd5c95ff"
+}

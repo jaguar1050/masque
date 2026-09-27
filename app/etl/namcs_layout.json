@@ -1,0 +1,24 @@
+{
+  "_meta": {
+    "what": "Record positions (1-based, inclusive) of the NAMCS public-use fields the MASQUE ETL needs, transcribed from each year's NCHS public-use file documentation (Section II, 'Record format': item number, field length, file location).",
+    "sourceDocuments": "NAMCS 2015, 2016, 2018 and 2019 public-use file documentation, supplied as .docx by the project lead on 27 September 2026. No 2017 documentation was available.",
+    "coding": "DIAG1-5: 2015 ICD-9-CM, 5 characters; 2016-2019 ICD-10-CM truncated to 4 characters on the public-use file, implied decimal after the third character, '-' for an inapplicable or masked digit, -9 = blank. PRDIAG1-5: -7 not applicable, 1 = probable/questionable/rule out, 2 = no. SEX: 1 = female, 2 = male (the reverse of NHIS and NHANES). AGE in years, top-coded. CSTRATM: masked clustered stratum marker; CPSUM: sampled provider marker; PATWT: visit weight.",
+    "verification": "namcs_prepare.py checks every field against its documented code frame and refuses a file that does not match."
+  },
+  "2015": { "AGE": [4, 6], "SEX": [11, 11],
+            "DIAG1": [113, 117], "PRDIAG1": [118, 119], "DIAG2": [120, 124], "PRDIAG2": [125, 126], "DIAG3": [127, 131], "PRDIAG3": [132, 133],
+            "DIAG4": [134, 138], "PRDIAG4": [139, 140], "DIAG5": [141, 145], "PRDIAG5": [146, 147],
+            "CSTRATM": [2663, 2670], "CPSUM": [2671, 2676], "PATWT": [2682, 2692], "icd": "ICD-9-CM" },
+  "2016": { "AGE": [4, 6], "SEX": [11, 11],
+            "DIAG1": [95, 98], "PRDIAG1": [99, 100], "DIAG2": [101, 104], "PRDIAG2": [105, 106], "DIAG3": [107, 110], "PRDIAG3": [111, 112],
+            "DIAG4": [113, 116], "PRDIAG4": [117, 118], "DIAG5": [119, 122], "PRDIAG5": [123, 124],
+            "CSTRATM": [2596, 2603], "CPSUM": [2604, 2609], "PATWT": [2615, 2626], "icd": "ICD-10-CM (4 characters)" },
+  "2018": { "AGE": [4, 6], "SEX": [11, 11],
+            "DIAG1": [95, 98], "PRDIAG1": [99, 100], "DIAG2": [101, 104], "PRDIAG2": [105, 106], "DIAG3": [107, 110], "PRDIAG3": [111, 112],
+            "DIAG4": [113, 116], "PRDIAG4": [117, 118], "DIAG5": [119, 122], "PRDIAG5": [123, 124],
+            "CSTRATM": [2620, 2627], "CPSUM": [2628, 2633], "PATWT": [2639, 2650], "icd": "ICD-10-CM (4 characters)" },
+  "2019": { "AGE": [4, 6], "SEX": [11, 11],
+            "DIAG1": [95, 98], "PRDIAG1": [99, 100], "DIAG2": [101, 104], "PRDIAG2": [105, 106], "DIAG3": [107, 110], "PRDIAG3": [111, 112],
+            "DIAG4": [113, 116], "PRDIAG4": [117, 118], "DIAG5": [119, 122], "PRDIAG5": [123, 124],
+            "CSTRATM": [2502, 2509], "CPSUM": [2510, 2515], "PATWT": [2521, 2533], "icd": "ICD-10-CM (4 characters)" }
+}

@@ -178,7 +178,6 @@
           "type": "object",
           "description": "The subpopulation the estimate is restricted to, applied as a design subset. Absent when the whole file was eligible.",
           "required": [
-            "var",
             "reason"
           ],
           "properties": {
@@ -199,12 +198,20 @@
             },
             "allRespondents": {
               "type": "integer"
+            },
+            "concept": {
+              "type": "string",
+              "description": "Domain restricted to records positive for this concept."
             }
           }
         },
         "questionText": {
           "type": "object",
           "description": "Concept -> the question wording recorded in the map, so a reader can judge what was measured."
+        },
+        "codeMap": {
+          "type": "object",
+          "description": "Concept -> code prefixes, for concepts defined by code lists (e.g. ICD diagnoses)."
         }
       }
     },
@@ -276,6 +283,10 @@
           },
           "suppressReason": {
             "type": "string"
+          },
+          "unweightedPositives": {
+            "type": "integer",
+            "description": "Sample records positive for the phenotype in this domain."
           }
         }
       }
@@ -286,6 +297,14 @@
         "type": "string"
       },
       "description": "Rendered verbatim by the panel beneath the numbers. This is where 'screening-level, not diagnosed prevalence' lives."
+    },
+    "unitOfAnalysis": {
+      "type": "string",
+      "enum": [
+        "person",
+        "visit"
+      ],
+      "description": "What one record is. 'visit' (NAMCS) means estimates are shares of visits, not population prevalence."
     }
   }
 }

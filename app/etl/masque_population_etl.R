@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# masque_population_etl.R  v0.3.0
+# masque_population_etl.R  v0.4.0
 #
 # Reads a survey public-use file, applies the MASQUE §7.1 computable phenotype from
 # a versioned mapping file, and emits a design-aware population-estimates artifact
@@ -76,13 +76,31 @@
 #      concept's detail items by a gate question ("any dizziness, balance or
 #      falling problems?" = No) are negative for the concept, not missing. Only a
 #      documented skip pattern belongs here; a genuine non-response stays NA.
+#
+# CHANGES 0.3.0 -> 0.4.0 — NAMCS (physician office visits, diagnosis-coded):
+#
+#   1. `positivePrefixes` on a concept: code-list fields (ICD diagnoses) are read as
+#      text and a concept is positive when any listed field starts with any prefix.
+#      Requires `absentIsNegative: true`, stated in the map: on a diagnosis list, no
+#      matching code means the condition was not recorded, which is a negative for
+#      the estimand "visits where it was recorded", not a missing answer.
+#   2. `eligibility.concept`: restrict the domain to records positive for a concept
+#      (e.g. visits with a sinusitis diagnosis), alone or with an age floor.
+#   3. `_meta.unitOfAnalysis` ("person" default, or "visit") and `_meta.estimateName`
+#      are carried into the artifact so a share of visits is never labelled a
+#      population prevalence.
+#   4. `_meta.minPositiveCases`: suppress unless at least this many sample records
+#      are phenotype-positive (NAMCS: 30, the NCHS standard for visit estimates).
+#      Every estimate now reports `unweightedPositives`.
+#   5. `caveats` in the map replace the default survey caveats, which describe
+#      self-reported questionnaire items and do not fit diagnosis-coded records.
 # ---------------------------------------------------------------------------
 
 suppressPackageStartupMessages({
   library(survey); library(jsonlite); library(digest)
 })
 
-ETL_VERSION <- "0.3.0"
+ETL_VERSION <- "0.4.0"
 
 # Lonely PSUs (a stratum contributing a single PSU after subsetting) are common in
 # domain analysis. "adjust" centres them at the population mean rather than erroring
@@ -169,12 +187,17 @@ phenotype_of <- function(df) {
 
 # --- eligibility: the subpopulation the items were asked of ---------------
 elig <- map$eligibility
-if (!is.null(elig) && !is.null(elig$var)) {
+has_elig <- !is.null(elig) && (!is.null(elig$var) || !is.null(elig$concept))
+if (has_elig) {
   if (is.null(elig$reason) || !nzchar(elig$reason)) stop("eligibility needs a reason (why this subpopulation), which is copied into the artifact.")
+  if (!is.null(elig$concept) && !elig$concept %in% names(concepts)) stop(sprintf("eligibility.concept %s is not a concept in the map", elig$concept))
+  if (!is.null(elig$concept) && elig$concept %in% unmapped) stop(sprintf("eligibility.concept %s is unmapped", elig$concept))
 }
 
 # --- load -------------------------------------------------------------------
-df <- read.csv(data_path, stringsAsFactors = FALSE)
+prefix_cols <- unique(unlist(lapply(Filter(function(c) length(unlist(c$positivePrefixes)), concepts), function(c) unlist(c$vars))))
+col_classes <- if (length(prefix_cols)) setNames(rep("character", length(prefix_cols)), prefix_cols) else NA
+df <- read.csv(data_path, stringsAsFactors = FALSE, colClasses = col_classes)
 names(df) <- toupper(names(df))
 file_hash <- digest(file = data_path, algo = "sha256")
 
@@ -189,8 +212,18 @@ for (v in c(d$weight, d$strata, d$psu)) {
 # who refused is neither positive nor negative and leaves the denominator.
 na_codes <- function(x, codes) { x[x %in% codes] <- NA; x }
 
-pos <- function(varnames, codes, skip = NULL) {
+pos <- function(varnames, codes, skip = NULL, prefixes = NULL, absent_negative = FALSE) {
   if (!length(varnames)) return(rep(NA_integer_, nrow(df)))
+  prefixes <- unlist(prefixes)
+  if (length(prefixes)) {
+    if (!isTRUE(absent_negative)) stop("positivePrefixes needs absentIsNegative: true in the map, stating that no matching code counts as not recorded.")
+    hit <- Reduce(`|`, lapply(varnames, function(v) {
+      if (!v %in% names(df)) stop(sprintf("Mapped variable %s not present in the data file", v))
+      x <- as.character(df[[v]]); x[is.na(x)] <- ""
+      Reduce(`|`, lapply(prefixes, function(p) startsWith(x, p)))
+    }))
+    return(as.integer(hit))
+  }
   codes <- unlist(codes)
   cols <- lapply(varnames, function(v) {
     if (!v %in% names(df)) stop(sprintf("Mapped variable %s not present in the data file", v))
@@ -210,7 +243,8 @@ pos <- function(varnames, codes, skip = NULL) {
 }
 
 for (nm in names(concepts)) {
-  df[[paste0("C_", nm)]] <- pos(unlist(concepts[[nm]]$vars), concepts[[nm]]$positiveCodes, concepts[[nm]]$skipNegative)
+  df[[paste0("C_", nm)]] <- pos(unlist(concepts[[nm]]$vars), concepts[[nm]]$positiveCodes, concepts[[nm]]$skipNegative,
+                                concepts[[nm]]$positivePrefixes, concepts[[nm]]$absentIsNegative)
 }
 
 # Sex / gender kept strictly separate — see fix #16. If the cycle carries no gender
@@ -243,37 +277,49 @@ des <- svydesign(
 # Domains are produced by subsetting the DESIGN, never the data frame. Filtering
 # rows before svydesign() drops the strata and PSUs that contribute to the variance
 # of a subpopulation estimate, and the resulting standard errors are wrong.
+MIN_POS <- map$`_meta`$minPositiveCases
+EST_NAME <- if (is.null(map$`_meta`$estimateName)) "phenotype_prevalence" else map$`_meta`$estimateName
+UNIT <- if (is.null(map$`_meta`$unitOfAnalysis)) "person" else map$`_meta`$unitOfAnalysis
 est_row <- function(name, domain, obj, sub) {
   e  <- as.numeric(coef(obj))[1]
   se <- as.numeric(SE(obj))[1]
   ci <- as.numeric(confint(obj, df = degf(sub)))[1:2]
   n  <- sum(!is.na(sub$variables$MASQUE_PHENO))
+  npos <- sum(sub$variables$MASQUE_PHENO == 1, na.rm = TRUE)
   rse <- if (is.finite(e) && e != 0) se / abs(e) else NA_real_
   # NCHS presentation standards suppress unreliable proportions. Applied here rather
   # than in the panel: the steward's rule belongs with the steward's data.
-  suppress <- is.na(rse) || (!is.na(rse) && rse > 0.30) || n < 30
+  suppress <- is.na(rse) || (!is.na(rse) && rse > 0.30) || n < 30 || (!is.null(MIN_POS) && npos < MIN_POS)
   row <- list(name = name, unit = "proportion")
   if (!is.null(domain)) row$domain <- domain      # omitted for the total, per the schema
   row$estimate    <- e
   row$se          <- se
   row$ci          <- ci
   row$unweightedN <- n
+  row$unweightedPositives <- npos
   row$weightedN   <- sum(weights(sub), na.rm = TRUE)
   row$df          <- degf(sub)
   if (!is.na(rse)) row$rse <- rse           # omitted, not null, when the estimate is zero
   row$suppress    <- suppress
-  if (suppress) row$suppressReason <- "RSE > 30% or unweighted n < 30 (NCHS presentation standard)"
+  if (suppress) row$suppressReason <- if (!is.null(MIN_POS))
+      sprintf("RSE > 30%%, unweighted n < 30, or fewer than %d phenotype-positive sample records (NCHS reliability standard)", MIN_POS) else
+      "RSE > 30% or unweighted n < 30 (NCHS presentation standard)"
   row
 }
 
 # Eligibility is a DESIGN subset (domain), never a data-frame filter.
 df$MASQUE_ELIG <- TRUE
-if (!is.null(elig) && !is.null(elig$var)) {
+if (has_elig && !is.null(elig$concept)) {
+  cc <- df[[paste0("C_", elig$concept)]]
+  df$MASQUE_ELIG <- !is.na(cc) & cc == 1
+  message(sprintf("Eligibility: %s positive — %d of %d records", elig$concept, sum(df$MASQUE_ELIG), nrow(df)))
+}
+if (has_elig && !is.null(elig$var)) {
   ev <- toupper(elig$var)
   if (!ev %in% names(df)) stop(sprintf("eligibility variable %s not present in the data file", ev))
   x <- df[[ev]]
   if (!is.null(elig$missing)) x[x %in% unlist(elig$missing)] <- NA   # e.g. NHIS age 97/98/99 = refused / not ascertained / don't know
-  df$MASQUE_ELIG <- !is.na(x) & (if (is.null(elig$min)) TRUE else x >= elig$min) & (if (is.null(elig$max)) TRUE else x <= elig$max)
+  df$MASQUE_ELIG <- df$MASQUE_ELIG & !is.na(x) & (if (is.null(elig$min)) TRUE else x >= elig$min) & (if (is.null(elig$max)) TRUE else x <= elig$max)
   message(sprintf("Eligibility: %s in [%s, %s] — %d of %d respondents", ev, ifelse(is.null(elig$min), "-", elig$min), ifelse(is.null(elig$max), "-", elig$max), sum(df$MASQUE_ELIG), nrow(df)))
 }
 
@@ -282,12 +328,12 @@ des <- update(des, MASQUE_ELIG = df$MASQUE_ELIG)   # attach the flag to the desi
 estimates <- list()
 whole <- subset(des, MASQUE_ELIG & !is.na(MASQUE_PHENO))
 estimates[[length(estimates) + 1]] <-
-  est_row("phenotype_prevalence", NULL, svymean(~MASQUE_PHENO, whole, na.rm = TRUE), whole)
+  est_row(EST_NAME, NULL, svymean(~MASQUE_PHENO, whole, na.rm = TRUE), whole)
 
 for (lvl in stats::na.omit(unique(df$SEX_LBL))) {
   sub <- subset(des, MASQUE_ELIG & !is.na(MASQUE_PHENO) & SEX_LBL == lvl)
   estimates[[length(estimates) + 1]] <-
-    est_row("phenotype_prevalence", paste0("sex=", lvl), svymean(~MASQUE_PHENO, sub, na.rm = TRUE), sub)
+    est_row(EST_NAME, paste0("sex=", lvl), svymean(~MASQUE_PHENO, sub, na.rm = TRUE), sub)
 }
 gender_available <- !all(is.na(df$GENDER_LBL))
 if (!gender_available) {
@@ -296,7 +342,7 @@ if (!gender_available) {
   for (lvl in stats::na.omit(unique(df$GENDER_LBL))) {
     sub <- subset(des, MASQUE_ELIG & !is.na(MASQUE_PHENO) & GENDER_LBL == lvl)
     estimates[[length(estimates) + 1]] <-
-      est_row("phenotype_prevalence", paste0("gender=", lvl), svymean(~MASQUE_PHENO, sub, na.rm = TRUE), sub)
+      est_row(EST_NAME, paste0("gender=", lvl), svymean(~MASQUE_PHENO, sub, na.rm = TRUE), sub)
   }
 }
 
@@ -306,19 +352,22 @@ source_block <- list(dataset = map$`_meta`$dataset, cycle = map$`_meta`$cycle,
 if (!is.null(downloaded_at)) source_block$downloadedAt <- downloaded_at else
   message("No --downloaded-at given; the artifact will not say when the source file was fetched.")
 
-caveats <- c(
+caveats <- if (length(unlist(map$caveats))) unlist(map$caveats) else c(
   "Screening-level phenotype prevalence, not diagnosed prevalence. No vestibular-testing or ICHD/Barany reference standard exists in these data.",
   "Self-reported survey items; coding inconsistency may bias phenotype capture.",
   "Hypothesis-generating estimate, not a diagnostic count.",
   "Respondents coded Refused / Not Ascertained / Don't Know on a phenotype item are excluded from the denominator, never counted as negative.",
   "Complete-case phenotype: a respondent missing any item the rule uses is excluded from the denominator."
 )
-if (!is.null(elig) && !is.null(elig$var)) caveats <- c(caveats, sprintf("Estimated within the eligible subpopulation only (%s): %s.", paste0(toupper(elig$var), if (!is.null(elig$min)) paste0(" >= ", elig$min) else "", if (!is.null(elig$max)) paste0(" <= ", elig$max) else ""), elig$reason))
+if (has_elig) caveats <- c(caveats, sprintf("Estimated within the eligible subpopulation only (%s): %s.", paste(c(
+    if (!is.null(elig$var)) paste0(toupper(elig$var), if (!is.null(elig$min)) paste0(" >= ", elig$min) else "", if (!is.null(elig$max)) paste0(" <= ", elig$max) else "") else NULL,
+    if (!is.null(elig$concept)) paste0(elig$concept, " positive") else NULL), collapse = ", "), elig$reason))
 if (length(unmapped)) caveats <- c(caveats, sprintf("Concepts this cycle could not express: %s. The phenotype reported here is narrower than the one defined in proposal 7.1.", paste(unmapped, collapse = ", ")))
 if (!gender_available) caveats <- c(caveats, "No gender-identity item in this cycle: estimates are stratified by sex only. Gender is not substituted from sex.")
 
 artifact <- list(
   masqueArtifact = "population-estimates",
+  unitOfAnalysis = UNIT,
   generatedAt = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
   producedBy = sprintf("masque_population_etl.R %s / R survey %s", ETL_VERSION, packageVersion("survey")),
   source = source_block,
@@ -327,17 +376,20 @@ artifact <- list(
                 domainAnalysis = TRUE),
   phenotype = list(definition = definition,
                    rule = list(all = I(rule_all), any = I(rule_any), completeCase = TRUE),
-                   eligibility = if (!is.null(elig) && !is.null(elig$var)) Filter(Negate(is.null), list(var = toupper(elig$var), min = elig$min, max = elig$max, reason = elig$reason,
+                   eligibility = if (has_elig) Filter(Negate(is.null), list(var = if (!is.null(elig$var)) toupper(elig$var) else NULL, min = elig$min, max = elig$max,
+                                                                              concept = elig$concept, reason = elig$reason,
                                                                               eligibleRespondents = sum(df$MASQUE_ELIG), allRespondents = nrow(df))) else NULL,
                    variableMap = lapply(concepts, function(c) unlist(c$vars)),
+                   codeMap = lapply(Filter(function(c) length(unlist(c$positivePrefixes)), concepts), function(c) I(unlist(c$positivePrefixes))),
                    questionText = lapply(concepts, function(c) if (is.null(c$questionText)) "" else c$questionText),
                    mapFile = map$`_meta`$mapFile, mapVersion = map$`_meta`$mapVersion,
-                   unmapped = unmapped),
+                   unmapped = I(unmapped)),   # I(): a single unmapped concept must stay a list, not collapse to a string
   estimates = estimates,
   caveats = caveats
 )
 
 if (is.null(artifact$phenotype$eligibility)) artifact$phenotype$eligibility <- NULL
+if (!length(artifact$phenotype$codeMap)) artifact$phenotype$codeMap <- NULL
 write(toJSON(artifact, auto_unbox = TRUE, pretty = TRUE, na = "null", null = "null", digits = NA), out_path)
 cat(sprintf("wrote %s — %d estimates, %d unmapped concepts, source sha256 %s\n",
             out_path, length(estimates), length(unmapped), substr(file_hash, 1, 12)))

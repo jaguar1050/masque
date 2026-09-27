@@ -157,6 +157,33 @@ Rscript app/etl/masque_population_etl.R --data adult23.csv \
   --map app/etl/phenotype_map_nhis_2023.json --out app/data/population-estimates.nhis-2023.json
 ```
 
+### NAMCS 2015–2019, as run on 27 September 2026
+
+NAMCS samples physician office visits, not people, and its public-use files are fixed-width text with no column names. Three steps:
+
+1. **Cut each year to CSV.** `namcs_prepare.py` reads the positions in `namcs_layout.json`, which are transcribed from each year's NCHS documentation, checks every field against its documented code frame, and refuses the file on a mismatch. It writes each diagnosis twice: as recorded, and as `DIAGn_CONF`, blank when the physician flagged it probable, questionable or rule out.
+
+   ```
+   python app/etl/namcs_prepare.py --year 2016 --data namcs2016 --out namcs_2016.csv
+   ```
+
+2. **Pool the years.** Single years have too few phenotype-positive visits to meet the NCHS reliability standard, so the years are stacked, as NCHS recommends for rare conditions. Weights are divided by the number of years, making totals annual averages; proportions are unchanged. `CSTRATM` encodes the year, so strata stay distinct.
+
+   ```
+   python app/etl/namcs_prepare.py --stack namcs_2015.csv namcs_2016.csv namcs_2018.csv namcs_2019.csv --out namcs_2015_2019.csv
+   ```
+
+3. **Run the ETL** with `phenotype_map_namcs_2015_2019.json` (the MASQUE phenotype in diagnoses) or `phenotype_map_namcs_2015_2019_sinus.json` (among sinusitis visits, the share also diagnosed with headache or migraine).
+
+What is different about NAMCS, all declared in the maps:
+
+- **Concepts are ICD code prefixes** matched across the five diagnosis fields (`positivePrefixes`, with `absentIsNegative: true`: no matching code means not recorded at that visit). The lists cover ICD-9-CM (2015) and ICD-10-CM truncated to four characters (2016–2019); the two code sets never collide.
+- **The sinonasal arm is expressible for the first time** (ICD-10 J01, J32; ICD-9 461, 473).
+- **Sex is coded 1 = female, 2 = male**, the reverse of NHIS and NHANES.
+- **Reason-for-visit codes are not used.** The reason-for-visit classification list was not in the documentation supplied, and no code is guessed.
+- **Suppression is stricter:** at least 30 phenotype-positive sample visits are required (`minPositiveCases`), the NCHS standard for NAMCS visit estimates.
+- **2017 is absent:** no codebook was available for that year when the files were collected.
+
 ---
 
 ## What this does and doesn't close

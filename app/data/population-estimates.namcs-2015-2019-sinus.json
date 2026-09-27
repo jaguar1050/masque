@@ -1,0 +1,111 @@
+{
+  "masqueArtifact": "population-estimates",
+  "unitOfAnalysis": "visit",
+  "generatedAt": "2026-09-27T05:32:44Z",
+  "producedBy": "masque_population_etl.R 0.4.0 / R survey 4.2.1",
+  "source": {
+    "dataset": "NAMCS",
+    "cycle": "2015-2019 pooled",
+    "file": "namcs_2015_2019.csv",
+    "steward": "CDC/NCHS",
+    "url": "https://www.cdc.gov/nchs/namcs/",
+    "sha256": "eed9fcc88e83c59d92b487bed115345a77ef9b5991e1fb061a3b347dbd5c95ff"
+  },
+  "design": {
+    "weight": "PATWT",
+    "strata": "CSTRATM",
+    "psu": "CPSUM",
+    "nest": true,
+    "lonelyPsu": "adjust",
+    "varianceMethod": "Taylor linearization",
+    "domainAnalysis": true
+  },
+  "phenotype": {
+    "definition": "Among adult office visits with a recorded sinusitis diagnosis (acute or chronic), the share that also record a migraine or other headache diagnosis at the same visit. A direct look at the sinus-headache overlap the proposal targets, within physician-coded visits.",
+    "rule": {
+      "all": [],
+      "any": ["headache_migraine"],
+      "completeCase": true
+    },
+    "eligibility": {
+      "var": "AGE",
+      "min": 18,
+      "concept": "sinus_condition",
+      "reason": "Adult visits with a recorded sinusitis diagnosis: the proposal 3.1 'sinus headache' presentation. The estimate is the share of those visits that also record a migraine or headache diagnosis.",
+      "eligibleRespondents": 960,
+      "allRespondents": 59700
+    },
+    "variableMap": {
+      "headache_migraine": ["DIAG1_CONF", "DIAG2_CONF", "DIAG3_CONF", "DIAG4_CONF", "DIAG5_CONF"],
+      "dizziness_balance": ["DIAG1_CONF", "DIAG2_CONF", "DIAG3_CONF", "DIAG4_CONF", "DIAG5_CONF"],
+      "hearing_difficulty": ["DIAG1_CONF", "DIAG2_CONF", "DIAG3_CONF", "DIAG4_CONF", "DIAG5_CONF"],
+      "tinnitus": ["DIAG1_CONF", "DIAG2_CONF", "DIAG3_CONF", "DIAG4_CONF", "DIAG5_CONF"],
+      "sinus_condition": ["DIAG1_CONF", "DIAG2_CONF", "DIAG3_CONF", "DIAG4_CONF", "DIAG5_CONF"],
+      "recalcitrance_proxy": null
+    },
+    "codeMap": {
+      "headache_migraine": ["G43", "G44", "R51", "346", "339", "7840"],
+      "dizziness_balance": ["R42", "H81", "H82", "7804", "386"],
+      "hearing_difficulty": ["H90", "H91", "389"],
+      "tinnitus": ["H931", "3883"],
+      "sinus_condition": ["J01", "J32", "461", "473"]
+    },
+    "questionText": {
+      "headache_migraine": "Migraine or other headache diagnosis. ICD-10-CM G43 migraine, G44 other headache syndromes, R51 headache; ICD-9-CM 346 migraine, 339 other headache syndromes, 784.0 headache.",
+      "dizziness_balance": "Dizziness or vestibular diagnosis. ICD-10-CM R42 dizziness and giddiness, H81 disorders of vestibular function (including BPPV, vestibular neuronitis and Meniere disease), H82 vertiginous syndromes in diseases classified elsewhere; ICD-9-CM 780.4 dizziness and giddiness, 386 vertiginous syndromes. Meniere disease is a MASQUE discriminator in the screener but counts here as a dizziness diagnosis, matching the symptom-level surveys.",
+      "hearing_difficulty": "Hearing loss diagnosis. ICD-10-CM H90 conductive and sensorineural hearing loss, H91 other and unspecified hearing loss; ICD-9-CM 389 hearing loss.",
+      "tinnitus": "Tinnitus diagnosis. ICD-10-CM H93.1 tinnitus; ICD-9-CM 388.3 tinnitus.",
+      "sinus_condition": "Sinusitis diagnosis. ICD-10-CM J01 acute sinusitis, J32 chronic sinusitis; ICD-9-CM 461 acute sinusitis, 473 chronic sinusitis. The first source in which the proposal 7.1 sinonasal arm is expressible.",
+      "recalcitrance_proxy": ""
+    },
+    "mapFile": "phenotype_map_namcs_2015_2019_sinus.json",
+    "mapVersion": "0.1.0",
+    "unmapped": ["recalcitrance_proxy"]
+  },
+  "estimates": [
+    {
+      "name": "headache_share_of_sinusitis_visits",
+      "unit": "proportion",
+      "estimate": 0.0357357845807726,
+      "se": 0.00970244532390064,
+      "ci": [0.0166290123386031, 0.054842556822942],
+      "unweightedN": 960,
+      "unweightedPositives": 54,
+      "weightedN": 12300496.4787175,
+      "df": 256,
+      "rse": 0.271505031657287,
+      "suppress": false
+    },
+    {
+      "name": "headache_share_of_sinusitis_visits",
+      "unit": "proportion",
+      "domain": "sex=female",
+      "estimate": 0.036801594792621,
+      "se": 0.012016992945672,
+      "ci": [0.013100098958058, 0.060503090627184],
+      "unweightedN": 601,
+      "unweightedPositives": 39,
+      "weightedN": 7772008.9677975,
+      "df": 193,
+      "rse": 0.326534570400779,
+      "suppress": true,
+      "suppressReason": "RSE > 30%, unweighted n < 30, or fewer than 30 phenotype-positive sample records (NCHS reliability standard)"
+    },
+    {
+      "name": "headache_share_of_sinusitis_visits",
+      "unit": "proportion",
+      "domain": "sex=male",
+      "estimate": 0.0339065896223055,
+      "se": 0.0158120677425453,
+      "ci": [0.00260502224054053, 0.0652081570040704],
+      "unweightedN": 359,
+      "unweightedPositives": 15,
+      "weightedN": 4528487.51092,
+      "df": 122,
+      "rse": 0.466342027277887,
+      "suppress": true,
+      "suppressReason": "RSE > 30%, unweighted n < 30, or fewer than 30 phenotype-positive sample records (NCHS reliability standard)"
+    }
+  ],
+  "caveats": ["Share of adult physician office visits in which the listed diagnoses were recorded, not a prevalence among people: a patient seen several times counts several times, and a condition not coded at the visit counts as absent.", "Physician diagnoses abstracted from the visit record, up to five per visit; codes flagged probable, questionable or rule-out are excluded.", "2015 is coded in ICD-9-CM and 2016-2019 in ICD-10-CM truncated to four characters. The code lists cover both, but the transition changes coding detail, so comparability across it is approximate.", "Four survey years pooled (2015, 2016, 2018, 2019; 2017 not available) with weights divided by four, so totals are annual averages; proportions are unaffected by the division. Strata (CSTRATM) are year-specific.", "Reason-for-visit codes are not used: the reason-for-visit classification list was not in the documentation supplied, so a complaint such as dizziness that was not also diagnosed is not counted.", "Estimates are suppressed unless RSE is 30% or less, at least 30 visits are in the denominator, and at least 30 sample visits carry the phenotype (NCHS reliability standard for NAMCS visit estimates, applied to the numerator; stricter than NCHS's 2017 standard for proportions, which this ETL does not implement).", "Hypothesis-generating estimate, not a diagnostic count.", "Estimated within the eligible subpopulation only (AGE >= 18, sinus_condition positive): Adult visits with a recorded sinusitis diagnosis: the proposal 3.1 'sinus headache' presentation. The estimate is the share of those visits that also record a migraine or headache diagnosis..", "Concepts this cycle could not express: recalcitrance_proxy. The phenotype reported here is narrower than the one defined in proposal 7.1.", "No gender-identity item in this cycle: estimates are stratified by sex only. Gender is not substituted from sex."]
+}

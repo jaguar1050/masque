@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { BarChart3, Info, ShieldCheck, TriangleAlert, Database, FileJson, Terminal } from "lucide-react";
-import PopulationArtifact, { hasCostRows, isTotal, fmtValue } from "./PopulationArtifact.jsx";
+import PopulationArtifact, { hasCostRows, isTotal, fmtValue, eligibilityText } from "./PopulationArtifact.jsx";
 import { checkSchema, checkArtifactMarker } from "./MASQUE_SchemaCheck.js";
 
 /*  Project MASQUE — Population estimates page
@@ -274,16 +274,17 @@ function SummaryTable({ artifacts }) {
       <div className="chdr"><BarChart3 size={16} color="var(--petrol)" /><div><div className="ce">Across sources</div><div className="ct">Phenotype prevalence by survey and cycle</div></div></div>
       <div className="sumwrap">
         <table className="sum">
-          <thead><tr><th>Source</th><th>Population</th><th>Headache item</th><th>Otologic arms</th><th>All</th><th>Women</th><th>Men</th></tr></thead>
+          <thead><tr><th>Source</th><th>Population</th><th>Headache item</th><th>Rule: any of</th><th>All</th><th>Women</th><th>Men</th></tr></thead>
           <tbody>
             {artifacts.map(({ path, art }) => {
               const src = art.source || {}, ph = art.phenotype || {}, el = ph.eligibility;
               const total = (art.estimates || []).find(isTotal);
-              const head = ph.variableMap?.headache_migraine;
+              const head = ph.codeMap?.headache_migraine ? `diagnosis ${ph.codeMap.headache_migraine.join(", ")}` : ph.variableMap?.headache_migraine;
+              const visits = art.unitOfAnalysis === "visit";
               return (
                 <tr key={path}>
                   <td className="src"><b>{src.dataset} {src.cycle}</b><span>{(ph.unmapped || []).length} concept{(ph.unmapped || []).length === 1 ? "" : "s"} unmapped</span></td>
-                  <td>{el && el.var ? `${el.var}${el.min != null ? ` ≥ ${el.min}` : ""}${el.max != null ? ` ≤ ${el.max}` : ""}` : "all respondents"}{total ? <div style={{fontSize:11,color:"var(--muted)"}}>n = {Number(total.unweightedN).toLocaleString()}</div> : null}</td>
+                  <td>{el && (el.var || el.concept) ? eligibilityText(el) : "all respondents"}{visits && <div style={{fontSize:11,fontWeight:600}}>office visits, not people</div>}{total ? <div style={{fontSize:11,color:"var(--muted)"}}>n = {Number(total.unweightedN).toLocaleString()} {visits ? "visits" : ""}</div> : null}</td>
                   <td className="num" style={{fontSize:11.5}}>{Array.isArray(head) ? head.join(", ") : (head || "—")}</td>
                   <td>{(ph.rule?.any || []).map(a => <span className="arm" key={a}>{a}</span>)}</td>
                   {cell(total)}{cell(bySex(art, "female"))}{cell(bySex(art, "male"))}

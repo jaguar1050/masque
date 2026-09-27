@@ -1,0 +1,77 @@
+{
+  "preparedBy": "namcs_prepare.py 0.1.0",
+  "preparedAt": "2026-09-27T05:27:43Z",
+  "year": "2015",
+  "source": "namcs2015",
+  "sourceBytes": 76921380,
+  "sourceSha256": "90aaafc99f6644e0f4dd61906a69d376eba049a6b7bd73770e825b7a49e304e3",
+  "layout": {
+    "AGE": [
+      4,
+      6
+    ],
+    "SEX": [
+      11,
+      11
+    ],
+    "DIAG1": [
+      113,
+      117
+    ],
+    "PRDIAG1": [
+      118,
+      119
+    ],
+    "DIAG2": [
+      120,
+      124
+    ],
+    "PRDIAG2": [
+      125,
+      126
+    ],
+    "DIAG3": [
+      127,
+      131
+    ],
+    "PRDIAG3": [
+      132,
+      133
+    ],
+    "DIAG4": [
+      134,
+      138
+    ],
+    "PRDIAG4": [
+      139,
+      140
+    ],
+    "DIAG5": [
+      141,
+      145
+    ],
+    "PRDIAG5": [
+      146,
+      147
+    ],
+    "CSTRATM": [
+      2663,
+      2670
+    ],
+    "CPSUM": [
+      2671,
+      2676
+    ],
+    "PATWT": [
+      2682,
+      2692
+    ],
+    "icd": "ICD-9-CM"
+  },
+  "records": 28332,
+  "fieldCheckFailures": {},
+  "diagnosisCodesRecorded": 67803,
+  "diagnosesFlaggedProbable": 324,
+  "output": "namcs_2015.csv",
+  "outputSha256": "a0be09d8e3e751df9e81070077ddd688a08bd5f4d9814ce4cdc4858b93f6cc62"
+}
