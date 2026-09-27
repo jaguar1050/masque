@@ -131,6 +131,32 @@ NHANES ships one SAS XPORT file per component per cycle rather than one CSV, so 
 
 4. **Run the ETL** exactly as above, with the NHANES map and `--downloaded-at` from the fetch manifest, then commit and index the artifact. One artifact per cycle; pooling cycles needs cycle-specific weight adjustment and is out of scope.
 
+### NHIS 2019–2023, as run on 27 September 2026
+
+The redesigned NHIS Sample Adult files (2019 onward) are one CSV per year, so no prepare step is needed. Headache, dizziness and tinnitus are rotating content, which decides what each year can express:
+
+| Year | Headache item | Dizziness/balance | Hearing | Tinnitus | Artifact |
+|---|---|---|---|---|---|
+| 2019 | `PAIHDFC3M_A` | not fielded | `HEARINGDF_A` | not fielded | `nhis-2019`, hearing-only otologic arm |
+| 2020 | not fielded | not fielded | `HEARINGDF_A` | not fielded | none: no headache item |
+| 2021 | `PAIHDFC3M_A` | not fielded | `HEARINGDF_A` | not fielded | `nhis-2021`, hearing-only otologic arm |
+| 2022 | not fielded | not fielded | `HEARINGDF_A` | not fielded | none: no headache item |
+| 2023 | `PAIHDFC3M_A` | `BALDIZZ_A` | `HEARINGDF_A` | `HRTINNITUS_A` | `nhis-2023` (all adults) and `nhis-2023-age40` (NHANES comparator) |
+
+Maps are `phenotype_map_nhis_<year>.json`. Four things were established from the files rather than assumed, and each is recorded in the map:
+
+- **The headache item is behind a pain gate.** `PAIHDFC3M_A` is asked only of adults who reported any pain in the past 3 months (`PAIFRQ3M_A` 2–4). Every blank in 2019, 2021 and 2023 is a "never had pain" answer or a 7/8/9 at the gate, so `PAIFRQ3M_A = 1` is declared a `skipNegative`.
+- **The headache item is broader than NHANES's.** It is a how-often scale for head or face pain with no severity qualifier; NHANES asks about severe headaches or migraines. Positive is set at "some days" or more. Counting only "most days" or "every day" roughly halves the 2023 estimate (see `docs/refactor/02-app-divergences.md`); the threshold is a clinical decision.
+- **`YRSINUS_A` is not sinusitis.** It is "years in the U.S.", asked only of foreign-born adults. No 2019–2023 file carries a sinusitis item, so the sinonasal arm stays unmapped. `FDSBALANCE_A` is a food-security item, not balance.
+- **Age codes 97/98/99 mean unknown.** The 40+ comparator declares them as `eligibility.missing`, so those respondents are ineligible rather than counted as the oldest.
+
+Question wording is not in the public-use CSV; each map describes the item from its name, code frame and universe, and says so. Verify wording against the year's Sample Adult codebook before publication.
+
+```
+Rscript app/etl/masque_population_etl.R --data adult23.csv \
+  --map app/etl/phenotype_map_nhis_2023.json --out app/data/population-estimates.nhis-2023.json
+```
+
 ---
 
 ## What this does and doesn't close

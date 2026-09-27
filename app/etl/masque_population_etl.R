@@ -66,10 +66,12 @@
 #      definition in words must not be TODO. Complete cases only — a respondent
 #      missing ANY referenced item is NA and leaves the denominator, so a missing
 #      arm can neither make someone positive nor negative.
-#   2. `eligibility` {"var","min","max","reason"} restricts estimation to the
+#   2. `eligibility` {"var","min","max","missing","reason"} restricts estimation to the
 #      subpopulation the phenotype items were asked of (NHANES asked the balance
 #      questionnaire of adults 40+). Applied as a DESIGN subset, so variances stay
-#      right. Recorded in the artifact.
+#      right. Recorded in the artifact. `missing` lists codes of the eligibility
+#      variable that mean "unknown" (NHIS age 97/98/99); those respondents are
+#      ineligible rather than counted as very old.
 #   3. `skipNegative` {"var","codes"} on a concept: respondents routed past the
 #      concept's detail items by a gate question ("any dizziness, balance or
 #      falling problems?" = No) are negative for the concept, not missing. Only a
@@ -270,6 +272,7 @@ if (!is.null(elig) && !is.null(elig$var)) {
   ev <- toupper(elig$var)
   if (!ev %in% names(df)) stop(sprintf("eligibility variable %s not present in the data file", ev))
   x <- df[[ev]]
+  if (!is.null(elig$missing)) x[x %in% unlist(elig$missing)] <- NA   # e.g. NHIS age 97/98/99 = refused / not ascertained / don't know
   df$MASQUE_ELIG <- !is.na(x) & (if (is.null(elig$min)) TRUE else x >= elig$min) & (if (is.null(elig$max)) TRUE else x <= elig$max)
   message(sprintf("Eligibility: %s in [%s, %s] — %d of %d respondents", ev, ifelse(is.null(elig$min), "-", elig$min), ifelse(is.null(elig$max), "-", elig$max), sum(df$MASQUE_ELIG), nrow(df)))
 }

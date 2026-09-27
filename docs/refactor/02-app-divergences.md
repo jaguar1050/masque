@@ -26,6 +26,26 @@ Dated 24 September 2026. Instrument, lexicon, probe set and gold set are untouch
 | `README_DATA_CONNECTION.md` | Paths updated to `app/etl/` and `app/data/`; step 4 is now "commit and index" with the panel upload as a preview; the status vocabulary, `--downloaded-at`, and the NHANES route (a second map file, not a codebook fill) are spelled out step by step. | The hand-off for the first real run. |
 | `nhanes_fetch.py`, `nhanes_prepare.py`, `phenotype_map_nhanes_<cycle>.json` | New, no counterpart in `reference/`. Standard-library Python fetcher that verifies the SAS XPORT signature of every download and writes a manifest; a merger that reads XPORT v5 natively, left-joins components on `SEQN`, and writes the ETL's CSV with provenance; the NHANES maps, one per 1999–2004 cycle, filled from the files' own variable labels. | The archive delivered on 24 September held 28 copies of a CDC 404 page saved under `.XPT` names. Both scripts refuse to pass on anything that is not real data. The prepare step was verified here against XPORT files written by pyreadstat (`app/tests/fixtures/nhanes/`, synthetic, invented variables). |
 
+## Population estimates added 27 September 2026 (NHIS 2019–2023)
+
+| File | What it is |
+|---|---|
+| `app/etl/phenotype_map_nhis_{2019,2021,2023}.json`, `phenotype_map_nhis_2023_age40.json` | Filled NHIS maps. Items identified from the public-use files' column names, code frames and universes; each map says the question wording is not in the CSV and must be verified against the codebook. `YRSINUS_A` (years in the U.S.) and `FDSBALANCE_A` (food security) were ruled out by their universes and code frames. 2020 and 2022 carry no headache item and produce no artifact. |
+| `app/data/population-estimates.nhis-*.json` | Four artifacts: 2023 all adults, 2023 adults 40+ (NHANES comparator), 2021, 2019. |
+| `app/data/provenance/nhis_2019_2023.provenance.json` | SHA-256 of each CDC zip and CSV; every CSV verified byte-identical to the one inside CDC's zip. |
+| `masque_population_etl.R` | `eligibility.missing`: codes of the eligibility variable meaning unknown (NHIS age 97/98/99) make a respondent ineligible instead of very old. |
+| `MASQUE_Population.jsx` | Cross-source summary table: one row per artifact with population, headache item, otologic arms and the ETL's own estimates. It computes nothing. |
+| `PopulationArtifact.jsx` | Question notes rendered as plain text beneath each variable, no longer wrapped in quotation marks, since NHIS notes describe items rather than quote labels. |
+
+**Headache-threshold sensitivity (not committed as an artifact).** The NHIS headache item is a frequency scale. Primary maps count "some days" or more. Re-running NHIS 2023 with only "most days" or "every day" counted:
+
+| NHIS 2023 | Primary (some days or more) | Sensitivity (most days or every day) |
+|---|---|---|
+| All adults | 14.8% (14.2–15.3) | 6.8% (6.4–7.1) |
+| Adults 40+ | 14.4% (13.7–15.0) | 6.1% (5.7–6.5) |
+
+The NHANES 1999–2004 estimates for adults 40+ (11.5–12.9%, "severe headaches or migraines") sit between the two, consistent with NHANES's severity qualifier making its item narrower than the NHIS item as primarily scored and broader than its strict reading.
+
 ## Verification
 
 - ETL 0.2.0 was run here (R 4.3.3, survey 4.4) on `app/tests/fixtures/synthetic_nhis_like.csv` with `phenotype_map_synthetic.json`, producing `population-estimates.synthetic.json`. The fixture is invented: `source.dataset` is `SYNTHETIC`, the strata and PSU codes are fake, and the map's status text says so. It exists so the ETL and the renderer can be exercised without a public-use file and is never deployed.

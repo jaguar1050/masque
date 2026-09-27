@@ -1,0 +1,90 @@
+{
+  "masqueArtifact": "population-estimates",
+  "generatedAt": "2026-09-27T04:54:45Z",
+  "producedBy": "masque_population_etl.R 0.3.0 / R survey 4.2.1",
+  "source": {
+    "dataset": "NHIS",
+    "cycle": "2019",
+    "file": "adult19.csv",
+    "steward": "CDC/NCHS",
+    "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NHIS/2019/adult19csv.zip",
+    "sha256": "7b4528fd5239ac1505d564d52917a9f8e1cbfdfaeddee2b9486e87c86f71ff8c"
+  },
+  "design": {
+    "weight": "WTFA_A",
+    "strata": "PSTRAT",
+    "psu": "PPSU",
+    "nest": true,
+    "lonelyPsu": "adjust",
+    "varianceMethod": "Taylor linearization",
+    "domainAnalysis": true
+  },
+  "phenotype": {
+    "definition": "Head or face pain on some days or more in the past 3 months (PAIHDFC3M_A 2-4; 'never had any pain' counts as no) AND any hearing difficulty even with a hearing aid (HEARINGDF_A 2-4). All adults 18+; complete cases only. Narrower than the 2023 artifact: NHIS 2019 fielded no dizziness/balance or tinnitus item, so the otologic arm is hearing only; no sinonasal or recalcitrance arm.",
+    "rule": {
+      "all": ["headache_migraine"],
+      "any": ["hearing_difficulty"],
+      "completeCase": true
+    },
+    "variableMap": {
+      "headache_migraine": "PAIHDFC3M_A",
+      "dizziness_balance": null,
+      "hearing_difficulty": "HEARINGDF_A",
+      "tinnitus": null,
+      "sinus_condition": null,
+      "recalcitrance_proxy": null
+    },
+    "questionText": {
+      "headache_migraine": "PAIHDFC3M_A, NHIS pain module (odd years), pain-location item for head or face ('HDFC'), 'how often in the past 3 months': 1 never, 2 some days, 3 most days, 4 every day. Positive = some days or more. Asked only of adults reporting any pain in the past 3 months (PAIFRQ3M_A = 2-4); a 'never' at that gate counts as no. Broader than NHANES MPQ090 'severe headaches or migraines': this item has no severity qualifier, so prevalence is not comparable to NHANES without the sensitivity run described in the map note.",
+      "dizziness_balance": "",
+      "hearing_difficulty": "HEARINGDF_A, Washington Group short set, 'difficulty hearing, even when using a hearing aid': 1 no difficulty, 2 some difficulty, 3 a lot of difficulty, 4 cannot do at all. Positive = some difficulty or more. Asked of all adults every year.",
+      "tinnitus": "",
+      "sinus_condition": "",
+      "recalcitrance_proxy": ""
+    },
+    "mapFile": "phenotype_map_nhis_2019.json",
+    "mapVersion": "0.2.0",
+    "unmapped": ["dizziness_balance", "tinnitus", "sinus_condition", "recalcitrance_proxy"]
+  },
+  "estimates": [
+    {
+      "name": "phenotype_prevalence",
+      "unit": "proportion",
+      "estimate": 0.0397751839066934,
+      "se": 0.00139158265235287,
+      "ci": [0.0370417818695753, 0.0425085859438115],
+      "unweightedN": 31229,
+      "weightedN": 243858141.442,
+      "df": 556,
+      "rse": 0.0349862028449023,
+      "suppress": false
+    },
+    {
+      "name": "phenotype_prevalence",
+      "unit": "proportion",
+      "domain": "sex=male",
+      "estimate": 0.0341587500784076,
+      "se": 0.00190541935038632,
+      "ci": [0.0304160495459569, 0.0379014506108582],
+      "unweightedN": 14400,
+      "weightedN": 117998902.148,
+      "df": 556,
+      "rse": 0.0557812960372568,
+      "suppress": false
+    },
+    {
+      "name": "phenotype_prevalence",
+      "unit": "proportion",
+      "domain": "sex=female",
+      "estimate": 0.0450481619129679,
+      "se": 0.00197548821273018,
+      "ci": [0.0411678293320396, 0.0489284944938962],
+      "unweightedN": 16826,
+      "weightedN": 125838817.263,
+      "df": 556,
+      "rse": 0.0438528039511753,
+      "suppress": false
+    }
+  ],
+  "caveats": ["Screening-level phenotype prevalence, not diagnosed prevalence. No vestibular-testing or ICHD/Barany reference standard exists in these data.", "Self-reported survey items; coding inconsistency may bias phenotype capture.", "Hypothesis-generating estimate, not a diagnostic count.", "Respondents coded Refused / Not Ascertained / Don't Know on a phenotype item are excluded from the denominator, never counted as negative.", "Complete-case phenotype: a respondent missing any item the rule uses is excluded from the denominator.", "Concepts this cycle could not express: dizziness_balance, tinnitus, sinus_condition, recalcitrance_proxy. The phenotype reported here is narrower than the one defined in proposal 7.1.", "No gender-identity item in this cycle: estimates are stratified by sex only. Gender is not substituted from sex."]
+}

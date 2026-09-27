@@ -1,0 +1,133 @@
+{
+  "_meta": {
+    "mapFile": "phenotype_map_nhis_2019.json",
+    "mapVersion": "0.2.0",
+    "dataset": "NHIS",
+    "cycle": "2019",
+    "file": "adult19.csv",
+    "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NHIS/2019/adult19csv.zip",
+    "codebook": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Dataset_Documentation/NHIS/2019/adult-codebook.pdf",
+    "steward": "CDC/NCHS",
+    "WHY_THIS_IS_A_DATA_FILE_AND_NOT_CODE": "NHIS variable names change between cycles, and rotating content means a concept present in one year is absent the next. Hard-coding names into the ETL guarantees it silently breaks or silently mismeasures on the next cycle. Keeping the map as versioned data means a cycle change is a diff you can review, and the ETL can refuse to run when a required concept is unmapped.",
+    "STATUS": "FILLED 27 September 2026 from the 2019 Sample Adult public-use file (CSV verified byte-identical to CDC's adult19csv.zip). Question wording is not in the public-use CSV. Variable name, code frame and universe below are read from the file itself; the wording in quotes is NCHS's published item as the clinical lead should verify it against the Sample Adult codebook for the year.",
+    "HEADACHE_THRESHOLD_NOTE": "Sensitivity run, 2023 all adults: with headache positive only at 'most days' or 'every day' (codes 3-4) instead of 'some days' or more, phenotype prevalence falls from the primary figure to the one recorded in docs/refactor/02-app-divergences.md. The threshold is a clinical decision; change positiveCodes and re-run."
+  },
+  "design": {
+    "_verified": "Confirmed against NCHS documentation for the 2019+ NHIS redesign.",
+    "weight": "WTFA_A",
+    "strata": "PSTRAT",
+    "psu": "PPSU",
+    "nest": true,
+    "lonelyPsu": "adjust",
+    "note": "Sample Adult file. Use WTFA_C for the Sample Child file. Applying simple-random-sample methods to NHIS produces standard errors that are too small — this is stated explicitly in the NCHS survey description."
+  },
+  "demographics": {
+    "sex": {
+      "var": "SEX_A",
+      "recode": {
+        "1": "male",
+        "2": "female"
+      },
+      "missing": [
+        7,
+        8,
+        9
+      ],
+      "_note": "Verify the code frame in the codebook. NHIS uses 7=Refused, 8=Not Ascertained, 9=Don't Know across most items — these must become NA, never 0."
+    },
+    "gender": {
+      "var": null,
+      "_status": "unmapped",
+      "_note": "No gender-identity item in the 2019-2023 Sample Adult files (ORIENT_A is sexual orientation, not gender). Estimates are by sex only; gender is never substituted from sex."
+    },
+    "age": {
+      "var": "AGEP_A",
+      "topcode": 85,
+      "_status": "mapped",
+      "_note": "AGEP_A top-coded at 85; 97/98/99 are refused / not ascertained / don't know."
+    }
+  },
+  "phenotype_concepts": {
+    "_instruction": "Each concept maps to one or more variables plus the codes that count as positive. Open the codebook PDF, search the concept keyword, and record the variable name, the exact question wording, and the positive code set. Record the wording — a phenotype defined by variable names alone is not reviewable. Status vocabulary, read by the ETL: any value beginning TODO refuses to run; \"unmapped\" with empty vars declares that this cycle cannot express the concept and is reported in the artifact; \"mapped\" with vars filled is used.",
+    "headache_migraine": {
+      "vars": [
+        "PAIHDFC3M_A"
+      ],
+      "positiveCodes": [
+        2,
+        3,
+        4
+      ],
+      "_status": "mapped",
+      "questionText": "PAIHDFC3M_A, NHIS pain module (odd years), pain-location item for head or face ('HDFC'), 'how often in the past 3 months': 1 never, 2 some days, 3 most days, 4 every day. Positive = some days or more. Asked only of adults reporting any pain in the past 3 months (PAIFRQ3M_A = 2-4); a 'never' at that gate counts as no. Broader than NHANES MPQ090 'severe headaches or migraines': this item has no severity qualifier, so prevalence is not comparable to NHANES without the sensitivity run described in the map note.",
+      "skipNegative": {
+        "var": "PAIFRQ3M_A",
+        "codes": [
+          1
+        ],
+        "_note": "Verified in 2019, 2021 and 2023: every respondent lacking PAIHDFC3M_A answered PAIFRQ3M_A = 1 (never had pain) or 7/8/9; every respondent answering 2-4 has PAIHDFC3M_A."
+      }
+    },
+    "dizziness_balance": {
+      "vars": [],
+      "positiveCodes": [],
+      "_status": "unmapped",
+      "_hint": "Not fielded this year: the hearing and balance block (BALDIZZ_A) is 2023 rotating content.",
+      "questionText": ""
+    },
+    "hearing_difficulty": {
+      "vars": [
+        "HEARINGDF_A"
+      ],
+      "positiveCodes": [
+        2,
+        3,
+        4
+      ],
+      "_status": "mapped",
+      "questionText": "HEARINGDF_A, Washington Group short set, 'difficulty hearing, even when using a hearing aid': 1 no difficulty, 2 some difficulty, 3 a lot of difficulty, 4 cannot do at all. Positive = some difficulty or more. Asked of all adults every year."
+    },
+    "tinnitus": {
+      "vars": [],
+      "positiveCodes": [],
+      "_status": "unmapped",
+      "_hint": "Not fielded this year: the tinnitus block (HRTINNITUS_A) is 2023 rotating content.",
+      "questionText": ""
+    },
+    "sinus_condition": {
+      "vars": [],
+      "positiveCodes": [],
+      "_status": "unmapped",
+      "_hint": "No sinusitis item in the 2019-2023 Sample Adult files. YRSINUS_A is NOT sinus: it is 'years in the U.S.', asked only of foreign-born adults (about 15%), five ordered codes. Checked from its universe and code frame.",
+      "questionText": ""
+    },
+    "recalcitrance_proxy": {
+      "vars": [],
+      "positiveCodes": [],
+      "_status": "unmapped",
+      "_hint": "A utilization construct (repeat antibiotic/steroid courses, prior procedure, persistence). NHIS cannot express it; MEPS can approximate it.",
+      "questionText": ""
+    }
+  },
+  "cost_concepts": {
+    "_note": "NHIS carries no expenditure data. Cost estimates require MEPS, which needs its own map file and its own design variables (MEPS uses VARSTR, VARPSU, and a person-level weight such as PERWTyyF). Do not attempt to carry a cost figure across from a different survey into an NHIS artifact — they are different samples with different design.",
+    "annual_cost": {
+      "var": null,
+      "_status": "N/A for NHIS"
+    },
+    "avoidable_cost": {
+      "var": null,
+      "_status": "N/A for NHIS"
+    }
+  },
+  "phenotype_definition": "Head or face pain on some days or more in the past 3 months (PAIHDFC3M_A 2-4; 'never had any pain' counts as no) AND any hearing difficulty even with a hearing aid (HEARINGDF_A 2-4). All adults 18+; complete cases only. Narrower than the 2023 artifact: NHIS 2019 fielded no dizziness/balance or tinnitus item, so the otologic arm is hearing only; no sinonasal or recalcitrance arm.",
+  "phenotype_rule": {
+    "all": [
+      "headache_migraine"
+    ],
+    "any": [
+      "hearing_difficulty"
+    ],
+    "_note": "Positive when every `all` concept is positive and at least one `any` concept is positive; complete cases only."
+  }
+}

@@ -33,7 +33,9 @@ const QUANTITIES = {
   avoidable_cost_mean:  { label: "Mean avoidable cost",  unit: "usd" },
 };
 
-export function pct(v)   { return Number.isFinite(v) ? `${Math.round(v * 100)}%` : "—"; }
+// One decimal: national surveys give intervals narrower than a percentage point, and
+// whole-percent rounding would hide the differences the table exists to show.
+export function pct(v)   { return Number.isFinite(v) ? `${(v * 100).toFixed(1)}%` : "—"; }
 export function money(v) { return Number.isFinite(v) ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v) : "—"; }
 
 export function isTotal(e)  { return !(typeof e.domain === "string" && e.domain.length > 0); }
@@ -123,7 +125,7 @@ export default function PopulationArtifact({ art, onClear }) {
         {varMap.length > 0 && (
           <ul>{varMap.map(([concept, vars]) => (
             <li key={concept} className="pa-code">{concept}: {Array.isArray(vars) && vars.length ? vars.join(", ") : (typeof vars === "string" && vars ? vars : "unmapped")}
-              {ph.questionText && ph.questionText[concept] ? <span style={{fontFamily:"inherit",color:"#5C6E6C"}}> — “{ph.questionText[concept]}”</span> : null}</li>
+              {ph.questionText && ph.questionText[concept] ? <div style={{fontFamily:"inherit",color:"#5C6E6C",marginTop:2}}>{ph.questionText[concept]}</div> : null}</li>
           ))}</ul>
         )}
       </div>

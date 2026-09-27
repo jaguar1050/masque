@@ -1,0 +1,63 @@
+{
+  "preparedAt": "2026-09-27",
+  "source": "NHIS Sample Adult public-use files as uploaded (2019-2021.zip, 2022-2023.zip)",
+  "check": "Each extracted CSV is byte-identical to the CSV inside CDC's own adultYYcsv.zip, verified by SHA-256.",
+  "downloadDate": "not recorded by the upload; the CDC zip's internal file date is the NCHS release date, listed below",
+  "files": [
+    {
+      "year": 2019,
+      "cdcZip": "adult19csv.zip",
+      "cdcZipBytes": 4372417,
+      "cdcZipSha256": "fc105b045c46d871b029c5e6cefa797450fff9e4610fdc9a29e2af3137f16917",
+      "csv": "adult19.csv",
+      "csvBytes": 26763510,
+      "csvSha256": "7b4528fd5239ac1505d564d52917a9f8e1cbfdfaeddee2b9486e87c86f71ff8c",
+      "csvDateInZip": "2020-09-11",
+      "usedFor": "population-estimates.nhis-2019.json"
+    },
+    {
+      "year": 2020,
+      "cdcZip": "adult20csv.zip",
+      "cdcZipBytes": 5154926,
+      "cdcZipSha256": "a517a49fa93285bef61ff4e849a0d4b5aa6fa99a1998c6caa716bfc9b5d984fe",
+      "csv": "adult20.csv",
+      "csvBytes": 30453241,
+      "csvSha256": "4ed866ff5f68e701b55c9be6b12871e309e176d290b0f9dcf8343c4044d71e0a",
+      "csvDateInZip": "2022-08-12",
+      "usedFor": "not used: no headache item fielded this year"
+    },
+    {
+      "year": 2021,
+      "cdcZip": "adult21csv.zip",
+      "cdcZipBytes": 4395751,
+      "cdcZipSha256": "6e71f5a34115f9aef51304957c08b6db7a91f8a0a6eb3d9d21cd4f254cbdbf78",
+      "csv": "adult21.csv",
+      "csvBytes": 28007329,
+      "csvSha256": "4dc1d360065111b445c5dcea15fe9a7d777650ed106f0522e540eb88199c6c01",
+      "csvDateInZip": "2022-07-25",
+      "usedFor": "population-estimates.nhis-2021.json"
+    },
+    {
+      "year": 2022,
+      "cdcZip": "adult22csv.zip",
+      "cdcZipBytes": 3654579,
+      "cdcZipSha256": "25083298173acfff35c6635be0fbcaa3ff26b985e0a48fc5e7d9788761864dba",
+      "csv": "adult22.csv",
+      "csvBytes": 28118163,
+      "csvSha256": "2e814050ea06ca1ffed356f51979b87c20d6242b0453c928249a29bd5f1f29f1",
+      "csvDateInZip": "2023-06-05",
+      "usedFor": "not used: no headache item fielded this year"
+    },
+    {
+      "year": 2023,
+      "cdcZip": "adult23csv.zip",
+      "cdcZipBytes": 4780657,
+      "cdcZipSha256": "e6f0918e683e1d756e4298470737b4c99777e8a90ea9ee7488544b917f058585",
+      "csv": "adult23.csv",
+      "csvBytes": 29427128,
+      "csvSha256": "441f2bc17761cb1c755b24c1af551e34b91e084da4cce8d78888a688b1acc5ab",
+      "csvDateInZip": "2024-06-20",
+      "usedFor": "population-estimates.nhis-2023.json, population-estimates.nhis-2023-age40.json"
+    }
+  ]
+}

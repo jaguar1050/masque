@@ -1,0 +1,97 @@
+{
+  "masqueArtifact": "population-estimates",
+  "generatedAt": "2026-09-27T04:54:30Z",
+  "producedBy": "masque_population_etl.R 0.3.0 / R survey 4.2.1",
+  "source": {
+    "dataset": "NHIS",
+    "cycle": "2023",
+    "file": "adult23.csv",
+    "steward": "CDC/NCHS",
+    "url": "https://ftp.cdc.gov/pub/Health_Statistics/NCHS/Datasets/NHIS/2023/adult23csv.zip",
+    "sha256": "441f2bc17761cb1c755b24c1af551e34b91e084da4cce8d78888a688b1acc5ab"
+  },
+  "design": {
+    "weight": "WTFA_A",
+    "strata": "PSTRAT",
+    "psu": "PPSU",
+    "nest": true,
+    "lonelyPsu": "adjust",
+    "varianceMethod": "Taylor linearization",
+    "domainAnalysis": true
+  },
+  "phenotype": {
+    "definition": "Head or face pain on some days or more in the past 3 months (PAIHDFC3M_A 2-4; 'never had any pain' counts as no) AND at least one of: dizziness or balance problems in the past 12 months (BALDIZZ_A), any hearing difficulty even with a hearing aid (HEARINGDF_A 2-4), or tinnitus in the past 12 months (HRTINNITUS_A). Adults 40+ only; complete cases only. The proposal 7.1 phenotype narrowed to what NHIS 2023 can express: no sinonasal arm and no recalcitrance (utilization) arm.",
+    "rule": {
+      "all": ["headache_migraine"],
+      "any": ["dizziness_balance", "hearing_difficulty", "tinnitus"],
+      "completeCase": true
+    },
+    "eligibility": {
+      "var": "AGEP_A",
+      "min": 40,
+      "reason": "Comparator for the NHANES 1999-2004 artifacts, whose balance questionnaire covered adults 40 and over. Same age floor, same otologic arms, different headache item and survey mode, so the comparison is indicative, not like-for-like.",
+      "eligibleRespondents": 21008,
+      "allRespondents": 29522
+    },
+    "variableMap": {
+      "headache_migraine": "PAIHDFC3M_A",
+      "dizziness_balance": "BALDIZZ_A",
+      "hearing_difficulty": "HEARINGDF_A",
+      "tinnitus": "HRTINNITUS_A",
+      "sinus_condition": null,
+      "recalcitrance_proxy": null
+    },
+    "questionText": {
+      "headache_migraine": "PAIHDFC3M_A, NHIS pain module (odd years), pain-location item for head or face ('HDFC'), 'how often in the past 3 months': 1 never, 2 some days, 3 most days, 4 every day. Positive = some days or more. Asked only of adults reporting any pain in the past 3 months (PAIFRQ3M_A = 2-4); a 'never' at that gate counts as no. Broader than NHANES MPQ090 'severe headaches or migraines': this item has no severity qualifier, so prevalence is not comparable to NHANES without the sensitivity run described in the map note.",
+      "dizziness_balance": "BALDIZZ_A, 2023 rotating hearing and balance content, dizziness or balance problem in the past 12 months: 1 yes, 2 no. Asked of all adults; follow-ups BALDPROB_A (how much of a problem) and BALDHP_A (saw a health professional) asked only of 'yes'. 1,093 adults are 'not ascertained' (8) on this and the tinnitus item together; they stay missing.",
+      "hearing_difficulty": "HEARINGDF_A, Washington Group short set, 'difficulty hearing, even when using a hearing aid': 1 no difficulty, 2 some difficulty, 3 a lot of difficulty, 4 cannot do at all. Positive = some difficulty or more. Asked of all adults every year.",
+      "tinnitus": "HRTINNITUS_A, 2023 rotating hearing content, ringing, roaring or buzzing in the ears in the past 12 months: 1 yes, 2 no. Asked of all adults; follow-ups HRTINPROB_A and HRTINLNG_A asked only of 'yes'.",
+      "sinus_condition": "",
+      "recalcitrance_proxy": ""
+    },
+    "mapFile": "phenotype_map_nhis_2023_age40.json",
+    "mapVersion": "0.2.0",
+    "unmapped": ["sinus_condition", "recalcitrance_proxy"]
+  },
+  "estimates": [
+    {
+      "name": "phenotype_prevalence",
+      "unit": "proportion",
+      "estimate": 0.143689586817796,
+      "se": 0.00330939658837009,
+      "ci": [0.137190350910602, 0.15018882272499],
+      "unweightedN": 20134,
+      "weightedN": 153514803.275,
+      "df": 608,
+      "rse": 0.0230315686867868,
+      "suppress": false
+    },
+    {
+      "name": "phenotype_prevalence",
+      "unit": "proportion",
+      "domain": "sex=male",
+      "estimate": 0.113490319765848,
+      "se": 0.00402951639046565,
+      "ci": [0.105576728859352, 0.121403910672343],
+      "unweightedN": 9105,
+      "weightedN": 73906923.298,
+      "df": 603,
+      "rse": 0.0355053752494425,
+      "suppress": false
+    },
+    {
+      "name": "phenotype_prevalence",
+      "unit": "proportion",
+      "domain": "sex=female",
+      "estimate": 0.171761137940542,
+      "se": 0.00451719714569765,
+      "ci": [0.162889876257659, 0.180632399623424],
+      "unweightedN": 11028,
+      "weightedN": 79591684.469,
+      "df": 606,
+      "rse": 0.0262992968017094,
+      "suppress": false
+    }
+  ],
+  "caveats": ["Screening-level phenotype prevalence, not diagnosed prevalence. No vestibular-testing or ICHD/Barany reference standard exists in these data.", "Self-reported survey items; coding inconsistency may bias phenotype capture.", "Hypothesis-generating estimate, not a diagnostic count.", "Respondents coded Refused / Not Ascertained / Don't Know on a phenotype item are excluded from the denominator, never counted as negative.", "Complete-case phenotype: a respondent missing any item the rule uses is excluded from the denominator.", "Estimated within the eligible subpopulation only (AGEP_A >= 40): Comparator for the NHANES 1999-2004 artifacts, whose balance questionnaire covered adults 40 and over. Same age floor, same otologic arms, different headache item and survey mode, so the comparison is indicative, not like-for-like..", "Concepts this cycle could not express: sinus_condition, recalcitrance_proxy. The phenotype reported here is narrower than the one defined in proposal 7.1.", "No gender-identity item in this cycle: estimates are stratified by sex only. Gender is not substituted from sex."]
+}

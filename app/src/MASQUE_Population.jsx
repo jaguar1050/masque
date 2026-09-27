@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { BarChart3, Info, ShieldCheck, TriangleAlert, Database, FileJson, Terminal } from "lucide-react";
-import PopulationArtifact, { hasCostRows } from "./PopulationArtifact.jsx";
+import PopulationArtifact, { hasCostRows, isTotal, fmtValue } from "./PopulationArtifact.jsx";
 import { checkSchema, checkArtifactMarker } from "./MASQUE_SchemaCheck.js";
 
 /*  Project MASQUE — Population estimates page
@@ -69,6 +69,13 @@ const CSS = `
 .pop th{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
 .pop .st{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;border-radius:5px;padding:2px 6px;white-space:nowrap}
 .pop .st.todo{background:var(--amberbg);color:#7A4E12}.pop .st.unmapped{background:#E9EEED;color:var(--slate)}.pop .st.mapped{background:var(--greenbg);color:#1E5A40}
+.pop .sumwrap{overflow-x:auto;margin-top:4px}
+.pop table.sum{min-width:760px}
+.pop table.sum td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pop table.sum td.v small{display:block;color:var(--muted);font-size:10.5px}
+.pop table.sum td.src b{display:block;font-size:12.5px}
+.pop table.sum td.src span{font-size:11px;color:var(--muted)}
+.pop .arm{display:inline-block;font-family:var(--mono);font-size:10px;border:1px solid var(--line);border-radius:5px;padding:1px 5px;margin:1px 3px 1px 0;background:#fff}
 .pop pre{font-family:var(--mono);font-size:11.5px;line-height:1.55;white-space:pre;overflow:auto;background:#0C2B2F;color:#CFE6E2;border-radius:11px;padding:13px;margin:8px 0 0}
 .pop ul{margin:6px 0 0 18px;padding:0}.pop li{margin:2px 0}
 .pop code{font-family:var(--mono);font-size:11.5px;background:#F1F5F4;border:1px solid var(--line);border-radius:5px;padding:1px 5px}
@@ -156,6 +163,8 @@ export default function MasquePopulation() {
 
         {st.phase === "loading" && <div className="card"><div className="empty">Loading…</div></div>}
 
+        {st.phase === "ready" && valid.length > 1 && <SummaryTable artifacts={valid} />}
+
         {st.phase === "ready" && valid.map(a => (
           <div className="card" key={a.path}>
             <div className="chdr"><FileJson size={16} color="var(--petrol)" /><div><div className="ce">Population estimate</div><div className="ct num">{a.path}</div></div></div>
@@ -236,6 +245,49 @@ export default function MasquePopulation() {
 
         <p className="foot">PROTOTYPE · not for clinical use · screening-level, not diagnosed prevalence · this page performs no arithmetic<br/>app {APP_VERSION}{mapVersion ? ` · map ${mapVersion}` : ""}{valid.length ? ` · ${valid.length} artifact${valid.length === 1 ? "" : "s"} rendered` : " · no artifact rendered"}</p>
       </div>
+    </div>
+  );
+}
+
+/*  Cross-source summary. One row per rendered artifact, every figure read from that
+    artifact as the ETL wrote it: no pooling, no averaging, no differences computed.
+    The columns exist so a reader can see WHY two rows differ before comparing them:
+    the population, the headache item and the otologic arms are part of each row's
+    phenotype definition, and rows with different definitions are not the same
+    measurement.
+*/
+function SummaryTable({ artifacts }) {
+  const bySex = (art, lvl) => (art.estimates || []).find(e => e.domain === `sex=${lvl}`);
+  const cell = e => !e ? <td className="v">—</td>
+    : e.suppress ? <td className="v">suppressed<small>{e.suppressReason ? "NCHS standard" : ""}</small></td>
+    : <td className="v">{fmtValue(e)}<small>{Array.isArray(e.ci) ? `${fmtValue(e, e.ci[0])}–${fmtValue(e, e.ci[1])}` : "no interval"}</small></td>;
+  return (
+    <div className="card">
+      <div className="chdr"><BarChart3 size={16} color="var(--petrol)" /><div><div className="ce">Across sources</div><div className="ct">Phenotype prevalence by survey and cycle</div></div></div>
+      <div className="sumwrap">
+        <table className="sum">
+          <thead><tr><th>Source</th><th>Population</th><th>Headache item</th><th>Otologic arms</th><th>All</th><th>Women</th><th>Men</th></tr></thead>
+          <tbody>
+            {artifacts.map(({ path, art }) => {
+              const src = art.source || {}, ph = art.phenotype || {}, el = ph.eligibility;
+              const total = (art.estimates || []).find(isTotal);
+              const head = ph.variableMap?.headache_migraine;
+              return (
+                <tr key={path}>
+                  <td className="src"><b>{src.dataset} {src.cycle}</b><span>{(ph.unmapped || []).length} concept{(ph.unmapped || []).length === 1 ? "" : "s"} unmapped</span></td>
+                  <td>{el && el.var ? `${el.var}${el.min != null ? ` ≥ ${el.min}` : ""}${el.max != null ? ` ≤ ${el.max}` : ""}` : "all respondents"}{total ? <div style={{fontSize:11,color:"var(--muted)"}}>n = {Number(total.unweightedN).toLocaleString()}</div> : null}</td>
+                  <td className="num" style={{fontSize:11.5}}>{Array.isArray(head) ? head.join(", ") : (head || "—")}</td>
+                  <td>{(ph.rule?.any || []).map(a => <span className="arm" key={a}>{a}</span>)}</td>
+                  {cell(total)}{cell(bySex(art, "female"))}{cell(bySex(art, "male"))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="notew"><Info size={13} style={{flex:"0 0 auto",marginTop:1}} /><span>
+        Each row is its own phenotype definition. Rows differ by survey, age floor, headache item and otologic arms, so compare figures across rows only where those columns match. Weighted estimates with 95% intervals as produced by the ETL; this table computes nothing.
+      </span></div>
     </div>
   );
 }

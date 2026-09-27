@@ -1,6 +1,26 @@
 {
-  "_note": "Adding a population estimate is a data commit, not a code change: run app/etl/masque_population_etl.R, commit the JSON it writes into this folder, and add its path here. app/population.html validates each listed file against app/etl/population_estimates.schema.json before rendering it and refuses anything that fails. Paths are relative to app/. One artifact per survey cycle; cycles are not pooled.",
+  "_note": "Adding a population estimate is a data commit, not a code change: run app/etl/masque_population_etl.R, commit the JSON it writes into this folder, and add its path here. app/population.html validates each listed file against app/etl/population_estimates.schema.json before rendering it and refuses anything that fails. Paths are relative to app/. One artifact per survey cycle (plus an age-restricted comparator where noted); cycles and surveys are not pooled.",
   "artifacts": [
+    {
+      "path": "./data/population-estimates.nhis-2023.json",
+      "addedOn": "2026-09-27",
+      "note": "NHIS 2023 Sample Adult, all adults, headache + dizziness/balance, hearing or tinnitus"
+    },
+    {
+      "path": "./data/population-estimates.nhis-2023-age40.json",
+      "addedOn": "2026-09-27",
+      "note": "NHIS 2023, adults 40+, comparator for the NHANES 1999-2004 artifacts"
+    },
+    {
+      "path": "./data/population-estimates.nhis-2021.json",
+      "addedOn": "2026-09-27",
+      "note": "NHIS 2021, all adults, headache + hearing only (no balance or tinnitus item fielded)"
+    },
+    {
+      "path": "./data/population-estimates.nhis-2019.json",
+      "addedOn": "2026-09-27",
+      "note": "NHIS 2019, all adults, headache + hearing only (no balance or tinnitus item fielded)"
+    },
     {
       "path": "./data/population-estimates.nhanes-1999-2000.json",
       "addedOn": "2026-09-24",
