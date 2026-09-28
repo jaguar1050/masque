@@ -85,6 +85,16 @@
       "path": "./data/population-estimates.meps-2021-sinus.json",
       "addedOn": "2026-09-28",
       "note": "MEPS 2021, adults reporting sinusitis: share also reporting headache or migraine, and spending (all payers, nominal 2021 dollars) on care linked to sinusitis"
+    },
+    {
+      "path": "./data/population-estimates.meps-2019-2021.json",
+      "addedOn": "2026-09-28",
+      "note": "MEPS 2019-2021 pooled (annual design, weights / 3, per AHRQ HC-036 documentation), adults: the phenotype as reported conditions"
+    },
+    {
+      "path": "./data/population-estimates.meps-2019-2021-sinus.json",
+      "addedOn": "2026-09-28",
+      "note": "MEPS 2019-2021 pooled, adults reporting sinusitis: share also reporting headache or migraine, and sinusitis-care spending (mean, and average annual national total)"
     }
   ],
   "reviewed": [

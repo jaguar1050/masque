@@ -222,7 +222,14 @@ What is different about MEPS, all declared in the maps and repeated in each arti
 - **Dollars are nominal** for the survey year; no inflation adjustment.
 - **Cost rows are declared in the map** (`costEstimates`: name, variable, `mean` or `total`, and whether the domain is all eligible adults or only the phenotype-positive ones). The spending rows for adults with both sinusitis and headache are computed and suppressed in every year (62, 46 and 49 sample adults).
 - **Suppression follows AHRQ:** unweighted n at least 100 (`_meta.minUnweightedN`), RSE at most 30%, and at least 30 phenotype-positive sample persons for proportions.
-- **Years are not pooled.** Pooling MEPS years needs AHRQ's pooled-variance linkage file (HC-036) to put strata and PSUs on a common frame; stacking the annual design variables would understate the variance.
+- **Pooling 2019–2021.** `meps_pool.py` stacks the per-year CSVs (a person sampled in two or three years contributes one record per year), divides `PERWT` by the number of years so totals are average annual totals, and keeps the annual `VARSTR`/`VARPSU`. AHRQ's HC-036 documentation (August 2026, sections C-1 and C-2) directs exactly this when every pooled year is 2019 or later; the HC-036 strata and PSUs are required only when 2019+ years are pooled with earlier ones, and the two structures are never mixed. With `--hc036 h36u24.dat` the script also attaches `STRA9624`/`PSU9624` (merged on DUPERSID and PANEL; PANEL is the first two digits of DUPERSID from 2018 on, checked for every record), so the pooled estimate can be re-run on the HC-036 structure as a check.
+
+   ```
+   python app/etl/meps_pool.py --hc036 h36u24.dat --out meps_2019_2021.csv meps_2019.csv meps_2020.csv meps_2021.csv
+   Rscript app/etl/masque_population_etl.R --data meps_2019_2021.csv --map app/etl/phenotype_map_meps_2019_2021_sinus.json --out ...
+   ```
+
+   Pooled totals are named `sinus_care_spend_annual_total_*` so they cannot be read as one year's total.
 - **The sinusitis denominator is, in practice, adults with sinusitis-linked care.** All but one of the 1,566 adult person-year records reporting sinusitis across the three years have at least one linked event, so no one is averaged in at zero.
 - **A few people move a year's spending.** The largest single sample adult carries 7% (2019), 16% (2020) and 24% (2021) of the weighted total; the 2021 artifact says so in its caveats.
 
@@ -232,4 +239,4 @@ What is different about MEPS, all declared in the maps and repeated in each arti
 
 Closes the mechanism for §7.3's first output, end to end: estimator, contract, committed-artifact path, page. **Does not by itself close the deliverable** — that needs a filled map and a real run. What exists now is the contract, the estimator, the renderer and the page, so the remaining work is codebook lookup and one command rather than architecture.
 
-Still out of scope here: pooling NHIS or NHANES cycles (needs cycle-specific weight adjustment) and MEPS years (needs HC-036), inflation-adjusting MEPS dollars, an avoidable-cost rule (a clinical decision), and the reproducibility rebuild in §8 beyond the source hash — that needs the ETL run recorded with the file hash pinned, which the artifact now carries.
+Still out of scope here: pooling NHIS or NHANES cycles (needs cycle-specific weight adjustment) and MEPS years before 2019 (needs HC-036 and the pre-2019 files), inflation-adjusting MEPS dollars, an avoidable-cost rule (a clinical decision), and the reproducibility rebuild in §8 beyond the source hash — that needs the ETL run recorded with the file hash pinned, which the artifact now carries.

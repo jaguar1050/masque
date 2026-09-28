@@ -98,6 +98,8 @@ Results, share of reports in this sample (simple binomial intervals; not a preva
 | File | What it is |
 |---|---|
 | `app/etl/meps_prepare.py` | New. Reads one MEPS year's SAS V9 files with pyreadstat and writes one row per person: design variables, `AGELAST`, `SEX`, `TOTEXP`, condition codes joined in `CONDS`, and `COST_<concept>` for each map-listed cost concept (all-payer spending on distinct events linked to that concept; office-based, outpatient, emergency, inpatient, prescribed medicines). Writes a provenance file with each input's sha256 and the link counts. |
+| `app/etl/meps_pool.py` | New. Stacks per-year CSVs, divides `PERWT` by the number of years, keeps the annual design, and optionally attaches HC-036 `STRA9624`/`PSU9624` by DUPERSID + PANEL; refuses pre-2018 years (PANEL comes from DUPERSID) and any record without exactly one HC-036 match. Standard library only. |
+| `phenotype_map_meps_2019_2021.json`, `..._sinus.json` | The 2021 maps with pooled metadata and caveats; pooled totals renamed `sinus_care_spend_annual_total_*`. |
 | `phenotype_map_meps_2019.json`, `_2020.json`, `_2021.json`, `..._sinus.json` | ICD-10-CM prefixes on `CONDS` (headache G43/G44/R51; dizziness R42/H81/H82; hearing H90/H91; H93 for tinnitus; sinusitis J01/J32), adults (`AGELAST` ≥ 18), `minUnweightedN` 100, `minPositiveCases` 30. The sinus maps add `costEstimates`. |
 | `masque_population_etl.R` 0.6.0 | Prefix match inside a delimited list; records with zero or missing weight are dropped from every domain (MEPS gives out-of-scope persons weight 0); `_meta.minUnweightedN` (default 30, as before); map-declared `costEstimates` (mean or total, over the eligible domain or its phenotype-positive part), overall and by sex; a row whose interval cannot be computed is suppressed with `ci: [null, null]`. The eligibility caveat no longer ends in a doubled full stop. `_meta.suppressionStandard` names whose rule a suppressed row fell under: the MEPS maps say AHRQ, the FAERS maps say NCHS thresholds applied by analogy (FAERS has no standard of its own); unset keeps the NCHS wording. |
 | `population_estimates.schema.json` | `ci` items may be `null` (only on a suppressed row). |
@@ -128,7 +130,22 @@ The MEPS phenotype is far below the NHIS and NHANES figures because a MEPS condi
 
 Much of the 2021 spending rise is one person. One sample adult (four outpatient events of about $35,000 each, each linked to chronic sinusitis alone) carries 24% of the weighted 2021 total; without that person the mean is about $645. The largest single person carries 7% in 2019 and 16% in 2020. The 2021 artifact states this in a map caveat. Also, all but one of the 1,566 adult person-year records reporting sinusitis across the three years have sinusitis-linked care, so the sinusitis denominator is in practice adults with sinusitis-linked care.
 
-Not done: pooled 2019–2021 estimates (need AHRQ's HC-036 pooled-variance file), inflation adjustment, and home-health spending (file not supplied).
+**Pooled 2019–2021** (`meps_pool.py`, added when AHRQ's HC-036 file arrived). A correction first: earlier text here and in the README said pooling these years needed HC-036. The HC-036 documentation (sections C-1, C-2) says the opposite for years that are all 2019 or later: use the annual files' common VARSTR/VARPSU. The pooled artifacts do that, with weights divided by 3. HC-036 was used as a check: the file matched its codebook (483,346 records; 28,512 / 27,805 / 28,336 persons flagged for 2019 / 2020 / 2021, equal to the annual files), every pooled record matched one HC-036 row on DUPERSID + PANEL, and it regroups 2,638 records into other strata. Re-running both pooled maps on `STRA9624`/`PSU9624` gives standard errors within 0.5% of the annual design's on every row (ratios 0.995–1.003) and the same suppression decisions.
+
+84,653 records, 46,263 distinct persons.
+
+| Estimate, pooled 2019–2021 | All | Women | Men |
+|---|---|---|---|
+| Phenotype | 0.23% (0.18–0.28), 149 of 64,432 | 0.36% | 0.09% (0.05–0.13), 32 positive |
+| Among adults reporting sinusitis, share also reporting headache or migraine | 9.19% (7.02–11.35), 157 of 1,566 | 11.94% | suppressed (19 positive) |
+| Sinusitis-care spending per adult with sinusitis | $565 ($406–$724) | $486 | $719 ($303–$1,135) |
+| Same, average annual national total | $3.76 billion ($2.67–$4.85 billion) | $2.14 billion | $1.62 billion |
+| Spending per adult with sinusitis and headache or migraine | suppressed (RSE 35%) | $454 ($215–$692), n = 138 | suppressed |
+| Same, average annual national total | suppressed | $0.24 billion | suppressed |
+
+Pooling brings in three figures no single year could report: the phenotype for men, spending for men, and spending for women with both conditions. The men's spending rests largely on the 2021 case (25% of the men's total; $539 without it), and the artifact says so. Dollars are each year's nominal dollars averaged.
+
+Not done: inflation adjustment, and home-health spending (file not supplied).
 
 ## Verification
 

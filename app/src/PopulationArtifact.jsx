@@ -38,6 +38,8 @@ const QUANTITIES = {
   sinus_care_spend_total_all: { label: "Sinusitis-care spending, national total, all with sinusitis", unit: "usd" },
   sinus_care_spend_mean_with_headache:  { label: "Sinusitis-care spending per person, with headache or migraine", unit: "usd" },
   sinus_care_spend_total_with_headache: { label: "Sinusitis-care spending, national total, with headache or migraine", unit: "usd" },
+  sinus_care_spend_annual_total_all: { label: "Sinusitis-care spending, average annual national total, all with sinusitis", unit: "usd" },
+  sinus_care_spend_annual_total_with_headache: { label: "Sinusitis-care spending, average annual national total, with headache or migraine", unit: "usd" },
   annual_cost_mean:     { label: "Mean annual cost",     unit: "usd" },
   avoidable_cost_mean:  { label: "Mean avoidable cost",  unit: "usd" },
 };
