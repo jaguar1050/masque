@@ -198,10 +198,37 @@ Rscript app/etl/masque_population_etl.R --data faers_reports.csv --map app/etl/p
 - `patientsex` follows openFDA coding (0 unknown, 1 male, 2 female); age is not used.
 - **No narratives.** Only 24 records carry the narrative field and all hold a "CASE EVENT DATE" stamp, so the proposal 7.2 narrative benchmark cannot run on openFDA data. The MedDRA-term lexicon check is recorded in `docs/refactor/02-app-divergences.md`.
 
+### MEPS 2019–2020, as run on 28 September 2026
+
+MEPS is the only source here with expenditures, so it carries the cost half of §7.3. It is a person-level survey with its own design (`PERWTyyF`, `VARSTR`, `VARPSU`), and each year is its own map and its own artifact.
+
+1. **Build the person file.** `meps_prepare.py` (needs `pip install pyreadstat`) reads the SAS V9 public-use files for one year: full-year consolidated, conditions, condition-event links, and the office-based, outpatient, emergency, inpatient and prescribed-medicine event files. It writes one row per person with the condition codes joined into `CONDS`, and a `COST_<concept>` column for each concept the map lists under `costConcepts`. Every input's sha256 goes into a provenance file.
+
+   ```
+   python app/etl/meps_prepare.py --year 2019 --map app/etl/phenotype_map_meps_2019_sinus.json \
+       --fyc h216.sas7bdat --cond h214.sas7bdat --clnk h213if1.sas7bdat \
+       --ob h213g.sas7bdat --op h213f.sas7bdat --er h213e.sas7bdat --ip h213d.sas7bdat --rx h213a.sas7bdat \
+       --out meps_2019.csv
+   ```
+
+   For 2020 the files are h224 (FYC), h222 (conditions), h220if1 (links) and h220a/d/e/f/g (events).
+
+2. **Run the ETL** with `phenotype_map_meps_<year>.json` (the MASQUE phenotype as reported conditions) or `phenotype_map_meps_<year>_sinus.json` (among adults reporting sinusitis, the share also reporting headache or migraine, plus the spending rows).
+
+What is different about MEPS, all declared in the maps and repeated in each artifact's caveats:
+
+- **Conditions are household-reported**, coded by AHRQ to ICD-10-CM and truncated to three characters on the public file. Rare codes are collapsed for confidentiality, so H81/H82 (vestibular), H90 and J01 never appear, and H93 (which contains tinnitus) cannot be narrowed to tinnitus.
+- **Spending is linked, not attributed.** `COST_sinus_condition` sums all-payer expenditures of every distinct event linked to a sinusitis condition (prescriptions link through `LINKIDX`). An event also linked to another condition counts in full, so the figure is an upper bound. Home health events are not included (file not supplied).
+- **Dollars are nominal** for the survey year; no inflation adjustment.
+- **Cost rows are declared in the map** (`costEstimates`: name, variable, `mean` or `total`, and whether the domain is all eligible adults or only the phenotype-positive ones). The spending rows for adults with both sinusitis and headache are computed and suppressed in both years (62 and 46 sample adults).
+- **Suppression follows AHRQ:** unweighted n at least 100 (`_meta.minUnweightedN`), RSE at most 30%, and at least 30 phenotype-positive sample persons for proportions.
+- **Years are not pooled.** Pooling MEPS years needs AHRQ's pooled-variance linkage file (HC-036) to put strata and PSUs on a common frame; stacking the annual design variables would understate the variance.
+- **2021 is waiting on files.** The office-based, outpatient and prescribed-medicine event files are in hand. The full-year consolidated file (h233), conditions (h231), links (h229if1), emergency (h229e) and inpatient (h229d) files are still needed.
+
 ---
 
 ## What this does and doesn't close
 
 Closes the mechanism for §7.3's first output, end to end: estimator, contract, committed-artifact path, page. **Does not by itself close the deliverable** — that needs a filled map and a real run. What exists now is the contract, the estimator, the renderer and the page, so the remaining work is codebook lookup and one command rather than architecture.
 
-Still out of scope here: pooling multiple cycles (needs cycle-specific weight adjustment), inflation-adjusting MEPS dollars, and the reproducibility rebuild in §8 beyond the source hash — that needs the ETL run recorded with the file hash pinned, which the artifact now carries.
+Still out of scope here: pooling NHIS or NHANES cycles (needs cycle-specific weight adjustment) and MEPS years (needs HC-036), inflation-adjusting MEPS dollars, an avoidable-cost rule (a clinical decision), and the reproducibility rebuild in §8 beyond the source hash — that needs the ETL run recorded with the file hash pinned, which the artifact now carries.

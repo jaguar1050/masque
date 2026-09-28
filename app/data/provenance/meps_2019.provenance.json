@@ -1,0 +1,60 @@
+{
+  "preparedBy": "meps_prepare.py 0.1.0",
+  "preparedAt": "2026-09-28T05:57:57Z",
+  "year": "2019",
+  "map": "phenotype_map_meps_2019_sinus.json",
+  "costConcepts": [
+    "sinus_condition"
+  ],
+  "links": {
+    "sinus_condition": {
+      "linkedEvents": 2011,
+      "eventsWithoutExpenditureRecord": 0,
+      "byEventType": {
+        "8": 1070,
+        "1": 854,
+        "2": 58,
+        "3": 28,
+        "4": 1
+      }
+    }
+  },
+  "inputs": {
+    "fyc": {
+      "file": "h216.sas7bdat",
+      "sha256": "857bab612836b58e9fdf1d622b0ab3134d6b6141d1e5f6dc620f8cab2217edc2"
+    },
+    "cond": {
+      "file": "h214.sas7bdat",
+      "sha256": "3d35fe47fb602fc3ec7c9cd8fc6b010246368eb589d910d155b18d1ea2b85d30"
+    },
+    "clnk": {
+      "file": "h213if1.sas7bdat",
+      "sha256": "413a28bb19667bffc050d0266912d5f1b2f08562d1d4ce60c14eaba71932d03d"
+    },
+    "ob": {
+      "file": "h213g.sas7bdat",
+      "sha256": "7d55183dcbb2246ea9d86d69d32b3aab65b1e549a383bf10e5e149d868ec60f9"
+    },
+    "op": {
+      "file": "h213f.sas7bdat",
+      "sha256": "d62cd924e84ef4f13efab41f634073c0e7be61aff3cd8c4ac04c37671a19a52b"
+    },
+    "er": {
+      "file": "h213e.sas7bdat",
+      "sha256": "bcda8c3e8036c68c5094129d3b673f9f355ffdbb30b4c37e2d5f896ddbedea55"
+    },
+    "ip": {
+      "file": "h213d.sas7bdat",
+      "sha256": "eeb0261c90aad48877eb40524b453dcde950a7e78d4bc6952059f0be20c9e182"
+    },
+    "rx": {
+      "file": "h213a.sas7bdat",
+      "sha256": "92c97abda3be5340332e84d1901e36fdeaa47b4d843f3f1a4665fda701dacddc"
+    }
+  },
+  "persons": 28512,
+  "personsWithPositiveWeight": 27648,
+  "output": "meps_2019.csv",
+  "outputSha256": "fa25436ede6a4ee04d5cf60f9597e9139e9e76dae4dc78af53066c738650868e"
+}

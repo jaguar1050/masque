@@ -1,0 +1,149 @@
+{
+  "_meta": {
+    "mapFile": "phenotype_map_meps_2020.json",
+    "mapVersion": "0.1.0",
+    "dataset": "MEPS",
+    "cycle": "2020",
+    "file": "meps_2020.csv (meps_prepare.py of h224, h222, h220if1 and the h220 event files)",
+    "url": "https://meps.ahrq.gov/mepsweb/data_stats/download_data_files.jsp",
+    "steward": "AHRQ",
+    "codebook": "MEPS 2020 public-use file documentation; variable labels read from the SAS V9 files",
+    "unitOfAnalysis": "person",
+    "estimateName": "phenotype_prevalence",
+    "minPositiveCases": 30,
+    "minUnweightedN": 100,
+    "suppressionStandard": "AHRQ MEPS reliability standard",
+    "STATUS": "FILLED 28 September 2026 from the MEPS 2020 public-use files; variable names and labels read from the files."
+  },
+  "design": {
+    "_verified": "MEPS person weight PERWT20F, variance strata VARSTR, PSU VARPSU (PSU numbers repeat across strata, so nested). Persons with zero weight are out of scope and excluded from every domain by the ETL.",
+    "weight": "PERWT",
+    "strata": "VARSTR",
+    "psu": "VARPSU",
+    "nest": true,
+    "lonelyPsu": "adjust"
+  },
+  "demographics": {
+    "sex": {
+      "var": "SEX",
+      "recode": {
+        "1": "male",
+        "2": "female"
+      },
+      "missing": [
+        -7,
+        -8,
+        -9
+      ],
+      "_note": "MEPS SEX: 1 male, 2 female."
+    },
+    "gender": {
+      "var": null,
+      "_status": "unmapped",
+      "_note": "No gender-identity item on the MEPS public-use file."
+    },
+    "age": {
+      "var": "AGELAST",
+      "_status": "mapped",
+      "_note": "Age the last time eligible during the year, top-coded at 85."
+    }
+  },
+  "phenotype_concepts": {
+    "_instruction": "MEPS concepts are the person's reported conditions (Medical Conditions file, ICD10CDX: ICD-10-CM truncated to 3 characters on the public file), joined into CONDS by meps_prepare.py and matched by prefix. absentIsNegative: a condition not reported during the year counts as not reported.",
+    "headache_migraine": {
+      "vars": [
+        "CONDS"
+      ],
+      "positivePrefixes": [
+        "G43",
+        "G44",
+        "R51"
+      ],
+      "delimiter": "|",
+      "absentIsNegative": true,
+      "_status": "mapped",
+      "questionText": "Headache or migraine condition: G43 migraine, G44 other headache syndromes, R51 headache."
+    },
+    "dizziness_balance": {
+      "vars": [
+        "CONDS"
+      ],
+      "positivePrefixes": [
+        "R42",
+        "H81",
+        "H82"
+      ],
+      "delimiter": "|",
+      "absentIsNegative": true,
+      "_status": "mapped",
+      "questionText": "Dizziness or vestibular condition: R42 dizziness and giddiness, H81 disorders of vestibular function, H82 vertiginous syndromes. H81/H82 do not appear on the public file (collapsed for confidentiality); R42 carries the arm."
+    },
+    "hearing_difficulty": {
+      "vars": [
+        "CONDS"
+      ],
+      "positivePrefixes": [
+        "H90",
+        "H91"
+      ],
+      "delimiter": "|",
+      "absentIsNegative": true,
+      "_status": "mapped",
+      "questionText": "Hearing loss condition: H90 conductive and sensorineural, H91 other and unspecified hearing loss."
+    },
+    "tinnitus": {
+      "vars": [
+        "CONDS"
+      ],
+      "positivePrefixes": [
+        "H93"
+      ],
+      "delimiter": "|",
+      "absentIsNegative": true,
+      "_status": "mapped",
+      "questionText": "H93 other disorders of the ear, which includes tinnitus (H93.1). The public file truncates codes to 3 characters, so tinnitus cannot be separated from the other H93 conditions; this arm is broader than tinnitus."
+    },
+    "sinus_condition": {
+      "vars": [
+        "CONDS"
+      ],
+      "positivePrefixes": [
+        "J01",
+        "J32"
+      ],
+      "delimiter": "|",
+      "absentIsNegative": true,
+      "_status": "mapped",
+      "questionText": "Sinusitis condition: J01 acute, J32 chronic sinusitis. J01 does not appear on the public file; J32 carries the arm."
+    },
+    "recalcitrance_proxy": {
+      "vars": [],
+      "positiveCodes": [],
+      "_status": "unmapped",
+      "questionText": "",
+      "_hint": "MEPS could approximate recalcitrance (repeat antibiotic or steroid fills linked to sinusitis within the year); not built in this pass."
+    }
+  },
+  "caveats": [
+    "Conditions are household-reported and coded by AHRQ to ICD-10-CM. A condition record means it was reported during the year (as a reason for care, a disability day or a current condition), not that a clinician confirmed it.",
+    "Codes are truncated to three characters on the public file and rare codes are collapsed for confidentiality, so vestibular disorders (H81/H82), H90 hearing loss and acute sinusitis (J01) do not appear, and tinnitus cannot be separated from other H93 ear disorders.",
+    "Suppressed unless the unweighted denominator is at least 100, at least 30 sample persons are phenotype-positive, and the RSE is 30% or less.",
+    "2020 data collection and health-care use were disrupted by the COVID-19 pandemic; AHRQ cautions comparisons of 2020 with other years."
+  ],
+  "phenotype_rule": {
+    "all": [
+      "headache_migraine"
+    ],
+    "any": [
+      "dizziness_balance",
+      "hearing_difficulty",
+      "tinnitus"
+    ]
+  },
+  "eligibility": {
+    "var": "AGELAST",
+    "min": 18,
+    "reason": "Adults, for comparability with the other adult sources."
+  },
+  "phenotype_definition": "Adults reporting a headache or migraine condition AND a dizziness, hearing-loss or other ear (H93, includes tinnitus) condition during the year. The proposal 7.1 phenotype as MEPS reported conditions; the sinusitis arm is reported with its costs separately."
+}

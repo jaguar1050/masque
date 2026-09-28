@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# masque_population_etl.R  v0.5.0
+# masque_population_etl.R  v0.6.0
 #
 # Reads a survey public-use file, applies the MASQUE §7.1 computable phenotype from
 # a versioned mapping file, and emits a design-aware population-estimates artifact
@@ -106,13 +106,33 @@
 #      report its own PSU, i.e. a simple binomial variance) says so in the artifact
 #      instead of claiming Taylor linearization of a survey design it does not have.
 #   3. `_meta.unitOfAnalysis` may be "report".
+#
+# CHANGES 0.5.0 -> 0.6.0 — MEPS (persons, reported conditions, linked expenditures):
+#
+#   1. `positivePrefixes` with a `delimiter`: prefix match on each element of a
+#      delimited code list (MEPS: a person's condition codes joined by '|').
+#   2. Records with zero or missing weight are never in any domain. MEPS carries
+#      out-of-scope persons with PERWTyyF = 0; they contribute nothing to an estimate
+#      and must not be counted in an unweighted denominator either.
+#   3. `_meta.minUnweightedN` (default 30): minimum unweighted denominator.
+#   4. `costEstimates` in the map: [{name, var, statistic: "mean"|"total", unit, domain}],
+#      computed within the eligible domain ("eligible") or among its phenotype-positive
+#      records ("positive", the default), overall
+#      and by sex, with the same suppression rules. This is the cost-of-illness half
+#      of proposal 7.3; the panel and page render usd rows as dollars.
+#   5. An interval that cannot be computed (too few PSUs in a tiny subgroup) forces
+#      suppression and is written as [null, null], never as a number.
+#   6. The eligibility caveat strips the reason's own closing full stop, so it no
+#      longer ends in "..". Caveat text only; no estimate changes.
+#   7. `_meta.suppressionStandard` names whose reliability rule the thresholds are, in
+#      each suppressReason. Unset keeps the NCHS wording.
 # ---------------------------------------------------------------------------
 
 suppressPackageStartupMessages({
   library(survey); library(jsonlite); library(digest)
 })
 
-ETL_VERSION <- "0.5.0"
+ETL_VERSION <- "0.6.0"
 
 # Lonely PSUs (a stratum contributing a single PSU after subsetting) are common in
 # domain analysis. "adjust" centres them at the population mean rather than erroring
@@ -243,7 +263,9 @@ pos <- function(varnames, codes, skip = NULL, prefixes = NULL, absent_negative =
     hit <- Reduce(`|`, lapply(varnames, function(v) {
       if (!v %in% names(df)) stop(sprintf("Mapped variable %s not present in the data file", v))
       x <- as.character(df[[v]]); x[is.na(x)] <- ""
-      Reduce(`|`, lapply(prefixes, function(p) startsWith(x, p)))
+      if (!is.null(delimiter)) {
+        vapply(strsplit(x, delimiter, fixed = TRUE), function(el) any(vapply(prefixes, function(p) any(startsWith(el, p)), logical(1))), logical(1))
+      } else Reduce(`|`, lapply(prefixes, function(p) startsWith(x, p)))
     }))
     return(as.integer(hit))
   }
@@ -302,23 +324,28 @@ des <- svydesign(
 # rows before svydesign() drops the strata and PSUs that contribute to the variance
 # of a subpopulation estimate, and the resulting standard errors are wrong.
 MIN_POS <- map$`_meta`$minPositiveCases
+MIN_N <- if (is.null(map$`_meta`$minUnweightedN)) 30 else map$`_meta`$minUnweightedN
 EST_NAME <- if (is.null(map$`_meta`$estimateName)) "phenotype_prevalence" else map$`_meta`$estimateName
 UNIT <- if (is.null(map$`_meta`$unitOfAnalysis)) "person" else map$`_meta`$unitOfAnalysis
-est_row <- function(name, domain, obj, sub) {
+# Whose reliability rule the thresholds are: named in the suppression reason so a suppressed
+# MEPS row does not cite NCHS. Unset keeps the wording every earlier artifact carries.
+STD <- map$`_meta`$suppressionStandard
+est_row <- function(name, domain, obj, sub, unit = "proportion") {
   e  <- as.numeric(coef(obj))[1]
   se <- as.numeric(SE(obj))[1]
   ci <- as.numeric(confint(obj, df = degf(sub)))[1:2]
   n  <- sum(!is.na(sub$variables$MASQUE_PHENO))
   npos <- sum(sub$variables$MASQUE_PHENO == 1, na.rm = TRUE)
   rse <- if (is.finite(e) && e != 0) se / abs(e) else NA_real_
+  ci_ok <- all(is.finite(ci))
   # NCHS presentation standards suppress unreliable proportions. Applied here rather
   # than in the panel: the steward's rule belongs with the steward's data.
-  suppress <- is.na(rse) || (!is.na(rse) && rse > 0.30) || n < 30 || (!is.null(MIN_POS) && npos < MIN_POS)
-  row <- list(name = name, unit = "proportion")
+  suppress <- !ci_ok || is.na(rse) || (!is.na(rse) && rse > 0.30) || n < MIN_N || (!is.null(MIN_POS) && npos < MIN_POS)
+  row <- list(name = name, unit = unit)
   if (!is.null(domain)) row$domain <- domain      # omitted for the total, per the schema
   row$estimate    <- e
   row$se          <- se
-  row$ci          <- ci
+  row$ci          <- if (ci_ok) ci else I(c(NA_real_, NA_real_))
   row$unweightedN <- n
   row$unweightedPositives <- npos
   row$weightedN   <- sum(weights(sub), na.rm = TRUE)
@@ -326,8 +353,8 @@ est_row <- function(name, domain, obj, sub) {
   if (!is.na(rse)) row$rse <- rse           # omitted, not null, when the estimate is zero
   row$suppress    <- suppress
   if (suppress) row$suppressReason <- if (!is.null(MIN_POS))
-      sprintf("RSE > 30%%, unweighted n < 30, or fewer than %d phenotype-positive sample records (NCHS reliability standard)", MIN_POS) else
-      "RSE > 30% or unweighted n < 30 (NCHS presentation standard)"
+      sprintf("RSE > 30%%, unweighted n < %d, or fewer than %d phenotype-positive sample records (%s)", MIN_N, MIN_POS, if (is.null(STD)) "NCHS reliability standard" else STD) else
+      sprintf("RSE > 30%% or unweighted n < %d (%s)", MIN_N, if (is.null(STD)) "presentation standard" else STD)
   row
 }
 
@@ -347,6 +374,8 @@ if (has_elig && !is.null(elig$var)) {
   message(sprintf("Eligibility: %s in [%s, %s] — %d of %d respondents", ev, ifelse(is.null(elig$min), "-", elig$min), ifelse(is.null(elig$max), "-", elig$max), sum(df$MASQUE_ELIG), nrow(df)))
 }
 
+wv <- suppressWarnings(as.numeric(df[[d$weight]]))
+df$MASQUE_ELIG <- df$MASQUE_ELIG & !is.na(wv) & wv > 0   # zero-weight (out-of-scope) records are in no domain
 des <- update(des, MASQUE_ELIG = df$MASQUE_ELIG)   # attach the flag to the design in every case
 
 estimates <- list()
@@ -370,6 +399,28 @@ if (!gender_available) {
   }
 }
 
+# --- cost estimates among phenotype-positive records ---------------------------
+for (ce in map$costEstimates) {
+  v <- ce$var
+  if (is.null(v) || !v %in% names(df)) stop(sprintf("costEstimates variable %s not present in the data file", v))
+  if (!ce$statistic %in% c("mean", "total")) stop("costEstimates statistic must be 'mean' or 'total'")
+  df[[v]] <- suppressWarnings(as.numeric(df[[v]]))
+  des <- update(des, COSTV = df[[v]])
+  fml <- ~COSTV
+  stat <- function(sub) if (ce$statistic == "mean") svymean(fml, sub, na.rm = TRUE) else svytotal(fml, sub, na.rm = TRUE)
+  among_all <- identical(ce$domain, "eligible")
+  if (!is.null(ce$domain) && !ce$domain %in% c("eligible", "positive")) stop("costEstimates domain must be 'eligible' or 'positive'")
+  des <- update(des, COSTDOM = if (among_all) df$MASQUE_ELIG else df$MASQUE_ELIG & !is.na(df$MASQUE_PHENO) & df$MASQUE_PHENO == 1)
+  pos_dom <- subset(des, COSTDOM & !is.na(COSTV))
+  MIN_POS_SAVED <- MIN_POS; if (among_all) MIN_POS <- NULL   # an all-eligible cost row is not a count of positives
+  estimates[[length(estimates) + 1]] <- est_row(ce$name, NULL, stat(pos_dom), pos_dom, unit = if (is.null(ce$unit)) "usd" else ce$unit)
+  for (lvl in stats::na.omit(unique(df$SEX_LBL))) {
+    sub <- subset(des, COSTDOM & !is.na(COSTV) & SEX_LBL == lvl)
+    estimates[[length(estimates) + 1]] <- est_row(ce$name, paste0("sex=", lvl), stat(sub), sub, unit = if (is.null(ce$unit)) "usd" else ce$unit)
+  }
+  MIN_POS <- MIN_POS_SAVED
+}
+
 source_block <- list(dataset = map$`_meta`$dataset, cycle = map$`_meta`$cycle,
                      file = basename(data_path), steward = map$`_meta`$steward,
                      url = map$`_meta`$url, sha256 = file_hash)
@@ -385,7 +436,7 @@ caveats <- if (length(unlist(map$caveats))) unlist(map$caveats) else c(
 )
 if (has_elig) caveats <- c(caveats, sprintf("Estimated within the eligible subpopulation only (%s): %s.", paste(c(
     if (!is.null(elig$var)) paste0(toupper(elig$var), if (!is.null(elig$min)) paste0(" >= ", elig$min) else "", if (!is.null(elig$max)) paste0(" <= ", elig$max) else "") else NULL,
-    if (!is.null(elig$concept)) paste0(elig$concept, " positive") else NULL), collapse = ", "), elig$reason))
+    if (!is.null(elig$concept)) paste0(elig$concept, " positive") else NULL), collapse = ", "), sub("[.[:space:]]+$", "", elig$reason)))
 if (length(unmapped)) caveats <- c(caveats, sprintf("Concepts this cycle could not express: %s. The phenotype reported here is narrower than the one defined in proposal 7.1.", paste(unmapped, collapse = ", ")))
 if (!gender_available) caveats <- c(caveats, "No gender-identity item in this cycle: estimates are stratified by sex only. Gender is not substituted from sex.")
 

@@ -1,8 +1,8 @@
 {
   "masqueArtifact": "population-estimates",
   "unitOfAnalysis": "report",
-  "generatedAt": "2026-09-28T02:55:05Z",
-  "producedBy": "masque_population_etl.R 0.5.0 / R survey 4.2.1",
+  "generatedAt": "2026-09-28T06:09:42Z",
+  "producedBy": "masque_population_etl.R 0.6.0 / R survey 4.2.1",
   "source": {
     "dataset": "FAERS (openFDA)",
     "cycle": "openFDA query result, received 2001-2012",

@@ -1,8 +1,8 @@
 {
   "masqueArtifact": "population-estimates",
   "unitOfAnalysis": "report",
-  "generatedAt": "2026-09-28T02:55:13Z",
-  "producedBy": "masque_population_etl.R 0.5.0 / R survey 4.2.1",
+  "generatedAt": "2026-09-28T06:09:52Z",
+  "producedBy": "masque_population_etl.R 0.6.0 / R survey 4.2.1",
   "source": {
     "dataset": "FAERS (openFDA)",
     "cycle": "openFDA query result, received 2001-2012",
@@ -87,7 +87,7 @@
       "df": 56,
       "rse": 0.327808072028005,
       "suppress": true,
-      "suppressReason": "RSE > 30%, unweighted n < 30, or fewer than 30 phenotype-positive sample records (NCHS reliability standard)"
+      "suppressReason": "RSE > 30%, unweighted n < 30, or fewer than 30 phenotype-positive sample records (NCHS thresholds applied by analogy; FAERS has no reliability standard of its own)"
     },
     {
       "name": "headache_share_of_sinusitis_reports",
@@ -102,8 +102,8 @@
       "df": 144,
       "rse": 0.196363714611023,
       "suppress": true,
-      "suppressReason": "RSE > 30%, unweighted n < 30, or fewer than 30 phenotype-positive sample records (NCHS reliability standard)"
+      "suppressReason": "RSE > 30%, unweighted n < 30, or fewer than 30 phenotype-positive sample records (NCHS thresholds applied by analogy; FAERS has no reliability standard of its own)"
     }
   ],
-  "caveats": ["Share of adverse-event REPORTS coding the listed MedDRA terms. FAERS is a voluntary spontaneous-reporting database with no sampling design and no count of people exposed, so this is not a prevalence among people, patients or drug users, and it cannot be compared with the survey or NAMCS rows.", "Reporting is selective: it depends on the drug, publicity, reporter type and era, and a reaction coded on a report is not established as caused by the drug.", "The interval is a simple binomial interval treating each report as independent. It describes counting precision within this set of reports only.", "This is the complete result of one openFDA /drug/event query (53,990 records in five pages, 53,952 unique reports, received 2001-2012), not the full FAERS database. The query that defined it is not recorded in the files. Duplicate report versions were collapsed to one per safetyreportid.", "No case narratives exist in these records: 24 carry the narrative field, and every one holds only a 'CASE EVENT DATE' stamp. The proposal 7.2 narrative-extraction benchmark cannot be run on openFDA data of this kind.", "Estimates are suppressed unless at least 30 reports carry the phenotype and the RSE is 30% or less, the same thresholds used for NAMCS.", "Hypothesis-generating descriptive figure, not a safety signal and not a diagnostic count.", "Estimated within the eligible subpopulation only (sinus_condition positive): Reports coding a sinusitis term: the proposal 3.1 'sinus headache' overlap, parallel to the NAMCS sinusitis-visit estimate. The figure is the share of those reports that also code a headache or migraine term..", "Concepts this cycle could not express: recalcitrance_proxy. The phenotype reported here is narrower than the one defined in proposal 7.1.", "No gender-identity item in this cycle: estimates are stratified by sex only. Gender is not substituted from sex."]
+  "caveats": ["Share of adverse-event REPORTS coding the listed MedDRA terms. FAERS is a voluntary spontaneous-reporting database with no sampling design and no count of people exposed, so this is not a prevalence among people, patients or drug users, and it cannot be compared with the survey or NAMCS rows.", "Reporting is selective: it depends on the drug, publicity, reporter type and era, and a reaction coded on a report is not established as caused by the drug.", "The interval is a simple binomial interval treating each report as independent. It describes counting precision within this set of reports only.", "This is the complete result of one openFDA /drug/event query (53,990 records in five pages, 53,952 unique reports, received 2001-2012), not the full FAERS database. The query that defined it is not recorded in the files. Duplicate report versions were collapsed to one per safetyreportid.", "No case narratives exist in these records: 24 carry the narrative field, and every one holds only a 'CASE EVENT DATE' stamp. The proposal 7.2 narrative-extraction benchmark cannot be run on openFDA data of this kind.", "Estimates are suppressed unless at least 30 reports carry the phenotype and the RSE is 30% or less, the same thresholds used for NAMCS.", "Hypothesis-generating descriptive figure, not a safety signal and not a diagnostic count.", "Estimated within the eligible subpopulation only (sinus_condition positive): Reports coding a sinusitis term: the proposal 3.1 'sinus headache' overlap, parallel to the NAMCS sinusitis-visit estimate. The figure is the share of those reports that also code a headache or migraine term.", "Concepts this cycle could not express: recalcitrance_proxy. The phenotype reported here is narrower than the one defined in proposal 7.1.", "No gender-identity item in this cycle: estimates are stratified by sex only. Gender is not substituted from sex."]
 }

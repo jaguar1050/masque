@@ -93,6 +93,37 @@ Results, share of reports in this sample (simple binomial intervals; not a preva
 | Tinnitus | 1 of 1 as `v_aural` | |
 | Sinusitis | no MASQUE item | Expected: sinusitis is not a scored item. |
 
+## MEPS (28 September 2026)
+
+| File | What it is |
+|---|---|
+| `app/etl/meps_prepare.py` | New. Reads one MEPS year's SAS V9 files with pyreadstat and writes one row per person: design variables, `AGELAST`, `SEX`, `TOTEXP`, condition codes joined in `CONDS`, and `COST_<concept>` for each map-listed cost concept (all-payer spending on distinct events linked to that concept; office-based, outpatient, emergency, inpatient, prescribed medicines). Writes a provenance file with each input's sha256 and the link counts. |
+| `phenotype_map_meps_2019.json`, `_2020.json`, `..._sinus.json` | ICD-10-CM prefixes on `CONDS` (headache G43/G44/R51; dizziness R42/H81/H82; hearing H90/H91; H93 for tinnitus; sinusitis J01/J32), adults (`AGELAST` ≥ 18), `minUnweightedN` 100, `minPositiveCases` 30. The sinus maps add `costEstimates`. |
+| `masque_population_etl.R` 0.6.0 | Prefix match inside a delimited list; records with zero or missing weight are dropped from every domain (MEPS gives out-of-scope persons weight 0); `_meta.minUnweightedN` (default 30, as before); map-declared `costEstimates` (mean or total, over the eligible domain or its phenotype-positive part), overall and by sex; a row whose interval cannot be computed is suppressed with `ci: [null, null]`. The eligibility caveat no longer ends in a doubled full stop. `_meta.suppressionStandard` names whose rule a suppressed row fell under: the MEPS maps say AHRQ, the FAERS maps say NCHS thresholds applied by analogy (FAERS has no standard of its own); unset keeps the NCHS wording. |
+| `population_estimates.schema.json` | `ci` items may be `null` (only on a suppressed row). |
+| `PopulationArtifact.jsx` | Labels for the MEPS quantities; totals of a million dollars or more print as "$923.4 million" or "$3.33 billion"; condition codes are called condition codes, not diagnosis codes, outside NAMCS. |
+| `MASQUE_Population.jsx` | Suppressed summary cells name the standard from the row's own reason instead of always "NCHS standard". Summary-table sex cells now take the headline quantity's own subgroup rows (previously the first `sex=` row of any quantity, which was right only because every earlier artifact had one quantity); each row names its quantity; a note that the dollar figures are spending, not avoidable cost. |
+
+All eleven earlier artifacts were regenerated with ETL 0.6.0 and their original download dates. Every estimate, interval, n and suppression flag is identical; the files gain `unitOfAnalysis` and `unweightedPositives` (written since 0.4.0) and lose the doubled full stop.
+
+Results. Adults 18+; household-reported conditions; sex strata only (no gender item). Suppressed: RSE > 30%, n < 100, or fewer than 30 positive sample persons.
+
+| Estimate | Year | All | Women | Men |
+|---|---|---|---|---|
+| Headache or migraine condition + dizziness, hearing-loss or H93 ear condition | 2019 | 0.19% (0.12–0.25), 42 of 21,306 | 0.27% | suppressed (11 positive) |
+| | 2020 | 0.24% (0.17–0.32), 52 of 21,140 | 0.38% | suppressed (11 positive) |
+| Among adults reporting sinusitis, share also reporting headache or migraine | 2019 | 8.87% (6.47–11.26), 62 of 643 | 12.62% | suppressed (6 positive) |
+| | 2020 | 9.56% (6.11–13.00), 46 of 462 | 11.69% | suppressed (7 positive) |
+| Sinusitis-care spending per adult with sinusitis, nominal $ | 2019 | $402 ($300–$505) | $463 | $300 |
+| | 2020 | $505 ($293–$717) | $394 | suppressed (RSE 41%) |
+| Sinusitis-care spending, national total | 2019 | $3.33 billion ($2.41–$4.25 billion) | $2.40 billion | $0.92 billion |
+| | 2020 | $2.90 billion ($1.70–$4.10 billion) | $1.49 billion | suppressed (RSE 40%) |
+| Same spending, adults with sinusitis and headache or migraine | both | suppressed (n = 62, 46) | suppressed | suppressed |
+
+The MEPS phenotype is far below the NHIS and NHANES figures because a MEPS condition record needs the respondent to name the condition as a reason for care, a disability day or a current problem; the interview surveys ask about each symptom directly. The vestibular arm rests on R42 alone (H81/H82 collapsed on the public file). This is a difference of measurement, not of population. The 2020 figures cover the first pandemic year, when MEPS fieldwork moved to telephone and care use fell.
+
+Not done: pooled 2019–2020 estimates (need AHRQ's HC-036 pooled-variance file), inflation adjustment, home-health spending (file not supplied), and 2021 (five of its eight files not yet supplied).
+
 ## Verification
 
 - ETL 0.2.0 was run here (R 4.3.3, survey 4.4) on `app/tests/fixtures/synthetic_nhis_like.csv` with `phenotype_map_synthetic.json`, producing `population-estimates.synthetic.json`. The fixture is invented: `source.dataset` is `SYNTHETIC`, the strata and PSU codes are fake, and the map's status text says so. It exists so the ETL and the renderer can be exercised without a public-use file and is never deployed.
@@ -101,4 +132,4 @@ Results, share of reports in this sample (simple binomial intervals; not a preva
 
 ## Version labels
 
-`APP_VERSION` remains `0.3.0` in every app file, as it was in 0.3.1's source; the README and VERSIONS.md in `reference/` describe release 0.3.1. Reconciling that label is a decision for the next release, recorded in `01-inventory.md` §4, and is not changed here. The ETL carries its own `ETL_VERSION` (0.2.0) and the artifact reports it in `producedBy`.
+`APP_VERSION` remains `0.3.0` in every app file, as it was in 0.3.1's source; the README and VERSIONS.md in `reference/` describe release 0.3.1. Reconciling that label is a decision for the next release, recorded in `01-inventory.md` §4, and is not changed here. The ETL carries its own `ETL_VERSION` (0.6.0) and the artifact reports it in `producedBy`.

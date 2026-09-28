@@ -11,6 +11,7 @@
     "unitOfAnalysis": "report",
     "estimateName": "headache_share_of_sinusitis_reports",
     "minPositiveCases": 30,
+    "suppressionStandard": "NCHS thresholds applied by analogy; FAERS has no reliability standard of its own",
     "STATUS": "FILLED 28 September 2026. Fields per the openFDA field reference; MedDRA term lists built from the terms present in the data and listed per concept for clinical-lead review."
   },
   "design": {

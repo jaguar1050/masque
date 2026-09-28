@@ -33,6 +33,11 @@ const QUANTITIES = {
   headache_share_of_sinusitis_visits: { label: "Headache share of sinusitis visits", unit: "proportion" },
   phenotype_report_share: { label: "Share of adverse-event reports", unit: "proportion" },
   headache_share_of_sinusitis_reports: { label: "Headache share of sinusitis reports", unit: "proportion" },
+  headache_share_of_sinusitis_adults: { label: "Headache share of adults with sinusitis", unit: "proportion" },
+  sinus_care_spend_mean_all:  { label: "Sinusitis-care spending per person, all with sinusitis", unit: "usd" },
+  sinus_care_spend_total_all: { label: "Sinusitis-care spending, national total, all with sinusitis", unit: "usd" },
+  sinus_care_spend_mean_with_headache:  { label: "Sinusitis-care spending per person, with headache or migraine", unit: "usd" },
+  sinus_care_spend_total_with_headache: { label: "Sinusitis-care spending, national total, with headache or migraine", unit: "usd" },
   annual_cost_mean:     { label: "Mean annual cost",     unit: "usd" },
   avoidable_cost_mean:  { label: "Mean avoidable cost",  unit: "usd" },
 };
@@ -40,11 +45,21 @@ const QUANTITIES = {
 // One decimal: national surveys give intervals narrower than a percentage point, and
 // whole-percent rounding would hide the differences the table exists to show.
 export function pct(v)   { if (!Number.isFinite(v)) return "—"; const p = v * 100; return `${p !== 0 && Math.abs(p) < 1 ? p.toFixed(2) : p.toFixed(1)}%`; }
-export function money(v) { return Number.isFinite(v) ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v) : "—"; }
+// National totals carry intervals hundreds of millions of dollars wide; printing them to the
+// dollar would state a precision the survey does not have.
+export function money(v) {
+  if (!Number.isFinite(v)) return "—";
+  if (Math.abs(v) >= 1e9) return `${v < 0 ? "-" : ""}$${(Math.abs(v) / 1e9).toFixed(2)} billion`;
+  if (Math.abs(v) >= 1e6) return `${v < 0 ? "-" : ""}$${(Math.abs(v) / 1e6).toFixed(1)} million`;
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
+}
 
 export function isTotal(e)  { return !(typeof e.domain === "string" && e.domain.length > 0); }
 export function unitOf(e)   { return e.unit || QUANTITIES[e.name]?.unit || null; }
 export function labelOf(e)  { return QUANTITIES[e.name]?.label || e.name; }
+// NAMCS codes are the physician's visit diagnoses; MEPS codes are household-reported
+// conditions that AHRQ coded. Calling the latter "diagnoses" would overstate them.
+export function codeNoun(art) { return art?.unitOfAnalysis === "visit" ? "diagnosis codes" : "condition codes"; }
 export function unitNoun(art) { return art?.unitOfAnalysis === "visit" ? "visits" : art?.unitOfAnalysis === "report" ? "reports" : "respondents"; }
 export function eligibilityText(el) {
   if (!el) return "";
@@ -136,7 +151,7 @@ export default function PopulationArtifact({ art, onClear }) {
         {ph.mapFile && <div className="pa-small" style={{marginTop:4}}>map {ph.mapFile} v{ph.mapVersion}</div>}
         {varMap.length > 0 && (
           <ul>{varMap.map(([concept, vars]) => (
-            <li key={concept} className="pa-code">{concept}: {ph.codeMap && Array.isArray(ph.codeMap[concept]) ? `diagnosis codes ${ph.codeMap[concept].join(", ")}` : ph.termMap && Array.isArray(ph.termMap[concept]) ? `MedDRA terms ${ph.termMap[concept].join(", ")}` : Array.isArray(vars) && vars.length ? vars.join(", ") : (typeof vars === "string" && vars ? vars : "unmapped")}
+            <li key={concept} className="pa-code">{concept}: {ph.codeMap && Array.isArray(ph.codeMap[concept]) ? `${codeNoun(art)} ${ph.codeMap[concept].join(", ")}` : ph.termMap && Array.isArray(ph.termMap[concept]) ? `MedDRA terms ${ph.termMap[concept].join(", ")}` : Array.isArray(vars) && vars.length ? vars.join(", ") : (typeof vars === "string" && vars ? vars : "unmapped")}
               {ph.questionText && ph.questionText[concept] ? <div style={{fontFamily:"inherit",color:"#5C6E6C",marginTop:2}}>{ph.questionText[concept]}</div> : null}</li>
           ))}</ul>
         )}

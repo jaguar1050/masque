@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { BarChart3, Info, ShieldCheck, TriangleAlert, Database, FileJson, Terminal } from "lucide-react";
-import PopulationArtifact, { hasCostRows, isTotal, fmtValue, eligibilityText } from "./PopulationArtifact.jsx";
+import PopulationArtifact, { hasCostRows, isTotal, fmtValue, labelOf, eligibilityText } from "./PopulationArtifact.jsx";
 import { checkSchema, checkArtifactMarker } from "./MASQUE_SchemaCheck.js";
 
 /*  Project MASQUE — Population estimates page
@@ -73,8 +73,9 @@ const CSS = `
 .pop table.sum{min-width:760px}
 .pop table.sum td.v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
 .pop table.sum td.v small{display:block;color:var(--muted);font-size:10.5px}
+.pop table.sum td.v small.why{white-space:normal;max-width:18ch}
 .pop table.sum td.src b{display:block;font-size:12.5px}
-.pop table.sum td.src span{font-size:11px;color:var(--muted)}
+.pop table.sum td.src span{display:block;font-size:11px;color:var(--muted)}
 .pop .arm{display:inline-block;font-family:var(--mono);font-size:10px;border:1px solid var(--line);border-radius:5px;padding:1px 5px;margin:1px 3px 1px 0;background:#fff}
 .pop .rev{display:grid;gap:10px;margin-top:4px}
 .pop .revi{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;font-size:12.5px}
@@ -245,6 +246,12 @@ export default function MasquePopulation() {
           </div>
         )}
 
+        {st.phase === "ready" && anyCost && (
+          <div className="card">
+            <div className="notew" style={{marginTop:0}}><Info size={13} style={{flex:"0 0 auto",marginTop:1}} /><span><b>Dollar figures are spending, not avoidable cost.</b> The MEPS artifacts report what all payers spent on care linked to sinusitis, in nominal dollars of that year. An event linked to several conditions counts in full, so the figure is an upper bound. The proposal's avoidable-cost question (§7.3) needs a clinical rule for which of that spending a missed headache diagnosis would have avoided; no such rule has been set, so no avoidable-cost number is shown.</span></div>
+          </div>
+        )}
+
         <div className="card">
           <div className="notew" style={{marginTop:0}}><ShieldCheck size={13} style={{flex:"0 0 auto",marginTop:1}} /><span>
             Screening-level phenotype prevalence, not diagnosed prevalence. These data carry no vestibular-testing or ICHD/Bárány reference standard; figures are hypothesis-generating estimates, not diagnostic counts (proposal §11). Every artifact repeats this in its own caveats.
@@ -264,14 +271,22 @@ export default function MasquePopulation() {
     phenotype definition, and rows with different definitions are not the same
     measurement.
 */
+// The standard a row was suppressed under is named by the producing script at the end of
+// its reason; show that rather than assuming every steward is NCHS.
+function stdOf(e) {
+  const m = typeof e.suppressReason === "string" && e.suppressReason.match(/\(([^()]+)\)\s*$/);
+  return m ? m[1] : "";
+}
+
 function SummaryTable({ artifacts }) {
-  const bySex = (art, lvl) => (art.estimates || []).find(e => e.domain === `sex=${lvl}`);
+  // Subgroup cells show the same quantity as the headline, never another row that happens to share the domain.
+  const bySex = (art, total, lvl) => total && (art.estimates || []).find(e => e.name === total.name && e.domain === `sex=${lvl}`);
   const cell = e => !e ? <td className="v">—</td>
-    : e.suppress ? <td className="v">suppressed<small>{e.suppressReason ? "NCHS standard" : ""}</small></td>
+    : e.suppress ? <td className="v">suppressed<small className="why">{stdOf(e)}</small></td>
     : <td className="v">{fmtValue(e)}<small>{Array.isArray(e.ci) ? `${fmtValue(e, e.ci[0])}–${fmtValue(e, e.ci[1])}` : "no interval"}</small></td>;
   return (
     <div className="card">
-      <div className="chdr"><BarChart3 size={16} color="var(--petrol)" /><div><div className="ce">Across sources</div><div className="ct">Phenotype prevalence by survey and cycle</div></div></div>
+      <div className="chdr"><BarChart3 size={16} color="var(--petrol)" /><div><div className="ce">Across sources</div><div className="ct">Headline estimate by source and cycle</div></div></div>
       <div className="sumwrap">
         <table className="sum">
           <thead><tr><th>Source</th><th>Population</th><th>Headache item</th><th>Rule: any of</th><th>All</th><th>Women</th><th>Men</th></tr></thead>
@@ -279,16 +294,16 @@ function SummaryTable({ artifacts }) {
             {artifacts.map(({ path, art }) => {
               const src = art.source || {}, ph = art.phenotype || {}, el = ph.eligibility;
               const total = (art.estimates || []).find(isTotal);
-              const head = ph.codeMap?.headache_migraine ? `diagnosis ${ph.codeMap.headache_migraine.join(", ")}`
+              const head = ph.codeMap?.headache_migraine ? `${art.unitOfAnalysis === "visit" ? "diagnosis" : "condition"} ${ph.codeMap.headache_migraine.join(", ")}`
                 : ph.termMap?.headache_migraine ? `MedDRA ${ph.termMap.headache_migraine.length} terms (HEADACHE, MIGRAINE, …)` : ph.variableMap?.headache_migraine;
               const visits = art.unitOfAnalysis === "visit", reports = art.unitOfAnalysis === "report";
               return (
                 <tr key={path}>
-                  <td className="src"><b>{src.dataset} {src.cycle}</b><span>{(ph.unmapped || []).length} concept{(ph.unmapped || []).length === 1 ? "" : "s"} unmapped</span></td>
+                  <td className="src"><b>{src.dataset} {src.cycle}</b>{total && <span>{labelOf(total)}</span>}<span>{(ph.unmapped || []).length} concept{(ph.unmapped || []).length === 1 ? "" : "s"} unmapped</span></td>
                   <td>{el && (el.var || el.concept) ? eligibilityText(el) : "all respondents"}{visits && <div style={{fontSize:11,fontWeight:600}}>office visits, not people</div>}{reports && <div style={{fontSize:11,fontWeight:600}}>adverse-event reports, not people</div>}{total ? <div style={{fontSize:11,color:"var(--muted)"}}>n = {Number(total.unweightedN).toLocaleString()} {visits ? "visits" : reports ? "reports" : ""}</div> : null}</td>
                   <td className="num" style={{fontSize:11.5}}>{Array.isArray(head) ? head.join(", ") : (head || "—")}</td>
                   <td>{(ph.rule?.any || []).map(a => <span className="arm" key={a}>{a}</span>)}</td>
-                  {cell(total)}{cell(bySex(art, "female"))}{cell(bySex(art, "male"))}
+                  {cell(total)}{cell(bySex(art, total, "female"))}{cell(bySex(art, total, "male"))}
                 </tr>
               );
             })}

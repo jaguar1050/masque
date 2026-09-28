@@ -262,10 +262,14 @@
           "ci": {
             "type": "array",
             "items": {
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "minItems": 2,
-            "maxItems": 2
+            "maxItems": 2,
+            "description": "95% interval. [null, null] only when it could not be computed, in which case the estimate is suppressed."
           },
           "unweightedN": {
             "type": "integer"

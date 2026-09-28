@@ -1,7 +1,8 @@
 {
   "masqueArtifact": "population-estimates",
-  "generatedAt": "2026-09-24T22:29:33Z",
-  "producedBy": "masque_population_etl.R 0.3.0 / R survey 4.2.1",
+  "unitOfAnalysis": "person",
+  "generatedAt": "2026-09-28T06:03:29Z",
+  "producedBy": "masque_population_etl.R 0.6.0 / R survey 4.2.1",
   "source": {
     "dataset": "NHANES",
     "cycle": "2001-2002",
@@ -62,6 +63,7 @@
       "se": 0.0097501893211771,
       "ci": [0.0939209357615164, 0.135485008957006],
       "unweightedN": 3466,
+      "unweightedPositives": 369,
       "weightedN": 117041743.961939,
       "df": 15,
       "rse": 0.085003806968825,
@@ -75,6 +77,7 @@
       "se": 0.0118554239921075,
       "ci": [0.0734892760551243, 0.124027752215916],
       "unweightedN": 1710,
+      "unweightedPositives": 145,
       "weightedN": 56238686.488281,
       "df": 15,
       "rse": 0.120044576367756,
@@ -88,11 +91,12 @@
       "se": 0.0125148863717829,
       "ci": [0.10277566127002, 0.156125359009758],
       "unweightedN": 1756,
+      "unweightedPositives": 224,
       "weightedN": 60803057.473658,
       "df": 15,
       "rse": 0.096676995388113,
       "suppress": false
     }
   ],
-  "caveats": ["Screening-level phenotype prevalence, not diagnosed prevalence. No vestibular-testing or ICHD/Barany reference standard exists in these data.", "Self-reported survey items; coding inconsistency may bias phenotype capture.", "Hypothesis-generating estimate, not a diagnostic count.", "Respondents coded Refused / Not Ascertained / Don't Know on a phenotype item are excluded from the denominator, never counted as negative.", "Complete-case phenotype: a respondent missing any item the rule uses is excluded from the denominator.", "Estimated within the eligible subpopulation only (RIDAGEYR >= 40): The Balance questionnaire (BAQ) was administered to respondents aged 40 and over; the pain and audiometry questionnaire items used were asked of ages 20 and over, so adults 40+ are the population with every phenotype item. Verified in the data: BAQ010 is answered by ages 40-85 only..", "Concepts this cycle could not express: sinus_condition, recalcitrance_proxy. The phenotype reported here is narrower than the one defined in proposal 7.1.", "No gender-identity item in this cycle: estimates are stratified by sex only. Gender is not substituted from sex."]
+  "caveats": ["Screening-level phenotype prevalence, not diagnosed prevalence. No vestibular-testing or ICHD/Barany reference standard exists in these data.", "Self-reported survey items; coding inconsistency may bias phenotype capture.", "Hypothesis-generating estimate, not a diagnostic count.", "Respondents coded Refused / Not Ascertained / Don't Know on a phenotype item are excluded from the denominator, never counted as negative.", "Complete-case phenotype: a respondent missing any item the rule uses is excluded from the denominator.", "Estimated within the eligible subpopulation only (RIDAGEYR >= 40): The Balance questionnaire (BAQ) was administered to respondents aged 40 and over; the pain and audiometry questionnaire items used were asked of ages 20 and over, so adults 40+ are the population with every phenotype item. Verified in the data: BAQ010 is answered by ages 40-85 only.", "Concepts this cycle could not express: sinus_condition, recalcitrance_proxy. The phenotype reported here is narrower than the one defined in proposal 7.1.", "No gender-identity item in this cycle: estimates are stratified by sex only. Gender is not substituted from sex."]
 }

@@ -1,7 +1,8 @@
 {
   "masqueArtifact": "population-estimates",
-  "generatedAt": "2026-09-27T04:54:30Z",
-  "producedBy": "masque_population_etl.R 0.3.0 / R survey 4.2.1",
+  "unitOfAnalysis": "person",
+  "generatedAt": "2026-09-28T06:04:00Z",
+  "producedBy": "masque_population_etl.R 0.6.0 / R survey 4.2.1",
   "source": {
     "dataset": "NHIS",
     "cycle": "2023",
@@ -61,6 +62,7 @@
       "se": 0.00330939658837009,
       "ci": [0.137190350910602, 0.15018882272499],
       "unweightedN": 20134,
+      "unweightedPositives": 2875,
       "weightedN": 153514803.275,
       "df": 608,
       "rse": 0.0230315686867868,
@@ -74,6 +76,7 @@
       "se": 0.00402951639046565,
       "ci": [0.105576728859352, 0.121403910672343],
       "unweightedN": 9105,
+      "unweightedPositives": 1030,
       "weightedN": 73906923.298,
       "df": 603,
       "rse": 0.0355053752494425,
@@ -87,11 +90,12 @@
       "se": 0.00451719714569765,
       "ci": [0.162889876257659, 0.180632399623424],
       "unweightedN": 11028,
+      "unweightedPositives": 1845,
       "weightedN": 79591684.469,
       "df": 606,
       "rse": 0.0262992968017094,
       "suppress": false
     }
   ],
-  "caveats": ["Screening-level phenotype prevalence, not diagnosed prevalence. No vestibular-testing or ICHD/Barany reference standard exists in these data.", "Self-reported survey items; coding inconsistency may bias phenotype capture.", "Hypothesis-generating estimate, not a diagnostic count.", "Respondents coded Refused / Not Ascertained / Don't Know on a phenotype item are excluded from the denominator, never counted as negative.", "Complete-case phenotype: a respondent missing any item the rule uses is excluded from the denominator.", "Estimated within the eligible subpopulation only (AGEP_A >= 40): Comparator for the NHANES 1999-2004 artifacts, whose balance questionnaire covered adults 40 and over. Same age floor, same otologic arms, different headache item and survey mode, so the comparison is indicative, not like-for-like..", "Concepts this cycle could not express: sinus_condition, recalcitrance_proxy. The phenotype reported here is narrower than the one defined in proposal 7.1.", "No gender-identity item in this cycle: estimates are stratified by sex only. Gender is not substituted from sex."]
+  "caveats": ["Screening-level phenotype prevalence, not diagnosed prevalence. No vestibular-testing or ICHD/Barany reference standard exists in these data.", "Self-reported survey items; coding inconsistency may bias phenotype capture.", "Hypothesis-generating estimate, not a diagnostic count.", "Respondents coded Refused / Not Ascertained / Don't Know on a phenotype item are excluded from the denominator, never counted as negative.", "Complete-case phenotype: a respondent missing any item the rule uses is excluded from the denominator.", "Estimated within the eligible subpopulation only (AGEP_A >= 40): Comparator for the NHANES 1999-2004 artifacts, whose balance questionnaire covered adults 40 and over. Same age floor, same otologic arms, different headache item and survey mode, so the comparison is indicative, not like-for-like.", "Concepts this cycle could not express: sinus_condition, recalcitrance_proxy. The phenotype reported here is narrower than the one defined in proposal 7.1.", "No gender-identity item in this cycle: estimates are stratified by sex only. Gender is not substituted from sex."]
 }
