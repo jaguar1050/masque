@@ -189,14 +189,14 @@ What is different about NAMCS, all declared in the maps:
 FAERS is a voluntary spontaneous-reporting database. It has no sampling design, no weights and no count of people exposed to any drug, so it yields a **share of reports**, never a prevalence. The map declares `unitOfAnalysis: "report"` and a `design.varianceMethod` that says there is no design, and every artifact repeats it.
 
 ```
-python app/etl/faers_prepare.py --out faers_reports.csv drug-event-0001-of-0005.csv ... drug-event-0005-of-0005.csv
+python app/etl/faers_prepare.py --out faers_reports.csv drug-event-0001-of-0005.json ... drug-event-0005-of-0005.json
 Rscript app/etl/masque_population_etl.R --data faers_reports.csv --map app/etl/phenotype_map_faers_sample.json --out app/data/population-estimates.faers-sample.json
 ```
 
-- `faers_prepare.py` keeps rows whose first field is a report ID and whose reaction list parses; fragment lines from a broken flattening are dropped and counted, and duplicate report versions collapse to one per `safetyreportid`.
+- **Use the JSON pages as downloaded.** A CSV flattening of the same records split long drug lists across lines and lost 26 reports; `faers_prepare.py` still accepts CSV but the JSON route cannot lose records. The five pages here are one openFDA query (53,990 records, matching the query's own total), 53,952 unique reports received 2001–2012. The query string itself is not recorded in the files.
 - Concepts are exact MedDRA preferred-term lists (`positiveTerms`), built from the terms present in the data. Exact matching keeps SINUS TACHYCARDIA out of "sinus".
 - `patientsex` follows openFDA coding (0 unknown, 1 male, 2 female); age is not used.
-- The export carried no case narratives, so the proposal 7.2 narrative benchmark could not run; the MedDRA-term lexicon check is recorded in `docs/refactor/02-app-divergences.md`.
+- **No narratives.** Only 24 records carry the narrative field and all hold a "CASE EVENT DATE" stamp, so the proposal 7.2 narrative benchmark cannot run on openFDA data. The MedDRA-term lexicon check is recorded in `docs/refactor/02-app-divergences.md`.
 
 ---
 

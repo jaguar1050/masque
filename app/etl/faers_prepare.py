@@ -3,10 +3,12 @@
 
 Standard library only.
 
-    python app/etl/faers_prepare.py --out faers_reports.csv drug-event-0001-of-0005.csv ... drug-event-0005-of-0005.csv
+    python app/etl/faers_prepare.py --out faers_reports.csv drug-event-0001-of-0005.json ... drug-event-0005-of-0005.json
 
-The inputs are openFDA /drug/event records flattened to CSV, one report per row, with the
-nested fields (patient.reaction, patient.drug) serialised as Python-literal lists.
+Preferred input: the openFDA /drug/event JSON pages exactly as downloaded ({"meta", "results"}).
+Also accepted: the same records flattened to CSV, one report per row, with nested fields
+serialised as Python-literal lists. The CSV route is fragile: one flattening split long
+drug lists across lines and lost records, which the JSON route cannot do.
 Field meanings follow the openFDA human-drug field reference (Human_Drug.xlsx).
 
 What this does:
@@ -38,6 +40,29 @@ def main():
     a = ap.parse_args()
     by_id, per_file = {}, []
     for f in a.files:
+        if f.lower().endswith(".json"):
+            d = json.load(open(f, encoding="utf-8"))
+            meta = d.get("meta", {}); res = d.get("results", [])
+            kept = unparsed = 0
+            for r in res:
+                sid = str(r.get("safetyreportid", "")).strip()
+                p = r.get("patient") or {}
+                rx = p.get("reaction")
+                if not sid or not isinstance(rx, list):
+                    unparsed += 1; continue
+                pts = [str(x.get("reactionmeddrapt", "")).strip().upper() for x in rx if isinstance(x, dict)]
+                sex = str(p.get("patientsex", "")).strip()
+                by_id[sid] = {"SAFETYREPORTID": sid, "SEX": sex if sex in ("0", "1", "2") else "",
+                              "RECEIVEDATE": str(r.get("receivedate", "")).strip(), "SOURCE": os.path.basename(f),
+                              "REACTIONS": "|".join(x for x in pts if x)}
+                kept += 1
+            per_file.append({"file": os.path.basename(f), "bytes": os.path.getsize(f),
+                             "sha256": hashlib.sha256(open(f, "rb").read()).hexdigest(),
+                             "records": kept, "recordsWithoutReportIdOrReactions": unparsed,
+                             "openfdaMeta": {"last_updated": meta.get("last_updated"), "results": meta.get("results")}})
+            print(f"{os.path.basename(f)}: {kept} records of {len(res)} (openFDA total {meta.get('results', {}).get('total')})")
+            del d, res
+            continue
         kept = frag = unparsed = 0
         with open(f, newline="", encoding="utf-8", errors="replace") as fh:
             r = csv.reader(fh); hdr = next(r); ix = {h: j for j, h in enumerate(hdr) if h}

@@ -1,15 +1,15 @@
 {
   "masqueArtifact": "population-estimates",
   "unitOfAnalysis": "report",
-  "generatedAt": "2026-09-28T02:40:35Z",
+  "generatedAt": "2026-09-28T02:55:13Z",
   "producedBy": "masque_population_etl.R 0.5.0 / R survey 4.2.1",
   "source": {
     "dataset": "FAERS (openFDA)",
-    "cycle": "sample, received 2002-2012",
+    "cycle": "openFDA query result, received 2001-2012",
     "file": "faers_reports.csv",
     "steward": "FDA",
     "url": "https://open.fda.gov/apis/drug/event/",
-    "sha256": "102124f3bd3693072fd85f6f695c71d24f65e03423015e7482ccaa616f49de9e"
+    "sha256": "d0dba6f4bcae1ed9d0c125e8346ec6346aa16831319def25321eae17d3890b76"
   },
   "design": {
     "weight": "WT",
@@ -31,7 +31,7 @@
       "concept": "sinus_condition",
       "reason": "Reports coding a sinusitis term: the proposal 3.1 'sinus headache' overlap, parallel to the NAMCS sinusitis-visit estimate. The figure is the share of those reports that also code a headache or migraine term.",
       "eligibleRespondents": 206,
-      "allRespondents": 53926
+      "allRespondents": 53952
     },
     "variableMap": {
       "headache_migraine": "REACTIONS",
@@ -65,13 +65,13 @@
       "name": "headache_share_of_sinusitis_reports",
       "unit": "proportion",
       "estimate": 0.145631067961165,
-      "se": 0.0245765069892821,
-      "ci": [0.0971759407813978, 0.194086195140932],
+      "se": 0.024576506879466,
+      "ci": [0.0971759409979115, 0.194086194924419],
       "unweightedN": 206,
       "unweightedPositives": 30,
       "weightedN": 206,
       "df": 205,
-      "rse": 0.168758681326404,
+      "rse": 0.168758680572333,
       "suppress": false
     },
     {
@@ -79,13 +79,13 @@
       "unit": "proportion",
       "domain": "sex=male",
       "estimate": 0.140350877192982,
-      "se": 0.0460081506656507,
-      "ci": [0.048185476380663, 0.232516278005302],
+      "se": 0.0460081504600709,
+      "ci": [0.0481854767924889, 0.232516277593476],
       "unweightedN": 57,
       "unweightedPositives": 8,
       "weightedN": 57,
       "df": 56,
-      "rse": 0.327808073492762,
+      "rse": 0.327808072028005,
       "suppress": true,
       "suppressReason": "RSE > 30%, unweighted n < 30, or fewer than 30 phenotype-positive sample records (NCHS reliability standard)"
     },
@@ -94,16 +94,16 @@
       "unit": "proportion",
       "domain": "sex=female",
       "estimate": 0.151724137931034,
-      "se": 0.0297931154534188,
-      "ci": [0.0928358087923994, 0.21061246706967],
+      "se": 0.0297931153202932,
+      "ci": [0.0928358090555322, 0.210612466806537],
       "unweightedN": 145,
       "unweightedPositives": 22,
       "weightedN": 145,
       "df": 144,
-      "rse": 0.196363715488442,
+      "rse": 0.196363714611023,
       "suppress": true,
       "suppressReason": "RSE > 30%, unweighted n < 30, or fewer than 30 phenotype-positive sample records (NCHS reliability standard)"
     }
   ],
-  "caveats": ["Share of adverse-event REPORTS coding the listed MedDRA terms. FAERS is a voluntary spontaneous-reporting database with no sampling design and no count of people exposed, so this is not a prevalence among people, patients or drug users, and it cannot be compared with the survey or NAMCS rows.", "Reporting is selective: it depends on the drug, publicity, reporter type and era, and a reaction coded on a report is not established as caused by the drug.", "The interval is a simple binomial interval treating each report as independent. It describes counting precision within this set of reports only.", "This is a sample of openFDA drug-event records (five files, reports received 2002-2012), not the full FAERS database. Fragment lines from a broken CSV flattening (1,389) were dropped; duplicate report versions were collapsed to one per safetyreportid.", "No case narratives were available: the narrative column in the export holds only fragments, so the proposal 7.2 narrative-extraction benchmark could not be run on these data.", "Estimates are suppressed unless at least 30 reports carry the phenotype and the RSE is 30% or less, the same thresholds used for NAMCS.", "Hypothesis-generating descriptive figure, not a safety signal and not a diagnostic count.", "Estimated within the eligible subpopulation only (sinus_condition positive): Reports coding a sinusitis term: the proposal 3.1 'sinus headache' overlap, parallel to the NAMCS sinusitis-visit estimate. The figure is the share of those reports that also code a headache or migraine term..", "Concepts this cycle could not express: recalcitrance_proxy. The phenotype reported here is narrower than the one defined in proposal 7.1.", "No gender-identity item in this cycle: estimates are stratified by sex only. Gender is not substituted from sex."]
+  "caveats": ["Share of adverse-event REPORTS coding the listed MedDRA terms. FAERS is a voluntary spontaneous-reporting database with no sampling design and no count of people exposed, so this is not a prevalence among people, patients or drug users, and it cannot be compared with the survey or NAMCS rows.", "Reporting is selective: it depends on the drug, publicity, reporter type and era, and a reaction coded on a report is not established as caused by the drug.", "The interval is a simple binomial interval treating each report as independent. It describes counting precision within this set of reports only.", "This is the complete result of one openFDA /drug/event query (53,990 records in five pages, 53,952 unique reports, received 2001-2012), not the full FAERS database. The query that defined it is not recorded in the files. Duplicate report versions were collapsed to one per safetyreportid.", "No case narratives exist in these records: 24 carry the narrative field, and every one holds only a 'CASE EVENT DATE' stamp. The proposal 7.2 narrative-extraction benchmark cannot be run on openFDA data of this kind.", "Estimates are suppressed unless at least 30 reports carry the phenotype and the RSE is 30% or less, the same thresholds used for NAMCS.", "Hypothesis-generating descriptive figure, not a safety signal and not a diagnostic count.", "Estimated within the eligible subpopulation only (sinus_condition positive): Reports coding a sinusitis term: the proposal 3.1 'sinus headache' overlap, parallel to the NAMCS sinusitis-visit estimate. The figure is the share of those reports that also code a headache or migraine term..", "Concepts this cycle could not express: recalcitrance_proxy. The phenotype reported here is narrower than the one defined in proposal 7.1.", "No gender-identity item in this cycle: estimates are stratified by sex only. Gender is not substituted from sex."]
 }

@@ -49,12 +49,12 @@
     {
       "path": "./data/population-estimates.faers-sample.json",
       "addedOn": "2026-09-28",
-      "note": "FAERS (openFDA) sample of 53,926 reports received 2002-2012: headache + dizziness, hearing or tinnitus MedDRA terms on one report"
+      "note": "FAERS (openFDA), complete result of one query: 53,952 reports received 2001-2012 (original JSON pages): headache + dizziness, hearing or tinnitus MedDRA terms on one report"
     },
     {
       "path": "./data/population-estimates.faers-sample-sinus.json",
       "addedOn": "2026-09-28",
-      "note": "FAERS sample, reports coding sinusitis: share also coding headache or migraine"
+      "note": "FAERS (openFDA), same 53,952 reports: among reports coding sinusitis, share also coding headache or migraine"
     }
   ],
   "reviewed": [
@@ -93,10 +93,10 @@
     {
       "source": "FAERS (openFDA)",
       "cycle": "narrative extraction benchmark",
-      "status": "not possible with this export",
+      "status": "not possible with openFDA data",
       "reviewedOn": "2026-09-28",
-      "reason": "Proposal 7.2 benchmarks the MASQUE extractor on FAERS case narratives. The export's narrative column (patient.summary.narrativeincludeclinical) holds only fragments of a broken CSV flattening; no real record carries a narrative. As a partial check, the extractor was run on the MedDRA terms themselves: it recognises headache terms and TINNITUS, but not plain MIGRAINE, not DIZZINESS or VERTIGO without a duration (by design), not any hearing-loss term, and not SUDDEN HEARING LOSS as the sudden-hearing-loss red flag. Details in docs/refactor/02-app-divergences.md.",
-      "wouldChange": "openFDA records that carry narratives, fetched as JSON rather than through a spreadsheet; lexicon changes are a clinical-lead decision."
+      "reason": "Proposal 7.2 benchmarks the MASQUE extractor on FAERS case narratives. In the original openFDA JSON (53,990 records), only 24 records carry the narrative field (patient.summary.narrativeincludeclinical), and every one holds only a 'CASE EVENT DATE' stamp; no record has clinical text. As a partial check, the extractor was run on the MedDRA terms themselves: it recognises headache terms and TINNITUS, but not plain MIGRAINE, not DIZZINESS or VERTIGO without a duration (by design), not any hearing-loss term, and not SUDDEN HEARING LOSS as the sudden-hearing-loss red flag. Details in docs/refactor/02-app-divergences.md.",
+      "wouldChange": "A narrative source outside openFDA (for example FAERS case narratives obtained through FDA's request process, or clinical notes where permitted); lexicon changes are a clinical-lead decision."
     }
   ],
   "_reviewedNote": "Datasets examined that produced no estimate, with the reason and what would change it. Rendered on the Population page so an absent source is visible, never silently missing."

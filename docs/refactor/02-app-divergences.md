@@ -71,7 +71,7 @@ Pooled NAMCS results, adult office visits, annual-average weights:
 
 | File | What it is |
 |---|---|
-| `app/etl/faers_prepare.py` | Standard-library reader for openFDA drug-event CSV exports: keeps parseable report rows, drops 1,389 fragment lines (1,368 in file 5, whose flattening split long drug lists across lines), collapses 38 duplicate versions; 53,926 unique reports received 2002–2012. |
+| `app/etl/faers_prepare.py` | Standard-library reader. Preferred input is the openFDA JSON pages as downloaded (added 28 September after the originals arrived): 53,990 records in five pages, matching the query's own total, 53,952 unique reports received 2001–2012. The CSV route is kept; the earlier CSV export had lost 26 reports to a broken flattening (1,389 fragment lines), none of them phenotype-positive, so both estimates are unchanged on the complete set. |
 | `phenotype_map_faers_sample.json`, `..._sinus.json` | Exact MedDRA preferred-term lists per concept; `unitOfAnalysis: "report"`; no design (weight 1, one stratum, each report its own PSU) declared through `design.varianceMethod`. |
 | `masque_population_etl.R` 0.5.0 | `positiveTerms` + `delimiter` (exact list-element match), map-declared `varianceMethod`, `termMap` in the artifact, `report` unit. Existing artifacts reproduce exactly. |
 | `PopulationArtifact.jsx`, `MASQUE_Population.jsx` | "Adverse-event reports, not people" warning and summary-row label; MedDRA terms listed; summary note names the three units. |
@@ -80,10 +80,10 @@ Results, share of reports in this sample (simple binomial intervals; not a preva
 
 | Estimate | All | Women | Men |
 |---|---|---|---|
-| Headache term + dizziness, hearing-loss or tinnitus term on one report | 0.73% (0.66–0.80), 394 reports | 0.91% | 0.53% |
+| Headache term + dizziness, hearing-loss or tinnitus term on one report | 0.73% (0.66–0.80), 394 of 53,952 reports | 0.91% | 0.53% |
 | Among reports coding sinusitis, share also coding headache or migraine | 14.6% (9.7–19.4), 30 of 206 | suppressed | suppressed |
 
-**Extraction lexicon on MedDRA terms (lexicon 0.3.1).** No narratives were available for the proposal 7.2 benchmark, so the extractor was run on each mapped term as a one-line utterance. For the clinical lead; no lexicon phrase was changed:
+**Extraction lexicon on MedDRA terms (lexicon 0.3.1).** No narratives exist in the original openFDA JSON either (24 records carry the narrative field, each only a 'CASE EVENT DATE' stamp), so the proposal 7.2 benchmark cannot run on openFDA data, so the extractor was run on each mapped term as a one-line utterance. For the clinical lead; no lexicon phrase was changed:
 
 | Concept | Captured | Notes |
 |---|---|---|
