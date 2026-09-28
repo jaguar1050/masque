@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# masque_population_etl.R  v0.4.0
+# masque_population_etl.R  v0.5.0
 #
 # Reads a survey public-use file, applies the MASQUE §7.1 computable phenotype from
 # a versioned mapping file, and emits a design-aware population-estimates artifact
@@ -94,13 +94,25 @@
 #      Every estimate now reports `unweightedPositives`.
 #   5. `caveats` in the map replace the default survey caveats, which describe
 #      self-reported questionnaire items and do not fit diagnosis-coded records.
+#
+# CHANGES 0.4.0 -> 0.5.0 — FAERS (spontaneous adverse-event reports):
+#
+#   1. `positiveTerms` + `delimiter` on a concept: a field holding a delimited list
+#      (FAERS MedDRA preferred terms joined by '|') is positive when any list element
+#      EQUALS any listed term, case-insensitively. Exact match, not substring: 'SINUS'
+#      must not catch SINUS TACHYCARDIA. Requires `absentIsNegative: true`.
+#   2. `design.varianceMethod` in the map overrides the stated variance method, so a
+#      source with no sampling design (FAERS: every report weight 1, one stratum, each
+#      report its own PSU, i.e. a simple binomial variance) says so in the artifact
+#      instead of claiming Taylor linearization of a survey design it does not have.
+#   3. `_meta.unitOfAnalysis` may be "report".
 # ---------------------------------------------------------------------------
 
 suppressPackageStartupMessages({
   library(survey); library(jsonlite); library(digest)
 })
 
-ETL_VERSION <- "0.4.0"
+ETL_VERSION <- "0.5.0"
 
 # Lonely PSUs (a stratum contributing a single PSU after subsetting) are common in
 # domain analysis. "adjust" centres them at the population mean rather than erroring
@@ -195,7 +207,7 @@ if (has_elig) {
 }
 
 # --- load -------------------------------------------------------------------
-prefix_cols <- unique(unlist(lapply(Filter(function(c) length(unlist(c$positivePrefixes)), concepts), function(c) unlist(c$vars))))
+prefix_cols <- unique(unlist(lapply(Filter(function(c) length(unlist(c$positivePrefixes)) || length(unlist(c$positiveTerms)), concepts), function(c) unlist(c$vars))))
 col_classes <- if (length(prefix_cols)) setNames(rep("character", length(prefix_cols)), prefix_cols) else NA
 df <- read.csv(data_path, stringsAsFactors = FALSE, colClasses = col_classes)
 names(df) <- toupper(names(df))
@@ -212,8 +224,19 @@ for (v in c(d$weight, d$strata, d$psu)) {
 # who refused is neither positive nor negative and leaves the denominator.
 na_codes <- function(x, codes) { x[x %in% codes] <- NA; x }
 
-pos <- function(varnames, codes, skip = NULL, prefixes = NULL, absent_negative = FALSE) {
+pos <- function(varnames, codes, skip = NULL, prefixes = NULL, absent_negative = FALSE, terms = NULL, delimiter = "|") {
   if (!length(varnames)) return(rep(NA_integer_, nrow(df)))
+  terms <- toupper(unlist(terms))
+  if (length(terms)) {
+    if (!isTRUE(absent_negative)) stop("positiveTerms needs absentIsNegative: true in the map, stating that a term not listed on the record counts as not reported.")
+    delim <- if (is.null(delimiter)) "|" else delimiter
+    hit <- Reduce(`|`, lapply(varnames, function(v) {
+      if (!v %in% names(df)) stop(sprintf("Mapped variable %s not present in the data file", v))
+      x <- as.character(df[[v]]); x[is.na(x)] <- ""
+      vapply(strsplit(toupper(x), delim, fixed = TRUE), function(el) any(trimws(el) %in% terms), logical(1))
+    }))
+    return(as.integer(hit))
+  }
   prefixes <- unlist(prefixes)
   if (length(prefixes)) {
     if (!isTRUE(absent_negative)) stop("positivePrefixes needs absentIsNegative: true in the map, stating that no matching code counts as not recorded.")
@@ -244,7 +267,8 @@ pos <- function(varnames, codes, skip = NULL, prefixes = NULL, absent_negative =
 
 for (nm in names(concepts)) {
   df[[paste0("C_", nm)]] <- pos(unlist(concepts[[nm]]$vars), concepts[[nm]]$positiveCodes, concepts[[nm]]$skipNegative,
-                                concepts[[nm]]$positivePrefixes, concepts[[nm]]$absentIsNegative)
+                                concepts[[nm]]$positivePrefixes, concepts[[nm]]$absentIsNegative,
+                                concepts[[nm]]$positiveTerms, concepts[[nm]]$delimiter)
 }
 
 # Sex / gender kept strictly separate — see fix #16. If the cycle carries no gender
@@ -372,7 +396,7 @@ artifact <- list(
   producedBy = sprintf("masque_population_etl.R %s / R survey %s", ETL_VERSION, packageVersion("survey")),
   source = source_block,
   design = list(weight = d$weight, strata = d$strata, psu = d$psu, nest = isTRUE(d$nest),
-                lonelyPsu = "adjust", varianceMethod = "Taylor linearization",
+                lonelyPsu = "adjust", varianceMethod = if (is.null(d$varianceMethod)) "Taylor linearization" else d$varianceMethod,
                 domainAnalysis = TRUE),
   phenotype = list(definition = definition,
                    rule = list(all = I(rule_all), any = I(rule_any), completeCase = TRUE),
@@ -381,6 +405,7 @@ artifact <- list(
                                                                               eligibleRespondents = sum(df$MASQUE_ELIG), allRespondents = nrow(df))) else NULL,
                    variableMap = lapply(concepts, function(c) unlist(c$vars)),
                    codeMap = lapply(Filter(function(c) length(unlist(c$positivePrefixes)), concepts), function(c) I(unlist(c$positivePrefixes))),
+                   termMap = lapply(Filter(function(c) length(unlist(c$positiveTerms)), concepts), function(c) I(toupper(unlist(c$positiveTerms)))),
                    questionText = lapply(concepts, function(c) if (is.null(c$questionText)) "" else c$questionText),
                    mapFile = map$`_meta`$mapFile, mapVersion = map$`_meta`$mapVersion,
                    unmapped = I(unmapped)),   # I(): a single unmapped concept must stay a list, not collapse to a string
@@ -390,6 +415,7 @@ artifact <- list(
 
 if (is.null(artifact$phenotype$eligibility)) artifact$phenotype$eligibility <- NULL
 if (!length(artifact$phenotype$codeMap)) artifact$phenotype$codeMap <- NULL
+if (!length(artifact$phenotype$termMap)) artifact$phenotype$termMap <- NULL
 write(toJSON(artifact, auto_unbox = TRUE, pretty = TRUE, na = "null", null = "null", digits = NA), out_path)
 cat(sprintf("wrote %s — %d estimates, %d unmapped concepts, source sha256 %s\n",
             out_path, length(estimates), length(unmapped), substr(file_hash, 1, 12)))

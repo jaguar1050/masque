@@ -45,6 +45,16 @@
       "path": "./data/population-estimates.namcs-2015-2019-sinus.json",
       "addedOn": "2026-09-27",
       "note": "NAMCS 2015-2019 pooled, adult sinusitis visits: share also diagnosed with headache or migraine"
+    },
+    {
+      "path": "./data/population-estimates.faers-sample.json",
+      "addedOn": "2026-09-28",
+      "note": "FAERS (openFDA) sample of 53,926 reports received 2002-2012: headache + dizziness, hearing or tinnitus MedDRA terms on one report"
+    },
+    {
+      "path": "./data/population-estimates.faers-sample-sinus.json",
+      "addedOn": "2026-09-28",
+      "note": "FAERS sample, reports coding sinusitis: share also coding headache or migraine"
     }
   ],
   "reviewed": [
@@ -79,6 +89,14 @@
       "reviewedOn": "2026-09-27",
       "reason": "In every single year fewer than 30 sample visits carry the phenotype (headache plus dizziness, hearing or tinnitus diagnosis at one visit: 28, 30, 5 and 6 visits of all ages) or the sinusitis-with-headache overlap (31, 10, 8 and 11), so single-year estimates fail the NCHS standard. The four years are pooled instead, as NCHS recommends for rare conditions; the pooled estimates are listed above. 2017 is absent: no codebook was available for that year when the files were collected (reported by the project lead).",
       "wouldChange": "NAMCS 2017 and later years, which would add sample visits to the pool."
+    },
+    {
+      "source": "FAERS (openFDA)",
+      "cycle": "narrative extraction benchmark",
+      "status": "not possible with this export",
+      "reviewedOn": "2026-09-28",
+      "reason": "Proposal 7.2 benchmarks the MASQUE extractor on FAERS case narratives. The export's narrative column (patient.summary.narrativeincludeclinical) holds only fragments of a broken CSV flattening; no real record carries a narrative. As a partial check, the extractor was run on the MedDRA terms themselves: it recognises headache terms and TINNITUS, but not plain MIGRAINE, not DIZZINESS or VERTIGO without a duration (by design), not any hearing-loss term, and not SUDDEN HEARING LOSS as the sudden-hearing-loss red flag. Details in docs/refactor/02-app-divergences.md.",
+      "wouldChange": "openFDA records that carry narratives, fetched as JSON rather than through a spreadsheet; lexicon changes are a clinical-lead decision."
     }
   ],
   "_reviewedNote": "Datasets examined that produced no estimate, with the reason and what would change it. Rendered on the Population page so an absent source is visible, never silently missing."

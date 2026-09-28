@@ -1,0 +1,55 @@
+{
+  "preparedBy": "faers_prepare.py 0.1.0",
+  "preparedAt": "2026-09-28T02:39:24Z",
+  "inputs": [
+    {
+      "file": "drug-event-0001-of-0005.csv",
+      "bytes": 185478016,
+      "sha256": "e23cc723a48ce36961806551e6922d36c867b7f15fb86d6537013ee0fb689880",
+      "records": 11996,
+      "fragmentLinesDropped": 4,
+      "unparseableReactionField": 0
+    },
+    {
+      "file": "drug-event-0002-of-0005.csv",
+      "bytes": 15978257,
+      "sha256": "9ce6c0bc8e612313f85304d283a3151c99a308c0b738c819c0e292c18cc5f4cb",
+      "records": 11996,
+      "fragmentLinesDropped": 4,
+      "unparseableReactionField": 0
+    },
+    {
+      "file": "drug-event-0003-of-0005.csv",
+      "bytes": 54835629,
+      "sha256": "4c9dbfba6e761e2f7da0438b698daadb7da6daad330460272f6814a6f4fc6b97",
+      "records": 11992,
+      "fragmentLinesDropped": 8,
+      "unparseableReactionField": 0
+    },
+    {
+      "file": "drug-event-0004-of-0005.csv",
+      "bytes": 280173870,
+      "sha256": "cfb74ab98288835b3ca8a4ebd388c48be62dd16f02b9b89d3bfa7c87abf31cc6",
+      "records": 11995,
+      "fragmentLinesDropped": 5,
+      "unparseableReactionField": 0
+    },
+    {
+      "file": "drug-event-0005-of-0005.csv",
+      "bytes": 254456708,
+      "sha256": "68532a75581d341f3bd1256416f686ecb5d1df295696870789332a3a32ed1c6d",
+      "records": 5985,
+      "fragmentLinesDropped": 1368,
+      "unparseableReactionField": 0
+    }
+  ],
+  "recordsBeforeDedup": 53964,
+  "uniqueReports": 53926,
+  "receiveDateRange": [
+    "20040103",
+    "20120801"
+  ],
+  "reportsWithoutReceiveDate": 5984,
+  "output": "faers_reports.csv",
+  "outputSha256": "102124f3bd3693072fd85f6f695c71d24f65e03423015e7482ccaa616f49de9e"
+}

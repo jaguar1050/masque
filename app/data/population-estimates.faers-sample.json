@@ -1,0 +1,101 @@
+{
+  "masqueArtifact": "population-estimates",
+  "unitOfAnalysis": "report",
+  "generatedAt": "2026-09-28T02:40:27Z",
+  "producedBy": "masque_population_etl.R 0.5.0 / R survey 4.2.1",
+  "source": {
+    "dataset": "FAERS (openFDA)",
+    "cycle": "sample, received 2002-2012",
+    "file": "faers_reports.csv",
+    "steward": "FDA",
+    "url": "https://open.fda.gov/apis/drug/event/",
+    "sha256": "102124f3bd3693072fd85f6f695c71d24f65e03423015e7482ccaa616f49de9e"
+  },
+  "design": {
+    "weight": "WT",
+    "strata": "STRATUM",
+    "psu": "PSU",
+    "nest": false,
+    "lonelyPsu": "adjust",
+    "varianceMethod": "None: not a probability sample. Simple binomial variance, each report counted once.",
+    "domainAnalysis": true
+  },
+  "phenotype": {
+    "definition": "Adverse-event reports that code a headache or migraine term AND a dizziness/vestibular, hearing-loss or tinnitus term on the same report. The proposal 7.1 phenotype as co-reported MedDRA reactions; all reports, any age.",
+    "rule": {
+      "all": ["headache_migraine"],
+      "any": ["dizziness_balance", "hearing_difficulty", "tinnitus"],
+      "completeCase": true
+    },
+    "variableMap": {
+      "headache_migraine": "REACTIONS",
+      "dizziness_balance": "REACTIONS",
+      "hearing_difficulty": "REACTIONS",
+      "tinnitus": "REACTIONS",
+      "sinus_condition": "REACTIONS",
+      "recalcitrance_proxy": null
+    },
+    "termMap": {
+      "headache_migraine": ["HEADACHE", "MIGRAINE", "MIGRAINE WITH AURA", "MIGRAINE WITHOUT AURA", "TENSION HEADACHE", "CLUSTER HEADACHE", "SINUS HEADACHE", "COMPLICATED MIGRAINE", "BASILAR MIGRAINE"],
+      "dizziness_balance": ["DIZZINESS", "DIZZINESS POSTURAL", "DIZZINESS EXERTIONAL", "VERTIGO", "VERTIGO POSITIONAL", "BALANCE DISORDER", "VESTIBULAR DISORDER", "VESTIBULAR NEURONITIS", "MENIERE'S DISEASE"],
+      "hearing_difficulty": ["DEAFNESS", "DEAFNESS UNILATERAL", "DEAFNESS BILATERAL", "DEAFNESS NEUROSENSORY", "DEAFNESS TRANSITORY", "CONDUCTIVE DEAFNESS", "HYPOACUSIS", "HEARING IMPAIRED", "SUDDEN HEARING LOSS"],
+      "tinnitus": ["TINNITUS"],
+      "sinus_condition": ["SINUSITIS", "ACUTE SINUSITIS", "CHRONIC SINUSITIS", "SINUSITIS BACTERIAL", "SINUSITIS FUNGAL"]
+    },
+    "questionText": {
+      "headache_migraine": "Headache or migraine PTs. Procedure- and withdrawal-related headache (LUMBAR PUNCTURE HEADACHE, HEADACHE POSTOPERATIVE, DRUG WITHDRAWAL HEADACHE) excluded as secondary. SINUS HEADACHE is included: it is the masquerade label itself.",
+      "dizziness_balance": "Dizziness, vertigo and vestibular PTs, matching the NAMCS R42/H81 scope (Meniere disease and vestibular neuronitis included; labyrinthitis and motion sickness excluded).",
+      "hearing_difficulty": "Acquired hearing-loss PTs. Congenital terms (DEAFNESS CONGENITAL, DEAF MUTISM) excluded.",
+      "tinnitus": "TINNITUS.",
+      "sinus_condition": "Sinusitis PTs, matching the NAMCS J01/J32 scope. SINUS DISORDER, SINUS CONGESTION and SINUS PAIN excluded as non-specific.",
+      "recalcitrance_proxy": ""
+    },
+    "mapFile": "phenotype_map_faers_sample.json",
+    "mapVersion": "0.1.0",
+    "unmapped": ["recalcitrance_proxy"]
+  },
+  "estimates": [
+    {
+      "name": "phenotype_report_share",
+      "unit": "proportion",
+      "estimate": 0.00730630864518043,
+      "se": 0.000366742770350505,
+      "ci": [0.00658748988958118, 0.00802512740077969],
+      "unweightedN": 53926,
+      "unweightedPositives": 394,
+      "weightedN": 53926,
+      "df": 53925,
+      "rse": 0.0501953569388866,
+      "suppress": false
+    },
+    {
+      "name": "phenotype_report_share",
+      "unit": "proportion",
+      "domain": "sex=male",
+      "estimate": 0.00525513689631615,
+      "se": 0.000524135907348009,
+      "ci": [0.0042277840454099, 0.0062824897472224],
+      "unweightedN": 19029,
+      "unweightedPositives": 100,
+      "weightedN": 19029,
+      "df": 19028,
+      "rse": 0.0997378218092526,
+      "suppress": false
+    },
+    {
+      "name": "phenotype_report_share",
+      "unit": "proportion",
+      "domain": "sex=female",
+      "estimate": 0.00907974667183663,
+      "se": 0.000539192634586201,
+      "ci": [0.00802290719341358, 0.0101365861502597],
+      "unweightedN": 30948,
+      "unweightedPositives": 281,
+      "weightedN": 30948,
+      "df": 30947,
+      "rse": 0.0593841055344262,
+      "suppress": false
+    }
+  ],
+  "caveats": ["Share of adverse-event REPORTS coding the listed MedDRA terms. FAERS is a voluntary spontaneous-reporting database with no sampling design and no count of people exposed, so this is not a prevalence among people, patients or drug users, and it cannot be compared with the survey or NAMCS rows.", "Reporting is selective: it depends on the drug, publicity, reporter type and era, and a reaction coded on a report is not established as caused by the drug.", "The interval is a simple binomial interval treating each report as independent. It describes counting precision within this set of reports only.", "This is a sample of openFDA drug-event records (five files, reports received 2002-2012), not the full FAERS database. Fragment lines from a broken CSV flattening (1,389) were dropped; duplicate report versions were collapsed to one per safetyreportid.", "No case narratives were available: the narrative column in the export holds only fragments, so the proposal 7.2 narrative-extraction benchmark could not be run on these data.", "Estimates are suppressed unless at least 30 reports carry the phenotype and the RSE is 30% or less, the same thresholds used for NAMCS.", "Hypothesis-generating descriptive figure, not a safety signal and not a diagnostic count.", "Concepts this cycle could not express: recalcitrance_proxy. The phenotype reported here is narrower than the one defined in proposal 7.1.", "No gender-identity item in this cycle: estimates are stratified by sex only. Gender is not substituted from sex."]
+}

@@ -212,6 +212,10 @@
         "codeMap": {
           "type": "object",
           "description": "Concept -> code prefixes, for concepts defined by code lists (e.g. ICD diagnoses)."
+        },
+        "termMap": {
+          "type": "object",
+          "description": "Concept -> exact terms matched in a delimited list field (e.g. FAERS MedDRA preferred terms)."
         }
       }
     },
@@ -302,9 +306,10 @@
       "type": "string",
       "enum": [
         "person",
-        "visit"
+        "visit",
+        "report"
       ],
-      "description": "What one record is. 'visit' (NAMCS) means estimates are shares of visits, not population prevalence."
+      "description": "What one record is. 'visit' (NAMCS) and 'report' (FAERS) mean estimates are shares of visits or of reports, not population prevalence."
     }
   }
 }

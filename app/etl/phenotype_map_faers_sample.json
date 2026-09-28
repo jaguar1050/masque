@@ -1,0 +1,169 @@
+{
+  "_meta": {
+    "mapFile": "phenotype_map_faers_sample.json",
+    "mapVersion": "0.1.0",
+    "dataset": "FAERS (openFDA)",
+    "cycle": "sample, received 2002-2012",
+    "file": "faers_reports.csv (faers_prepare.py of drug-event-0001..0005-of-0005.csv)",
+    "url": "https://open.fda.gov/apis/drug/event/",
+    "steward": "FDA",
+    "codebook": "openFDA human drug field reference (Human_Drug.xlsx), supplied 28 September 2026",
+    "unitOfAnalysis": "report",
+    "estimateName": "phenotype_report_share",
+    "minPositiveCases": 30,
+    "STATUS": "FILLED 28 September 2026. Fields per the openFDA field reference; MedDRA term lists built from the terms present in the data and listed per concept for clinical-lead review."
+  },
+  "design": {
+    "_verified": "No sampling design exists for FAERS. WT = 1, one STRATUM, each report its own PSU: every report counted once, simple binomial variance.",
+    "weight": "WT",
+    "strata": "STRATUM",
+    "psu": "PSU",
+    "nest": false,
+    "lonelyPsu": "adjust",
+    "varianceMethod": "None: not a probability sample. Simple binomial variance, each report counted once."
+  },
+  "demographics": {
+    "sex": {
+      "var": "SEX",
+      "recode": {
+        "1": "male",
+        "2": "female"
+      },
+      "missing": [
+        0
+      ],
+      "_note": "openFDA patientsex: 0 unknown, 1 male, 2 female. The field reference lists the field without codes; this is openFDA's documented coding."
+    },
+    "gender": {
+      "var": null,
+      "_status": "unmapped",
+      "_note": "No gender-identity field in FAERS."
+    },
+    "age": {
+      "var": null,
+      "_status": "unmapped",
+      "_note": "Age is not used: it is missing on many reports and recorded in mixed units."
+    }
+  },
+  "phenotype_concepts": {
+    "_instruction": "FAERS concepts are MedDRA preferred terms (PTs) coded on the report (patient.reaction.reactionmeddrapt), matched exactly: a list entry must equal a listed term. Lists were built from the terms present in the data and are reviewable here; terms caught by a keyword but clinically unrelated (SINUS TACHYCARDIA, SINUS ARREST, venous sinus thromboses, ANTINUCLEAR ANTIBODY) are deliberately absent. absentIsNegative: a term not coded on the report counts as not reported.",
+    "headache_migraine": {
+      "vars": [
+        "REACTIONS"
+      ],
+      "positiveTerms": [
+        "HEADACHE",
+        "MIGRAINE",
+        "MIGRAINE WITH AURA",
+        "MIGRAINE WITHOUT AURA",
+        "TENSION HEADACHE",
+        "CLUSTER HEADACHE",
+        "SINUS HEADACHE",
+        "COMPLICATED MIGRAINE",
+        "BASILAR MIGRAINE"
+      ],
+      "delimiter": "|",
+      "absentIsNegative": true,
+      "_status": "mapped",
+      "questionText": "Headache or migraine PTs. Procedure- and withdrawal-related headache (LUMBAR PUNCTURE HEADACHE, HEADACHE POSTOPERATIVE, DRUG WITHDRAWAL HEADACHE) excluded as secondary. SINUS HEADACHE is included: it is the masquerade label itself."
+    },
+    "dizziness_balance": {
+      "vars": [
+        "REACTIONS"
+      ],
+      "positiveTerms": [
+        "DIZZINESS",
+        "DIZZINESS POSTURAL",
+        "DIZZINESS EXERTIONAL",
+        "VERTIGO",
+        "VERTIGO POSITIONAL",
+        "BALANCE DISORDER",
+        "VESTIBULAR DISORDER",
+        "VESTIBULAR NEURONITIS",
+        "MENIERE'S DISEASE"
+      ],
+      "delimiter": "|",
+      "absentIsNegative": true,
+      "_status": "mapped",
+      "questionText": "Dizziness, vertigo and vestibular PTs, matching the NAMCS R42/H81 scope (Meniere disease and vestibular neuronitis included; labyrinthitis and motion sickness excluded)."
+    },
+    "hearing_difficulty": {
+      "vars": [
+        "REACTIONS"
+      ],
+      "positiveTerms": [
+        "DEAFNESS",
+        "DEAFNESS UNILATERAL",
+        "DEAFNESS BILATERAL",
+        "DEAFNESS NEUROSENSORY",
+        "DEAFNESS TRANSITORY",
+        "CONDUCTIVE DEAFNESS",
+        "HYPOACUSIS",
+        "HEARING IMPAIRED",
+        "SUDDEN HEARING LOSS"
+      ],
+      "delimiter": "|",
+      "absentIsNegative": true,
+      "_status": "mapped",
+      "questionText": "Acquired hearing-loss PTs. Congenital terms (DEAFNESS CONGENITAL, DEAF MUTISM) excluded."
+    },
+    "tinnitus": {
+      "vars": [
+        "REACTIONS"
+      ],
+      "positiveTerms": [
+        "TINNITUS"
+      ],
+      "delimiter": "|",
+      "absentIsNegative": true,
+      "_status": "mapped",
+      "questionText": "TINNITUS."
+    },
+    "sinus_condition": {
+      "vars": [
+        "REACTIONS"
+      ],
+      "positiveTerms": [
+        "SINUSITIS",
+        "ACUTE SINUSITIS",
+        "CHRONIC SINUSITIS",
+        "SINUSITIS BACTERIAL",
+        "SINUSITIS FUNGAL"
+      ],
+      "delimiter": "|",
+      "absentIsNegative": true,
+      "_status": "mapped",
+      "questionText": "Sinusitis PTs, matching the NAMCS J01/J32 scope. SINUS DISORDER, SINUS CONGESTION and SINUS PAIN excluded as non-specific."
+    },
+    "recalcitrance_proxy": {
+      "vars": [],
+      "positiveCodes": [],
+      "_status": "unmapped",
+      "questionText": "",
+      "_hint": "Recalcitrance (repeat courses, persistence) is a patient-history construct; a single adverse-event report does not carry it."
+    }
+  },
+  "cost_concepts": {
+    "_note": "FAERS has no expenditure data."
+  },
+  "caveats": [
+    "Share of adverse-event REPORTS coding the listed MedDRA terms. FAERS is a voluntary spontaneous-reporting database with no sampling design and no count of people exposed, so this is not a prevalence among people, patients or drug users, and it cannot be compared with the survey or NAMCS rows.",
+    "Reporting is selective: it depends on the drug, publicity, reporter type and era, and a reaction coded on a report is not established as caused by the drug.",
+    "The interval is a simple binomial interval treating each report as independent. It describes counting precision within this set of reports only.",
+    "This is a sample of openFDA drug-event records (five files, reports received 2002-2012), not the full FAERS database. Fragment lines from a broken CSV flattening (1,389) were dropped; duplicate report versions were collapsed to one per safetyreportid.",
+    "No case narratives were available: the narrative column in the export holds only fragments, so the proposal 7.2 narrative-extraction benchmark could not be run on these data.",
+    "Estimates are suppressed unless at least 30 reports carry the phenotype and the RSE is 30% or less, the same thresholds used for NAMCS.",
+    "Hypothesis-generating descriptive figure, not a safety signal and not a diagnostic count."
+  ],
+  "phenotype_rule": {
+    "all": [
+      "headache_migraine"
+    ],
+    "any": [
+      "dizziness_balance",
+      "hearing_difficulty",
+      "tinnitus"
+    ]
+  },
+  "phenotype_definition": "Adverse-event reports that code a headache or migraine term AND a dizziness/vestibular, hearing-loss or tinnitus term on the same report. The proposal 7.1 phenotype as co-reported MedDRA reactions; all reports, any age."
+}

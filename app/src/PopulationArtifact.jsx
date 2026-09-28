@@ -31,6 +31,8 @@ const QUANTITIES = {
   phenotype_prevalence: { label: "Phenotype prevalence", unit: "proportion" },
   phenotype_visit_share: { label: "Share of adult office visits", unit: "proportion" },
   headache_share_of_sinusitis_visits: { label: "Headache share of sinusitis visits", unit: "proportion" },
+  phenotype_report_share: { label: "Share of adverse-event reports", unit: "proportion" },
+  headache_share_of_sinusitis_reports: { label: "Headache share of sinusitis reports", unit: "proportion" },
   annual_cost_mean:     { label: "Mean annual cost",     unit: "usd" },
   avoidable_cost_mean:  { label: "Mean avoidable cost",  unit: "usd" },
 };
@@ -43,6 +45,7 @@ export function money(v) { return Number.isFinite(v) ? new Intl.NumberFormat("en
 export function isTotal(e)  { return !(typeof e.domain === "string" && e.domain.length > 0); }
 export function unitOf(e)   { return e.unit || QUANTITIES[e.name]?.unit || null; }
 export function labelOf(e)  { return QUANTITIES[e.name]?.label || e.name; }
+export function unitNoun(art) { return art?.unitOfAnalysis === "visit" ? "visits" : art?.unitOfAnalysis === "report" ? "reports" : "respondents"; }
 export function eligibilityText(el) {
   if (!el) return "";
   const parts = [];
@@ -133,17 +136,20 @@ export default function PopulationArtifact({ art, onClear }) {
         {ph.mapFile && <div className="pa-small" style={{marginTop:4}}>map {ph.mapFile} v{ph.mapVersion}</div>}
         {varMap.length > 0 && (
           <ul>{varMap.map(([concept, vars]) => (
-            <li key={concept} className="pa-code">{concept}: {ph.codeMap && Array.isArray(ph.codeMap[concept]) ? `diagnosis codes ${ph.codeMap[concept].join(", ")}` : Array.isArray(vars) && vars.length ? vars.join(", ") : (typeof vars === "string" && vars ? vars : "unmapped")}
+            <li key={concept} className="pa-code">{concept}: {ph.codeMap && Array.isArray(ph.codeMap[concept]) ? `diagnosis codes ${ph.codeMap[concept].join(", ")}` : ph.termMap && Array.isArray(ph.termMap[concept]) ? `MedDRA terms ${ph.termMap[concept].join(", ")}` : Array.isArray(vars) && vars.length ? vars.join(", ") : (typeof vars === "string" && vars ? vars : "unmapped")}
               {ph.questionText && ph.questionText[concept] ? <div style={{fontFamily:"inherit",color:"#5C6E6C",marginTop:2}}>{ph.questionText[concept]}</div> : null}</li>
           ))}</ul>
         )}
       </div>
+      {art.unitOfAnalysis === "report" && (
+        <div className="pa-call pa-warn"><b>Adverse-event reports, not people.</b> FAERS is a voluntary reporting database with no sampling design and no count of people exposed to any drug. This figure describes the reports in this dataset; it is not a prevalence and cannot be compared with the survey or office-visit rows.</div>
+      )}
       {art.unitOfAnalysis === "visit" && (
         <div className="pa-call pa-warn"><b>Office visits, not people.</b> Each record is one sampled physician office visit. A patient seen several times counts several times, and a condition not coded at that visit counts as absent, so this is a share of visits and is not comparable to a population prevalence.</div>
       )}
       {ph.eligibility && (ph.eligibility.var || ph.eligibility.concept) && (
         <div className="pa-call"><b>Population.</b> {eligibilityText(ph.eligibility)} — {ph.eligibility.reason}
-          {Number.isFinite(ph.eligibility.eligibleRespondents) && <div className="pa-small">{ph.eligibility.eligibleRespondents.toLocaleString()} of {Number(ph.eligibility.allRespondents).toLocaleString()} {art.unitOfAnalysis === "visit" ? "visits" : "respondents"} eligible; the denominator below is the eligible {art.unitOfAnalysis === "visit" ? "visits" : "respondents with complete phenotype items"}</div>}
+          {Number.isFinite(ph.eligibility.eligibleRespondents) && <div className="pa-small">{ph.eligibility.eligibleRespondents.toLocaleString()} of {Number(ph.eligibility.allRespondents).toLocaleString()} {unitNoun(art)} eligible; the denominator below is the eligible {art.unitOfAnalysis === "visit" || art.unitOfAnalysis === "report" ? unitNoun(art) : "respondents with complete phenotype items"}</div>}
         </div>
       )}
       {ph.unmapped?.length > 0 && <div className="pa-call pa-warn"><b>Narrower than proposal §7.1.</b> This cycle could not express: {ph.unmapped.join(", ")}. The phenotype measured here is not the phenotype defined in the proposal, and the difference is stated rather than absorbed.</div>}

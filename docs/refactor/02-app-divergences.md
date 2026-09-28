@@ -67,6 +67,32 @@ Pooled NAMCS results, adult office visits, annual-average weights:
 | Headache diagnosis + dizziness, hearing loss or tinnitus diagnosis, share of visits | 0.09% (0.05–0.12), 65 positive visits | 0.11% | suppressed |
 | Among sinusitis visits, share also diagnosed with headache or migraine | 3.6% (1.7–5.5), 54 of 960 visits | suppressed | suppressed |
 
+## FAERS (28 September 2026)
+
+| File | What it is |
+|---|---|
+| `app/etl/faers_prepare.py` | Standard-library reader for openFDA drug-event CSV exports: keeps parseable report rows, drops 1,389 fragment lines (1,368 in file 5, whose flattening split long drug lists across lines), collapses 38 duplicate versions; 53,926 unique reports received 2002–2012. |
+| `phenotype_map_faers_sample.json`, `..._sinus.json` | Exact MedDRA preferred-term lists per concept; `unitOfAnalysis: "report"`; no design (weight 1, one stratum, each report its own PSU) declared through `design.varianceMethod`. |
+| `masque_population_etl.R` 0.5.0 | `positiveTerms` + `delimiter` (exact list-element match), map-declared `varianceMethod`, `termMap` in the artifact, `report` unit. Existing artifacts reproduce exactly. |
+| `PopulationArtifact.jsx`, `MASQUE_Population.jsx` | "Adverse-event reports, not people" warning and summary-row label; MedDRA terms listed; summary note names the three units. |
+
+Results, share of reports in this sample (simple binomial intervals; not a prevalence):
+
+| Estimate | All | Women | Men |
+|---|---|---|---|
+| Headache term + dizziness, hearing-loss or tinnitus term on one report | 0.73% (0.66–0.80), 394 reports | 0.91% | 0.53% |
+| Among reports coding sinusitis, share also coding headache or migraine | 14.6% (9.7–19.4), 30 of 206 | suppressed | suppressed |
+
+**Extraction lexicon on MedDRA terms (lexicon 0.3.1).** No narratives were available for the proposal 7.2 benchmark, so the extractor was run on each mapped term as a one-line utterance. For the clinical lead; no lexicon phrase was changed:
+
+| Concept | Captured | Notes |
+|---|---|---|
+| Headache/migraine | 4 of 9 as `m_head` | HEADACHE, TENSION, CLUSTER and SINUS HEADACHE captured. Plain MIGRAINE, COMPLICATED MIGRAINE and BASILAR MIGRAINE capture nothing; MIGRAINE WITH/WITHOUT AURA set `m_aura` yes/no correctly. |
+| Dizziness/vestibular | 0 of 9 as `v_vertigo` | By design for DIZZINESS and VERTIGO: the item is a duration scale with no fallback, so a cue without a duration is left for the prompt to ask. VERTIGO POSITIONAL sets `v_head`. BALANCE DISORDER, vestibular and Meniere terms have no cue. |
+| Hearing loss | 0 of 9 | No hearing-loss cue exists. **SUDDEN HEARING LOSS does not raise `rf_ssnhl`**, whose cues are conversational ("hearing dropped", "lost my hearing"). A clinical-register phrase is a safety-relevant gap. |
+| Tinnitus | 1 of 1 as `v_aural` | |
+| Sinusitis | no MASQUE item | Expected: sinusitis is not a scored item. |
+
 ## Verification
 
 - ETL 0.2.0 was run here (R 4.3.3, survey 4.4) on `app/tests/fixtures/synthetic_nhis_like.csv` with `phenotype_map_synthetic.json`, producing `population-estimates.synthetic.json`. The fixture is invented: `source.dataset` is `SYNTHETIC`, the strata and PSU codes are fake, and the map's status text says so. It exists so the ETL and the renderer can be exercised without a public-use file and is never deployed.

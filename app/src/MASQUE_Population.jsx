@@ -279,12 +279,13 @@ function SummaryTable({ artifacts }) {
             {artifacts.map(({ path, art }) => {
               const src = art.source || {}, ph = art.phenotype || {}, el = ph.eligibility;
               const total = (art.estimates || []).find(isTotal);
-              const head = ph.codeMap?.headache_migraine ? `diagnosis ${ph.codeMap.headache_migraine.join(", ")}` : ph.variableMap?.headache_migraine;
-              const visits = art.unitOfAnalysis === "visit";
+              const head = ph.codeMap?.headache_migraine ? `diagnosis ${ph.codeMap.headache_migraine.join(", ")}`
+                : ph.termMap?.headache_migraine ? `MedDRA ${ph.termMap.headache_migraine.length} terms (HEADACHE, MIGRAINE, …)` : ph.variableMap?.headache_migraine;
+              const visits = art.unitOfAnalysis === "visit", reports = art.unitOfAnalysis === "report";
               return (
                 <tr key={path}>
                   <td className="src"><b>{src.dataset} {src.cycle}</b><span>{(ph.unmapped || []).length} concept{(ph.unmapped || []).length === 1 ? "" : "s"} unmapped</span></td>
-                  <td>{el && (el.var || el.concept) ? eligibilityText(el) : "all respondents"}{visits && <div style={{fontSize:11,fontWeight:600}}>office visits, not people</div>}{total ? <div style={{fontSize:11,color:"var(--muted)"}}>n = {Number(total.unweightedN).toLocaleString()} {visits ? "visits" : ""}</div> : null}</td>
+                  <td>{el && (el.var || el.concept) ? eligibilityText(el) : "all respondents"}{visits && <div style={{fontSize:11,fontWeight:600}}>office visits, not people</div>}{reports && <div style={{fontSize:11,fontWeight:600}}>adverse-event reports, not people</div>}{total ? <div style={{fontSize:11,color:"var(--muted)"}}>n = {Number(total.unweightedN).toLocaleString()} {visits ? "visits" : reports ? "reports" : ""}</div> : null}</td>
                   <td className="num" style={{fontSize:11.5}}>{Array.isArray(head) ? head.join(", ") : (head || "—")}</td>
                   <td>{(ph.rule?.any || []).map(a => <span className="arm" key={a}>{a}</span>)}</td>
                   {cell(total)}{cell(bySex(art, "female"))}{cell(bySex(art, "male"))}
@@ -295,7 +296,7 @@ function SummaryTable({ artifacts }) {
         </table>
       </div>
       <div className="notew"><Info size={13} style={{flex:"0 0 auto",marginTop:1}} /><span>
-        Each row is its own phenotype definition. Rows differ by survey, age floor, headache item and otologic arms, so compare figures across rows only where those columns match. Weighted estimates with 95% intervals as produced by the ETL; this table computes nothing.
+        Each row is its own phenotype definition. Rows differ by source, unit (people, office visits or adverse-event reports), age floor, headache item and arms, so compare figures across rows only where those columns match. Estimates with 95% intervals as produced by the ETL; this table computes nothing.
       </span></div>
     </div>
   );

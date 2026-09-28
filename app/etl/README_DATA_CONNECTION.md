@@ -184,6 +184,20 @@ What is different about NAMCS, all declared in the maps:
 - **Suppression is stricter:** at least 30 phenotype-positive sample visits are required (`minPositiveCases`), the NCHS standard for NAMCS visit estimates.
 - **2017 is absent:** no codebook was available for that year when the files were collected.
 
+### FAERS (openFDA drug events), as run on 28 September 2026
+
+FAERS is a voluntary spontaneous-reporting database. It has no sampling design, no weights and no count of people exposed to any drug, so it yields a **share of reports**, never a prevalence. The map declares `unitOfAnalysis: "report"` and a `design.varianceMethod` that says there is no design, and every artifact repeats it.
+
+```
+python app/etl/faers_prepare.py --out faers_reports.csv drug-event-0001-of-0005.csv ... drug-event-0005-of-0005.csv
+Rscript app/etl/masque_population_etl.R --data faers_reports.csv --map app/etl/phenotype_map_faers_sample.json --out app/data/population-estimates.faers-sample.json
+```
+
+- `faers_prepare.py` keeps rows whose first field is a report ID and whose reaction list parses; fragment lines from a broken flattening are dropped and counted, and duplicate report versions collapse to one per `safetyreportid`.
+- Concepts are exact MedDRA preferred-term lists (`positiveTerms`), built from the terms present in the data. Exact matching keeps SINUS TACHYCARDIA out of "sinus".
+- `patientsex` follows openFDA coding (0 unknown, 1 male, 2 female); age is not used.
+- The export carried no case narratives, so the proposal 7.2 narrative benchmark could not run; the MedDRA-term lexicon check is recorded in `docs/refactor/02-app-divergences.md`.
+
 ---
 
 ## What this does and doesn't close
