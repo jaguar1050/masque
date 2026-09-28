@@ -198,7 +198,7 @@ Rscript app/etl/masque_population_etl.R --data faers_reports.csv --map app/etl/p
 - `patientsex` follows openFDA coding (0 unknown, 1 male, 2 female); age is not used.
 - **No narratives.** Only 24 records carry the narrative field and all hold a "CASE EVENT DATE" stamp, so the proposal 7.2 narrative benchmark cannot run on openFDA data. The MedDRA-term lexicon check is recorded in `docs/refactor/02-app-divergences.md`.
 
-### MEPS 2019–2020, as run on 28 September 2026
+### MEPS 2019–2021, as run on 28 September 2026
 
 MEPS is the only source here with expenditures, so it carries the cost half of §7.3. It is a person-level survey with its own design (`PERWTyyF`, `VARSTR`, `VARPSU`), and each year is its own map and its own artifact.
 
@@ -211,7 +211,7 @@ MEPS is the only source here with expenditures, so it carries the cost half of �
        --out meps_2019.csv
    ```
 
-   For 2020 the files are h224 (FYC), h222 (conditions), h220if1 (links) and h220a/d/e/f/g (events).
+   For 2020 the files are h224 (FYC), h222 (conditions), h220if1 (links) and h220a/d/e/f/g (events); for 2021, h233, h231, h229if1 and h229a/d/e/f/g.
 
 2. **Run the ETL** with `phenotype_map_meps_<year>.json` (the MASQUE phenotype as reported conditions) or `phenotype_map_meps_<year>_sinus.json` (among adults reporting sinusitis, the share also reporting headache or migraine, plus the spending rows).
 
@@ -220,10 +220,11 @@ What is different about MEPS, all declared in the maps and repeated in each arti
 - **Conditions are household-reported**, coded by AHRQ to ICD-10-CM and truncated to three characters on the public file. Rare codes are collapsed for confidentiality, so H81/H82 (vestibular), H90 and J01 never appear, and H93 (which contains tinnitus) cannot be narrowed to tinnitus.
 - **Spending is linked, not attributed.** `COST_sinus_condition` sums all-payer expenditures of every distinct event linked to a sinusitis condition (prescriptions link through `LINKIDX`). An event also linked to another condition counts in full, so the figure is an upper bound. Home health events are not included (file not supplied).
 - **Dollars are nominal** for the survey year; no inflation adjustment.
-- **Cost rows are declared in the map** (`costEstimates`: name, variable, `mean` or `total`, and whether the domain is all eligible adults or only the phenotype-positive ones). The spending rows for adults with both sinusitis and headache are computed and suppressed in both years (62 and 46 sample adults).
+- **Cost rows are declared in the map** (`costEstimates`: name, variable, `mean` or `total`, and whether the domain is all eligible adults or only the phenotype-positive ones). The spending rows for adults with both sinusitis and headache are computed and suppressed in every year (62, 46 and 49 sample adults).
 - **Suppression follows AHRQ:** unweighted n at least 100 (`_meta.minUnweightedN`), RSE at most 30%, and at least 30 phenotype-positive sample persons for proportions.
 - **Years are not pooled.** Pooling MEPS years needs AHRQ's pooled-variance linkage file (HC-036) to put strata and PSUs on a common frame; stacking the annual design variables would understate the variance.
-- **2021 is waiting on files.** The office-based, outpatient and prescribed-medicine event files are in hand. The full-year consolidated file (h233), conditions (h231), links (h229if1), emergency (h229e) and inpatient (h229d) files are still needed.
+- **The sinusitis denominator is, in practice, adults with sinusitis-linked care.** All but one of the 1,566 adult person-year records reporting sinusitis across the three years have at least one linked event, so no one is averaged in at zero.
+- **A few people move a year's spending.** The largest single sample adult carries 7% (2019), 16% (2020) and 24% (2021) of the weighted total; the 2021 artifact says so in its caveats.
 
 ---
 

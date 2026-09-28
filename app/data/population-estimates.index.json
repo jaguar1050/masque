@@ -75,6 +75,16 @@
       "path": "./data/population-estimates.meps-2020-sinus.json",
       "addedOn": "2026-09-28",
       "note": "MEPS 2020, adults reporting sinusitis: share also reporting headache or migraine, and spending (all payers, nominal 2020 dollars) on care linked to sinusitis"
+    },
+    {
+      "path": "./data/population-estimates.meps-2021.json",
+      "addedOn": "2026-09-28",
+      "note": "MEPS 2021 full-year consolidated + conditions, adults: headache or migraine condition + dizziness, hearing-loss or other ear (H93) condition reported in the year"
+    },
+    {
+      "path": "./data/population-estimates.meps-2021-sinus.json",
+      "addedOn": "2026-09-28",
+      "note": "MEPS 2021, adults reporting sinusitis: share also reporting headache or migraine, and spending (all payers, nominal 2021 dollars) on care linked to sinusitis"
     }
   ],
   "reviewed": [
@@ -117,14 +127,6 @@
       "reviewedOn": "2026-09-28",
       "reason": "Proposal 7.2 benchmarks the MASQUE extractor on FAERS case narratives. In the original openFDA JSON (53,990 records), only 24 records carry the narrative field (patient.summary.narrativeincludeclinical), and every one holds only a 'CASE EVENT DATE' stamp; no record has clinical text. As a partial check, the extractor was run on the MedDRA terms themselves: it recognises headache terms and TINNITUS, but not plain MIGRAINE, not DIZZINESS or VERTIGO without a duration (by design), not any hearing-loss term, and not SUDDEN HEARING LOSS as the sudden-hearing-loss red flag. Details in docs/refactor/02-app-divergences.md.",
       "wouldChange": "A narrative source outside openFDA (for example FAERS case narratives obtained through FDA's request process, or clinical notes where permitted); lexicon changes are a clinical-lead decision."
-    },
-    {
-      "source": "MEPS",
-      "cycle": "2021",
-      "status": "awaiting files",
-      "reviewedOn": "2026-09-28",
-      "reason": "Only part of the 2021 release has been supplied: the office-based (h229g), outpatient (h229f) and prescribed-medicine (h229a) event files. The estimate needs the full-year consolidated file (h233), the conditions file (h231), the condition-event link file (h229if1), and the emergency-room (h229e) and inpatient (h229d) event files.",
-      "wouldChange": "The second half of the 2021 upload; the 2019 and 2020 maps then carry over with the 2021 file names."
     }
   ],
   "_reviewedNote": "Datasets examined that produced no estimate, with the reason and what would change it. Rendered on the Population page so an absent source is visible, never silently missing."

@@ -1,0 +1,110 @@
+{
+  "masqueArtifact": "population-estimates",
+  "unitOfAnalysis": "person",
+  "generatedAt": "2026-09-28T06:32:36Z",
+  "producedBy": "masque_population_etl.R 0.6.0 / R survey 4.2.1",
+  "source": {
+    "dataset": "MEPS",
+    "cycle": "2021",
+    "file": "meps_2021.csv",
+    "steward": "AHRQ",
+    "url": "https://meps.ahrq.gov/mepsweb/data_stats/download_data_files.jsp",
+    "sha256": "e8a6f6bac5d75b719bd1c045837dddba14f6675d950263038828d210c8057bbb",
+    "downloadedAt": "2026-09-28"
+  },
+  "design": {
+    "weight": "PERWT",
+    "strata": "VARSTR",
+    "psu": "VARPSU",
+    "nest": true,
+    "lonelyPsu": "adjust",
+    "varianceMethod": "Taylor linearization",
+    "domainAnalysis": true
+  },
+  "phenotype": {
+    "definition": "Adults reporting a headache or migraine condition AND a dizziness, hearing-loss or other ear (H93, includes tinnitus) condition during the year. The proposal 7.1 phenotype as MEPS reported conditions; the sinusitis arm is reported with its costs separately.",
+    "rule": {
+      "all": ["headache_migraine"],
+      "any": ["dizziness_balance", "hearing_difficulty", "tinnitus"],
+      "completeCase": true
+    },
+    "eligibility": {
+      "var": "AGELAST",
+      "min": 18,
+      "reason": "Adults, for comparability with the other adult sources.",
+      "eligibleRespondents": 21986,
+      "allRespondents": 28336
+    },
+    "variableMap": {
+      "headache_migraine": "CONDS",
+      "dizziness_balance": "CONDS",
+      "hearing_difficulty": "CONDS",
+      "tinnitus": "CONDS",
+      "sinus_condition": "CONDS",
+      "recalcitrance_proxy": null
+    },
+    "codeMap": {
+      "headache_migraine": ["G43", "G44", "R51"],
+      "dizziness_balance": ["R42", "H81", "H82"],
+      "hearing_difficulty": ["H90", "H91"],
+      "tinnitus": ["H93"],
+      "sinus_condition": ["J01", "J32"]
+    },
+    "questionText": {
+      "headache_migraine": "Headache or migraine condition: G43 migraine, G44 other headache syndromes, R51 headache.",
+      "dizziness_balance": "Dizziness or vestibular condition: R42 dizziness and giddiness, H81 disorders of vestibular function, H82 vertiginous syndromes. H81/H82 do not appear on the public file (collapsed for confidentiality); R42 carries the arm.",
+      "hearing_difficulty": "Hearing loss condition: H90 conductive and sensorineural, H91 other and unspecified hearing loss.",
+      "tinnitus": "H93 other disorders of the ear, which includes tinnitus (H93.1). The public file truncates codes to 3 characters, so tinnitus cannot be separated from the other H93 conditions; this arm is broader than tinnitus.",
+      "sinus_condition": "Sinusitis condition: J01 acute, J32 chronic sinusitis. J01 does not appear on the public file; J32 carries the arm.",
+      "recalcitrance_proxy": ""
+    },
+    "mapFile": "phenotype_map_meps_2021.json",
+    "mapVersion": "0.1.0",
+    "unmapped": ["recalcitrance_proxy"]
+  },
+  "estimates": [
+    {
+      "name": "phenotype_prevalence",
+      "unit": "proportion",
+      "estimate": 0.00261086344224541,
+      "se": 0.000456321139777704,
+      "ci": [0.00171260782754434, 0.00350911905694647],
+      "unweightedN": 21986,
+      "unweightedPositives": 55,
+      "weightedN": 258042684.795337,
+      "df": 280,
+      "rse": 0.17477786558812,
+      "suppress": false
+    },
+    {
+      "name": "phenotype_prevalence",
+      "unit": "proportion",
+      "domain": "sex=female",
+      "estimate": 0.00439840569810057,
+      "se": 0.000857542058936561,
+      "ci": [0.00271035773771609, 0.00608645365848506],
+      "unweightedN": 11853,
+      "unweightedPositives": 45,
+      "weightedN": 132323309.970551,
+      "df": 280,
+      "rse": 0.194966566932851,
+      "suppress": false
+    },
+    {
+      "name": "phenotype_prevalence",
+      "unit": "proportion",
+      "domain": "sex=male",
+      "estimate": 0.000729423064923805,
+      "se": 0.000241812601195148,
+      "ci": [0.000253406743974894, 0.00120543938587271],
+      "unweightedN": 10133,
+      "unweightedPositives": 10,
+      "weightedN": 125719374.824786,
+      "df": 278,
+      "rse": 0.33151213996833,
+      "suppress": true,
+      "suppressReason": "RSE > 30%, unweighted n < 100, or fewer than 30 phenotype-positive sample records (AHRQ MEPS reliability standard)"
+    }
+  ],
+  "caveats": ["Conditions are household-reported and coded by AHRQ to ICD-10-CM. A condition record means it was reported during the year (as a reason for care, a disability day or a current condition), not that a clinician confirmed it.", "Codes are truncated to three characters on the public file and rare codes are collapsed for confidentiality, so vestibular disorders (H81/H82), H90 hearing loss and acute sinusitis (J01) do not appear, and tinnitus cannot be separated from other H93 ear disorders.", "Suppressed unless the unweighted denominator is at least 100, at least 30 sample persons are phenotype-positive, and the RSE is 30% or less.", "2021 falls within the COVID-19 pandemic; health-care use may differ from 2019, so compare years with that in mind.", "Estimated within the eligible subpopulation only (AGELAST >= 18): Adults, for comparability with the other adult sources.", "Concepts this cycle could not express: recalcitrance_proxy. The phenotype reported here is narrower than the one defined in proposal 7.1.", "No gender-identity item in this cycle: estimates are stratified by sex only. Gender is not substituted from sex."]
+}
