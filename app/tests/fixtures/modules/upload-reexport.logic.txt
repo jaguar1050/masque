@@ -1,0 +1,3 @@
+// Upload fixture: a logic file with a re-export (rejected by importSource, V57).
+export { helper } from "./helper.js";
+export default { format: "screenair-logic", contractVersion: 1, moduleId: "shape", reads: { items: {} } };

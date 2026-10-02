@@ -1,0 +1,3 @@
+// inspectSource fixture: a format that is not a literal yields null.
+const kind = "screenair-" + "logic";
+export default { format: kind };

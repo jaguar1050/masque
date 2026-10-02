@@ -1,0 +1,14 @@
+// Upload fixture: the top level sets a global. inspectSource must classify the file as
+// logic and list the V59 references while the global stays unset (nothing runs before consent).
+globalThis.__uploadFixtureSideEffect = "ran";
+const store = window.localStorage;
+export default {
+  format: "screenair-logic",
+  contractVersion: 1,
+  moduleId: "shape",
+  reads: { items: { ex_a1: "boolean" } },
+  routing: [
+    { id: "example-peek", when: (s) => s.yes("ex_a1") && typeof store === "object",
+      copy: { screener: { h: "Example heading", p: "Example paragraph.", chips: [] } } },
+  ],
+};

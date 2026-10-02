@@ -2336,3 +2336,19 @@ Adversarial review of 2 October 2026: 50 findings, numbered R1-R50 in the order 
 | R48 | nit | The shape fixture has no date | WP13 day 1 (§2.9, §9.14) | — |
 | R49 | nit | `importSource` compares UTF-16 length with a missing constant | Caller passes `byteLength` and `maxBytes` (§6.1) | — |
 | R50 | nit | Redirecting the Simulator at M1 drops its demos | Redirect at M2 (D18, §2.1, §9.13, Q18) | — |
+
+## Orchestrator decisions after the foundation phase (2 October 2026)
+
+Settled after WP0, WP13 day 1 and WP12-M1 landed, binding on every later package:
+
+| # | Decision |
+|---|---|
+| F1 | **t-ids exemptions (§8.3).** The rule ignores import specifiers (apps and the shell must import `MASQUE_Voice.js`, `MASQUE_Population.jsx` and so on, §2.7) and the page-contract names `masque-proto`, `masque-back`, `masque-status`, `masque-loader.js`, `data-masque-*`, `masqueReady` and `masqueTests`. |
+| F2 | **t-ids is waived for `src/shell/**` until M2.** The M1 shell mounts the legacy files and must name them; its "M1 legacy block (→ M2)" and the registry's fallback label are replaced at M2, after which the rule applies to the shell in full. |
+| F3 | **Encoding (§2.8, §8.3).** `data/provenance/nhanes-fetch-manifest.json`, `tests/fixtures/nhanes/nhanes_synthetic.csv` and `tests/fixtures/synthetic_nhis_like.csv` keep their CRLF line endings (data files written on the user's machine; not rewritten). The LF check exempts exactly these paths; BOM and UTF-8 checks still apply. |
+| F4 | **`validateModule({loaded})` takes `BoundModule[]`** (modules, not registry entries; failed entries are never passed). §5.2's "loaded: entries" means the modules of the loaded entries. |
+| F5 | **`RoutingState.answered` is the numeric count** (as in `ScoreResult`). The per-item helper on predicate states is named `isAnswered(id)`. `contract.js` is updated accordingly by WP3. |
+| F6 | **Release `0.4.0`** stays the default (Q2 open with the lead). `index.html`'s versions list follows `policy.APP_VERSION` when WP14 rewrites it. |
+| F7 | **Test files WP0 added under `app/tests/loader-check/`** are accepted; WP13 folds them into the suites. `.gitignore` additions are accepted as WP0's. |
+| F8 | **`RegistryEntry` gains optional `label` and `isDefault`**; entry keys are `builtin:<rubric.id>` (fallback `builtin:<index>`). |
+| F9 | **`.pa-table` overflow at 375 px** (`PopulationArtifact.jsx`) is fixed by WP10 with a scroll wrapper; the shell's `.sa-panel{overflow-x:auto}` guard stays. |

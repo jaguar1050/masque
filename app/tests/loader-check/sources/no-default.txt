@@ -1,0 +1,2 @@
+// importSource fixture: no default export.
+export const logic = { format: "screenair-logic" };

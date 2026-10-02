@@ -1,0 +1,3 @@
+// importSource fixture: JSX is a syntax error here (no react preset).
+const view = () => <div>hello</div>;
+export default { format: "screenair-logic", view };

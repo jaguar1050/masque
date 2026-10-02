@@ -1,0 +1,13 @@
+{
+  "format": "screenair-registry",
+  "modules": [
+    {
+      "rubric": "./modules/masque/masque.rubric.json",
+      "logic": "./modules/masque/masque.logic.js",
+      "docs": [
+        "./modules/masque/SOURCES.md"
+      ],
+      "default": true
+    }
+  ]
+}

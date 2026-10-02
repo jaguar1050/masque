@@ -1,0 +1,4 @@
+// Upload fixture: the format is not a literal, so inspectSource reports null and the dialog
+// shows "executable (kind determined after consent)".
+const kind = "screenair-" + "logic";
+export default { format: kind, contractVersion: 1, moduleId: "shape", reads: { items: {} } };

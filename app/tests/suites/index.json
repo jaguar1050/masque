@@ -1,0 +1,132 @@
+{
+  "format": "screenair-suites",
+  "note": "Fixed, ordered list of every planned suite (design 03 §8.0, §8.3). Paths are relative to this file. The runner loads each at run time; a missing suite is FAIL \"not present\".",
+  "suites": [
+    {
+      "name": "integrity",
+      "path": "integrity.js",
+      "owner": "WP13",
+      "what": "baseline manifest, fixed-src pins, divergence audit (§8.1)"
+    },
+    {
+      "name": "values",
+      "path": "values.js",
+      "owner": "WP13",
+      "what": "rubric and logic data vs baseline constants (consumes WP1/WP2)"
+    },
+    {
+      "name": "golden",
+      "path": "golden.js",
+      "owner": "WP13",
+      "what": "FHIR, CDS, dictionary, cohort row, bundle, note, summaryText vs baseline (WP4/WP5/WP6)"
+    },
+    {
+      "name": "sweep",
+      "path": "sweep.js",
+      "owner": "WP13",
+      "what": "computeScore / scoreItem / itemBounds vs baseline (WP3)"
+    },
+    {
+      "name": "rules",
+      "path": "rules.js",
+      "owner": "WP13",
+      "what": "routing, phenotype, activation, suggestions, gap, referral, CDS preview, note; fail-closed (WP3/WP5)"
+    },
+    {
+      "name": "patient",
+      "path": "patient.js",
+      "owner": "WP13",
+      "what": "buildPatientSummary, askForm, list, summaryText vs baseline (WP6)"
+    },
+    {
+      "name": "extraction",
+      "path": "extraction.js",
+      "owner": "WP13",
+      "what": "extract and faersToUtterances vs baseline (WP5)"
+    },
+    {
+      "name": "probes",
+      "path": "probes.js",
+      "owner": "WP13",
+      "what": "liveProbes, validateProbes, truncateProbes vs baseline (WP5)"
+    },
+    {
+      "name": "cohort-gen",
+      "path": "cohort-gen.js",
+      "owner": "WP13",
+      "what": "makeCohort vs baseline Simulator (WP4)"
+    },
+    {
+      "name": "validate",
+      "path": "validate.js",
+      "owner": "WP3",
+      "what": "validator: MASQUE, shape fixture and the V1-V60 mutation corpus"
+    },
+    {
+      "name": "shape",
+      "path": "shape.js",
+      "owner": "WP13",
+      "what": "the data-only shape fixture through every engine function and tab"
+    },
+    {
+      "name": "render-screener",
+      "path": "render-screener.js",
+      "owner": "WP7",
+      "what": "Screener textContent vs baseline"
+    },
+    {
+      "name": "render-scribe",
+      "path": "render-scribe.js",
+      "owner": "WP8",
+      "what": "Scribe demo playback textContent vs baseline"
+    },
+    {
+      "name": "render-patient",
+      "path": "render-patient.js",
+      "owner": "WP9",
+      "what": "Patient sections and summary textContent vs baseline"
+    },
+    {
+      "name": "omissions",
+      "path": "omissions.js",
+      "owner": "WP13",
+      "what": "Patient module graph and rendered text omit scores (WP9)"
+    },
+    {
+      "name": "research",
+      "path": "research.js",
+      "owner": "WP10",
+      "what": "Research tab gates, row scope, demo cohorts"
+    },
+    {
+      "name": "research-parity",
+      "path": "research-parity.js",
+      "owner": "WP10",
+      "what": "edited panel vs baseline panel"
+    },
+    {
+      "name": "editor",
+      "path": "editor.js",
+      "owner": "WP11",
+      "what": "derive.js / lineage.js model-level editor checks"
+    },
+    {
+      "name": "roundtrip",
+      "path": "roundtrip.js",
+      "owner": "WP11",
+      "what": "Download-all → upload round trip"
+    },
+    {
+      "name": "upload",
+      "path": "upload.js",
+      "owner": "WP12",
+      "what": "upload rejections, Load as derived, acceptances"
+    },
+    {
+      "name": "static",
+      "path": "static.js",
+      "owner": "WP13",
+      "what": "import graph, layering, t-ids, loader imports, specifier text, encoding, pages"
+    }
+  ]
+}

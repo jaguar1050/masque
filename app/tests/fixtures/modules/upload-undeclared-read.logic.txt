@@ -1,0 +1,11 @@
+// Upload fixture: a closure reads ex_b2, which `reads` does not declare (V47). Pairs with shape-bound.rubric.json.
+export default {
+  format: "screenair-logic",
+  contractVersion: 1,
+  moduleId: "shape",
+  reads: { items: { ex_a1: "boolean" } },
+  routing: [
+    { id: "example-undeclared", when: (s) => s.yes("ex_a1") && s.yes("ex_b2"),
+      copy: { screener: { h: "Example heading", p: "Example paragraph.", chips: [] } } },
+  ],
+};

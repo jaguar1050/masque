@@ -1,0 +1,9 @@
+// Upload fixture: a logic file claiming the built-in logic id with other bytes (V8: "Logic id
+// 'masque' is reserved for the built-in logic"). Placeholder content only.
+export default {
+  format: "screenair-logic",
+  contractVersion: 1,
+  moduleId: "masque",
+  reads: { items: {} },
+  routing: [],
+};

@@ -1,0 +1,11 @@
+// Upload fixture: a routing closure that throws (V46). Pairs with shape-bound.rubric.json.
+export default {
+  format: "screenair-logic",
+  contractVersion: 1,
+  moduleId: "shape",
+  reads: { items: { ex_a1: "boolean" } },
+  routing: [
+    { id: "example-throws", when: (s) => { if (s.yes("ex_a1")) throw new Error("Example failure"); return false; },
+      copy: { screener: { h: "Example heading", p: "Example paragraph.", chips: [] } } },
+  ],
+};

@@ -1,0 +1,3 @@
+// Upload fixture: a logic file with a dynamic import() (rejected by importSource, V57).
+const later = () => import("./helper.js");
+export default { format: "screenair-logic", contractVersion: 1, moduleId: "shape", reads: { items: {} }, later };

@@ -1,0 +1,3 @@
+// importSource fixture: a bare import must be rejected too (logic files import nothing).
+import React from "react";
+export default { format: "screenair-logic", React };

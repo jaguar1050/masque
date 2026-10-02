@@ -1,0 +1,13 @@
+// Upload fixture: a closure whose result changes between two calls on the same state (V48).
+// Pairs with shape-bound.rubric.json.
+let calls = 0;
+export default {
+  format: "screenair-logic",
+  contractVersion: 1,
+  moduleId: "shape",
+  reads: { items: { ex_a1: "boolean" } },
+  routing: [
+    { id: "example-flaky", when: (s) => { calls += 1; return s.yes("ex_a1") && calls % 2 === 0; },
+      copy: { screener: { h: "Example heading", p: "Example paragraph.", chips: [] } } },
+  ],
+};

@@ -1,0 +1,6 @@
+// Upload fixture: a syntax error on line 4 (Babel reports 4:32).
+export default {
+  format: "screenair-logic",
+  contractVersion: 1, moduleId: ,
+  reads: { items: {} },
+};

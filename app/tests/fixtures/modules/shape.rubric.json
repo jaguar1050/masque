@@ -1,0 +1,120 @@
+{
+  "format": "screenair-rubric",
+  "contractVersion": 1,
+  "id": "shape",
+  "label": "Shape fixture (example module)",
+  "name": "Shape example",
+  "instrumentVersion": "1.0",
+  "logicBinding": "generic",
+  "domains": [
+    {
+      "key": "alpha",
+      "label": "Example domain Alpha",
+      "max": 60,
+      "items": [
+        {
+          "id": "ex_a1",
+          "w": 20,
+          "text": "Example item A1",
+          "short": "Example A1"
+        },
+        {
+          "id": "ex_a2",
+          "w": 15,
+          "text": "Example item A2",
+          "short": "Example A2"
+        },
+        {
+          "id": "ex_a3",
+          "w": 25,
+          "text": "Example item A3",
+          "short": "Example A3",
+          "scale": [
+            {
+              "label": "Example option none",
+              "f": 0
+            },
+            {
+              "label": "Example option some",
+              "f": 0.5
+            },
+            {
+              "label": "Example option all",
+              "f": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "beta",
+      "label": "Example domain Beta",
+      "max": 40,
+      "items": [
+        {
+          "id": "ex_b1",
+          "w": 25,
+          "text": "Example item B1",
+          "short": "Example B1"
+        },
+        {
+          "id": "ex_b2",
+          "w": 15,
+          "text": "Example item B2",
+          "short": "Example B2"
+        }
+      ]
+    }
+  ],
+  "bands": {
+    "cuts": {
+      "moderate": 35,
+      "high": 70
+    }
+  },
+  "redFlags": [
+    {
+      "id": "ex_rf1",
+      "tier": "urgent",
+      "group": "Example group",
+      "text": "Example warning sign 1",
+      "points": "Example point 1",
+      "action": "Example action 1"
+    }
+  ],
+  "defaultLocale": "en",
+  "locales": {
+    "en": {
+      "reviewed": true,
+      "items": {
+        "ex_a1": {
+          "q": "Example question A1?"
+        },
+        "ex_a2": {
+          "q": "Example question A2?"
+        },
+        "ex_a3": {
+          "q": "Example question A3?",
+          "opts": [
+            "Example answer none",
+            "Example answer some",
+            "Example answer all"
+          ]
+        },
+        "ex_b1": {
+          "q": "Example question B1?"
+        },
+        "ex_b2": {
+          "q": "Example question B2?"
+        }
+      },
+      "redFlags": {
+        "ex_rf1": {
+          "q": "Example warning question 1?",
+          "say": "Example advice for warning 1."
+        }
+      }
+    }
+  },
+  "changelog": []
+}

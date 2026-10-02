@@ -1,0 +1,13 @@
+// importSource fixture: a self-contained logic-shaped module with closures and non-ASCII text.
+const SUM = {
+  en: { greet: (who) => `Hello ${who} — Bárány, señor, 100 % ✓` },
+};
+
+export default {
+  format: "screenair-logic",
+  contractVersion: 1,
+  moduleId: "fixture-ok",
+  label: "Prueba de vértigo — ñandú ✓",
+  when: (s) => s.yes("item_a") && s.scale("item_b") === 2,
+  sum: SUM,
+};

@@ -1,0 +1,3 @@
+// importSource fixture: a dynamic import() must be rejected.
+const later = () => import("./helper.js");
+export default { format: "screenair-logic", later };

@@ -80,6 +80,18 @@
   .card h2 { margin: 0 0 6px; font-size: 17px; display: flex; align-items: center; gap: 8px; }
   .card h2 span { color: var(--accent); }
   .card p { margin: 0; font-size: 14px; color: var(--ink-soft); }
+  .card p + p { margin-top: 8px; }
+
+  .card.lead { grid-column: 1 / -1; padding: 28px 26px; border-width: 2px; border-color: var(--accent-edge); }
+  .card.lead h2 { font-size: clamp(22px, 4.4vw, 28px); letter-spacing: -0.02em; margin-bottom: 10px; }
+  .card.lead p { font-size: 15px; }
+  .card .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 0; padding: 0; list-style: none; }
+  .card .tabs li { font-size: 12px; color: var(--ink); background: var(--bg);
+                   border: 1px solid var(--rule); border-radius: 999px; padding: 3px 10px; }
+  .card .tabs + p { margin-top: 14px; }
+  .card .tag { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .05em;
+               text-transform: uppercase; color: var(--accent-ink); background: var(--accent-wash);
+               border: 1px solid var(--accent-edge); border-radius: 999px; padding: 2px 9px; margin-bottom: 10px; }
 
   footer { margin-top: 44px; padding-top: 22px; border-top: 1px solid var(--rule);
            font-size: 13px; color: var(--ink-soft); }
@@ -104,6 +116,7 @@
     <li>instrument <b>0.2</b></li>
     <li>lexicon <b>0.3.1</b></li>
     <li>probe set <b>1.0.0</b></li>
+    <li>gold set <b>0.2.0</b></li>
   </ul>
 
   <p class="notice">
@@ -115,43 +128,41 @@
 
   <div class="grid">
 
-    <a class="card" href="./screener.html">
-      <h2>Clinician Screener <span aria-hidden="true">&rarr;</span></h2>
-      <p>Six steps behind a mandatory safety gate, with FHIR write-back and pilot cohort
-         capture. The reference implementation of the instrument.</p>
-    </a>
-
-    <a class="card" href="./scribe.html">
-      <h2>Ambient Scribe <span aria-hidden="true">&rarr;</span></h2>
-      <p>Extracts findings from encounter speech &mdash; scripted, typed, or live from the
-         microphone &mdash; prompts for the high-yield gaps, and drafts a note. Probes are
-         ranked by what the answer could change.</p>
+    <a class="card lead" href="./screenair.html">
+      <span class="tag">Start here</span>
+      <h2>screenAIr <span aria-hidden="true">&rarr;</span></h2>
+      <p>One screening program: choose a module at the top, then work across the tabs below
+         it. The first module is <b>Dizziness and Sinusitis (MASQUE v1)</b>.</p>
+      <ul class="tabs" aria-label="screenAIr tabs">
+        <li>Clinician Screener</li>
+        <li>Ambient Scribe</li>
+        <li>Patient Companion</li>
+        <li>Research</li>
+        <li>Rubric Editor</li>
+      </ul>
+      <p>Early preview: the tabs run the existing apps unchanged. Module upload and the Rubric
+         Editor arrive with the module engine.</p>
     </a>
 
     <a class="card" href="./patient.html">
-      <h2>Patient Companion <span aria-hidden="true">&rarr;</span></h2>
-      <p>Produces a visit-preparation summary. No score, no band, no probability and no
-         research capture &mdash; each omission is deliberate.</p>
+      <h2>For patients <span aria-hidden="true">&rarr;</span></h2>
+      <p>The Patient Companion on its own. Produces a visit-preparation summary. No score, no
+         band, no probability and no research capture &mdash; each omission is deliberate.</p>
     </a>
 
     <a class="card" href="./simulator.html">
       <h2>Simulator <span aria-hidden="true">&rarr;</span></h2>
       <p>Interactive walkthrough of all four apps, carrying an inline copy of the probe
-         set so it runs standalone.</p>
-    </a>
-
-    <a class="card" href="./population.html">
-      <h2>Population Estimates <span aria-hidden="true">&rarr;</span></h2>
-      <p>The open-data half: design-aware prevalence estimates computed offline from
-         public-use survey files and rendered here without arithmetic. Says so plainly
-         when none has been produced yet.</p>
+         set so it runs standalone. Its scenarios and demo cohorts move into screenAIr next.</p>
     </a>
 
   </div>
 
   <footer>
-    <p>The screener and scribe both embed the shared <code>ResearchReadinessPanel</code>
-       &mdash; cohort ingestion, validation, calibration, fairness audit and model card.</p>
+    <p>In screenAIr the Clinician Screener and Ambient Scribe tabs both embed the shared
+       <code>ResearchReadinessPanel</code> &mdash; cohort ingestion, validation, calibration,
+       fairness audit and model card &mdash; and the Research tab shows the population
+       estimates.</p>
     <p>Served as source: the <code>.jsx</code> modules are compiled in your browser, so what
        runs here is the 0.3.1 methods-repository source plus the app-side changes listed in
        <code>docs/refactor/02-app-divergences.md</code>. First load of an

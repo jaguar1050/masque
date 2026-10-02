@@ -1,0 +1,11 @@
+// inspectSource fixture: a top-level side effect that must stay undone, a `format` read
+// through `export default <identifier>`, and every V59 API reference.
+globalThis.__loaderCheckSideEffect = "ran";
+const store = window.localStorage;
+const LOGIC = {
+  format: "screenair-logic",
+  peek: () => [document.title, fetch, XMLHttpRequest, WebSocket, sessionStorage, indexedDB, navigator,
+               eval, Function, import.meta.url, store],
+  window: "a key, not a reference",
+};
+export default LOGIC;

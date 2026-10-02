@@ -1,0 +1,4 @@
+// importSource fixture: a plain syntax error on line 3.
+export default {
+  format: "screenair-logic",,
+};

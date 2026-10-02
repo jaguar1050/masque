@@ -1,2 +1,6 @@
 __pycache__/
 *.pyc
+
+# screenAIr test runner (cloud only; never deployed)
+app/tests/playwright/.vendor/
+app/tests/playwright/report.json
