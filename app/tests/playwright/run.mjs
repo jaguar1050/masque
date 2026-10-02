@@ -262,10 +262,21 @@ async function main() {
       // The self-check fetches files that later packages add (a suite, a folder); the browser logs
       // each 404 as a console error. They are counted, not treated as an unhealthy page.
       const is404 = (e) => /Failed to load resource: the server responded with a status of 404/.test(e);
-      const real = errors.filter((e) => !is404(e));
+      // A check that provokes a console error on purpose (the loader's red panel in a hidden
+      // boot frame, harness/foundations.js) declares it first in
+      // window.__screenairExpectedConsole = [{prefix, max}]; each declaration absorbs at most
+      // `max` errors that start with "console.error: " + prefix. Nothing else is forgiven.
+      const expected = (await page.evaluate(() => window.__screenairExpectedConsole || [])).map((x) => ({ ...x, left: x.max || 1 }));
+      const isExpected = (e) => {
+        const hit = expected.find((x) => x.left > 0 && e.startsWith(`console.error: ${x.prefix}`));
+        if (hit) hit.left -= 1;
+        return !!hit;
+      };
+      const real = errors.filter((e) => !is404(e) && !isExpected(e));
       health.consoleClean = real.length === 0;
       health.consoleErrors = real.slice(0, 20);
-      health.resource404 = errors.length - real.length;
+      health.resource404 = errors.filter(is404).length;
+      health.expectedConsole = expected.map((x) => ({ prefix: x.prefix, absorbed: (x.max || 1) - x.left }));
       let verdict = report && VERDICTS.includes(report.verdict) ? report.verdict : "fail";
       const notes = [];
       if (!health.masqueReady || !health.rootChildren) { verdict = verdict === "invalid" ? verdict : "fail"; notes.push("test page not healthy (masqueReady / #root)"); }

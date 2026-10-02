@@ -1,0 +1,670 @@
+{
+  "format": "screenair-rubric",
+  "contractVersion": 1,
+  "id": "mutation-base",
+  "label": "Mutation base (every family)",
+  "name": "Mutation base",
+  "icon": "Info",
+  "instrumentVersion": "0.1",
+  "logicBinding": {
+    "moduleId": "mutation-base"
+  },
+  "domains": [
+    {
+      "key": "first",
+      "label": "Example first domain",
+      "max": 50,
+      "shortTag": "first",
+      "items": [
+        {
+          "id": "p_one",
+          "w": 20,
+          "text": "Example item one",
+          "short": "Example one",
+          "ask": "Example ask one?",
+          "tag": "Example tag · one",
+          "ref": "Example reference 1"
+        },
+        {
+          "id": "p_two",
+          "w": 30,
+          "text": "Example item two",
+          "short": "Example two",
+          "scale": [
+            {
+              "label": "Example level 0",
+              "f": 0
+            },
+            {
+              "label": "Example level 1",
+              "f": 0.5
+            },
+            {
+              "label": "Example level 2",
+              "f": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "second",
+      "label": "Example second domain",
+      "max": 50,
+      "items": [
+        {
+          "id": "p_three",
+          "w": 25,
+          "text": "Example item three",
+          "short": "Example three"
+        },
+        {
+          "id": "p_four",
+          "w": 25,
+          "text": "Example item four",
+          "short": "Example four",
+          "patientClin": "Example clinician line four"
+        }
+      ]
+    },
+    {
+      "key": "minus",
+      "label": "Example negative domain",
+      "max": -10,
+      "negative": true,
+      "items": [
+        {
+          "id": "p_minus",
+          "w": -10,
+          "text": "Example negative item",
+          "short": "Example minus"
+        }
+      ]
+    }
+  ],
+  "bands": {
+    "cuts": {
+      "moderate": 34,
+      "high": 67
+    }
+  },
+  "contextItems": [
+    {
+      "id": "p_ctx",
+      "text": "Example context question",
+      "options": [
+        [
+          "a",
+          "Example context A"
+        ],
+        [
+          "b",
+          "Example context B"
+        ]
+      ],
+      "captureLabel": "Example context",
+      "signal": {
+        "value": "b",
+        "screenerLabel": "Example signal (screener)",
+        "scribeLabel": "Example signal (scribe)",
+        "noteLabel": "Example signal (note)"
+      }
+    }
+  ],
+  "gapRule": {
+    "threshold": 1,
+    "markers": [
+      "p_ctx"
+    ],
+    "noteOrder": [
+      "p_ctx"
+    ]
+  },
+  "redFlags": [
+    {
+      "id": "p_rf_a",
+      "tier": "emergent",
+      "group": "Example group A",
+      "text": "Example emergent sign",
+      "points": "Example point A",
+      "action": "Example action A",
+      "ask": "Example flag ask A?"
+    },
+    {
+      "id": "p_rf_b",
+      "tier": "urgent",
+      "group": "Example group B",
+      "text": "Example urgent sign",
+      "points": "Example point B",
+      "action": "Example action B"
+    }
+  ],
+  "steps": {
+    "screener": [
+      {
+        "key": "safety",
+        "kind": "safety",
+        "rail": {
+          "eyebrow": "00",
+          "title": "Example safety step"
+        }
+      },
+      {
+        "key": "one",
+        "kind": "domain",
+        "domainKeys": [
+          "first"
+        ],
+        "extras": [
+          "complaintPicker"
+        ],
+        "requires": "complaint",
+        "rail": {
+          "eyebrow": "01",
+          "title": "Example step one"
+        },
+        "card": {
+          "eyebrow": "01 · Example",
+          "heading": "Example heading one",
+          "sub": "Example sub one?"
+        }
+      },
+      {
+        "key": "two",
+        "kind": "domain",
+        "domainKeys": [
+          "second",
+          "minus"
+        ],
+        "extras": [
+          "context"
+        ],
+        "rail": {
+          "eyebrow": "02",
+          "title": "Example step two"
+        },
+        "domainIntro": {
+          "minus": "Example intro for the negative domain"
+        }
+      },
+      {
+        "key": "result",
+        "kind": "result",
+        "rail": {
+          "eyebrow": "03",
+          "title": "Example result"
+        }
+      }
+    ],
+    "patient": [
+      {
+        "key": "story",
+        "kind": "story",
+        "domainKeys": [],
+        "extras": [
+          "context"
+        ]
+      },
+      {
+        "key": "first",
+        "kind": "domain",
+        "domainKeys": [
+          "first"
+        ]
+      },
+      {
+        "key": "rest",
+        "kind": "domain",
+        "domainKeys": [
+          "second",
+          "minus"
+        ]
+      }
+    ]
+  },
+  "phenotypes": {
+    "values": [
+      {
+        "value": "kind_x",
+        "h": "Example kind X",
+        "d": "Example description X"
+      },
+      {
+        "value": "kind_y",
+        "h": "Example kind Y",
+        "d": "Example description Y"
+      }
+    ],
+    "scribeDefault": "kind_x",
+    "alwaysActive": [
+      "first"
+    ],
+    "tagBoostDomain": "first",
+    "referral": {
+      "byPhenotype": {
+        "kind_y": {
+          "specialty": "Example specialty Y",
+          "reason": "Example reason Y"
+        }
+      },
+      "default": {
+        "specialty": "Example specialty",
+        "reason": "Example reason"
+      }
+    },
+    "cdsTerm": {
+      "byPhenotype": {
+        "kind_y": "example term Y"
+      },
+      "default": "example term"
+    }
+  },
+  "infoPrompts": {
+    "gateDomain": "second",
+    "tagPrefix": "Example · ",
+    "maxScored": 4,
+    "maxTotal": 6,
+    "prompts": [
+      {
+        "id": "p_info",
+        "tag": "Example · info",
+        "ask": "Example info prompt?"
+      }
+    ]
+  },
+  "sampleCases": [
+    {
+      "id": "p-sample-high",
+      "label": "Example sample high",
+      "buttonLabel": "Example high",
+      "group": "sample",
+      "why": "Example why high",
+      "complaint": "kind_y",
+      "ctx": {
+        "p_ctx": "b"
+      },
+      "a": {
+        "p_one": "yes",
+        "p_two": 2,
+        "p_three": "yes",
+        "p_four": "yes",
+        "p_minus": "no"
+      }
+    },
+    {
+      "id": "p-scenario-low",
+      "label": "Example scenario low",
+      "buttonLabel": "Example low",
+      "group": "scenario",
+      "complaint": "kind_x",
+      "a": {
+        "p_one": "no",
+        "p_two": 0,
+        "p_three": "no",
+        "p_four": "no",
+        "p_minus": "yes"
+      },
+      "safetyReviewed": true
+    },
+    {
+      "id": "p-scenario-flag",
+      "label": "Example scenario flag",
+      "buttonLabel": "Example flag",
+      "group": "scenario",
+      "complaint": "",
+      "rf": {
+        "p_rf_a": true
+      },
+      "a": {
+        "p_one": "yes"
+      }
+    },
+    {
+      "id": "p-scenario-partial",
+      "label": "Example scenario partial",
+      "buttonLabel": "Example partial",
+      "group": "scenario",
+      "complaint": "",
+      "a": {
+        "p_one": "yes",
+        "p_two": 1
+      }
+    }
+  ],
+  "demo": {
+    "patient": {
+      "id": "placeholder-demo",
+      "given": "Example",
+      "family": "Person",
+      "sex": "female",
+      "gender": "woman",
+      "age": 40,
+      "mrn": "EXAMPLE-0001",
+      "synthetic": true
+    },
+    "transcript": [
+      [
+        "md",
+        "Example clinician line."
+      ],
+      [
+        "pt",
+        "example item one happens."
+      ]
+    ]
+  },
+  "lexicon": {
+    "version": "0.1.0",
+    "lang": "en-US",
+    "negation": {
+      "window": 14,
+      "cues": [
+        "example negation",
+        "example denial"
+      ]
+    },
+    "thirdParty": {
+      "window": 14,
+      "cues": [
+        "example relative"
+      ]
+    },
+    "historical": {
+      "window": 14,
+      "cues": [
+        "example past"
+      ]
+    },
+    "bool": [
+      {
+        "id": "p_one",
+        "ph": [
+          "example item one"
+        ]
+      },
+      {
+        "id": "p_three",
+        "ph": [
+          "example item three"
+        ]
+      },
+      {
+        "id": "p_four",
+        "ph": [
+          "example item four"
+        ],
+        "thirdPartyExempt": true
+      },
+      {
+        "id": "p_minus",
+        "ph": [
+          "example negative"
+        ]
+      }
+    ],
+    "ctx": [
+      {
+        "id": "p_ctx",
+        "val": "b",
+        "ph": [
+          "example context b"
+        ]
+      }
+    ],
+    "scale": [
+      {
+        "id": "p_two",
+        "cue": [
+          "example level"
+        ],
+        "bands": [
+          {
+            "ph": [
+              "example high level"
+            ],
+            "v": 2
+          },
+          {
+            "ph": [
+              "example some level"
+            ],
+            "v": 1
+          }
+        ],
+        "fallback": null
+      }
+    ],
+    "multi": [
+      {
+        "ids": [
+          {
+            "id": "p_one",
+            "value": "yes",
+            "kind": "item"
+          },
+          {
+            "id": "p_ctx",
+            "value": "a",
+            "kind": "ctx"
+          }
+        ],
+        "ph": [
+          "example combined phrase"
+        ]
+      }
+    ],
+    "redFlags": {
+      "p_rf_a": [
+        "example emergent phrase"
+      ],
+      "p_rf_b": [
+        "example urgent phrase"
+      ]
+    },
+    "goldSet": {
+      "version": "0.1.0",
+      "lexiconVersion": "0.1.0"
+    }
+  },
+  "defaultLocale": "en",
+  "locales": {
+    "en": {
+      "reviewed": true,
+      "items": {
+        "p_one": {
+          "q": "Example patient question one?",
+          "help": "Example help one."
+        },
+        "p_two": {
+          "q": "Example patient question two?",
+          "opts": [
+            "Example never",
+            "Example sometimes",
+            "Example often"
+          ]
+        },
+        "p_three": {
+          "q": "Example patient question three?"
+        },
+        "p_four": {
+          "q": "Example patient question four?"
+        },
+        "p_minus": {
+          "q": "Example patient negative question?"
+        }
+      },
+      "redFlags": {
+        "p_rf_a": {
+          "q": "Example patient emergent question?",
+          "say": "Example patient emergent advice."
+        },
+        "p_rf_b": {
+          "q": "Example patient urgent question?",
+          "say": "Example patient urgent advice."
+        }
+      },
+      "contextItems": {
+        "p_ctx": {
+          "q": "Example patient context question?",
+          "opts": [
+            [
+              "a",
+              "Example patient context A"
+            ],
+            [
+              "b",
+              "Example patient context B"
+            ]
+          ]
+        }
+      },
+      "ui": {
+        "sub": "Example patient subtitle.",
+        "forYouIf": [
+          "Example reason one.",
+          "Example reason two."
+        ],
+        "clinicianLede": "Example clinician lede for instrument {instrument}."
+      }
+    },
+    "es": {
+      "reviewed": false,
+      "items": {
+        "p_one": {
+          "q": "Pregunta de ejemplo uno?"
+        },
+        "p_two": {
+          "q": "Pregunta de ejemplo dos?",
+          "opts": [
+            "Ejemplo nunca",
+            "Ejemplo a veces",
+            "Ejemplo a menudo"
+          ]
+        },
+        "p_three": {
+          "q": "Pregunta de ejemplo tres?"
+        },
+        "p_four": {
+          "q": "Pregunta de ejemplo cuatro?"
+        },
+        "p_minus": {
+          "q": "Pregunta de ejemplo negativa?"
+        }
+      },
+      "redFlags": {
+        "p_rf_a": {
+          "q": "Pregunta de ejemplo emergente?",
+          "say": "Consejo de ejemplo emergente."
+        },
+        "p_rf_b": {
+          "q": "Pregunta de ejemplo urgente?",
+          "say": "Consejo de ejemplo urgente."
+        }
+      }
+    }
+  },
+  "research": {
+    "projectKey": "EXAMPLE",
+    "title": "Example research configuration",
+    "target": "Example target",
+    "threshold": 0.5,
+    "calibration": {
+      "midpoint": 50,
+      "slope": 0.1,
+      "appliesTo": {
+        "scoringHash": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "sources": [
+      [
+        "Example source",
+        "Example source note"
+      ]
+    ],
+    "expected": [
+      "score",
+      "label",
+      "sex",
+      "gender"
+    ],
+    "demo": [],
+    "scoreAliases": [
+      "example_score"
+    ],
+    "artifactKey": "exampleArtifact",
+    "etlScript": "etl/example_etl.R",
+    "fairnessAxes": [
+      "sex",
+      "gender"
+    ]
+  },
+  "fhir": {
+    "questionnaireUrl": "http://screenair.example/{id}/Questionnaire/{id}-screener-v{instrument}",
+    "questionnaireName": "MutationBaseScreener",
+    "questionnaireTitle": "Example questionnaire title",
+    "publisher": "Example publisher",
+    "description": "Example description.",
+    "safetyGroupText": "Example safety group",
+    "codeSystem": "http://screenair.example/{id}/codes",
+    "answerSystem": "http://screenair.example/{id}/answer",
+    "criteriaSystem": "http://screenair.example/{id}/criteria",
+    "weightExtension": "http://screenair.example/{id}/StructureDefinition/item-weight",
+    "indexCode": "{id}-index",
+    "indexDisplay": "Example index",
+    "documentType": "Example document type",
+    "documentTitle": "Example document title",
+    "screenIdPrefix": "{id}-",
+    "filePrefix": "{id}"
+  },
+  "cds": {
+    "serviceId": "{id}-screen",
+    "hook": "order-select",
+    "title": "Example CDS title",
+    "description": "Example CDS description.",
+    "source": {
+      "label": "Example source label",
+      "url": "http://screenair.example/{id}"
+    },
+    "safetyCardUuid": "{id}-safety",
+    "indexCardUuid": "{id}-index",
+    "examples": {
+      "redFlagPresent": {
+        "flagId": "p_rf_a",
+        "summary": "Example red-flag summary"
+      },
+      "settled": {
+        "score": 80,
+        "band": "high",
+        "summary": "Example settled summary",
+        "detail": "Example settled detail."
+      }
+    },
+    "preview": {
+      "safetyTitle": "Example safety card title",
+      "indexTitle": "Example index card title ({cdsTerm})",
+      "indexBody": "Example index {total}/{scaleMax} ({bandLabel})."
+    }
+  },
+  "copy": {
+    "indexName": "Example index",
+    "gate": {
+      "patternPhrase": "example pattern"
+    },
+    "screener": {
+      "title": "Example screener title",
+      "emrDetails": [
+        "**Example.** Example detail."
+      ]
+    },
+    "note": {
+      "noDriver": "Example no-driver line."
+    }
+  },
+  "changelog": [
+    {
+      "date": "2026-10-02",
+      "kind": "note",
+      "note": "Mutation-corpus base: placeholder text only."
+    }
+  ]
+}

@@ -2352,3 +2352,4 @@ Settled after WP0, WP13 day 1 and WP12-M1 landed, binding on every later package
 | F7 | **Test files WP0 added under `app/tests/loader-check/`** are accepted; WP13 folds them into the suites. `.gitignore` additions are accepted as WP0's. |
 | F8 | **`RegistryEntry` gains optional `label` and `isDefault`**; entry keys are `builtin:<rubric.id>` (fallback `builtin:<index>`). |
 | F9 | **`.pa-table` overflow at 375 px** (`PopulationArtifact.jsx`) is fixed by WP10 with a scroll wrapper; the shell's `.sa-panel{overflow-x:auto}` guard stays. |
+| F10 | **`referralGate` refuses a referral while any red flag is open on both surfaces** (`!override` applies to the Scribe too), stricter than §4.6's Scribe formula. The Scribe derives `routingCleared = !override && safetyReviewed` (Scb L928), so the two agree on every state the app can reach; the stricter gate only removes the dependence on the caller. The golden suite compares Scribe bundles on reachable states only. |

@@ -1,0 +1,2867 @@
+{
+  "format": "screenair-rubric",
+  "contractVersion": 1,
+  "id": "masque",
+  "label": "Dizziness and Sinusitis (MASQUE v1)",
+  "name": "MASQUE",
+  "icon": "Stethoscope",
+  "instrumentVersion": "0.2",
+  "logicBinding": {
+    "moduleId": "masque"
+  },
+  "domains": [
+    {
+      "key": "recalcitrance",
+      "label": "Recalcitrance",
+      "max": 15,
+      "items": [
+        {
+          "id": "r_dur",
+          "w": 3,
+          "text": "Symptoms have persisted or recurred for more than 3 months",
+          "short": ">3 mo",
+          "ask": "How long has this been going on?",
+          "patientClin": "Symptoms persisting or recurring > 3 months"
+        },
+        {
+          "id": "r_abx",
+          "w": 3,
+          "text": "Two or more antibiotic or steroid courses without lasting relief",
+          "short": "failed antibiotics",
+          "ask": "Have antibiotics or steroids been tried — did they help lastingly?",
+          "patientClin": "≥2 antibiotic/steroid courses without lasting relief"
+        },
+        {
+          "id": "r_surg",
+          "w": 3,
+          "text": "Prior sinus procedure or surgery without resolution of symptoms",
+          "short": "prior sinus surgery",
+          "ask": "Any prior sinus procedure? Did it resolve things?",
+          "patientClin": "Prior sinus procedure without resolution"
+        },
+        {
+          "id": "r_lesion",
+          "w": 3,
+          "text": "Recurrent dizziness / aural symptoms without a diagnosed structural or vestibular lesion",
+          "short": "no lesion found",
+          "ask": "For the dizziness — has any vestibular or structural cause been found?",
+          "patientClin": "Recurrent dizziness/aural symptoms, no structural lesion found"
+        },
+        {
+          "id": "r_normal",
+          "w": 3,
+          "text": "Exam or imaging is normal or minimal relative to symptom burden",
+          "short": "normal imaging",
+          "ask": "Have scans or exams looked normal despite how you feel?",
+          "patientClin": "Exam or imaging normal relative to symptom burden"
+        }
+      ]
+    },
+    {
+      "key": "migraine",
+      "label": "Migrainous",
+      "max": 30,
+      "items": [
+        {
+          "id": "m_head",
+          "w": 6,
+          "text": "Recurrent headache or mid-facial pressure / pain episodes",
+          "scale": [
+            {
+              "label": "None",
+              "f": 0
+            },
+            {
+              "label": "Occasional",
+              "f": 0.5
+            },
+            {
+              "label": "Frequent",
+              "f": 1
+            }
+          ],
+          "short": "headache/pressure",
+          "ask": "Do you get recurrent headaches or facial pressure? How often?",
+          "patientClin": "Recurrent headache / mid-facial pressure episodes"
+        },
+        {
+          "id": "m_dur",
+          "w": 4,
+          "text": "Untreated attacks typically last between 4 and 72 hours",
+          "scale": [
+            {
+              "label": "No attacks",
+              "f": 0
+            },
+            {
+              "label": "Under 4 h",
+              "f": 0.2
+            },
+            {
+              "label": "4–72 h",
+              "f": 1
+            },
+            {
+              "label": "Over 72 h",
+              "f": 0.2
+            },
+            {
+              "label": "Varies",
+              "f": 0.5
+            }
+          ],
+          "ref": "ICHD-3 1.1 criterion B",
+          "short": "attack duration",
+          "ask": "When an attack is untreated, how long does it last — under 4 hours, 4 to 72 hours, or longer?",
+          "patientClin": "Untreated attack duration 4–72 h (ICHD-3 1.1 B)"
+        },
+        {
+          "id": "m_photo",
+          "w": 4,
+          "text": "Light and/or sound sensitivity during episodes",
+          "short": "light/sound sensitivity",
+          "ask": "During episodes, are you bothered by light or sound?",
+          "tag": "VM-PATHI · headache equivalents",
+          "patientClin": "Photophobia and/or phonophobia during episodes"
+        },
+        {
+          "id": "m_nausea",
+          "w": 4,
+          "text": "Nausea accompanies the episodes",
+          "short": "nausea",
+          "ask": "Do the episodes come with nausea?",
+          "patientClin": "Nausea with episodes"
+        },
+        {
+          "id": "m_disable",
+          "w": 3,
+          "text": "Episodes limit normal activity",
+          "short": "activity-limiting",
+          "ask": "Do the episodes stop you from your usual activities?",
+          "patientClin": "Episodes limit normal activity"
+        },
+        {
+          "id": "m_aura",
+          "w": 3,
+          "text": "Visual aura or transient neurologic symptoms",
+          "short": "aura",
+          "ask": "Any visual changes — spots, shimmering, zigzags — around the episodes?",
+          "patientClin": "Visual aura or transient neurologic symptoms"
+        },
+        {
+          "id": "m_trig",
+          "w": 3,
+          "text": "Clear triggers — weather / pressure change, sleep, skipped meals, hormonal",
+          "short": "triggers",
+          "ask": "Do weather, poor sleep, missed meals, or your cycle set them off?",
+          "patientClin": "Identifiable triggers (weather, sleep, meals, hormonal)"
+        },
+        {
+          "id": "m_fhx",
+          "w": 3,
+          "text": "Personal or family history of migraine",
+          "short": "migraine hx",
+          "ask": "Any personal or family history of migraine?",
+          "patientClin": "Personal or family history of migraine"
+        }
+      ]
+    },
+    {
+      "key": "vestibular",
+      "label": "Otologic / vestibular",
+      "max": 25,
+      "shortTag": "vestibular",
+      "items": [
+        {
+          "id": "v_vertigo",
+          "w": 6,
+          "text": "Episodic vertigo or imbalance — how long does an episode last?",
+          "scale": [
+            {
+              "label": "None",
+              "f": 0
+            },
+            {
+              "label": "Under 5 min",
+              "f": 0.2
+            },
+            {
+              "label": "5 min – 72 h",
+              "f": 1
+            },
+            {
+              "label": "Over 72 h",
+              "f": 0.2
+            }
+          ],
+          "ref": "Bárány VM criterion B",
+          "short": "episode duration",
+          "ask": "When the spinning or imbalance comes, how long does one episode last?",
+          "tag": "VM-PATHI · disequilibrium",
+          "patientClin": "Episodic vertigo 5 min – 72 h (Bárány VM B)"
+        },
+        {
+          "id": "v_count",
+          "w": 4,
+          "text": "At least five separate vestibular episodes to date",
+          "ref": "Bárány VM criterion A",
+          "short": "≥5 episodes",
+          "ask": "Roughly how many separate episodes have you had — more or fewer than five?",
+          "patientClin": "≥5 vestibular episodes to date (Bárány VM A)"
+        },
+        {
+          "id": "v_migfeat",
+          "w": 4,
+          "text": "At least half of the episodes carry headache, light/sound sensitivity, or visual aura",
+          "ref": "Bárány VM criterion C",
+          "short": "migrainous features ≥50%",
+          "ask": "Do at least half the episodes come with headache, light sensitivity, or visual changes?",
+          "patientClin": "Migrainous features in ≥50% of episodes (Bárány VM C)"
+        },
+        {
+          "id": "v_motion",
+          "w": 4,
+          "text": "Motion or visual-motion sensitivity (busy patterns, scrolling, driving)",
+          "short": "motion sensitivity",
+          "ask": "Are you sensitive to motion or busy visual scenes — scrolling, aisles, driving?",
+          "tag": "VM-PATHI · motion sensitivity",
+          "patientClin": "Motion / visual-motion sensitivity"
+        },
+        {
+          "id": "v_aural",
+          "w": 4,
+          "text": "Fluctuating aural fullness or tinnitus tied to the episodes",
+          "short": "aural fullness/tinnitus",
+          "ask": "Any ear fullness or ringing that comes and goes with the episodes?",
+          "patientClin": "Fluctuating aural fullness or tinnitus with episodes"
+        },
+        {
+          "id": "v_head",
+          "w": 3,
+          "text": "Head-motion or positional intolerance",
+          "short": "positional",
+          "ask": "Do certain head positions or movements trigger it?",
+          "tag": "VM-PATHI · disequilibrium",
+          "patientClin": "Head-motion or positional intolerance"
+        }
+      ]
+    },
+    {
+      "key": "neuro",
+      "label": "Neuropathic",
+      "max": 15,
+      "items": [
+        {
+          "id": "n_burn",
+          "w": 4,
+          "text": "Burning, tingling, or shooting facial / oral / throat sensations",
+          "short": "neuropathic sensation",
+          "ask": "Any burning, tingling, or electric feelings in the face, mouth, or throat?",
+          "patientClin": "Burning / tingling / shooting facial, oral or throat sensations"
+        },
+        {
+          "id": "n_otalgia",
+          "w": 3,
+          "text": "Deep ear or throat pain with a normal ear examination",
+          "short": "otalgia, normal exam",
+          "ask": "Any deep ear or throat pain, even when the ear looks normal?",
+          "patientClin": "Deep ear or throat pain with normal ear exam"
+        },
+        {
+          "id": "n_auto",
+          "w": 3,
+          "text": "Autonomic symptoms — dry eyes or mouth, lightheadedness on standing, sweating or GI changes",
+          "short": "autonomic features",
+          "ask": "Any dry eyes or mouth, lightheadedness on standing, or changes in sweating or digestion?",
+          "patientClin": "Autonomic symptoms (sicca, orthostatic, sudomotor, GI)"
+        },
+        {
+          "id": "n_viral",
+          "w": 3,
+          "text": "Symptoms began after a viral illness",
+          "short": "post-viral onset",
+          "ask": "Did this start after a viral illness or COVID?",
+          "patientClin": "Onset following viral illness"
+        },
+        {
+          "id": "n_allo",
+          "w": 2,
+          "text": "Sensitivity out of proportion to exam findings",
+          "ask": "Do light touch or normal sensations feel unusually intense?",
+          "patientClin": "Sensitivity out of proportion to exam"
+        }
+      ]
+    },
+    {
+      "key": "impact",
+      "label": "Impact",
+      "max": 15,
+      "items": [
+        {
+          "id": "i_days",
+          "w": 8,
+          "text": "Days per month affected",
+          "scale": [
+            {
+              "label": "0",
+              "f": 0
+            },
+            {
+              "label": "1–3",
+              "f": 0.33
+            },
+            {
+              "label": "4–9",
+              "f": 0.66
+            },
+            {
+              "label": "10+",
+              "f": 1
+            }
+          ],
+          "short": "days/mo",
+          "ask": "About how many days a month are you affected?",
+          "patientClin": "Days per month affected"
+        },
+        {
+          "id": "i_role",
+          "w": 7,
+          "text": "Impact on work or daily roles",
+          "scale": [
+            {
+              "label": "None",
+              "f": 0
+            },
+            {
+              "label": "Mild",
+              "f": 0.33
+            },
+            {
+              "label": "Moderate",
+              "f": 0.66
+            },
+            {
+              "label": "Severe",
+              "f": 1
+            }
+          ],
+          "short": "role impact",
+          "ask": "How much does this affect work or daily life?",
+          "patientClin": "Impact on work or daily roles"
+        }
+      ]
+    },
+    {
+      "key": "discriminators",
+      "label": "Discriminators (rule-out)",
+      "max": -29,
+      "negative": true,
+      "items": [
+        {
+          "id": "x_purulent",
+          "w": -8,
+          "text": "Purulent drainage or a positive sinus culture documented during symptomatic episodes",
+          "short": "purulence/positive culture",
+          "ask": "During the bad spells, is there thick discharge, or has a sinus culture ever come back positive?",
+          "patientClin": "Purulent drainage or positive sinus culture when symptomatic"
+        },
+        {
+          "id": "x_objective",
+          "w": -8,
+          "text": "Objective sinus inflammation on endoscopy or CT during a symptomatic period (e.g. Lund-Mackay ≥ 4)",
+          "short": "objective sinus inflammation",
+          "ask": "Has a CT or scope during a symptomatic period shown actual sinus inflammation?",
+          "patientClin": "Objective sinus inflammation on endoscopy/CT when symptomatic"
+        },
+        {
+          "id": "x_lowfreq",
+          "w": -8,
+          "text": "Audiometry documents low-frequency sensorineural loss that fluctuates with episodes",
+          "short": "fluctuating low-frequency SNHL",
+          "ask": "Has an audiogram shown hearing that drops and recovers, in the low frequencies?",
+          "patientClin": "Audiometric fluctuating low-frequency SNHL"
+        },
+        {
+          "id": "x_anosmia",
+          "w": -5,
+          "text": "Persistent reduction or loss of smell that continues between episodes",
+          "short": "persistent hyposmia",
+          "ask": "Is your sense of smell reduced even between the episodes?",
+          "patientClin": "Persistent hyposmia between episodes"
+        }
+      ]
+    }
+  ],
+  "bands": {
+    "cuts": {
+      "moderate": 34,
+      "high": 67
+    }
+  },
+  "contextItems": [
+    {
+      "id": "c_clin",
+      "text": "Clinicians seen for this problem",
+      "options": [
+        [
+          "0-1",
+          "0–1"
+        ],
+        [
+          "2",
+          "2"
+        ],
+        [
+          "3+",
+          "3+"
+        ]
+      ],
+      "captureLabel": "3+ clinicians",
+      "signal": {
+        "value": "3+",
+        "screenerLabel": "Seen by 3+ clinicians for this problem",
+        "scribeLabel": "3+ clinicians",
+        "noteLabel": "seen by 3+ clinicians"
+      }
+    },
+    {
+      "id": "c_dur",
+      "text": "Total symptom duration",
+      "options": [
+        [
+          "<3mo",
+          "<3 mo"
+        ],
+        [
+          "3-12mo",
+          "3–12 mo"
+        ],
+        [
+          ">12mo",
+          ">12 mo"
+        ]
+      ],
+      "captureLabel": "duration >12 mo",
+      "signal": {
+        "value": ">12mo",
+        "screenerLabel": "Symptoms present over 12 months",
+        "scribeLabel": ">12 months",
+        "noteLabel": "duration >12 months"
+      }
+    },
+    {
+      "id": "c_dismiss",
+      "text": "Previously told it was anxiety / stress, or “nothing wrong”",
+      "options": [
+        [
+          "no",
+          "No"
+        ],
+        [
+          "yes",
+          "Yes"
+        ]
+      ],
+      "captureLabel": "prior dismissal",
+      "signal": {
+        "value": "yes",
+        "screenerLabel": "Previously attributed to anxiety / stress or “normal”",
+        "scribeLabel": "prior “anxiety/stress” attribution",
+        "noteLabel": "previously attributed to anxiety/stress"
+      }
+    }
+  ],
+  "gapRule": {
+    "threshold": 2,
+    "markers": [
+      "c_clin",
+      "c_dur",
+      "c_dismiss"
+    ],
+    "noteOrder": [
+      "c_dur",
+      "c_clin",
+      "c_dismiss"
+    ]
+  },
+  "redFlags": [
+    {
+      "id": "rf_thunderclap",
+      "tier": "emergent",
+      "group": "Neurologic",
+      "text": "Headache that reached maximum intensity within seconds to a minute",
+      "points": "Subarachnoid haemorrhage / vascular event",
+      "action": "Emergency imaging today",
+      "ask": "Did the worst headache come on all at once, in seconds?"
+    },
+    {
+      "id": "rf_focal",
+      "tier": "emergent",
+      "group": "Neurologic",
+      "text": "New focal deficit — weakness, numbness, speech or swallowing change, facial droop, or persistent double vision",
+      "points": "Central or cranial-nerve lesion",
+      "action": "Emergency neurologic evaluation",
+      "ask": "Any new weakness, numbness, slurred speech, or double vision?"
+    },
+    {
+      "id": "rf_vision",
+      "tier": "emergent",
+      "group": "Neurologic",
+      "text": "Progressive vision loss, transient visual obscurations, or known papilloedema",
+      "points": "Raised intracranial pressure / IIH",
+      "action": "Same-day fundoscopy and neuro-imaging",
+      "ask": "Has your vision greyed out or dimmed, even briefly?"
+    },
+    {
+      "id": "rf_gca",
+      "tier": "emergent",
+      "group": "Systemic",
+      "text": "Age over 50 with scalp tenderness, jaw claudication, or visual symptoms",
+      "points": "Giant cell arteritis",
+      "action": "Same-day ESR/CRP and rheumatology — do not wait for biopsy",
+      "ask": "Does your jaw ache when chewing, or is your scalp tender to touch?"
+    },
+    {
+      "id": "rf_orbital",
+      "tier": "emergent",
+      "group": "Systemic",
+      "text": "Orbital or periorbital swelling, proptosis, eye pain, or restricted eye movement",
+      "points": "Orbital complication of sinusitis / invasive fungal disease",
+      "action": "Emergency ENT and imaging",
+      "ask": "Any eye swelling, eye pain, or trouble moving the eye?"
+    },
+    {
+      "id": "rf_ssnhl",
+      "tier": "emergent",
+      "group": "Otologic",
+      "text": "Hearing dropped suddenly, over hours to a day, within the last 30 days",
+      "points": "Sudden sensorineural hearing loss — a closing steroid window",
+      "action": "Same-day audiogram",
+      "ask": "Did your hearing drop suddenly rather than gradually?"
+    },
+    {
+      "id": "rf_asym",
+      "tier": "urgent",
+      "group": "Otologic",
+      "text": "Hearing loss or tinnitus consistently in one ear only",
+      "points": "Retrocochlear lesion / vestibular schwannoma",
+      "action": "MRI internal auditory canals",
+      "ask": "Is the ear trouble always the same ear?"
+    },
+    {
+      "id": "rf_pulsatile",
+      "tier": "urgent",
+      "group": "Otologic",
+      "text": "Tinnitus that pulses in time with the heartbeat",
+      "points": "Vascular lesion, dural AV fistula, or raised ICP",
+      "action": "Vascular imaging",
+      "ask": "Does the ringing pulse along with your heartbeat?"
+    },
+    {
+      "id": "rf_progressive",
+      "tier": "urgent",
+      "group": "Neurologic",
+      "text": "Headache steadily worsening, or worse on waking, coughing, straining, or lying flat",
+      "points": "Raised intracranial pressure / mass lesion",
+      "action": "Neuro-imaging",
+      "ask": "Is it worse when you lie down, cough, or first wake up?"
+    },
+    {
+      "id": "rf_new50",
+      "tier": "urgent",
+      "group": "Neurologic",
+      "text": "First-ever severe headache beginning after age 50",
+      "points": "Secondary headache until proven otherwise",
+      "action": "Neuro-imaging and inflammatory markers",
+      "ask": "Is this the first time you've had headaches like this?"
+    },
+    {
+      "id": "rf_mass",
+      "tier": "urgent",
+      "group": "Sinonasal",
+      "text": "One-sided nasal obstruction with bleeding, a visible mass, or new facial numbness",
+      "points": "Sinonasal or skull-base malignancy",
+      "action": "Endoscopy and cross-sectional imaging",
+      "ask": "Any one-sided blockage, nosebleeds, or numbness in the cheek?"
+    },
+    {
+      "id": "rf_systemic",
+      "tier": "urgent",
+      "group": "Systemic",
+      "text": "Fever, night sweats, unintended weight loss, immunosuppression, or known malignancy",
+      "points": "Infection, inflammatory disease, or metastatic disease",
+      "action": "Directed workup before symptomatic management",
+      "ask": "Any fevers, night sweats, or unintended weight loss?"
+    }
+  ],
+  "steps": {
+    "screener": [
+      {
+        "key": "safety",
+        "kind": "safety",
+        "rail": {
+          "eyebrow": "00",
+          "title": "Safety check"
+        },
+        "card": {
+          "eyebrow": "00 · Safety",
+          "heading": "Before screening — red flags",
+          "sub": "Tick anything present. These are not scored and are not weighed against the index — any one of them stops the screen from routing this patient as a masked migraine or neuropathy."
+        }
+      },
+      {
+        "key": "intake",
+        "kind": "domain",
+        "domainKeys": [
+          "recalcitrance"
+        ],
+        "extras": [
+          "complaintPicker"
+        ],
+        "requires": "complaint",
+        "rail": {
+          "eyebrow": "01",
+          "title": "Intake & recalcitrance"
+        },
+        "card": {
+          "eyebrow": "01 · Intake",
+          "heading": "Presenting picture",
+          "sub": "What is the dominant, treatment-refractory complaint?"
+        },
+        "domainIntro": {
+          "recalcitrance": "Recalcitrance markers — the premise of the screen"
+        }
+      },
+      {
+        "key": "migraine",
+        "kind": "domain",
+        "domainKeys": [
+          "migraine"
+        ],
+        "rail": {
+          "eyebrow": "02",
+          "title": "Migrainous features"
+        },
+        "card": {
+          "eyebrow": "02 · Migrainous features",
+          "heading": "Trigeminovascular pattern",
+          "sub": "Features suggesting a migraine mechanism, wherever the pain is felt."
+        }
+      },
+      {
+        "key": "vestibular",
+        "kind": "domain",
+        "domainKeys": [
+          "vestibular"
+        ],
+        "rail": {
+          "eyebrow": "03",
+          "title": "Otologic / vestibular"
+        },
+        "card": {
+          "eyebrow": "03 · Otologic / vestibular",
+          "heading": "Audiovestibular pattern",
+          "sub": "Features suggesting vestibular migraine or migrainous aural symptoms."
+        }
+      },
+      {
+        "key": "neuro",
+        "kind": "domain",
+        "domainKeys": [
+          "neuro"
+        ],
+        "rail": {
+          "eyebrow": "04",
+          "title": "Neuropathic overlay"
+        },
+        "card": {
+          "eyebrow": "04 · Neuropathic overlay",
+          "heading": "Sensory / neuropathic pattern",
+          "sub": "Features suggesting a cranial small-fiber or post-viral contribution."
+        }
+      },
+      {
+        "key": "impact",
+        "kind": "domain",
+        "domainKeys": [
+          "impact"
+        ],
+        "extras": [
+          "context"
+        ],
+        "rail": {
+          "eyebrow": "05",
+          "title": "Impact & context"
+        },
+        "card": {
+          "eyebrow": "05 · Impact & context",
+          "heading": "Burden and diagnostic history",
+          "sub": "Impact is scored. The history items below are not scored — they flag a possible missed diagnosis."
+        }
+      },
+      {
+        "key": "discriminators",
+        "kind": "domain",
+        "domainKeys": [
+          "discriminators"
+        ],
+        "rail": {
+          "eyebrow": "06",
+          "title": "Rule-out findings"
+        },
+        "card": {
+          "eyebrow": "06 · Rule-out findings",
+          "heading": "Evidence against a masked driver",
+          "sub": "Objective findings that point somewhere other than migraine or neuropathy. These subtract from the index — a screen that can only accumulate evidence for its own hypothesis is not a screen."
+        }
+      },
+      {
+        "key": "result",
+        "kind": "result",
+        "rail": {
+          "eyebrow": "07",
+          "title": "Screen result"
+        },
+        "card": {
+          "eyebrow": "07 · Result"
+        }
+      }
+    ],
+    "patient": [
+      {
+        "key": "story",
+        "kind": "story",
+        "domainKeys": [
+          "recalcitrance"
+        ],
+        "extras": [
+          "context"
+        ]
+      },
+      {
+        "key": "migraine",
+        "kind": "domain",
+        "domainKeys": [
+          "migraine"
+        ]
+      },
+      {
+        "key": "vestibular",
+        "kind": "domain",
+        "domainKeys": [
+          "vestibular"
+        ]
+      },
+      {
+        "key": "neuro",
+        "kind": "domain",
+        "domainKeys": [
+          "neuro"
+        ]
+      },
+      {
+        "key": "impact",
+        "kind": "domain",
+        "domainKeys": [
+          "impact"
+        ]
+      },
+      {
+        "key": "discriminators",
+        "kind": "domain",
+        "domainKeys": [
+          "discriminators"
+        ]
+      }
+    ]
+  },
+  "phenotypes": {
+    "values": [
+      {
+        "value": "sinonasal",
+        "h": "Sinonasal",
+        "d": "Facial pressure, “sinus headache”, congestion"
+      },
+      {
+        "value": "otologic",
+        "h": "Otologic / vestibular",
+        "d": "Dizziness, aural fullness, tinnitus, fluctuating hearing"
+      },
+      {
+        "value": "both",
+        "h": "Both",
+        "d": "Mixed sinonasal and otologic"
+      }
+    ],
+    "scribeDefault": "sinonasal",
+    "alwaysActive": [
+      "migraine",
+      "impact",
+      "recalcitrance",
+      "discriminators"
+    ],
+    "tagBoostDomain": "vestibular",
+    "referral": {
+      "byPhenotype": {
+        "otologic": {
+          "specialty": "Neuro-otology",
+          "reason": "vestibular migraine"
+        }
+      },
+      "default": {
+        "specialty": "Headache medicine / Neurology",
+        "reason": "mid-facial / migrainous cause"
+      }
+    },
+    "cdsTerm": {
+      "byPhenotype": {
+        "otologic": "otologic"
+      },
+      "default": "sinonasal"
+    }
+  },
+  "infoPrompts": {
+    "gateDomain": "vestibular",
+    "tagPrefix": "VM-PATHI · ",
+    "maxScored": 4,
+    "maxTotal": 6,
+    "prompts": [
+      {
+        "id": "vmp_cog",
+        "tag": "VM-PATHI · cognition",
+        "ask": "During the episodes, any brain fog or trouble concentrating?"
+      },
+      {
+        "id": "vmp_affect",
+        "tag": "VM-PATHI · anxiety / emotion",
+        "ask": "Do the attacks bring anxiety or feel overwhelming?"
+      }
+    ]
+  },
+  "sampleCases": [
+    {
+      "id": "sinonasal",
+      "label": "Recalcitrant facial pressure",
+      "buttonLabel": "Sample: sinus",
+      "icon": "Activity",
+      "complaint": "sinonasal",
+      "ctx": {
+        "c_clin": "3+",
+        "c_dur": ">12mo",
+        "c_dismiss": "yes"
+      },
+      "a": {
+        "r_dur": "yes",
+        "r_abx": "yes",
+        "r_surg": "yes",
+        "r_normal": "yes",
+        "r_lesion": "no",
+        "m_head": 2,
+        "m_dur": 2,
+        "m_photo": "yes",
+        "m_nausea": "yes",
+        "m_disable": "yes",
+        "m_aura": "no",
+        "m_trig": "yes",
+        "m_fhx": "yes",
+        "v_vertigo": 0,
+        "v_count": "no",
+        "v_migfeat": "no",
+        "v_motion": "yes",
+        "v_aural": "no",
+        "v_head": "no",
+        "n_burn": "no",
+        "n_otalgia": "no",
+        "n_auto": "no",
+        "n_viral": "no",
+        "n_allo": "yes",
+        "i_days": 2,
+        "i_role": 2,
+        "x_purulent": "no",
+        "x_objective": "no",
+        "x_lowfreq": "no",
+        "x_anosmia": "no"
+      }
+    },
+    {
+      "id": "otologic",
+      "label": "Recurrent dizziness, normal workup",
+      "buttonLabel": "Sample: dizziness",
+      "icon": "Activity",
+      "complaint": "otologic",
+      "ctx": {
+        "c_clin": "3+",
+        "c_dur": ">12mo",
+        "c_dismiss": "yes"
+      },
+      "a": {
+        "r_dur": "yes",
+        "r_abx": "no",
+        "r_surg": "no",
+        "r_lesion": "yes",
+        "r_normal": "yes",
+        "m_head": 1,
+        "m_dur": 2,
+        "m_photo": "yes",
+        "m_nausea": "yes",
+        "m_disable": "yes",
+        "m_aura": "no",
+        "m_trig": "yes",
+        "m_fhx": "yes",
+        "v_vertigo": 2,
+        "v_count": "yes",
+        "v_migfeat": "yes",
+        "v_motion": "yes",
+        "v_aural": "yes",
+        "v_head": "yes",
+        "n_burn": "no",
+        "n_otalgia": "no",
+        "n_auto": "no",
+        "n_viral": "no",
+        "n_allo": "no",
+        "i_days": 3,
+        "i_role": 3,
+        "x_purulent": "no",
+        "x_objective": "no",
+        "x_lowfreq": "no",
+        "x_anosmia": "no"
+      }
+    },
+    {
+      "id": "redflag",
+      "label": "High index, one-sided aural findings",
+      "buttonLabel": "Sample: red flag",
+      "icon": "TriangleAlert",
+      "complaint": "otologic",
+      "ctx": {
+        "c_clin": "3+",
+        "c_dur": ">12mo",
+        "c_dismiss": "yes"
+      },
+      "rf": {
+        "rf_asym": true
+      },
+      "a": {
+        "r_dur": "yes",
+        "r_abx": "no",
+        "r_surg": "no",
+        "r_lesion": "yes",
+        "r_normal": "yes",
+        "m_head": 1,
+        "m_dur": 2,
+        "m_photo": "yes",
+        "m_nausea": "yes",
+        "m_disable": "yes",
+        "m_aura": "no",
+        "m_trig": "yes",
+        "m_fhx": "yes",
+        "v_vertigo": 2,
+        "v_count": "yes",
+        "v_migfeat": "yes",
+        "v_motion": "yes",
+        "v_aural": "yes",
+        "v_head": "yes",
+        "n_burn": "no",
+        "n_otalgia": "no",
+        "n_auto": "no",
+        "n_viral": "no",
+        "n_allo": "no",
+        "i_days": 3,
+        "i_role": 3,
+        "x_purulent": "no",
+        "x_objective": "no",
+        "x_lowfreq": "no",
+        "x_anosmia": "no"
+      }
+    },
+    {
+      "id": "competing",
+      "label": "Migrainous features WITH objective sinus disease",
+      "buttonLabel": "Sample: competing",
+      "icon": "Activity",
+      "complaint": "sinonasal",
+      "ctx": {
+        "c_clin": "3+",
+        "c_dur": ">12mo",
+        "c_dismiss": "no"
+      },
+      "a": {
+        "r_dur": "yes",
+        "r_abx": "yes",
+        "r_surg": "yes",
+        "r_normal": "no",
+        "r_lesion": "no",
+        "m_head": 2,
+        "m_dur": 2,
+        "m_photo": "yes",
+        "m_nausea": "yes",
+        "m_disable": "yes",
+        "m_aura": "no",
+        "m_trig": "yes",
+        "m_fhx": "yes",
+        "v_vertigo": 0,
+        "v_count": "no",
+        "v_migfeat": "no",
+        "v_motion": "yes",
+        "v_aural": "no",
+        "v_head": "no",
+        "n_burn": "no",
+        "n_otalgia": "no",
+        "n_auto": "no",
+        "n_viral": "no",
+        "n_allo": "no",
+        "i_days": 2,
+        "i_role": 2,
+        "x_purulent": "yes",
+        "x_objective": "yes",
+        "x_lowfreq": "no",
+        "x_anosmia": "yes"
+      }
+    },
+    {
+      "id": "sim-empty",
+      "label": "Nothing answered",
+      "buttonLabel": "Nothing answered",
+      "group": "scenario",
+      "icon": "Ban",
+      "why": "The original defect. This used to print “Low likelihood — continue standard ENT management” from zero data.",
+      "complaint": "",
+      "a": {}
+    },
+    {
+      "id": "sim-partial",
+      "label": "Vestibular domain only",
+      "buttonLabel": "Vestibular domain only",
+      "group": "scenario",
+      "icon": "ScanLine",
+      "why": "20% coverage. Used to score 25/100 and report “Low”. Unanswered discriminators can subtract too, so the range is two-sided and spans every band.",
+      "complaint": "",
+      "a": {
+        "v_vertigo": 2,
+        "v_count": "yes",
+        "v_migfeat": "yes",
+        "v_motion": "yes",
+        "v_aural": "yes",
+        "v_head": "yes"
+      }
+    },
+    {
+      "id": "sim-high",
+      "label": "Complete — high index",
+      "buttonLabel": "Complete — high index",
+      "group": "scenario",
+      "icon": "Activity",
+      "why": "Fully answered masked-migraine picture. Settles into one band, so routing is issued.",
+      "complaint": "",
+      "a": {
+        "r_dur": "yes",
+        "r_abx": "yes",
+        "r_surg": "no",
+        "r_lesion": "yes",
+        "r_normal": "yes",
+        "m_head": 2,
+        "m_dur": 2,
+        "m_photo": "yes",
+        "m_nausea": "yes",
+        "m_disable": "yes",
+        "m_aura": "no",
+        "m_trig": "yes",
+        "m_fhx": "yes",
+        "v_vertigo": 2,
+        "v_count": "yes",
+        "v_migfeat": "yes",
+        "v_motion": "yes",
+        "v_aural": "yes",
+        "v_head": "yes",
+        "n_burn": "no",
+        "n_otalgia": "no",
+        "n_auto": "no",
+        "n_viral": "no",
+        "n_allo": "no",
+        "i_days": 3,
+        "i_role": 3,
+        "x_purulent": "no",
+        "x_objective": "no",
+        "x_lowfreq": "no",
+        "x_anosmia": "no"
+      }
+    },
+    {
+      "id": "sim-redflag",
+      "label": "Same index + one-sided hearing",
+      "buttonLabel": "Same index + one-sided hearing",
+      "group": "scenario",
+      "icon": "TriangleAlert",
+      "why": "Identical answers, one extra fact. Before the safety gate this referred her for vestibular migraine.",
+      "complaint": "",
+      "rf": {
+        "rf_asym": true
+      },
+      "a": {
+        "r_dur": "yes",
+        "r_abx": "yes",
+        "r_surg": "no",
+        "r_lesion": "yes",
+        "r_normal": "yes",
+        "m_head": 2,
+        "m_dur": 2,
+        "m_photo": "yes",
+        "m_nausea": "yes",
+        "m_disable": "yes",
+        "m_aura": "no",
+        "m_trig": "yes",
+        "m_fhx": "yes",
+        "v_vertigo": 2,
+        "v_count": "yes",
+        "v_migfeat": "yes",
+        "v_motion": "yes",
+        "v_aural": "yes",
+        "v_head": "yes",
+        "n_burn": "no",
+        "n_otalgia": "no",
+        "n_auto": "no",
+        "n_viral": "no",
+        "n_allo": "no",
+        "i_days": 3,
+        "i_role": 3,
+        "x_purulent": "no",
+        "x_objective": "no",
+        "x_lowfreq": "no",
+        "x_anosmia": "no"
+      }
+    },
+    {
+      "id": "sim-ruleout",
+      "label": "Same index + positive rule-outs",
+      "buttonLabel": "Same index + positive rule-outs",
+      "group": "scenario",
+      "icon": "Zap",
+      "why": "Discriminators carry negative weight, so the screen can argue against its own hypothesis.",
+      "complaint": "",
+      "a": {
+        "r_dur": "yes",
+        "r_abx": "yes",
+        "r_surg": "no",
+        "r_lesion": "yes",
+        "r_normal": "yes",
+        "m_head": 2,
+        "m_dur": 2,
+        "m_photo": "yes",
+        "m_nausea": "yes",
+        "m_disable": "yes",
+        "m_aura": "no",
+        "m_trig": "yes",
+        "m_fhx": "yes",
+        "v_vertigo": 2,
+        "v_count": "yes",
+        "v_migfeat": "yes",
+        "v_motion": "yes",
+        "v_aural": "yes",
+        "v_head": "yes",
+        "n_burn": "no",
+        "n_otalgia": "no",
+        "n_auto": "no",
+        "n_viral": "no",
+        "n_allo": "no",
+        "i_days": 3,
+        "i_role": 3,
+        "x_purulent": "yes",
+        "x_objective": "yes",
+        "x_lowfreq": "no",
+        "x_anosmia": "yes"
+      }
+    }
+  ],
+  "demo": {
+    "patient": {
+      "id": "masque-demo-1042",
+      "given": "Dana",
+      "family": "Herrera",
+      "sex": "female",
+      "gender": "woman",
+      "age": 41,
+      "mrn": "SANDBOX-77-2210",
+      "synthetic": true
+    },
+    "transcript": [
+      [
+        "md",
+        "What brings you in today?"
+      ],
+      [
+        "pt",
+        "It's my sinuses. I've had facial pressure and headaches behind my eyes for over a year now."
+      ],
+      [
+        "md",
+        "Have you been treated for it?"
+      ],
+      [
+        "pt",
+        "So many times — like four rounds of antibiotics and a steroid spray. Nothing helps for long."
+      ],
+      [
+        "md",
+        "Any imaging done?"
+      ],
+      [
+        "pt",
+        "They did a CT and said it looked basically normal, which was frustrating."
+      ],
+      [
+        "pt",
+        "And lately I've been getting really dizzy too — kind of spinning, it comes and goes and lasts a while."
+      ],
+      [
+        "md",
+        "Tell me more about the dizziness."
+      ],
+      [
+        "pt",
+        "Bright lights and busy places make it worse — grocery store aisles, scrolling on my phone. And my ear feels full and rings when it happens."
+      ],
+      [
+        "pt",
+        "My mom had migraines, if that matters."
+      ],
+      [
+        "md",
+        "Has anyone looked into the dizziness?"
+      ],
+      [
+        "pt",
+        "They didn't find anything wrong. One doctor said it was probably just anxiety and stress."
+      ],
+      [
+        "pt",
+        "I've seen three or four different doctors about all of this."
+      ],
+      [
+        "md",
+        "Thank you — that's really helpful."
+      ]
+    ]
+  },
+  "lexicon": {
+    "version": "0.3.1",
+    "lang": "en-US",
+    "negation": {
+      "window": 14,
+      "cues": [
+        "no ",
+        "not ",
+        "n't",
+        "never",
+        "without",
+        "none",
+        "haven't",
+        "hasn't",
+        "didn't",
+        "don't",
+        "doesn't",
+        "isn't",
+        "denies",
+        "negative for"
+      ]
+    },
+    "thirdParty": {
+      "window": 34,
+      "cues": [
+        "my mother",
+        "my mom",
+        "my father",
+        "my dad",
+        "my sister",
+        "my brother",
+        "my daughter",
+        "my son",
+        "my wife",
+        "my husband",
+        "my partner",
+        "her ",
+        "his ",
+        "they get",
+        "runs in"
+      ]
+    },
+    "historical": {
+      "window": 30,
+      "cues": [
+        "used to",
+        "years ago",
+        "as a teenager",
+        "when i was young",
+        "back then",
+        "no longer",
+        "stopped getting",
+        "haven't had that in"
+      ]
+    },
+    "bool": [
+      {
+        "id": "m_photo",
+        "ph": [
+          "light bother",
+          "bright light",
+          "sensitive to light",
+          "light sensitiv",
+          "lights make",
+          "photophobia",
+          "loud sound",
+          "noise bother",
+          "sound sensitiv"
+        ]
+      },
+      {
+        "id": "m_nausea",
+        "ph": [
+          "nausea",
+          "nauseous",
+          "queasy",
+          "throw up",
+          "vomit"
+        ]
+      },
+      {
+        "id": "m_disable",
+        "ph": [
+          "can't work",
+          "miss work",
+          "lie down",
+          "stops me",
+          "have to stop",
+          "debilitat",
+          "couldn't function"
+        ]
+      },
+      {
+        "id": "m_aura",
+        "ph": [
+          "aura",
+          "see spots",
+          "zigzag",
+          "shimmer",
+          "flashing",
+          "vision changes before"
+        ]
+      },
+      {
+        "id": "m_trig",
+        "ph": [
+          "weather",
+          "barometric",
+          "before it rains",
+          "storm",
+          "my period",
+          "hormonal",
+          "lack of sleep",
+          "skip meal",
+          "skipped meal",
+          "missed meal"
+        ]
+      },
+      {
+        "id": "m_fhx",
+        "ph": [
+          "family history of migraine",
+          "mom had migraine",
+          "mother had migraine",
+          "mother gets migraine",
+          "mom gets migraine",
+          "migraines run",
+          "i get migraine",
+          "i have migraine"
+        ],
+        "thirdPartyExempt": true
+      },
+      {
+        "id": "v_motion",
+        "ph": [
+          "busy place",
+          "grocery",
+          "aisle",
+          "scrolling",
+          "scroll on",
+          "driving makes",
+          "car sick",
+          "carsick",
+          "motion",
+          "visually busy",
+          "crowded"
+        ]
+      },
+      {
+        "id": "v_aural",
+        "ph": [
+          "ear feels full",
+          "fullness in my ear",
+          "ear full",
+          "plugged",
+          "ringing",
+          "tinnitus",
+          "ear ring"
+        ]
+      },
+      {
+        "id": "v_head",
+        "ph": [
+          "move my head",
+          "head position",
+          "rolling over",
+          "looking up",
+          "bend over",
+          "positional"
+        ]
+      },
+      {
+        "id": "n_burn",
+        "ph": [
+          "burning",
+          "tingling",
+          "pins and needles",
+          "numb",
+          "electric",
+          "shooting pain"
+        ]
+      },
+      {
+        "id": "n_otalgia",
+        "ph": [
+          "deep ear pain",
+          "ear pain but",
+          "aches deep in my ear",
+          "throat pain",
+          "ear ache",
+          "earache"
+        ]
+      },
+      {
+        "id": "n_auto",
+        "ph": [
+          "dry eyes",
+          "dry mouth",
+          "lightheaded when i stand",
+          "dizzy when i stand",
+          "sweating more",
+          "sweating less",
+          "stomach empties"
+        ]
+      },
+      {
+        "id": "n_viral",
+        "ph": [
+          "after covid",
+          "after a virus",
+          "after being sick",
+          "since my cold",
+          "post viral",
+          "after the flu",
+          "following a viral",
+          "after a viral",
+          "viral illness"
+        ]
+      },
+      {
+        "id": "n_allo",
+        "ph": [
+          "out of proportion",
+          "overly sensitive",
+          "hurts to touch",
+          "light touch"
+        ]
+      },
+      {
+        "id": "r_abx",
+        "ph": [
+          "rounds of antibiotic",
+          "antibiotic",
+          "augmentin",
+          "amoxicillin",
+          "steroid spray",
+          "steroids didn't",
+          "course of steroid",
+          "prednisone"
+        ]
+      },
+      {
+        "id": "r_surg",
+        "ph": [
+          "sinus surgery",
+          "septoplasty",
+          "fess",
+          "had surgery on my sinus",
+          "sinus procedure"
+        ]
+      },
+      {
+        "id": "r_normal",
+        "ph": [
+          "ct was normal",
+          "scan was normal",
+          "looked normal",
+          "basically normal",
+          "nothing on imaging",
+          "imaging was clear",
+          "ct was clear",
+          "everything looked fine",
+          "no acute abnormality",
+          "unremarkable",
+          "within normal limits"
+        ]
+      },
+      {
+        "id": "r_lesion",
+        "ph": [
+          "didn't find anything",
+          "nothing wrong",
+          "no cause found",
+          "couldn't find a reason",
+          "workup was normal"
+        ]
+      },
+      {
+        "id": "v_count",
+        "ph": [
+          "five episodes",
+          "five spells",
+          "half a dozen",
+          "dozens of",
+          "lost count",
+          "too many to count",
+          "every few weeks for"
+        ]
+      },
+      {
+        "id": "v_migfeat",
+        "ph": [
+          "headache with the dizz",
+          "headache when i'm dizzy",
+          "headache with my spells",
+          "spells come with a headache",
+          "light bothers me during the spell"
+        ]
+      },
+      {
+        "id": "x_purulent",
+        "ph": [
+          "green mucus",
+          "yellow mucus",
+          "thick discharge",
+          "coloured discharge",
+          "colored discharge",
+          "culture grew",
+          "positive culture",
+          "purulent"
+        ]
+      },
+      {
+        "id": "x_objective",
+        "ph": [
+          "ct showed",
+          "scan showed inflammation",
+          "opacification",
+          "mucosal thickening",
+          "lund-mackay",
+          "scope showed",
+          "polyps"
+        ]
+      },
+      {
+        "id": "x_lowfreq",
+        "ph": [
+          "hearing test showed",
+          "audiogram showed",
+          "low frequency loss",
+          "hearing drops during",
+          "hearing comes back"
+        ]
+      },
+      {
+        "id": "x_anosmia",
+        "ph": [
+          "can't smell",
+          "lost my smell",
+          "no sense of smell",
+          "smell is gone",
+          "anosmia"
+        ]
+      }
+    ],
+    "ctx": [
+      {
+        "id": "c_dismiss",
+        "val": "yes",
+        "ph": [
+          "anxiety",
+          "stress",
+          "in my head",
+          "all in your head",
+          "nothing wrong with you",
+          "psychosomatic"
+        ]
+      }
+    ],
+    "scale": [
+      {
+        "id": "m_head",
+        "cue": [
+          "facial pressure",
+          "behind my eyes",
+          "sinus headache",
+          "headache",
+          "facial pain",
+          "pressure in my face"
+        ],
+        "bands": [
+          {
+            "ph": [
+              "every day",
+              "daily",
+              "constant",
+              "all the time",
+              "most days"
+            ],
+            "v": 2
+          }
+        ],
+        "fallback": 1
+      },
+      {
+        "id": "v_vertigo",
+        "cue": [
+          "dizzy",
+          "dizziness",
+          "vertigo",
+          "spinning",
+          "off balance",
+          "off-balance",
+          "room spins"
+        ],
+        "bands": [
+          {
+            "ph": [
+              "few seconds",
+              "seconds",
+              "a minute",
+              "couple of minutes",
+              "very brief",
+              "momentary"
+            ],
+            "v": 1
+          },
+          {
+            "ph": [
+              "for days",
+              "several days",
+              "all week",
+              "constant for"
+            ],
+            "v": 3
+          },
+          {
+            "ph": [
+              "minutes",
+              "half an hour",
+              "an hour",
+              "hours",
+              "all day",
+              "most of the day"
+            ],
+            "v": 2
+          }
+        ],
+        "fallback": null
+      },
+      {
+        "id": "m_dur",
+        "cue": [
+          "lasts",
+          "last for",
+          "goes on for",
+          "sticks around"
+        ],
+        "bands": [
+          {
+            "ph": [
+              "all day",
+              "a day or two",
+              "two days",
+              "three days",
+              "couple of days",
+              "rest of the day",
+              "into the next day"
+            ],
+            "v": 2
+          },
+          {
+            "ph": [
+              "more than three days",
+              "four days",
+              "a week",
+              "over 72"
+            ],
+            "v": 3
+          },
+          {
+            "ph": [
+              "an hour or two",
+              "couple of hours",
+              "hour or so",
+              "under an hour",
+              "half an hour"
+            ],
+            "v": 1
+          }
+        ],
+        "fallback": null
+      },
+      {
+        "id": "i_days",
+        "cue": [
+          "every day",
+          "daily",
+          "most days",
+          "half the month",
+          "ten days",
+          "constantly"
+        ],
+        "bands": [],
+        "fallback": 3
+      },
+      {
+        "id": "i_role",
+        "cue": [
+          "can't work",
+          "miss work",
+          "quit my job",
+          "had to stop working"
+        ],
+        "bands": [],
+        "fallback": 3
+      }
+    ],
+    "multi": [
+      {
+        "ids": [
+          {
+            "id": "r_dur",
+            "value": "yes",
+            "kind": "item"
+          },
+          {
+            "id": "c_dur",
+            "value": ">12mo",
+            "kind": "ctx"
+          }
+        ],
+        "ph": [
+          "over a year",
+          "for years",
+          "a year now",
+          "more than a year",
+          "past year",
+          "several months",
+          "for months"
+        ]
+      },
+      {
+        "ids": [
+          {
+            "id": "c_clin",
+            "value": "3+",
+            "kind": "ctx"
+          }
+        ],
+        "ph": [
+          "three doctor",
+          "four doctor",
+          "three or four",
+          "several doctor",
+          "multiple doctor",
+          "bunch of specialist",
+          "every specialist",
+          "so many doctor"
+        ]
+      }
+    ],
+    "redFlags": {
+      "rf_thunderclap": [
+        "worst headache",
+        "thunderclap",
+        "came on in seconds",
+        "hit me all at once",
+        "like a thunderclap"
+      ],
+      "rf_focal": [
+        "double vision",
+        "slurred",
+        "face went numb",
+        "numb on one side",
+        "weak on one side",
+        "droop",
+        "trouble swallowing",
+        "words wouldn't come"
+      ],
+      "rf_vision": [
+        "losing my vision",
+        "vision greys",
+        "grey out",
+        "blacks out",
+        "going blind",
+        "vision dims"
+      ],
+      "rf_gca": [
+        "jaw aches when i chew",
+        "jaw hurts when i chew",
+        "scalp is tender",
+        "tender scalp",
+        "hurts to brush my hair"
+      ],
+      "rf_orbital": [
+        "eye is swollen",
+        "swelling around my eye",
+        "eye is bulging",
+        "can't move my eye",
+        "eye hurts to move"
+      ],
+      "rf_ssnhl": [
+        "hearing dropped",
+        "lost my hearing",
+        "hearing went out",
+        "went deaf",
+        "suddenly couldn't hear"
+      ],
+      "rf_asym": [
+        "only my left ear",
+        "only my right ear",
+        "just the left ear",
+        "just the right ear",
+        "only in one ear",
+        "always the same ear"
+      ],
+      "rf_pulsatile": [
+        "with my heartbeat",
+        "hear my heartbeat",
+        "whooshing",
+        "pulsing sound",
+        "pulsatile"
+      ],
+      "rf_progressive": [
+        "worse when i lie down",
+        "worse lying down",
+        "wakes me up",
+        "worse in the morning",
+        "worse when i cough",
+        "when i strain",
+        "getting worse every"
+      ],
+      "rf_new50": [
+        "never had headaches before",
+        "first time i've had",
+        "started in my fifties",
+        "started in my sixties"
+      ],
+      "rf_mass": [
+        "nosebleed",
+        "bloody nose",
+        "blocked on one side",
+        "one side is blocked",
+        "cheek is numb",
+        "numb cheek"
+      ],
+      "rf_systemic": [
+        "night sweats",
+        "losing weight",
+        "lost weight without",
+        "fevers",
+        "chemotherapy",
+        "i have cancer",
+        "had cancer"
+      ]
+    },
+    "goldSet": {
+      "version": "0.2.0",
+      "lexiconVersion": "0.3.1",
+      "file": "masque_extraction_goldset.json"
+    }
+  },
+  "locales": {
+    "en": {
+      "reviewed": true,
+      "items": {
+        "r_dur": {
+          "q": "This has been going on — or keeps coming back — for more than 3 months."
+        },
+        "r_abx": {
+          "q": "I've had two or more rounds of antibiotics or steroids and they didn't fix it for long."
+        },
+        "r_surg": {
+          "q": "I've had sinus surgery or a procedure, and the symptoms came back."
+        },
+        "r_lesion": {
+          "q": "I get dizzy spells or ear symptoms, and nobody has found a cause."
+        },
+        "r_normal": {
+          "q": "My scans or exams came back normal, or close to normal, even though I feel bad.",
+          "ask": "What exactly did my previous scans and exams show?"
+        },
+        "m_head": {
+          "q": "How often do you get headaches, or pressure and pain across your face and cheeks?",
+          "opts": [
+            "Never",
+            "Now and then",
+            "Often"
+          ]
+        },
+        "m_dur": {
+          "ask": "How long does an untreated episode usually last? I'm not certain.",
+          "q": "If you don't treat it, how long does one episode usually last?",
+          "opts": [
+            "I don't get them",
+            "Less than 4 hours",
+            "Between 4 hours and 3 days",
+            "More than 3 days",
+            "It varies a lot"
+          ]
+        },
+        "m_photo": {
+          "q": "Light or noise bothers me more than usual during an episode."
+        },
+        "m_nausea": {
+          "q": "I feel sick to my stomach during an episode."
+        },
+        "m_disable": {
+          "q": "Episodes stop me doing things I'd normally do."
+        },
+        "m_aura": {
+          "q": "Before or during an episode I see spots, zigzags or flashing lights — or I get numbness or tingling."
+        },
+        "m_trig": {
+          "q": "Certain things set it off — weather changes, poor sleep, skipping meals, or my period."
+        },
+        "m_fhx": {
+          "q": "I get migraines, or someone in my family does."
+        },
+        "v_vertigo": {
+          "q": "When you get a dizzy or spinning spell, how long does it last?",
+          "opts": [
+            "I don't get them",
+            "Less than 5 minutes",
+            "Between 5 minutes and 3 days",
+            "More than 3 days"
+          ]
+        },
+        "v_count": {
+          "q": "I've had at least five of these spells."
+        },
+        "v_migfeat": {
+          "q": "At least half of my spells come with a headache, or with light and noise bothering me.",
+          "ask": "Should I be tracking whether my spells come with headache or light sensitivity?"
+        },
+        "v_motion": {
+          "q": "Busy patterns, scrolling on a screen, or riding in a car make me feel off."
+        },
+        "v_aural": {
+          "q": "My ears feel full, or ring, when the spells happen."
+        },
+        "v_head": {
+          "q": "Moving my head or changing position brings it on."
+        },
+        "n_burn": {
+          "q": "I get burning, tingling or shooting feelings in my face, mouth or throat."
+        },
+        "n_otalgia": {
+          "q": "I get deep ear or throat pain, but my ear was checked and looked fine."
+        },
+        "n_auto": {
+          "q": "I get dry eyes or a dry mouth, lightheadedness when I stand up, sweating changes, or stomach trouble.",
+          "ask": "Could dryness, lightheadedness and stomach changes be connected to this?"
+        },
+        "n_viral": {
+          "q": "All of this started after I was sick with a virus."
+        },
+        "n_allo": {
+          "q": "A light touch, or normal pressure, hurts more than it should."
+        },
+        "i_days": {
+          "q": "How many days a month does this affect you?",
+          "opts": [
+            "None",
+            "1 to 3",
+            "4 to 9",
+            "10 or more"
+          ]
+        },
+        "i_role": {
+          "q": "How much does it get in the way of work, school or home life?",
+          "opts": [
+            "Not at all",
+            "A little",
+            "A fair amount",
+            "A lot"
+          ]
+        },
+        "x_purulent": {
+          "q": "During a flare I've had thick coloured drainage, or a swab grew an infection.",
+          "ask": "During a flare, did I ever have thick coloured drainage, or a swab that grew an infection?",
+          "help": "This is one your notes may answer. \"Not sure\" is a fine answer."
+        },
+        "x_objective": {
+          "q": "A scan or a camera test showed real sinus swelling while I was having symptoms.",
+          "ask": "Did any of my scans or scope tests show real sinus swelling while I had symptoms?",
+          "help": "Look for words like sinusitis, mucosal thickening, or opacification on a CT report."
+        },
+        "x_lowfreq": {
+          "q": "A hearing test showed my hearing drops during spells and comes back afterwards.",
+          "ask": "Do my hearing tests show my hearing changing between visits?",
+          "help": "This means two hearing tests at different times, not one."
+        },
+        "x_anosmia": {
+          "q": "My sense of smell is reduced or gone, even between flares.",
+          "ask": "Has my sense of smell been formally tested?"
+        }
+      },
+      "redFlags": {
+        "rf_thunderclap": {
+          "q": "A headache that went from nothing to the worst pain within about a minute.",
+          "say": "I had a headache that reached its worst point within a minute."
+        },
+        "rf_focal": {
+          "q": "New weakness, numbness, slurred speech, trouble swallowing, or double vision that doesn't go away.",
+          "say": "I have new weakness, numbness, speech trouble or double vision."
+        },
+        "rf_vision": {
+          "q": "Losing vision, or my vision greying out or dimming — even for a few seconds.",
+          "say": "I'm having episodes where my vision greys out or dims."
+        },
+        "rf_gca": {
+          "q": "I'm over 50 and my scalp is tender, or my jaw aches when I chew.",
+          "say": "I'm over 50 with a tender scalp and jaw pain when I chew. I'd like blood tests today."
+        },
+        "rf_orbital": {
+          "q": "Swelling around my eye, my eye bulging, eye pain, or trouble moving my eye.",
+          "say": "I have swelling around my eye and trouble moving it."
+        },
+        "rf_ssnhl": {
+          "q": "My hearing dropped suddenly — over a few hours or a day — in the last month.",
+          "say": "My hearing dropped suddenly. I'd like a hearing test today, not in a few weeks."
+        },
+        "rf_asym": {
+          "q": "My hearing loss or ringing is always in the same one ear.",
+          "say": "My hearing loss and ringing are only ever in one ear, and I'd like that looked into."
+        },
+        "rf_pulsatile": {
+          "q": "The ringing pulses along with my heartbeat.",
+          "say": "My ear noise pulses in time with my heartbeat."
+        },
+        "rf_progressive": {
+          "q": "My headache is steadily getting worse, or it's worse when I wake up, cough, strain or lie flat.",
+          "say": "My headaches are getting worse and are worst when I lie down or wake up."
+        },
+        "rf_new50": {
+          "q": "This is the first time in my life I've had headaches like this, and I'm over 50.",
+          "say": "These are the first severe headaches of my life and I'm over 50."
+        },
+        "rf_mass": {
+          "q": "One side of my nose is blocked with bleeding, or my cheek has gone numb.",
+          "say": "One side of my nose is blocked and bleeding, and my cheek is numb."
+        },
+        "rf_systemic": {
+          "q": "Fevers, night sweats, or weight I didn't mean to lose.",
+          "say": "I've had night sweats and unexplained weight loss alongside this."
+        }
+      },
+      "contextItems": {
+        "c_clin": {
+          "q": "How many different clinicians have you seen about this?",
+          "opts": [
+            [
+              "1",
+              "Just one"
+            ],
+            [
+              "2",
+              "Two"
+            ],
+            [
+              "3+",
+              "Three or more"
+            ]
+          ]
+        },
+        "c_dur": {
+          "q": "How long has this been going on?",
+          "opts": [
+            [
+              "<6mo",
+              "Under 6 months"
+            ],
+            [
+              "6-12mo",
+              "6 to 12 months"
+            ],
+            [
+              ">12mo",
+              "Over a year"
+            ]
+          ]
+        },
+        "c_dismiss": {
+          "q": "Have you been told it's stress or anxiety, or that everything looks normal?",
+          "opts": [
+            [
+              "no",
+              "No"
+            ],
+            [
+              "yes",
+              "Yes"
+            ]
+          ]
+        }
+      },
+      "steps": {
+        "story": {
+          "title": "Your story",
+          "heading": "Your story so far",
+          "lede": "This part matters more than people expect. How long you've been at this, and how many doors you've already knocked on, changes what a good next step looks like.",
+          "intro": "A few things about what's been tried already."
+        },
+        "migraine": {
+          "title": "Headache pattern",
+          "lede": "Migraine doesn't always mean a classic headache. It can show up as pressure across the face and cheeks that feels exactly like a sinus problem."
+        },
+        "vestibular": {
+          "title": "Dizziness and ears",
+          "lede": "Dizziness and ear symptoms can come from the same mechanism, even when hearing tests and scans are normal."
+        },
+        "neuro": {
+          "title": "Nerve-type symptoms",
+          "lede": "Some people get nerve-type symptoms — burning, tingling, or pain that doesn't match what an exam shows."
+        },
+        "impact": {
+          "title": "Daily impact",
+          "lede": "Two quick questions. These tend to carry a lot of weight with clinicians, so it's worth being accurate rather than brave."
+        },
+        "discriminators": {
+          "title": "Test results",
+          "lede": "These point away from the pattern this tool looks for, which makes them just as useful. Plenty of people won't know — \"Not sure\" is genuinely the right answer then."
+        }
+      },
+      "ui": {
+        "sub": "A MASQUE tool · for people with ongoing sinus, ear or dizziness problems",
+        "forYouIf": [
+          "You've had sinus, face-pressure, ear or dizziness symptoms for months.",
+          "Treatments haven't held, or your scans came back normal and you still feel unwell.",
+          "You've seen more than one clinician about it."
+        ],
+        "clinicianLede": "Patient-reported features, MASQUE instrument v{instrument}. Self-reported and not a screening result — no index was calculated. Items marked **−** point away from the migrainous/neuropathic pattern."
+      }
+    },
+    "es": {
+      "reviewed": false,
+      "items": {
+        "r_dur": {
+          "q": "Esto lleva más de 3 meses, o vuelve una y otra vez."
+        },
+        "r_abx": {
+          "q": "He tomado dos o más ciclos de antibióticos o esteroides y no lo resolvieron por mucho tiempo."
+        },
+        "r_surg": {
+          "q": "Me operaron de los senos nasales o me hicieron un procedimiento, y los síntomas volvieron."
+        },
+        "r_lesion": {
+          "q": "Me dan mareos o síntomas del oído, y nadie ha encontrado la causa."
+        },
+        "r_normal": {
+          "q": "Mis estudios o exámenes salieron normales, o casi normales, aunque me siento mal.",
+          "ask": "¿Qué mostraron exactamente mis estudios y exámenes anteriores?"
+        },
+        "m_head": {
+          "q": "¿Con qué frecuencia le dan dolores de cabeza, o presión y dolor en la cara y los pómulos?",
+          "opts": [
+            "Nunca",
+            "De vez en cuando",
+            "Seguido"
+          ]
+        },
+        "m_dur": {
+          "q": "Si no lo trata, ¿cuánto dura normalmente un episodio?",
+          "ask": "¿Cuánto dura un episodio sin tratar? No estoy seguro.",
+          "opts": [
+            "No me dan",
+            "Menos de 4 horas",
+            "Entre 4 horas y 3 días",
+            "Más de 3 días",
+            "Varía mucho"
+          ]
+        },
+        "m_photo": {
+          "q": "La luz o el ruido me molestan más de lo normal durante un episodio."
+        },
+        "m_nausea": {
+          "q": "Siento náuseas o malestar del estómago durante un episodio."
+        },
+        "m_disable": {
+          "q": "Los episodios me impiden hacer cosas que normalmente haría."
+        },
+        "m_aura": {
+          "q": "Antes o durante un episodio veo puntos, líneas en zigzag o luces destellantes — o siento entumecimiento u hormigueo."
+        },
+        "m_trig": {
+          "q": "Ciertas cosas lo provocan — cambios de clima, dormir mal, saltarme comidas, o mi periodo."
+        },
+        "m_fhx": {
+          "q": "Me dan migrañas, o alguien de mi familia las tiene."
+        },
+        "v_vertigo": {
+          "q": "Cuando le da un episodio de mareo o de que todo da vueltas, ¿cuánto dura?",
+          "opts": [
+            "No me dan",
+            "Menos de 5 minutos",
+            "Entre 5 minutos y 3 días",
+            "Más de 3 días"
+          ]
+        },
+        "v_count": {
+          "q": "He tenido al menos cinco de estos episodios."
+        },
+        "v_migfeat": {
+          "q": "Por lo menos la mitad de mis episodios vienen con dolor de cabeza, o con molestia por la luz y el ruido.",
+          "ask": "¿Debería anotar si mis episodios vienen con dolor de cabeza o molestia por la luz?"
+        },
+        "v_motion": {
+          "q": "Los patrones muy cargados, deslizar la pantalla, o ir en el carro me hacen sentir mal."
+        },
+        "v_aural": {
+          "q": "Siento los oídos tapados, o me zumban, cuando me dan los episodios."
+        },
+        "v_head": {
+          "q": "Mover la cabeza o cambiar de posición me lo provoca."
+        },
+        "n_burn": {
+          "q": "Siento ardor, hormigueo o punzadas en la cara, la boca o la garganta."
+        },
+        "n_otalgia": {
+          "q": "Me duele hondo el oído o la garganta, pero me revisaron el oído y estaba bien."
+        },
+        "n_auto": {
+          "q": "Se me secan los ojos o la boca, me mareo al pararme, sudo distinto, o tengo problemas del estómago.",
+          "ask": "¿La resequedad, el mareo al pararme y los cambios del estómago podrían estar relacionados con esto?"
+        },
+        "n_viral": {
+          "q": "Todo esto empezó después de que me enfermé de un virus."
+        },
+        "n_allo": {
+          "q": "Un roce suave, o una presión normal, me duele más de lo que debería."
+        },
+        "i_days": {
+          "q": "¿Cuántos días al mes le afecta esto?",
+          "opts": [
+            "Ninguno",
+            "1 a 3",
+            "4 a 9",
+            "10 o más"
+          ]
+        },
+        "i_role": {
+          "q": "¿Qué tanto le estorba en el trabajo, la escuela o la casa?",
+          "opts": [
+            "Nada",
+            "Un poco",
+            "Bastante",
+            "Mucho"
+          ]
+        },
+        "x_purulent": {
+          "q": "Durante una crisis he tenido flujo espeso y de color, o un cultivo salió con infección.",
+          "ask": "Durante una crisis, ¿alguna vez tuve flujo espeso de color, o un cultivo con infección?",
+          "help": "Esta puede estar en su expediente. \"No estoy seguro\" es una buena respuesta."
+        },
+        "x_objective": {
+          "q": "Un estudio o una cámara mostró inflamación real de los senos nasales mientras yo tenía síntomas.",
+          "ask": "¿Alguno de mis estudios mostró inflamación real de los senos nasales cuando tenía síntomas?",
+          "help": "Busque palabras como sinusitis, engrosamiento de la mucosa u opacificación en un reporte de tomografía."
+        },
+        "x_lowfreq": {
+          "q": "Una prueba de audición mostró que mi oído baja durante los episodios y luego regresa.",
+          "ask": "¿Mis pruebas de audición muestran cambios entre una visita y otra?",
+          "help": "Esto significa dos pruebas en momentos distintos, no una sola."
+        },
+        "x_anosmia": {
+          "q": "Mi sentido del olfato está disminuido o perdido, incluso entre crisis.",
+          "ask": "¿Me han hecho una prueba formal del olfato?"
+        }
+      },
+      "redFlags": {
+        "rf_thunderclap": {
+          "q": "Un dolor de cabeza que pasó de nada al peor dolor en como un minuto.",
+          "say": "Tuve un dolor de cabeza que llegó a su punto más fuerte en menos de un minuto."
+        },
+        "rf_focal": {
+          "q": "Debilidad nueva, entumecimiento, hablar arrastrado, dificultad para tragar, o ver doble y no se quita.",
+          "say": "Tengo debilidad, entumecimiento, problemas para hablar o visión doble, y son nuevos."
+        },
+        "rf_vision": {
+          "q": "Perder la vista, o que se me nuble u oscurezca la vista — aunque sea por segundos.",
+          "say": "Estoy teniendo episodios en los que se me oscurece o se me nubla la vista."
+        },
+        "rf_gca": {
+          "q": "Tengo más de 50 años y me duele el cuero cabelludo, o me duele la mandíbula al masticar.",
+          "say": "Tengo más de 50 años, me duele el cuero cabelludo y la mandíbula al masticar. Quisiera análisis de sangre hoy."
+        },
+        "rf_orbital": {
+          "q": "Hinchazón alrededor del ojo, el ojo saltado, dolor de ojo, o no poder moverlo bien.",
+          "say": "Tengo hinchazón alrededor del ojo y dificultad para moverlo."
+        },
+        "rf_ssnhl": {
+          "q": "Mi audición bajó de repente — en unas horas o un día — en el último mes.",
+          "say": "Mi audición bajó de repente. Quisiera una prueba de audición hoy, no en unas semanas."
+        },
+        "rf_asym": {
+          "q": "La pérdida de audición o el zumbido siempre es del mismo oído.",
+          "say": "La pérdida de audición y el zumbido son solo de un oído, y quisiera que lo revisaran."
+        },
+        "rf_pulsatile": {
+          "q": "El zumbido late al mismo ritmo que mi corazón.",
+          "say": "El ruido en mi oído late al ritmo de mi corazón."
+        },
+        "rf_progressive": {
+          "q": "Mi dolor de cabeza va empeorando poco a poco, o es peor al despertar, toser, hacer fuerza o acostarme.",
+          "say": "Mis dolores de cabeza están empeorando y son peores cuando me acuesto o al despertar."
+        },
+        "rf_new50": {
+          "q": "Es la primera vez en mi vida que me dan dolores de cabeza así, y tengo más de 50 años.",
+          "say": "Estos son los primeros dolores de cabeza fuertes de mi vida y tengo más de 50 años."
+        },
+        "rf_mass": {
+          "q": "Un lado de la nariz está tapado y sangra, o se me durmió el pómulo.",
+          "say": "Un lado de mi nariz está tapado y sangrando, y tengo el pómulo dormido."
+        },
+        "rf_systemic": {
+          "q": "Fiebres, sudores de noche, o peso que bajé sin querer.",
+          "say": "He tenido sudores nocturnos y he bajado de peso sin explicación."
+        }
+      },
+      "steps": {
+        "story": {
+          "title": "Su historia"
+        },
+        "migraine": {
+          "title": "Patrón de dolor de cabeza",
+          "lede": "La migraña no siempre es un dolor de cabeza clásico. Puede aparecer como presión en la cara y los pómulos que se siente igual que un problema de los senos nasales."
+        },
+        "vestibular": {
+          "title": "Mareos y oídos",
+          "lede": "Los mareos y los síntomas del oído pueden venir del mismo mecanismo, aunque las pruebas de audición y los estudios salgan normales."
+        },
+        "neuro": {
+          "title": "Síntomas de los nervios",
+          "lede": "Algunas personas tienen síntomas de los nervios — ardor, hormigueo, o dolor que no corresponde con lo que muestra el examen."
+        },
+        "impact": {
+          "title": "Impacto diario",
+          "lede": "Dos preguntas rápidas. Estas suelen pesar mucho con los médicos, así que vale más ser exacto que valiente."
+        },
+        "discriminators": {
+          "title": "Resultados de estudios",
+          "lede": "Estas apuntan en dirección contraria al patrón que busca esta herramienta, lo cual las hace igual de útiles. Mucha gente no lo sabrá — ahí \"No estoy seguro\" es de verdad la respuesta correcta."
+        }
+      },
+      "ui": {
+        "sub": "Una herramienta MASQUE · para personas con problemas continuos de senos nasales, oídos o mareos"
+      }
+    }
+  },
+  "research": {
+    "projectKey": "MASQUE",
+    "title": "MASQUE research & deployment readiness",
+    "target": "masked migrainous / neuropathic driver",
+    "threshold": 0.5,
+    "calibration": {
+      "midpoint": 48,
+      "slope": 0.075,
+      "appliesTo": {
+        "scoringHash": "32cc4f44d64f60470253488fea40baa6bd76871eb92ddb0e6d013adfa715e1c5"
+      }
+    },
+    "sources": [
+      [
+        "NHANES",
+        "ENT, audiometry, balance, and headache phenotype inputs"
+      ],
+      [
+        "NHIS",
+        "Headache, dizziness, hearing, and burden prevalence"
+      ],
+      [
+        "MEPS",
+        "Utilization, medication, procedure, and cost estimates"
+      ],
+      [
+        "CMS PUF / DE-SynPUF",
+        "Repeat visits, imaging, sinus/ear procedures, care pathways"
+      ],
+      [
+        "HCUPnet",
+        "ED/inpatient sinonasal and dizziness context"
+      ],
+      [
+        "openFDA / FAERS",
+        "Narrative NLP development and medication safety context"
+      ],
+      [
+        "CDC WONDER / BRFSS",
+        "Demographic and geographic burden"
+      ],
+      [
+        "All of Us",
+        "Optional linked EHR/survey validation"
+      ]
+    ],
+    "expected": [
+      "score",
+      "label",
+      "sex",
+      "gender",
+      "age",
+      "weight",
+      "annual_cost",
+      "avoidable_cost"
+    ],
+    "demo": [
+      {
+        "score": 79,
+        "label": 1,
+        "sex": "female",
+        "gender": "woman",
+        "age": 42,
+        "weight": 1.2,
+        "annual_cost": 6200,
+        "avoidable_cost": 3400
+      },
+      {
+        "score": 68,
+        "label": 1,
+        "sex": "female",
+        "gender": "woman",
+        "age": 51,
+        "weight": 0.9,
+        "annual_cost": 5100,
+        "avoidable_cost": 2700
+      },
+      {
+        "score": 57,
+        "label": 1,
+        "sex": "male",
+        "gender": "man",
+        "age": 39,
+        "weight": 0.8,
+        "annual_cost": 4100,
+        "avoidable_cost": 1800
+      },
+      {
+        "score": 43,
+        "label": 0,
+        "sex": "female",
+        "gender": "woman",
+        "age": 35,
+        "weight": 1.1,
+        "annual_cost": 2700,
+        "avoidable_cost": 700
+      },
+      {
+        "score": 25,
+        "label": 0,
+        "sex": "male",
+        "gender": "man",
+        "age": 60,
+        "weight": 1,
+        "annual_cost": 1900,
+        "avoidable_cost": 300
+      },
+      {
+        "score": 14,
+        "label": 0,
+        "sex": "female",
+        "gender": "woman",
+        "age": 29,
+        "weight": 1.3,
+        "annual_cost": 1200,
+        "avoidable_cost": 100
+      },
+      {
+        "score": 61,
+        "label": 1,
+        "sex": "female",
+        "gender": "man",
+        "age": 33,
+        "weight": 1,
+        "annual_cost": 4400,
+        "avoidable_cost": 2100
+      },
+      {
+        "score": 31,
+        "label": 0,
+        "sex": "male",
+        "gender": "nonbinary",
+        "age": 27,
+        "weight": 1.1,
+        "annual_cost": 2200,
+        "avoidable_cost": 500
+      },
+      {
+        "score": 52,
+        "label": 1,
+        "gender": "woman",
+        "age": 47,
+        "weight": 1,
+        "annual_cost": 3900,
+        "avoidable_cost": 1600
+      }
+    ],
+    "scoreAliases": [
+      "masque_score"
+    ],
+    "artifactKey": "masqueArtifact",
+    "etlScript": "etl/masque_population_etl.R",
+    "fairnessAxes": [
+      "sex",
+      "gender"
+    ],
+    "demoCohorts": [
+      {
+        "id": "balanced",
+        "label": "Comparable groups · 800",
+        "why": "Labelled, similar scoring across sex. All three gaps clear the tolerance across the whole interval — PASS, and the model runs.",
+        "spec": {
+          "seed": 7,
+          "prevalence": 0.45,
+          "hi": {
+            "pos": [
+              58,
+              40
+            ],
+            "neg": [
+              12,
+              38
+            ]
+          },
+          "lo": {
+            "pos": [
+              26,
+              42
+            ],
+            "neg": [
+              6,
+              34
+            ]
+          },
+          "groups": [
+            {
+              "sex": "female",
+              "gender": "woman",
+              "n": 400,
+              "hi": true,
+              "labeled": true
+            },
+            {
+              "sex": "male",
+              "gender": "man",
+              "n": 400,
+              "hi": true,
+              "labeled": true
+            }
+          ]
+        }
+      },
+      {
+        "id": "unlabeled",
+        "label": "No reference labels · 800",
+        "why": "Real pre-label screening data. Used to be imputed to all-negative and scored; now validation is withheld and the audit reports NOT ASSESSABLE rather than a verdict.",
+        "spec": {
+          "seed": 7,
+          "prevalence": 0.45,
+          "hi": {
+            "pos": [
+              58,
+              40
+            ],
+            "neg": [
+              12,
+              38
+            ]
+          },
+          "lo": {
+            "pos": [
+              26,
+              42
+            ],
+            "neg": [
+              6,
+              34
+            ]
+          },
+          "groups": [
+            {
+              "sex": "female",
+              "gender": "woman",
+              "n": 400,
+              "hi": true,
+              "labeled": false
+            },
+            {
+              "sex": "male",
+              "gender": "man",
+              "n": 400,
+              "hi": true,
+              "labeled": false
+            }
+          ]
+        }
+      },
+      {
+        "id": "disparate",
+        "label": "Female under-detection · 429",
+        "why": "The §3.2 defect in data, plus divergent gender and a 6-row stratum. FAIL, so §11's gate withholds the model.",
+        "spec": {
+          "seed": 7,
+          "prevalence": 0.45,
+          "hi": {
+            "pos": [
+              58,
+              40
+            ],
+            "neg": [
+              12,
+              38
+            ]
+          },
+          "lo": {
+            "pos": [
+              26,
+              42
+            ],
+            "neg": [
+              6,
+              34
+            ]
+          },
+          "groups": [
+            {
+              "sex": "female",
+              "gender": "woman",
+              "n": 200,
+              "hi": false,
+              "labeled": true
+            },
+            {
+              "sex": "male",
+              "gender": "man",
+              "n": 200,
+              "hi": true,
+              "labeled": true
+            },
+            {
+              "sex": "female",
+              "gender": "man",
+              "n": 22,
+              "hi": false,
+              "labeled": true
+            },
+            {
+              "sex": "male",
+              "gender": "nonbinary",
+              "n": 6,
+              "hi": true,
+              "labeled": true
+            }
+          ],
+          "extraRows": [
+            {
+              "score": 61,
+              "label": 1,
+              "sex": "",
+              "gender": "woman",
+              "subject_id": "s-x1",
+              "captured_at": "2026-04-02"
+            }
+          ]
+        }
+      }
+    ],
+    "population": {
+      "index": "./data/population-estimates.index.json",
+      "schema": "./etl/population_estimates.schema.json",
+      "map": "./etl/phenotype_map_nhis_2024.json"
+    }
+  },
+  "fhir": {
+    "questionnaireUrl": "http://{id}.example/Questionnaire/{id}-screener-v{instrument}",
+    "questionnaireName": "MASQUEScreener",
+    "questionnaireTitle": "MASQUE — screen for a masked migrainous or neuropathic driver in recalcitrant ENT presentations",
+    "publisher": "Project MASQUE — TOPx prototype",
+    "description": "Authored screening item set. NOT a validated instrument: the confirmatory instruments named in the recommendations (VM-PATHI, SNOT-22, DHI, HIT-6, MIDAS, ID Migraine, THI/TFI, SFN-SIQ, COMPASS-31) are administered separately under their own licenses. Item weights are illustrative pending validation.",
+    "safetyGroupText": "Red flags — evaluated before screening; not scored",
+    "codeSystem": "http://{id}.example/codes",
+    "answerSystem": "http://{id}.example/answer",
+    "criteriaSystem": "http://{id}.example/criteria",
+    "weightExtension": "http://{id}.example/StructureDefinition/item-weight",
+    "indexCode": "{id}-index",
+    "indexDisplay": "MASQUE migraine/neuropathy screen index",
+    "documentType": "ENT encounter note — MASQUE ambient screen",
+    "documentTitle": "MASQUE encounter note (draft)",
+    "screenIdPrefix": "{id}-",
+    "filePrefix": "{id}"
+  },
+  "cds": {
+    "serviceId": "{id}-screen",
+    "hook": "order-select",
+    "title": "MASQUE — masked migrainous / neuropathic driver screen",
+    "description": "Fires when a repeat sinus or vestibular order is selected for a patient with a recalcitrant ENT course. Surfaces the MASQUE index, or a safety card when a red flag is recorded.",
+    "source": {
+      "label": "Project MASQUE",
+      "url": "http://{id}.example"
+    },
+    "safetyCardUuid": "{id}-safety",
+    "indexCardUuid": "{id}-index",
+    "examples": {
+      "redFlagPresent": {
+        "flagId": "rf_asym",
+        "summary": "Red flag present — do not attribute to migraine before evaluation"
+      },
+      "settled": {
+        "score": 78,
+        "band": "high",
+        "summary": "MASQUE index 78/100 — high likelihood of a masked migrainous driver",
+        "detail": "Consider vestibular migraine. Administer VM-PATHI and DHI before repeating vestibular testing."
+      }
+    }
+  },
+  "copy": {
+    "indexName": "MASQUE index",
+    "gate": {
+      "patternPhrase": "masked migrainous or neuropathic driver"
+    },
+    "screener": {
+      "title": "MASQUE Screener",
+      "subtitle": "Migraine & sensory-neuropathy screen for recalcitrant sinonasal / otologic presentations",
+      "bandSuffix": "of a masked migrainous / neuropathic driver",
+      "gapAlert": {
+        "title": "Diagnostic-gap pattern detected",
+        "body": "This pattern of repeated visits and prior dismissal is disproportionately documented in women with migraine and vestibular migraine — weigh pretest probability accordingly rather than attributing symptoms to stress."
+      },
+      "disclaimer": "Screening aid, not a diagnosis. The item set is authored for this prototype and is not the validated instruments named above, which are administered under their own licenses. The weighted model is interpretable and illustrative, pending validation on the open-data sources named in the Project MASQUE proposal (NHANES, NHIS, MEPS, CMS, HCUP, openFDA, CDC, All of Us).",
+      "emrDetails": [
+        "**Launch.** The app opens from the chart via a SMART on FHIR EHR launch; the patient banner above is populated from the launch context (here, a sandbox Patient resource).",
+        "**Capture.** The clinician or patient completes the short screen; nothing is sent anywhere while answering.",
+        "**Write-back.** Results post as FHIR resources — a QuestionnaireResponse, an Observation carrying the MASQUE index and band, and a conditional ServiceRequest for referral — shown in the bundle above.",
+        "**Prompt.** A CDS Hooks card surfaces the recommendation in the ordering workflow.",
+        "**Privacy.** In deployment, acoustic / free-text features are extracted at the edge and raw identifiable data is not centralized; codes shown here use a placeholder system and are illustrative."
+      ],
+      "specIntro": "These are generated from the running item set, so they cannot drift from the instrument the app actually scores with. The Questionnaire is what this screen's QuestionnaireResponse resources point at."
+    },
+    "scribe": {
+      "title": "MASQUE Scribe",
+      "subtitle": "Ambient capture of the ENT encounter with live migraine / neuropathy screening prompts",
+      "gapAlert": {
+        "title": "Diagnostic-gap pattern",
+        "body": "Weigh pretest probability rather than attributing symptoms to stress."
+      },
+      "vmpathiDisclaimer": "Screening aid, not a diagnosis. Prompts are authored and mirror the VM-PATHI domains; the validated VM-PATHI is administered under license for confirmation.",
+      "about": [
+        "**Listen.** In this prototype the browser's own speech recognition transcribes the microphone (a deployment runs ambient ASR on-device); rule-based extraction maps what the patient says to MASQUE items as each phrase lands (shown as green capture tags — dashed while a phrase is still being recognised).",
+        "**Prompt.** The scribe computes coverage and surfaces only the highest-yield unasked questions for the active pathway — pulling in the VM-PATHI vestibular domains once otologic symptoms appear — so the physician asks what matters without reading a 25-item form aloud.",
+        "**Document.** Captured findings, the MASQUE index, and the plan assemble into a draft note and a FHIR bundle (QuestionnaireResponse, Observation, ServiceRequest, DocumentReference) for one-tap sign-off.",
+        "**Protect.** No raw audio is retained; only structured findings persist."
+      ]
+    },
+    "note": {
+      "title": "ENT ENCOUNTER — MASQUE ambient screen (DRAFT)",
+      "screenHeading": "MASQUE SCREEN",
+      "likelihoodOf": "likelihood of a masked migrainous / neuropathic driver",
+      "patternPhrase": "masked migrainous / neuropathic driver",
+      "infoCovered": "VM-PATHI domains additionally covered",
+      "gapLine": "Diagnostic-gap pattern flagged (repeat visits + prior dismissal).",
+      "supportingFooter": "Not Barany criteria; contribute nothing to the index. Instrument v0.3 candidates.",
+      "noDriver": "No masked driver flagged; continue standard ENT management.",
+      "signOff": "Screening aid, not a diagnosis. Confirmatory instruments administered under license."
+    },
+    "cds": {
+      "preview": {
+        "safetyTitle": "MASQUE: red flag present — do not attribute to migraine before evaluation",
+        "indexTitle": "MASQUE: consider a migrainous / neuropathic driver before escalating {cdsTerm} therapy",
+        "indexBody": "Screen index {total}/{scaleMax} ({bandLabel}). Suggested action: administer the confirmatory instrument and place the indicated referral."
+      }
+    }
+  },
+  "changelog": [
+    {
+      "date": "2026-10-02",
+      "kind": "extraction",
+      "note": "Extracted from the frozen baseline (app/tests/baseline/src, MANIFEST.sha256) by app/tests/tools/extract-rubric.html; field-by-field sources in modules/masque/SOURCES.md. Instrument 0.2 unchanged: item ids, weights, scale factors, cut-points and wording are moved, not edited.",
+      "paths": [
+        "/"
+      ]
+    },
+    {
+      "date": "2026-10-02",
+      "kind": "reconciliation",
+      "note": "Red flags take the canonical Screener wording (text, points, action). The Scribe's shortened copy and the Simulator's third variant are dropped; the Scribe's per-flag `ask` is kept as unread data (Q5, Q6).",
+      "paths": [
+        "/redFlags"
+      ]
+    },
+    {
+      "date": "2026-10-02",
+      "kind": "reconciliation",
+      "note": "Item text is canonical from the Screener (byte-identical to the Scribe's). The Scribe's ASK map becomes `ask`, its shortLabel map becomes `short` (n_allo has none, so the id is shown as today, Q24), VMPATHI_TAG becomes `tag`, and the Patient's clinician line `c` becomes `patientClin`. The Simulator's item copy (no scale factors, linear scoring) is dropped.",
+      "paths": [
+        "/domains"
+      ]
+    },
+    {
+      "date": "2026-10-02",
+      "kind": "reconciliation",
+      "note": "Patient context options keep the Patient's own values and labels (1/2/3+, <6mo/6-12mo/>12mo, no/yes); they are not realigned to the clinician bins (Q8). The gap-rule signal values (3+, >12mo, yes) are identical in both vocabularies.",
+      "paths": [
+        "/contextItems",
+        "/locales/en/contextItems"
+      ]
+    },
+    {
+      "date": "2026-10-02",
+      "kind": "reconciliation",
+      "note": "The Patient ITEMS domain `label`/`clinical` fields (never read) are dropped; the patient step titles come from the Patient section titles (UI.sections).",
+      "paths": [
+        "/locales/en/steps",
+        "/locales/es/steps"
+      ]
+    },
+    {
+      "date": "2026-10-02",
+      "kind": "reconciliation",
+      "note": "The five Simulator scenarios are added as sample cases sim-empty, sim-partial, sim-high, sim-redflag and sim-ruleout (group \"scenario\", `why` kept as the button title, FULL_HIGH inlined, `step` dropped, no complaint) (Q3).",
+      "paths": [
+        "/sampleCases"
+      ]
+    },
+    {
+      "date": "2026-10-02",
+      "kind": "reconciliation",
+      "note": "The research panel's PROJECTS.MASQUE entry moves to `research`, with the brand-named knobs (score alias, artifact key, ETL script, fairness axes) and the Simulator's demo cohorts as data. BREATHE and VOICED stay in the panel as panel-only projects.",
+      "paths": [
+        "/research"
+      ]
+    },
+    {
+      "date": "2026-10-02",
+      "kind": "note",
+      "note": "Open questions shipped with their stated defaults: the label is display-only (Q1); the Scribe note keeps \"Instrument v0.3 candidates.\" verbatim (Q7).",
+      "paths": [
+        "/label",
+        "/copy/note/supportingFooter"
+      ]
+    }
+  ]
+}

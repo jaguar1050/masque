@@ -6,11 +6,18 @@
 //   3. divergence audit: the line diff fixed-src → baseline equals the pinned hunk list,
 //      hunk for hunk (header and content hash); the other files are identical;
 //   4. every oracle compiles with its §8.2 export list appended, from the baseline and from
-//      reference/fixed-src, and every appended name is defined.
-// 1-3 failing is INVALID (the oracle is not the one the design assumes); 4 failing is FAIL
-// (the harness cannot read an oracle it promises).
+//      reference/fixed-src, and every appended name is defined; every pinned slice cuts,
+//      verifies and compiles;
+//   5. the WP0 loader and foundations checks (§9.1 done-when 1-9), folded in from
+//      tests/loader-check.html (F7): importSource, inspectSource, cycle detection, boot props,
+//      parallel builds, sha256HexSync, scopeCss expectations, engine import rules, the engine
+//      file set and ui/common.jsx, rubricHashes.
+// 1-3 failing is INVALID (the oracle is not the one the design assumes); 4 and 5 failing is
+// FAIL (the harness cannot read an oracle it promises, or the runtime is not the one assumed).
 import { FIXED_SRC_SHA256, HUNKS, lineDiff, hunkPinText } from "../harness/divergences.js";
 import { ORACLE_EXPORTS, BASELINE_FILES } from "../harness/oracles.js";
+import { SLICES } from "../harness/slices.js";
+import { foundationChecks } from "../harness/foundations.js";
 
 export default {
   name: "integrity",
@@ -103,16 +110,39 @@ export default {
     }
     notes.push(`reference oracles: ${refsOk}/${Object.keys(FIXED_SRC_SHA256).length} compile with their export lists`);
 
-    // The pinned slice mechanism (§8.2) works end to end on the day-1 slice.
+    // The pinned slice mechanism (§8.2) works end to end: every slice cuts, verifies and compiles.
+    let slicesOk = 0;
+    for (const name of Object.keys(SLICES)) {
+      n += 1;
+      try {
+        const { fn } = await h.slice(name);
+        if (typeof fn !== "function") failed.push(`slice ${name}: not compiled to a function`);
+        else slicesOk += 1;
+      } catch (err) {
+        if (err.invalid) throw err;
+        failed.push(`slice ${name}: ${String(err.message).split("\n")[0]}`);
+      }
+    }
     n += 1;
     try {
       const { fn, params } = await h.slice("screener.gapFlags");
       const out = fn(...params.map((p) => (p === "ctx" ? { c_clin: "3+", c_dur: ">12mo" } : undefined)));
       if (!Array.isArray(out) || out.length !== 2) failed.push(`slice screener.gapFlags returned ${JSON.stringify(out)}`);
-      else notes.push("slice screener.gapFlags: hash verified, compiled and evaluated");
     } catch (err) {
       if (err.invalid) throw err;
       failed.push(`slice screener.gapFlags: ${String(err.message).split("\n")[0]}`);
+    }
+    notes.push(`slices: ${slicesOk}/${Object.keys(SLICES).length} hash-verified and compiled`);
+
+    // 5. The WP0 loader and foundations checks (folded from tests/loader-check.html).
+    try {
+      const { results, waiting } = await foundationChecks(h);
+      n += results.length;
+      const bad = results.filter((r) => !r.pass);
+      for (const r of bad) failed.push(`foundations (done-when ${r.dw}) ${r.label}: ${r.detail.split("\n")[0].slice(0, 400)}`);
+      notes.push(`foundations: ${results.length - bad.length}/${results.length} loader checks pass${waiting.length ? `; still WP0 stubs: ${waiting.join(", ")}` : ""}`);
+    } catch (err) {
+      failed.push(`foundations: ${String(err.stack || err.message).split("\n").slice(0, 2).join(" | ")}`);
     }
 
     return { verdict: failed.length ? "fail" : "pass", n, diffs: [], expectedMissing: [], notes: [...notes, ...failed] };

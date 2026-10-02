@@ -450,7 +450,8 @@ export const COPY_SLOTS = {
  * @typedef {Object} StateHelpers
  * @property {function(string):boolean} yes        answers[id] === "yes"
  * @property {function(string):boolean} no         answers[id] === "no"
- * @property {function(string):boolean} answered   the item has an answer
+ * @property {function(string):boolean} isAnswered  the item has an answer (F5: the per-item helper is isAnswered,
+ *                                                 never `answered`, which on RoutingState is the numeric count)
  * @property {function(string):(number|null)} scale  the scale index, or null
  */
 
@@ -467,9 +468,9 @@ export const COPY_SLOTS = {
  * @property {number} ceiling
  * @property {number} coverage
  * @property {boolean} scorable
- * @property {(number|function(string):boolean)} answered
- *   OPEN (for WP3): design §3.3 lists both computeScore's numeric `answered` count and the `answered(id)` helper
- *   under this one name. WP3 decides which the state exposes and records the decision here.
+ * @property {number} answered                   the number of answered items (computeScore's count). Decision F5
+ *                                                 (design 03, "Orchestrator decisions"): the per-item predicate is
+ *                                                 isAnswered(id), on this state and on every other predicate state.
  * @property {number} count
  * @property {Object} domains                     computeScore output per domain
  * @property {Object<string,{label:string, max:number, negative:boolean, items:Item[]}>} items  domain key → rubric domain
@@ -482,6 +483,7 @@ export const COPY_SLOTS = {
  * @property {number} scaleMax
  * @property {function(string):boolean} yes
  * @property {function(string):boolean} no
+ * @property {function(string):boolean} isAnswered
  * @property {function(string):(number|null)} scale
  */
 

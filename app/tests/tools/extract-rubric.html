@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MASQUE rubric extractor &middot; Prototype (local only)</title>
+<meta name="robots" content="noindex, nofollow">
+
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.3.1",
+    "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
+    "react-dom": "https://esm.sh/react-dom@18.3.1",
+    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+    "lucide-react": "https://esm.sh/lucide-react@0.454.0?external=react"
+  }
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.26.4/babel.min.js" crossorigin="anonymous"></script>
+
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #EDF3F1; color: #0C2B2F; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .x-wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 0 0 6px; }
+  .x-sub { color: #5C6E6C; font-size: 13px; margin: 0 0 8px; }
+  .x-card { background: #fff; border: 1px solid #D7E1DF; border-radius: 12px; padding: 14px 16px; margin-top: 14px; overflow-x: auto; }
+  .x-ok { color: #2C7A57; font-weight: 700; } .x-bad { color: #B84A33; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid #D7E1DF; vertical-align: top; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #5C6E6C; }
+  code, pre { font: 12px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  pre { white-space: pre-wrap; word-break: break-word; margin: 6px 0 0; max-height: 360px; overflow: auto; background: #F6F9F8; padding: 8px; border-radius: 8px; }
+  button { font: 600 13px inherit; cursor: pointer; border-radius: 9px; padding: 8px 12px; border: 1px solid #0F5C61; background: #0F5C61; color: #fff; }
+  .x-proto { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: #8E3520; background: #fbe4d8; border: 1px solid #f0c3ad; padding: 6px 12px; border-radius: 999px; display: inline-block; margin-top: 18px; }
+  #masque-status { padding: 24px 16px; color: #5C6E6C; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div id="masque-status">Extracting the MASQUE rubric from the frozen baseline&hellip;</div>
+<div class="x-wrap" id="out" hidden>
+  <h1>MASQUE rubric extractor</h1>
+  <p class="x-sub">Builds <code>app/modules/masque/masque.rubric.json</code> from <code>app/tests/baseline/src/</code> (design 03 &sect;3.8, &sect;9.2). Download the result and commit it as that file; regenerating must reproduce it byte for byte.</p>
+  <div class="x-card">
+    <h2>Result</h2>
+    <div id="verdict"></div>
+    <p><button id="dl" type="button">Download masque.rubric.json</button></p>
+  </div>
+  <div class="x-card"><h2>Checks</h2><table><thead><tr><th>ok</th><th>check</th></tr></thead><tbody id="checks"></tbody></table></div>
+  <div class="x-card"><h2>Source map</h2><table><thead><tr><th>field</th><th>file</th><th>lines</th><th>how</th></tr></thead><tbody id="sources"></tbody></table></div>
+  <div class="x-card"><h2>masque.rubric.json</h2><pre id="text"></pre></div>
+  <span class="x-proto">Prototype &middot; not for clinical use &middot; local tool, never deployed</span>
+</div>
+
+<script type="module">
+import { importModule, importSource, inspectSource } from '../../assets/masque-loader.js';
+
+const env = { loader: { importModule, importSource, inspectSource }, appBase: new URL('../../', location.href).href };
+const status = document.getElementById('masque-status');
+const $ = (id) => document.getElementById(id);
+const cell = (tr, text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; tr.appendChild(td); };
+
+importModule('./extract-rubric.js')
+  .then(({ extractRubric }) => extractRubric(env))
+  .then((r) => {
+    status.remove();
+    $('out').hidden = false;
+    const same = r.committed.identical;
+    const v = $('verdict');
+    v.innerHTML = '';
+    const p = document.createElement('p');
+    p.className = same ? 'x-ok' : 'x-bad';
+    p.textContent = same
+      ? 'Identical to the committed modules/masque/masque.rubric.json (sha256 ' + r.sha256 + ').'
+      : 'Differs from the committed file' + (r.committed.error ? ' (' + r.committed.error + ')' : ' (committed sha256 ' + r.committed.sha256 + ')') + '; extracted sha256 ' + r.sha256 + '.';
+    v.appendChild(p);
+    const h = document.createElement('p');
+    h.textContent = 'scoringHash ' + r.hashes.scoringHash + ' · instrumentHash ' + r.hashes.instrumentHash + ' · ' + r.checks.length + ' checks passed · ' + new TextEncoder().encode(r.text).length + ' bytes';
+    v.appendChild(h);
+    for (const c of r.checks) { const tr = document.createElement('tr'); cell(tr, c.ok ? 'ok' : 'FAIL', c.ok ? 'x-ok' : 'x-bad'); cell(tr, c.what); $('checks').appendChild(tr); }
+    for (const s of r.sources) { const tr = document.createElement('tr'); cell(tr, s.path); cell(tr, s.file); cell(tr, s.lines); cell(tr, s.how); $('sources').appendChild(tr); }
+    $('text').textContent = r.text;
+    $('dl').onclick = () => {
+      const url = URL.createObjectURL(new Blob([r.text], { type: 'application/json' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = 'masque.rubric.json'; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 500);
+    };
+    window.__extractRubric = { text: r.text, sha256: r.sha256, committed: r.committed, sources: r.sources, checks: r.checks, hashes: r.hashes };
+    document.documentElement.dataset.extractRubric = same ? 'identical' : 'differs';
+  })
+  .catch((err) => {
+    status.textContent = 'Extraction failed: ' + (err && err.stack ? err.stack : String(err));
+    window.__extractRubric = { error: String(err && err.message || err), stack: String(err && err.stack || '') };
+    document.documentElement.dataset.extractRubric = 'error';
+  });
+</script>
+</body>
+</html>

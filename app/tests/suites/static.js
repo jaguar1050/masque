@@ -28,8 +28,7 @@ const TEXT_EXT = /\.(js|jsx|mjs|cjs|json|md|html|css|txt|csv|tsv|py|R|r|sha256|s
 const BINARY_EXT = /\.(xpt|png|jpg|jpeg|gif|webp|ico|pdf|zip|bin|xlsx|xls|ods|doc|docx|pyc|woff2?|ttf|otf|mp3|mp4|wav)$/i;
 
 // Pre-existing CRLF files in trees design §2.8 keeps unchanged. Exempt from the LF rule only
-// (BOM and UTF-8 are still checked). Proposed design change: §8.3 `static` encoding names
-// these, or §2.8 allows normalising them.
+// (BOM and UTF-8 are still checked): orchestrator decision F3.
 const CRLF_EXEMPT = [
   "data/provenance/nhanes-fetch-manifest.json",
   "tests/fixtures/nhanes/nhanes_synthetic.csv",
@@ -315,8 +314,15 @@ export default {
     const longPheno = tokens.phenotypes.filter((v) => v.length >= 6).map((v) => [v, new RegExp(`(?<![A-Za-z0-9_])${escapeRe(v)}(?![A-Za-z0-9_])`, "i")]);
     const shortPheno = tokens.phenotypes.filter((v) => v.length < 6);
     const tidFiles = files.filter((p) => /^src\/(engine|ui|apps|shell)\//.test(p) && TEXT_EXT.test(p));
+    // F2: t-ids is waived for src/shell/** while the shell is the M1 legacy shell, recognisable
+    // as a ScreenAIr.jsx that does not import shell/registry.js (§9.13 M1); from M2 on the rule
+    // applies to the shell in full. Waived findings are listed as notes, never dropped silently.
+    const shellScan = scans.get("src/shell/ScreenAIr.jsx");
+    const shellAtM1 = !!shellScan && !shellScan.imports.some((imp) => /(^|\/)registry\.js$/.test(imp.spec));
+    const waived = [];
     for (const path of tidFiles) {
       n += 1;
+      const fail = (rule, msg) => (shellAtM1 && path.startsWith("src/shell/") ? waived.push(msg) : fails.push(`${rule}: ${msg}`));
       const raw = await h.fetchText(path);
       // Exempt (design-mandated, not module identity): import specifiers, which name the
       // shared legacy-path files (§2.7: MASQUE_Voice.js, MASQUE_Population.jsx …), and the page
@@ -340,6 +346,7 @@ export default {
       if (s) for (const st of s.strings) if (shortPheno.includes(st.value)) fail("t-ids", `${path}:${st.line} string literal "${st.value}" is a phenotype value`);
     }
     notes.push(`t-ids: ${tidFiles.length} files checked against ${tokens.ids.length} ids, ${tokens.phenotypes.length} phenotype values, the brand and the label`);
+    if (waived.length) notes.push(`t-ids waived for src/shell/** at M1 (orchestrator decision F2; the rule applies in full from M2): ${waived.length} finding(s), e.g. ${waived.slice(0, 3).join("; ")}`);
 
     // ------------------------------------------------------------------ encoding
     let textFiles = 0;
@@ -361,7 +368,7 @@ export default {
       }
     }
     n += 1;
-    notes.push(`encoding: ${textFiles} text files${exemptUsed.length ? `; CR exempted (pre-existing, §2.8 unchanged trees; design change proposed): ${exemptUsed.join(", ")}` : ""}`);
+    notes.push(`encoding: ${textFiles} text files${exemptUsed.length ? `; CR exempted (F3: pre-existing data files, §2.8 unchanged trees): ${exemptUsed.join(", ")}` : ""}`);
 
     // ------------------------------------------------------------------ pages
     for (const page of pages.concat(files.filter((p) => p.startsWith("tests/loader-check") && p.endsWith(".html")))) {

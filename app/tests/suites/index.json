@@ -6,7 +6,7 @@
       "name": "integrity",
       "path": "integrity.js",
       "owner": "WP13",
-      "what": "baseline manifest, fixed-src pins, divergence audit (§8.1)"
+      "what": "baseline manifest, fixed-src pins, divergence audit (§8.1); every pinned slice; the WP0 loader checks folded from loader-check.html (F7)"
     },
     {
       "name": "values",
