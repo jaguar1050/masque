@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Patient Companion &middot; MASQUE 0.3.1</title>
-<meta name="description" content="Produces a visit-preparation summary. No score, no band, no probability.">
+<title>Patient Companion &middot; Prototype</title>
+<meta name="description" content="Patient Companion: fill it in at home and print or download a visit-preparation summary. No score, no band, no probability. Prototype; not for clinical use.">
 <!-- Prototype, not a published tool: keep it out of search results. -->
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f5ead8'/%3E%3Ccircle cx='50' cy='50' r='34' fill='%23c67139'/%3E%3Ctext x='50' y='66' text-anchor='middle' font-family='Georgia,serif' font-size='52' fill='%23f5ead8'%3EM%3C/text%3E%3C/svg%3E">
@@ -41,15 +41,6 @@
   @keyframes masque-spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { #masque-status::before { animation: none; } }
 
-  .masque-back {
-    position: fixed; left: 12px; bottom: 12px; z-index: 9997;
-    font-size: 12px; text-decoration: none; color: #6b5744;
-    background: rgba(255,255,255,.92); border: 1px solid #e0cfae;
-    padding: 6px 12px; border-radius: 999px;
-    box-shadow: 0 1px 4px rgba(0,0,0,.08);
-  }
-  .masque-back:hover { background: #fff; color: #c67139; }
-
   .masque-proto {
     position: fixed; right: 12px; bottom: 12px; z-index: 9997;
     font-size: 11px; letter-spacing: .04em; text-transform: uppercase;
@@ -64,18 +55,19 @@
 
   <div id="masque-status">Loading Patient Companion&hellip;</div>
 
-  <a class="masque-back" href="./">&larr; All MASQUE demos</a>
   <div class="masque-proto">Prototype &middot; not for clinical use</div>
 
   <noscript>
     <p style="padding:24px;font:15px/1.6 -apple-system,sans-serif;color:#6b5744">
-      This demo is a React application and needs JavaScript enabled.
+      The Patient Companion is a React application and needs JavaScript enabled.
+      Prototype &middot; not for clinical use.
     </p>
   </noscript>
 
   <script type="module">
-    import { boot } from './assets/masque-loader.js';
-    boot({ entry: './src/MASQUE_Patient_v0_3.jsx' });
+    import { boot, importModule, importSource, inspectSource } from './assets/masque-loader.js';
+    const env = { loader: { importModule, importSource, inspectSource }, appBase: new URL('./', document.baseURI).href };
+    boot({ entry: './src/shell/PatientPage.jsx', props: { env } });
   </script>
 </body>
 </html>

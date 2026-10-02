@@ -66,7 +66,7 @@
       "name": "shape",
       "path": "shape.js",
       "owner": "WP13",
-      "what": "the data-only shape fixture through every engine function and tab"
+      "what": "the data-only shape fixture through every engine function, then uploaded through the shell and walked through all five tabs with no console error"
     },
     {
       "name": "render-screener",
@@ -90,7 +90,7 @@
       "name": "omissions",
       "path": "omissions.js",
       "owner": "WP13",
-      "what": "Patient module graph and rendered text omit scores (WP9)"
+      "what": "Patient module graphs, exports and rendered text (Patient tab, patient mode, patient.html) omit scores, flag text and clinician provenance (WP9, WP12)"
     },
     {
       "name": "research",
@@ -126,7 +126,7 @@
       "name": "static",
       "path": "static.js",
       "owner": "WP13",
-      "what": "import graph, layering, t-ids, loader imports, specifier text, encoding, pages"
+      "what": "import graph, layering, t-ids, loader imports, specifier text, encoding, pages, t-css (mounted stylesheets)"
     }
   ]
 }

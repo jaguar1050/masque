@@ -21,7 +21,9 @@
 //              a quoted ./ or ../ path), which the loader would try to build
 //   encoding   every text file under app/ is UTF-8 without BOM, with LF line endings
 //   pages      every app/*.html (and every test page) carries noindex, nofollow
-//   t-css      reported as pending until an app stylesheet exists (WP7)
+//   t-css      (§5.10) every rule of every app stylesheet starts with its root, no :root outside
+//              shell.css.js, duplicate @keyframes names identical; read from the mounted shell,
+//              Apply dialog and patient page by tests/harness/tcss.js
 
 const COMPILED_EXT = /\.(js|jsx)$/;
 const TEXT_EXT = /\.(js|jsx|mjs|cjs|json|md|html|css|txt|csv|tsv|py|R|r|sha256|svg|xml|yml|yaml|htaccess|gitignore)$/;
@@ -378,9 +380,22 @@ export default {
     }
 
     // ------------------------------------------------------------------ t-css
-    const appFiles = files.filter((p) => p.startsWith("src/apps/") && /\.jsx?$/.test(p));
-    if (appFiles.length) fail("t-css", "not implemented yet (needs the mounted app stylesheets; WP13 adds it once WP7 lands)");
-    else notes.push("t-css: vacuous, no app stylesheet exists yet (src/apps is empty); the check lands with WP7");
+    // The sheets are built at run time (scopeCss), so they are read from the mounted shell. The
+    // helper is compiled through the page's loader at run time: this file stays import-free,
+    // because run.mjs imports it in Node for KNOWN_ENTRIES.
+    n += 1;
+    try {
+      const tcss = await h.env.loader.importModule(h.appUrl("tests/harness/tcss.js"));
+      const got = await tcss.collectSheets(h);
+      const res = tcss.checkSheets(got.sheets);
+      n += res.n;
+      notes.push(...res.notes);
+      for (const f of res.fails) fails.push(f);
+      for (const p of got.problems) fail("t-css", `while mounting the apps: ${p}`);
+      for (const e of got.errors.slice(0, 10)) fail("t-css", `console error while mounting the apps: ${e}`);
+    } catch (err) {
+      fail("t-css", `could not mount the apps to read their stylesheets: ${String(err && err.message || err).split("\n").slice(0, 2).join(" ")}`);
+    }
 
     return { verdict: fails.length ? "fail" : "pass", n, diffs: [], expectedMissing: [], notes: [...notes, ...fails] };
   },

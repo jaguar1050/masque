@@ -59,6 +59,9 @@ export const CAVEATS = {
 
 /**
  * Patterns no patient-facing string may match (V60 and the omissions suite); Spanish forms included.
+ * Beyond score / likelihood / probability and an "NN/NNN" figure: a band word, a percentage figure
+ * (a threshold written with a comparison sign, such as a criterion's "≥50%", is not a result and is
+ * allowed), the words percent / percentage, and chance / odds / risk.
  */
 export const OMISSION_PATTERNS = [
   /\bscor(?:e|es|ed|ing)\b/i,
@@ -66,6 +69,11 @@ export const OMISSION_PATTERNS = [
   /probabil/i,
   /\b\d{1,3}\s*\/\s*\d{2,3}\b/,
   /\bpuntuaci[oó]n|\bpuntaje\b/i,
+  /\bbands?\b|\bbandas?\b/i,
+  /(?<![≥≤<>=]\s*[\d.,]*)\d\s*[%％]/,
+  /\bper\s?cent(?:age)?s?\b|\bporcentajes?\b|\bpor\s+ciento\b/i,
+  /\bchances?\b|\bodds\b/i,
+  /\brisks?\b|\briesgos?\b/i,
 ];
 
 /** Upload and module size limits (bytes / file count). */

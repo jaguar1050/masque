@@ -156,3 +156,201 @@ Not done: inflation adjustment, and home-health spending (file not supplied).
 ## Version labels
 
 `APP_VERSION` remains `0.3.0` in every app file, as it was in 0.3.1's source; the README and VERSIONS.md in `reference/` describe release 0.3.1. Reconciling that label is a decision for the next release, recorded in `01-inventory.md` §4, and is not changed here. The ETL carries its own `ETL_VERSION` (0.6.0) and the artifact reports it in `producedBy`.
+
+## screenAIr 0.4.0 (2 October 2026)
+
+The four hard-wired MASQUE apps and the Simulator became **screenAIr**: one page
+(`app/screenair.html`) with a module menu at the top and five tabs (Clinician Screener, Ambient
+Scribe, Patient Companion, Research, Rubric Editor). The design is `03-design.md`; how to write a
+module is `04-module-authoring.md`. MASQUE is now a module, **"Dizziness and Sinusitis (MASQUE
+v1)"**: `app/modules/masque/masque.rubric.json` (data, extracted from the frozen source by
+`app/tests/tools/extract-rubric.html`) and `masque.logic.js` (closures, moved verbatim). Both load
+through the same path as an upload.
+
+Instrument 0.2, lexicon 0.3.1, probe set 1.0.0 and gold set 0.2.0 are unchanged: no item, weight,
+scale factor, cut-point, red flag, phrase, probe or patient-facing string was reworded,
+renumbered or reweighted. Where two upstream copies diverged, the canonical copy named in
+`01-inventory.md` §2 was taken, and each choice is a `reconciliation` entry in the rubric's
+`changelog` (red flags take the Screener wording; item text from the Screener with the Scribe's
+`ask`/`short`/`tag` and the Patient's clinician line kept as separate fields; Patient context
+options not realigned; Simulator scenarios added as `sim-*` sample cases; `PROJECTS.MASQUE` moved
+to `research`).
+
+**Parity oracle.** `app/tests/baseline/src/` is a byte copy of the eleven `app/src` files as they
+stood before the refactor (`MANIFEST.sha256`, source commit `5448d42`); `reference/fixed-src/`
+stays the secondary oracle, and the `integrity` suite requires its diff to the baseline to equal
+the hunks recorded in the first table of this file. The suites in `app/tests/suites/` compare the
+new engine and apps with the baseline. The differences below are the only ones the harness
+normalises; any other difference is a defect.
+
+### Allowed differences from the baseline (design §8.4)
+
+| Id | Where | Baseline | screenAIr | Why |
+|---|---|---|---|---|
+| AD1 | Screener-surface bundle | `attainable-range.low = total`; note "bounded to {total}–{ceiling}" (Scr L1526, L1549) | `floor` in both | Inventory §7 risk 13: the attainable range starts at the floor, not the current total. |
+| AD2 | Cohort rows (both apps), CSV header | no `module_id`; Scribe rows lack `subject_id`, `visit_label`, `gender` (Scb L497) | `module_id` after `app_version`; the Scribe uses the engine (Screener) row | One row builder for every module; rows say which module produced them. |
+| AD3 | Data dictionary | no `module_id` or `complaint` entry; "MASQUE index at time of capture"; the Scribe download used a shorter list | `module_id` first, `complaint` before `coverage`; `{indexName} at time of capture` (identical text for MASQUE); one generator for both apps | One generator, generated from the module. |
+| AD4 | Every printed release string | `0.3.0` (`APP_VERSION`, brand rows, footers, `modelVersion`, `app_version`, `summaryText` footer) | `0.4.0` | New release (design D21; lead question Q2). |
+| AD5 | Scribe probe rail "re-asking {id}" (Scb L1169) | raw item id | the item's short label | Inventory §7 risk 13 (lead question Q17). |
+| AD6 | Scribe red-flag wording (safety tab, capture tags, note, bundle Flag/ServiceRequest text, Scribe Questionnaire and dictionary downloads) | the Scribe's abbreviations (Scb L189-240) | the canonical Screener wording | Inventory §2 red flags; CLAUDE.md canonical-copy rule (lead question Q5). |
+| AD7 | Screener meter zones | 33/33/34 (Scr L1216-1218) | 34/33/33, derived from the cut-points | Visual only; the meter is derived from the module (lead question Q19). |
+| AD8 | Research-readiness panel | embedded under the Screener and Scribe; `band='low'` default; silent MASQUE fallback; `prototype-0.2` default `modelVersion`; brand score aliases for every project | in the Research tab, with a link card in its old place; `band=null`; no-screen, calibration (over every calibration-dependent figure) and routing-cleared gates; rows scoped by module and instrument version; unknown-project error card; aliases from the module; "Load demo cohort"; `module_id`/`scoring_hash` in the manifest and model card | Design D11. For MASQUE inputs every computed figure is identical (`research-parity`). |
+| AD9 | Population page | its own page with brand row and footer | embedded in Research under the shell chrome; `population.html` redirects | Design D11. |
+| AD10 | Patient Companion | unreviewed banner `noprint`; Spanish thin/not-sure ledes were English literals (Pat L1010-1012, L1058); `.txt` without the exact caveat line | banner printed; the existing `UI.es.thin`/`notSureLede` strings used; a final `Prototype · not for clinical use · YYYY-MM-DD` line (plus the patient provenance, edited-wording and stale-translation lines where they apply); a new self-contained `.html` download | Design D15; every export carries the caveat on its own face. |
+| AD11 | Screener sample rail | 4 buttons | 9: the 4 unchanged plus the 5 Simulator scenarios (`sim-*`) | Design D23 (lead question Q3). |
+| AD12 | Chrome around the apps | per-page `.masque-back` link and pill | shell header, module menu, caveat strip, tabs, footer, provenance badge, tab notes, patient-mode bar; `patient.html` without the `.masque-back` link | Design D10, D26. |
+
+**No difference is permitted** in the Questionnaire and CDS output against the baseline
+Screener, the Screener and Scribe routing copy, scoring, extraction, probes, patient summary
+content, the Scribe note wording outside AD6, the cohort row outside AD2/AD4, or bundle text
+outside AD1/AD6.
+
+### Decisions settled during the build (design, "Orchestrator decisions")
+
+| # | Decision |
+|---|---|
+| F1 | The t-ids rule (no module id, flag, phenotype value or brand in `src/engine`, `src/ui`, `src/apps`, `src/shell`) ignores import specifiers and the page-contract names (`masque-proto`, `masque-back`, `masque-status`, `masque-loader.js`, `data-masque-*`, `masqueReady`, `masqueTests`). |
+| F2 | t-ids was waived for `src/shell/**` while the M1 shell mounted the legacy files; from M2 on it applies in full. |
+| F3 | Three data files written on the user's machine keep their CRLF line endings (`data/provenance/nhanes-fetch-manifest.json`, `tests/fixtures/nhanes/nhanes_synthetic.csv`, `tests/fixtures/synthetic_nhis_like.csv`); the LF check exempts exactly these. |
+| F4 | `validateModule({loaded})` takes bound modules, never registry entries; failed entries are not passed. |
+| F5 | `RoutingState.answered` is the numeric count; the per-item predicate is `isAnswered(id)`. |
+| F6 | Release `0.4.0` stays the default while Q2 is open; the version list that `index.html` carried now follows `policy.APP_VERSION` in the ⓘ drawer's About section. |
+| F7 | The loader self-check files under `app/tests/loader-check/` are kept; the `.gitignore` additions are accepted. |
+| F8 | A registry entry carries an optional `label` and `isDefault`; entry keys are `builtin:<rubric.id>` (fallback `builtin:<index>`). |
+| F9 | `.pa-table` overflow at 375 px is fixed with a scroll wrapper (`.pa-scroll`) around each artifact in `MASQUE_Population.jsx`; `PopulationArtifact.jsx` itself is unchanged, and the shell keeps `.sa-panel{overflow-x:auto}`. |
+| F10 | `referralGate` refuses a referral while any red flag is open on both surfaces, which agrees with the Scribe's own `routingCleared` on every reachable state. |
+
+### New files
+
+| Path (under `app/`) | What it is |
+|---|---|
+| `screenair.html` | The screenAIr page: the home screen (design D10, D27). |
+| `modules/registry.json` | The built-in module list (rubric, logic and documentation paths per module). |
+| `modules/masque/masque.rubric.json`, `masque.logic.js` | The MASQUE module (data layer; closure layer). |
+| `modules/masque/SOURCES.md`, `README.md`, `CHANGELOG.md` | Field-by-field source map; the clinical rationale header comments of the seven retired and shared files, moved verbatim; the module change log. |
+| `src/engine/*.js` (24 files) | The generic engine: contract, vocabulary, policy (release, caveats, limits), hashing, CSS scoping, downloads, PRNG, scoring, rules and gates, binding and validation, lineage, FHIR, cohort, extraction, probes, scribe, patient, derive, zip, export. Plain JS, no React, no module literals. |
+| `src/ui/common.jsx` | Shared app UI (session store, provenance badge, tab notes). |
+| `src/apps/{Screener,SampleRail,Scribe,PatientCompanion,ResearchTab,RubricEditor}.jsx` | The five generic tabs. |
+| `src/shell/{ScreenAIr,ModuleWorkspace,PatientPage,ModulePicker,UploadDialog,chrome}.jsx`, `registry.js`, `shell.css.js` | The shell, the standalone patient page, the module menu and upload, module loading and saving. |
+| `tests/baseline/**`, `tests/harness/**`, `tests/suites/**`, `tests/fixtures/modules/**`, `tests/fixtures/mutations/**`, `tests/dev/**`, `tests/tools/extract-rubric.*`, `tests/loader-check/**`, `tests/playwright/**` | Local-only parity harness, fixtures, dev pages, the rubric extractor and the cloud runner. Never deployed. |
+
+Repository docs: `docs/refactor/03-design.md`, `docs/refactor/04-module-authoring.md`.
+
+### Changed files
+
+| Path (under `app/`) | Change |
+|---|---|
+| `assets/masque-loader.js` | `importSource` and `inspectSource` (compile or parse source text), parallel dependency builds, cycle detection, `boot` passes props to the root (`env = {loader, appBase}`). Existing `boot` and `importModule` behaviour unchanged. |
+| `src/ResearchReadinessPanel.jsx` | Backward-compatible props for the Research tab (`research`, `moduleId`, `scoringHash`, the gates, row scope, `onDataChange`); `band` defaults to `null`; unknown project → error card; "Load demo cohort" (cohorts built by `engine/cohort.js makeCohort`). `PROJECTS.MASQUE` is still present (see below). |
+| `src/MASQUE_Population.jsx` | Optional `baseUrl`, path and `embedded`/`banner` props whose defaults reproduce the old page; CSS scoped under `.sa-pop`; a scroll wrapper around each artifact (F9). |
+| `patient.html` | Boots `src/shell/PatientPage.jsx`: the standalone at-home Patient Companion for the default built-in module (or `?module=<built-in id>`), with no tabs, module menu, upload, editor, research or link to the clinician program. It is not a redirect. |
+| `index.html`, `screener.html`, `scribe.html`, `population.html`, `simulator.html` | Redirect pages (below). |
+| `data/README.md` | Cohort rows are uploaded in the Research tab. |
+
+### Redirects
+
+Each redirect page keeps `noindex, nofollow`, uses `<meta http-equiv="refresh">` plus
+`location.replace`, and shows a visible link and "Prototype · not for clinical use". The FTP host
+and `python -m http.server` ignore `.htaccess`, so there are no server redirects.
+
+| Page | Lands on |
+|---|---|
+| `index.html` | `screenair.html` (keeps any `#…` it was given). Its description, notice and version list are in the ⓘ drawer's About section. |
+| `screener.html` | `screenair.html#tab=screener` |
+| `scribe.html` | `screenair.html#tab=scribe` |
+| `population.html` | `screenair.html#tab=research` (`app/etl/README_DATA_CONNECTION.md` names this page, so the pointer stays valid) |
+| `simulator.html` | `screenair.html` (keeps any `#…` it was given) |
+
+### Retired files
+
+Deleted from `app/src/` by an explicit list (never a glob):
+`MASQUE_Screener_v0_3.jsx`, `MASQUE_Scribe_v0_3.jsx`, `MASQUE_Patient_v0_3.jsx`,
+`MASQUE_Simulator.jsx`, `MASQUE_Extraction.js`, `MASQUE_Probes.js`. Their content lives on in the
+MASQUE module (data and closures), in the engine (generic code) and, byte for byte, in
+`app/tests/baseline/src/` (the parity oracle), `reference/fixed-src/` and git history. The
+Simulator's "What to notice" rails are not carried (Q4); its scenarios and demo cohorts are.
+
+Kept at their paths: `MASQUE_Voice.js` (unchanged; the Scribe tab imports it),
+`PopulationArtifact.jsx`, `MASQUE_Population.jsx`, `MASQUE_SchemaCheck.js` (also imported natively
+by `tests/population-artifact-check.html`) and `ResearchReadinessPanel.jsx`.
+
+**`PROJECTS.MASQUE` in the panel.** The design (§9.15) schedules removing it at retirement, now
+that the Research tab passes the module's own `research` block. It is kept for now: the
+`research` suite's backward-compatibility checks (§8.3) still mount the panel with
+`project="MASQUE"` and no `research` prop, and removing the entry would turn those into the
+unknown-project card. Its values are byte-identical to the baseline's and to `rubric.research`
+(checked by the `values` suite). Removing it needs the compatibility case changed first; this is
+recorded for the lead.
+
+### Version label
+
+The release is **0.4.0** (`engine/policy.js APP_VERSION`), which supersedes the 0.3.0/0.3.1 drift
+recorded under "Version labels" above, pending the lead (Q2). The five axes are kept apart and
+shown separately everywhere (footer, ⓘ drawer, export manifest, model card, cohort rows):
+
+| Axis | Value | Owner |
+|---|---|---|
+| Release | 0.4.0 | `app/src/engine/policy.js` |
+| Instrument | 0.2 | `masque.rubric.json` `instrumentVersion` |
+| Lexicon | 0.3.1 | `masque.rubric.json` `lexicon.version` |
+| Probe set | 1.0.0 | `masque.logic.js` `probes.version` |
+| Gold set | 0.2.0 | `masque.rubric.json` `lexicon.goldSet.version` |
+
+"MASQUE v1" in the module label is display copy chosen by the user, not a version axis (Q1).
+A locally edited instrument carries the `-local` pre-release tag (for example `0.2-local.3f9a1c`).
+
+### Open questions: shipped defaults
+
+Every question in design §10 ships with its stated default until the lead answers.
+
+| Q | Default shipped |
+|---|---|
+| Q1 | Label "Dizziness and Sinusitis (MASQUE v1)" exactly as specified; display only; the footer shows the real axes. |
+| Q2 | `APP_VERSION = "0.4.0"`. |
+| Q3 | The five Simulator scenarios are sample buttons under "Scenarios", `why` as the tooltip. |
+| Q4 | "What to notice" rails not carried. |
+| Q5 | Scribe red flags use the Screener wording (AD6). |
+| Q6 | The red-flag `ask` field is kept as unread data. |
+| Q7 | "Instrument v0.3 candidates." kept verbatim in the Scribe note. |
+| Q8 | Patient context options not realigned to the Screener bins. |
+| Q9 | Patient strings that are English under es stay English (V33 warnings). |
+| Q10 | `GENERIC_LOGIC` and `ENGINE_COPY_DEFAULTS` as specified. |
+| Q11 | `instrumentHash` scope as specified; patient wording, lexicon, context labels and copy edits keep the instrument version. |
+| Q12 | A verified derivation of MASQUE shows the root's population estimates under the "not recomputed" banner. |
+| Q13 | Both bundle wordings kept verbatim per surface. |
+| Q14 | Probe truncation 2. |
+| Q15 | The microphone stops automatically when the Patient Companion or patient mode opens. |
+| Q16 | New shell caveats English only, with `lang="en"`. |
+| Q17 | The Scribe "re-asking" line shows the short label (AD5). |
+| Q18 | Deployment path: the lead's decision (pages resolve module data against `appBase`, so either path works). |
+| Q19 | Meter zones derived (AD7). |
+| Q20 | `SITE.ALLOW_JS_UPLOAD = true`, behind the consent gate. |
+| Q21 | The CDS "settled" example card is removed when an edit changes scoring. |
+| Q22 | Any scoring change withholds the illustrative probability; no override. |
+| Q23 | A link card replaces the embedded panel under the Screener and Scribe. |
+| Q24 | `n_allo` has no Scribe short label (the id is shown). |
+| Q25 | A one-line licensed-instrument reminder in the editor and the upload dialog. |
+| Q26 | The panel's computed verdict is shown on the demo cohorts; the `why` text stays verbatim; mismatches go to the lead. |
+| Q27 | No "copy Scribe answers into the Screener"; each clinician tab says it keeps its own answers. |
+| Q28 | No transcript-only voice mode for a module without a lexicon. |
+| Q29 | No name field on patient exports; they carry the generation date. |
+| Q30 | Leaving patient mode takes a confirmation. |
+
+### Verification at retirement
+
+Run on the cloud runner (`app/tests/playwright/run.mjs`, default seed, full matrices) after the six
+files were deleted: 20 of 21 test-page suites PASS, no INVALID, and all six Playwright steps PASS
+(static-tree, pages, voice, print, upload, editor). The redirects were checked in Chromium: `app/`,
+`index.html` and `simulator.html` land on `screenair.html` (Clinician Screener), `screener.html`
+on the Clinician Screener, `scribe.html` on the Ambient Scribe and `population.html` on Research,
+with `masqueReady`, a mounted workspace and a clean console; the ⓘ drawer's About section carries
+the launcher's description, notice and the five axes; `patient.html` is healthy with no tabs, menu
+or clinician link; `tests/population-artifact-check.html` validates a committed artifact and
+refuses a malformed one. The `research` suite no longer compares the retired legacy Screener and
+Scribe pages (it notes the skip); the edited panel's legacy-props behaviour is still compared.
+
+The one failing suite, `omissions`, failed identically before the retirement: its "Hand to
+patient" case clicks the button and waits for patient mode, while the shell now first asks
+"Start a new patient session?" when the Patient Companion holds answers, so the wait times out
+before the patient-mode checks run. It is a test/shell mismatch outside this change, recorded for
+the integration triage; the refactor is not green until it passes.

@@ -1,9 +1,10 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity, BarChart3, Check, ChevronDown, ClipboardCheck, Copy, Database,
   Download, FileJson, Gauge, Info, Scale, ShieldCheck, TriangleAlert, Upload
 } from "lucide-react";
 import PopulationArtifact from "./PopulationArtifact.jsx";
+import { makeCohort } from "./engine/cohort.js";
 
 /*
   Shared research-readiness layer for MASQUE, VOICED, and BREATHE.
@@ -39,6 +40,7 @@ const PROJECTS = {
       ["All of Us", "Optional linked EHR/survey validation"],
     ],
     expected: ["score", "label", "sex", "gender", "age", "weight", "annual_cost", "avoidable_cost"],
+    scoreAliases: ["masque_score"],
     demo: [
       { score: 79, label: 1, sex: "female", gender: "woman", age: 42, weight: 1.2, annual_cost: 6200, avoidable_cost: 3400 },
       { score: 68, label: 1, sex: "female", gender: "woman", age: 51, weight: 0.9, annual_cost: 5100, avoidable_cost: 2700 },
@@ -71,6 +73,7 @@ const PROJECTS = {
       ["All of Us", "Optional linked EHR/survey validation"],
     ],
     expected: ["score", "label", "sex", "gender", "age", "weight", "annual_cost", "avoidable_cost"],
+    scoreAliases: ["breathe_score"],
     demo: [
       { score: 84, label: 1, sex: "female", age: 28, weight: 1.1, annual_cost: 7600, avoidable_cost: 4300 },
       { score: 72, label: 1, sex: "female", age: 37, weight: 1.0, annual_cost: 5900, avoidable_cost: 3100 },
@@ -96,6 +99,7 @@ const PROJECTS = {
       ["All of Us", "Optional linked EHR/survey validation"],
     ],
     expected: ["score", "label", "sex", "gender", "age", "weight", "annual_cost", "avoidable_cost", "device", "language", "accent"],
+    scoreAliases: ["voiced_score"],
     demo: [
       { score: 82, label: 1, sex: "female", age: 46, weight: 1.1, annual_cost: 4800, avoidable_cost: 2400, device: "phone", language: "English" },
       { score: 69, label: 1, sex: "female", age: 53, weight: 1.0, annual_cost: 4100, avoidable_cost: 1900, device: "laptop", language: "English" },
@@ -110,6 +114,7 @@ const PROJECTS = {
 const CSS = `
 .rrp{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#0C2B2F;background:#fff;border:1px solid #D7E1DF;border-radius:14px;padding:17px;margin-top:14px;line-height:1.45}
 .rrp *{box-sizing:border-box}.rrp h3,.rrp h4,.rrp p{margin:0}.rrp-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.rrp-mark{width:34px;height:34px;border-radius:9px;background:#0F5C61;color:#fff;display:flex;align-items:center;justify-content:center}.rrp-title{font-size:16px;font-weight:700}.rrp-sub{font-size:12px;color:#5C6E6C}.rrp-spacer{flex:1}.rrp-badge{font:10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em;text-transform:uppercase;border:1px solid #D7E1DF;border-radius:999px;padding:4px 8px;color:#4F6466}.rrp-tabs{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0 11px}.rrp-tab{font:600 12px inherit;border:1px solid #D7E1DF;background:#fff;color:#0C2B2F;border-radius:8px;padding:7px 10px;cursor:pointer}.rrp-tab.on{background:#0F5C61;border-color:#0F5C61;color:#fff}.rrp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:9px}.rrp-kpi{border:1px solid #D7E1DF;border-radius:10px;padding:10px;background:#fff}.rrp-k{font:10px ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.06em;color:#5C6E6C}.rrp-v{font:650 22px ui-monospace,SFMono-Regular,Menlo,monospace;margin-top:3px}.rrp-small{font-size:11.5px;color:#5C6E6C;margin-top:3px}.rrp-call{border-left:3px solid #0F5C61;background:#F4F8F7;border-radius:0 10px 10px 0;padding:11px 13px;margin-top:10px;font-size:12.5px}.rrp-warn{border-left-color:#B26C1F;background:#FFF9EF}.rrp-danger{border-left-color:#A93124;background:#F7E1DD}.rrp-row{display:grid;grid-template-columns:145px 1fr 58px;gap:9px;align-items:center;padding:5px 0}.rrp-l{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rrp-track{height:8px;border-radius:5px;background:#D7E1DF;overflow:hidden}.rrp-fill{height:100%;background:#137A80;border-radius:5px}.rrp-n{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;text-align:right;color:#5C6E6C}.rrp-btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.rrp-btn{font:600 12.5px inherit;cursor:pointer;border-radius:9px;padding:8px 11px;border:1px solid #0F5C61;background:#0F5C61;color:#fff;display:inline-flex;align-items:center;gap:6px}.rrp-btn.ghost{background:#fff;color:#0C2B2F;border-color:#D7E1DF}.rrp-code{font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:#0C2B2F;color:#CFE6E2;border-radius:10px;padding:12px;max-height:260px;overflow:auto;white-space:pre-wrap;margin-top:9px}.rrp-table{width:100%;border-collapse:collapse;font-size:11.5px}.rrp-table th,.rrp-table td{border-bottom:1px solid #D7E1DF;padding:7px;text-align:left;vertical-align:top}.rrp-table th{font:600 10px ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.04em;color:#5C6E6C}.rrp-upload{border:1px dashed #9BB2AF;border-radius:10px;padding:13px;text-align:center;background:#FAFCFB}.rrp-note{font-size:11px;color:#5C6E6C;margin-top:10px;display:flex;gap:7px}.rrp details summary{cursor:pointer;font-size:12px;font-weight:650;color:#0F5C61}.rrp-good{color:#2C7A57}.rrp-mid{color:#B26C1F}.rrp-bad{color:#A93124}@media(max-width:650px){.rrp-row{grid-template-columns:105px 1fr 48px}}
+.rrp-cohort{display:inline-flex;align-items:center;gap:6px}.rrp-select{font:inherit;font-size:12.5px;border:1px solid #D7E1DF;border-radius:9px;padding:7px 8px;background:#fff;color:#0C2B2F;max-width:100%}.rrp-error{margin-top:14px}.rrp-scroll{overflow-x:auto;max-width:100%}
 `;
 
 // Minimum output confidence required before a per-patient result is issued.
@@ -192,10 +197,17 @@ function strOrNull(...vals) {
   return null;
 }
 
-function normalizeRows(input) {
+/*  Score columns, in priority order: the canonical `score`, the project's own aliases
+    (cfg.scoreAliases, e.g. a brand-named score column), then `index`. Built once per call so the
+    value and its provenance flag below read the same list. */
+function scoreFieldsOf(cfg) {
+  return ["score", ...((cfg && cfg.scoreAliases) || []), "index"];
+}
+function normalizeRows(input, cfg = null) {
   const arr = Array.isArray(input) ? input : Array.isArray(input?.rows) ? input.rows : Array.isArray(input?.data) ? input.data : [];
+  const scoreFields = scoreFieldsOf(cfg);
   return arr.map(r => ({ ...r,
-    score: numOrNull(r.score, r.masque_score, r.breathe_score, r.voiced_score, r.index),
+    score: numOrNull(...scoreFields.map(f => r[f])),
     label: binaryOrNull(r.label, r.reference_label, r.outcome, r.target),
     weight: numOrNull(r.weight, r.survey_weight),
     annual_cost: numOrNull(r.annual_cost, r.total_cost, r.expenditure),
@@ -214,7 +226,7 @@ function normalizeRows(input) {
     // "column absent" apart from "column present but unreadable" — otherwise a
     // label column full of "positive"/"negative" reads as simply unlabeled.
     [SRC]: {
-      score: anyPresent(r.score, r.masque_score, r.breathe_score, r.voiced_score, r.index),
+      score: anyPresent(...scoreFields.map(f => r[f])),
       label: anyPresent(r.label, r.reference_label, r.outcome, r.target),
       weight: anyPresent(r.weight, r.survey_weight),
       annual_cost: anyPresent(r.annual_cost, r.total_cost, r.expenditure),
@@ -752,10 +764,121 @@ function dataQuality(rows, cfg) {
     hasCosts:rows.some(r=>Number(r.annual_cost)>0||Number(r.avoidable_cost)>0) };
 }
 
-export default function ResearchReadinessPanel({
+/*  Row scope (screenAIr Research tab).
+
+    A cohort row is only comparable with rows scored on the same instrument. With a scope
+    {moduleId, instrumentVersion}, every loaded row falls into one of three counted groups:
+    rows whose module_id and instrument_version both match; rows naming another module or
+    instrument version, which are excluded from every computation and listed with counts; and
+    rows carrying neither column, which are included as before and labelled "provenance
+    unknown". A row carrying only one of the two columns, and matching on it, cannot be
+    confirmed either, so it is counted as provenance unknown too. Without a scope nothing is
+    filtered, exactly as before.
+*/
+function sameValue(v, want) {
+  if (isAbsent(v) || want == null) return false;
+  if (String(v).trim() === String(want)) return true;
+  // CSV ingestion coerces "1.0" to 1; compare numerically when both sides are plain numbers.
+  return typeof v === "number" && /^-?\d+(\.\d+)?$/.test(String(want)) && Number(want) === v;
+}
+function scopeRows(rows, scope) {
+  if (!scope) return { included: rows, scoped: false };
+  const included = [], excluded = new Map();
+  let matched = 0, unknown = 0;
+  for (const r of rows) {
+    const hasModule = !isAbsent(r.module_id), hasVersion = !isAbsent(r.instrument_version);
+    const moduleOk = !hasModule || sameValue(r.module_id, scope.moduleId);
+    const versionOk = !hasVersion || sameValue(r.instrument_version, scope.instrumentVersion);
+    if (!moduleOk || !versionOk) {
+      const key = `${hasModule ? String(r.module_id) : "—"}\u0000${hasVersion ? String(r.instrument_version) : "—"}`;
+      const e = excluded.get(key) || { module_id: hasModule ? String(r.module_id) : null, instrument_version: hasVersion ? String(r.instrument_version) : null, n: 0 };
+      e.n += 1; excluded.set(key, e);
+      continue;
+    }
+    if (hasModule && hasVersion) matched += 1; else unknown += 1;
+    included.push(r);
+  }
+  const groups = [...excluded.values()].sort((a, b) => b.n - a.n || String(a.module_id).localeCompare(String(b.module_id)) || String(a.instrument_version).localeCompare(String(b.instrument_version)));
+  return { included, scoped: true, matched, unknown, excluded: groups, excludedN: groups.reduce((a, g) => a + g.n, 0), total: rows.length };
+}
+
+/*  Calibration-free summaries, used when the calibration does not apply to the module's
+    scoring. Each mirrors its calibrated counterpart minus every figure that runs through
+    logistic(score, calibration): group sizes for the fairness axes, cost means for the
+    population block, and AUROC on the raw score (rank-based, so a monotone calibration
+    could not change it anyway). */
+function fairnessGroupsOnly(rows, policy = FAIRNESS_POLICY, axis = "sex") {
+  const keyOf = r => (r[axis] == null ? null : String(r[axis]).toLowerCase());
+  const onAxis = rows.filter(r => keyOf(r) !== null);
+  const names = [...new Set(onAxis.map(keyOf))].sort();
+  const groups = names.map(g => {
+    const all = onAxis.filter(r => keyOf(r) === g);
+    return { group: g, n: all.length, scored: all.filter(r => Number.isFinite(r.score)).length, suppressed: all.length < policy.minGroupN };
+  });
+  return { groups, policy, axis, notRecorded: rows.length - onAxis.length, onAxisN: onAxis.length,
+    suppressedGroups: groups.filter(g => g.suppressed).length };
+}
+function populationUncalibrated(rows) {
+  const scored = rows.filter(r => Number.isFinite(r.score));
+  if (!scored.length) return null;
+  const w = scored.reduce((a, r) => a + weightOf(r), 0);
+  const annual = weightedMean(scored,"annual_cost"), avoidable = weightedMean(scored,"avoidable_cost");
+  return { n:scored.length, dropped:rows.length-scored.length, weightedN:w,
+    annualCost:annual.value, annualCostN:annual.n, avoidableCost:avoidable.value, avoidableCostN:avoidable.n };
+}
+function rankMetrics(rows) {
+  const usable = rows.filter(r => isLabeled(r) && Number.isFinite(r.score));
+  if (!usable.length) return null;
+  return { n: usable.length, nPos: usable.filter(r => r.label === 1).length, nNeg: usable.filter(r => r.label === 0).length,
+    auc: auc(usable, r => r.score) };
+}
+
+const NO_SCREEN_TEXT = "No screen in this session — the panel has nothing to score; absent data is not a negative screen.";
+const ROUTING_WITHHELD_TEXT = "Safety review not recorded in the Ambient Scribe — no routing decision.";
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+/*  Host contract. Legacy hosts pass `project` alone and get exactly the panel they had.
+    screenAIr's Research tab passes the module's own `research` configuration plus the gates:
+      research            the project adapter (else PROJECTS[project]; neither → an error card)
+      moduleId, scoringHash   stamped on the manifest and model card, and used in file names
+      indexName, scaleMax     how the module names and bounds its index
+      calibrationApplies  false withholds every figure that runs through the calibration
+      calibrationNote     whose scoring the withheld calibration was set for
+      rowScope            {moduleId, instrumentVersion}: rows of another instrument are excluded
+      noScreen            no live screen: nothing is scored, nothing is decided
+      routingCleared      false withholds the routing decision (routingWithheldDetail says why)
+      populationArtifacts false refuses a population-estimates file loaded into the panel
+      onDataChange        reports rows the user brought in, so a host can ask before discarding them
+*/
+export default function ResearchReadinessPanel(props) {
+  const cfg = props.research ?? PROJECTS[props.project];
+  if (!cfg) {
+    return <div className="rrp rrp-error" data-testid="rrp-error">
+      <style>{CSS}</style>
+      <div className="rrp-call rrp-danger" style={{marginTop:0}}><b>Unknown research project '{String(props.project)}'.</b> The panel has no adapter for it, so nothing is computed.</div>
+    </div>;
+  }
+  return <ReadinessPanelBody {...props} cfg={cfg}/>;
+}
+
+function ReadinessPanelBody({
+  cfg,
   project,
+  research = null,
+  moduleId = null,
+  scoringHash = null,
+  indexName = `${project} index`,
+  scaleMax = 100,
+  calibrationApplies = true,
+  calibrationNote = null,
+  rowScope = null,
+  noScreen = false,
+  routingCleared = true,
+  routingWithheldDetail = ROUTING_WITHHELD_TEXT,
+  populationArtifacts = true,
+  onDataChange = () => {},
   score = 0,
-  band = "low",
+  band = null,
   domains = {},
   coverage = 0,
   sex = null,
@@ -764,22 +887,47 @@ export default function ResearchReadinessPanel({
   scorable = true,
   ceiling = null,
   phenotype = "",
-  modelVersion = "prototype-0.2",
+  modelVersion = `${moduleId ?? String(project).toLowerCase()}-prototype-unversioned`,
   redFlags = [],
   itemIds = [],
   capturedRows = [],
   instrumentVersion = null,
 }) {
-  const cfg = PROJECTS[project] || PROJECTS.MASQUE;
+  const fileStem = moduleId ?? String(project).toLowerCase();
+  const applies = calibrationApplies !== false;
+  const calNote = calibrationNote ?? "another rubric's";
+  const withheldReason = `The illustrative calibration was set for ${calNote} scoring; this module's scoring differs, so nothing that depends on it is computed.`;
+  const WITHHELD = { withheld: true, reason: withheldReason };
+  const demoSource = applies ? "illustrative demo rows" : `illustrative demo rows (scored on ${calNote})`;
+  const policy = useMemo(() => (cfg.fairnessPolicyOverride ? { ...FAIRNESS_POLICY, ...cfg.fairnessPolicyOverride } : FAIRNESS_POLICY), [cfg]);
+  const toleranceAttributed = policy === FAIRNESS_POLICY ? TOLERANCE_ATTRIBUTED : !!(policy.toleranceSetBy && policy.toleranceRationale);
+  const fairnessAxes = cfg.fairnessAxes ?? ["sex", "gender"];
+  const demoCohorts = Array.isArray(cfg.demoCohorts) ? cfg.demoCohorts : [];
+  const artifactKey = cfg.artifactKey ?? "masqueArtifact";
+  const etlScript = cfg.etlScript ?? "etl/masque_population_etl.R";
+
   const [tab,setTab]=useState("risk");
-  const [rows,setRows]=useState(()=>normalizeRows(cfg.demo));
-  const [sourceName,setSourceName]=useState("illustrative demo rows");
+  // What the user has loaded, before the row scope is applied. `origin` says who brought the
+  // rows in: "demo" | "captured" | "file" | "cohort" (a demo cohort).
+  const [loaded,setLoaded]=useState(()=>({rows:normalizeRows(cfg.demo,cfg),origin:"demo",cohort:null}));
+  const [sourceName,setSourceName]=useState(demoSource);
   const [error,setError]=useState("");
   const fileRef=useRef(null);
-  // A design-aware estimates artifact produced offline by masque_population_etl.R.
+  // A design-aware estimates artifact produced offline by the population ETL.
   // Kept separate from `rows` on purpose: rows are individuals the panel may compute
   // on, this is a finished result the panel may only render.
   const [popArtifact,setPopArtifact]=useState(null);
+  const scope=useMemo(()=>scopeRows(loaded.rows,rowScope),[loaded,rowScope]);
+  const rows=scope.included;
+  const setRows=(next,origin,cohort=null)=>setLoaded({rows:next,origin,cohort});
+
+  const onDataChangeRef=useRef(onDataChange);
+  onDataChangeRef.current=onDataChange;
+  const dataSummary = popArtifact ? "uploaded population-estimates file"
+    : loaded.origin==="file" ? `${plural(loaded.rows.length,"uploaded row","uploaded rows")}`
+    : loaded.origin==="cohort" ? "demo cohort loaded" : null;
+  useEffect(()=>{ onDataChangeRef.current?.(dataSummary); },[dataSummary]);
+
   const probability=logistic(score,cfg.calibration);
   const probCeiling = ceiling==null ? null : logistic(ceiling,cfg.calibration);
   // Confidence is coverage-driven. Projects carrying an acoustic or physiologic
@@ -790,18 +938,21 @@ export default function ResearchReadinessPanel({
     ? clamp(Number(coverage||0)/100)
     : clamp((Number(coverage||0)/100)*0.72 + clamp(signalQuality)*0.28);
   // The host app's determinacy verdict overrides the arithmetic: an unscorable
-  // screen abstains regardless of how many items happen to be answered.
-  const abstain = !scorable || confidence < ABSTAIN_FLOOR;
+  // screen abstains regardless of how many items happen to be answered. A screen
+  // with no band is not scorable for the decision either: absent is not "low".
+  const bandKnown = band != null;
+  const abstain = !scorable || !bandKnown || confidence < ABSTAIN_FLOOR;
   const explanation=useMemo(()=>Object.entries(domains||{}).map(([k,v])=>({key:k,label:v.label||k,pct:Number(v.pct??((v.pts||0)/(v.max||1)*100)),pts:v.pts,max:v.max})).sort((a,b)=>b.pct-a.pct),[domains]);
-  const val=useMemo(()=>metrics(rows,cfg),[rows,cfg]);
-  const pop=useMemo(()=>population(rows,cfg),[rows,cfg]);
-  const axes=useMemo(()=>({sex:rows.some(r=>r.sex!=null),gender:rows.some(r=>r.gender!=null)}),[rows]);
-  const [axis,setAxis]=useState("sex");
+  const val=useMemo(()=>applies?metrics(rows,cfg):rankMetrics(rows),[rows,cfg,applies]);
+  const pop=useMemo(()=>applies?population(rows,cfg):populationUncalibrated(rows),[rows,cfg,applies]);
+  const axes=useMemo(()=>Object.fromEntries(fairnessAxes.map(ax=>[ax,rows.some(r=>r[ax]!=null)])),[rows,fairnessAxes.join("\u0000")]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [axis,setAxis]=useState(fairnessAxes[0]);
   // Fall back to whichever axis the data actually has rather than reporting an
   // empty table — but the choice is always shown, never implied.
-  const activeAxis=axes[axis]?axis:(axes.sex?"sex":axes.gender?"gender":axis);
-  const fair=useMemo(()=>fairness(rows,cfg,FAIRNESS_POLICY,activeAxis),[rows,cfg,activeAxis]);
+  const activeAxis=axes[axis]?axis:(fairnessAxes.find(ax=>axes[ax])??axis);
+  const fair=useMemo(()=>applies?fairness(rows,cfg,policy,activeAxis):fairnessGroupsOnly(rows,policy,activeAxis),[rows,cfg,policy,activeAxis,applies]);
   const dq=useMemo(()=>dataQuality(rows,cfg),[rows,cfg]);
+  const hasGroups=fairnessAxes.some(ax=>axes[ax]);
 
   /*  §11 deployment gate.
 
@@ -817,17 +968,28 @@ export default function ResearchReadinessPanel({
       stricter rule than §11 states and would turn the gate into theatre nobody could
       ship behind. "Audits show" means audits showed something.
 
-      The MODEL, not the instrument. The MASQUE index is a transparent rule-based sum
+      The MODEL, not the instrument. The index is a transparent rule-based sum
       a clinician can inspect and re-derive by hand; the calibrated probability is what
       §11 calls the model. So the gate withholds the probability and the FLAG/NO FLAG
       decision, and leaves the index visible. Suppressing the index would remove
       information the clinician can verify independently of any model.
+
+      Withheld outright, before any of that, when the calibration was set for other
+      scoring (every figure would run through constants fitted to another rubric), when
+      there is no screen, and when the host has not cleared routing (safety review).
   */
-  const fairnessGate = fair.overall === "FAIL";
-  const withheld = abstain || fairnessGate;
+  const fairnessGate = applies && fair.overall === "FAIL";
+  const routingHold = routingCleared === false;
+  const withheld = abstain || fairnessGate || !applies || noScreen || routingHold;
   const patientClass = abstain
-    ? (!scorable ? "Not scorable — attainable range spans a band cutpoint" : "Abstain / collect more data")
+    ? (!scorable ? "Not scorable — attainable range spans a band cutpoint" : !bandKnown ? "No band — not scorable for a decision" : "Abstain / collect more data")
     : probability>=cfg.threshold ? `Screen positive for ${cfg.target}` : `Screen negative for ${cfg.target}`;
+  const decision = redFlags?.length ? ["OVERRIDE","Red flag — model routing withheld"]
+    : noScreen ? ["WITHHELD","no screen in this session"]
+    : !applies ? ["WITHHELD","calibration does not apply to this module's scoring"]
+    : routingHold ? ["WITHHELD",routingWithheldDetail]
+    : fairnessGate ? ["WITHHELD","Model rejected on this cohort (§11)"]
+    : [abstain?"ABSTAIN":probability>=cfg.threshold?"FLAG":"NO FLAG",patientClass];
 
   async function loadFile(file){
     setError(""); if(!file)return;
@@ -836,22 +998,35 @@ export default function ResearchReadinessPanel({
       if(file.name.toLowerCase().endsWith(".csv")) parsed=parseCsv(text); else parsed=JSON.parse(text);
       // A population-estimates artifact is a finished, design-aware result — not a
       // cohort. It is displayed, never recomputed, and never mixed into `rows`.
-      if(parsed&&parsed.masqueArtifact==="population-estimates"){
+      if(parsed&&parsed[artifactKey]==="population-estimates"){
+        if(!populationArtifacts) throw new Error("Population estimates are shown only for built-in modules and modules verified as derived from one.");
         setPopArtifact(parsed); setTab("population");
         return;
       }
-      const next=normalizeRows(parsed);
+      const next=normalizeRows(parsed,cfg);
       if(!next.length) throw new Error("No rows found. Supply a JSON array, {rows:[...]}, {data:[...]}, or CSV with a header row.");
-      setRows(next);setSourceName(file.name);
+      setRows(next,"file");setSourceName(file.name);
     }catch(e){setError(e.message||"Could not parse file");}
   }
-  const mit=useMemo(()=>equityAdjustment(rows,cfg,FAIRNESS_POLICY,activeAxis),[rows,cfg,activeAxis]);
-  const manifest={project,modelVersion,instrumentVersion,generatedAt:new Date().toISOString(),provenance:{dataset:fingerprint(rows,cfg),source:sourceName,deterministic:true,note:"No stochastic component: every figure in this panel is a deterministic function of the rows above and the constants in this file. Re-running on the same fingerprint reproduces the same output."},target:cfg.target,calibration:{...cfg.calibration,threshold:cfg.threshold,status:"illustrative—replace after validation"},requiredCanonicalFields:cfg.expected,acceptedFormats:["CSV","JSON array","JSON {rows:[...]}","JSON {data:[...]}"],sourceAdapters:cfg.sources.map(([name,purpose])=>({name,purpose,status:"ready for mapping; access pending"})),missingDataPolicy:{rule:"Absent values are preserved as null and excluded; they are never imputed to 0, 1, or any other default.",weightDefault:"Rows without a weight default to 1 at computation time only; the field is still reported as missing.",labelRule:"Only an explicit 0 or 1 counts as a reference label. Unlabeled rows are excluded from validation, never scored as negatives."},fairnessPolicy:{...FAIRNESS_POLICY,prespecified:true,passRule:"PASS requires the confidence interval for the disparity to sit entirely below tolerance. Failing to detect a gap in a small sample is INCONCLUSIVE, not a pass.",suppressionRule:"Subgroups below the reporting minimum are shown with their size but without rates; they are excluded from gap calculations rather than silently dropped."},equityMitigation:{status:mit&&!mit.insufficient?"implemented — computed and evaluated on held-out data, proposed but not applied to live output":"implemented — not computable on the loaded cohort",criterion:"equal sensitivity, levelled up to the best-served group",appliedToLiveOutput:false,heldOutEvaluation:true,result:mit&&!mit.insufficient?{axis:mit.axis,target:+mit.target.toFixed(4),sensitivityGap:{before:+(mit.sensGapBefore??0).toFixed(4),after:+(mit.sensGapAfter??0).toFixed(4)},specificityGap:{before:+(mit.specGapBefore??0).toFixed(4),after:+(mit.specGapAfter??0).toFixed(4)},thresholds:mit.thresholds,devN:mit.devN,holdN:mit.holdN}:null,impossibility:"Equal sensitivity, equal specificity, and calibration cannot hold simultaneously across groups with unequal base rates. Closing one gap moves the others; both are reported.",reweighting:"Not implemented and not applicable here: instance reweighting is a fit-time intervention and this model is not fitted — the calibration constants are illustrative. A reweighting control over unlearned constants would be connected to nothing.",legacyStatus:"not implemented",measured:"Subgroup performance, disparity estimates with confidence intervals, and a pass/fail verdict against a pre-specified tolerance.",notImplemented:"Application of the adjustment to live patient-facing output, which is an institutional decision rather than a code change.",rationale:"Measurement precedes mitigation: a disparity cannot be honestly claimed reduced before there is an instrument capable of detecting it. This is a stated sequencing decision, not an oversight."},deploymentGate:{rule:"A FAIL verdict withholds the model probability and the routing decision (proposal \u00a711). INCONCLUSIVE and NOT ASSESSABLE do not gate — \u00a711 conditions rejection on an audit showing a disparity, not on the absence of evidence.",scope:"The calibrated probability and FLAG/NO FLAG decision. The rule-based MASQUE index is not gated.",triggered:fairnessGate,basis:fair.overall,axis:fair.axis},fairnessAudit:{overall:fair.overall,verdicts:Object.fromEntries(Object.entries(fair.verdicts).map(([k,v])=>[k,v.code])),gaps:Object.fromEntries(Object.entries(fair.gaps).map(([k,g])=>[k,g.assessable?{estimate:+g.d.toFixed(4),ci:[+g.lo.toFixed(4),+g.hi.toFixed(4)],high:g.high,low:g.low,groupsUsed:g.groupsUsed}:{assessable:false,groupsUsed:g.groupsUsed}])),suppressedGroups:fair.suppressedGroups},cohortState:{rows:dq.rows,labeled:dq.labeled,unlabeled:dq.unlabeled,scored:dq.scored,unparsedByField:Object.fromEntries(Object.entries(dq.unparsed).filter(([,c])=>c>0)),source:sourceName}};
+  function loadDemoCohort(id){
+    const c=demoCohorts.find(x=>x.id===id); if(!c)return;
+    setError(""); setRows(normalizeRows(makeCohort(c.spec),cfg),"cohort",c); setSourceName(c.label);
+  }
+  const mit=useMemo(()=>applies?equityAdjustment(rows,cfg,policy,activeAxis):null,[rows,cfg,policy,activeAxis,applies]);
+  const scopeState = scope.scoped ? {rowScope:{moduleId:rowScope.moduleId,instrumentVersion:rowScope.instrumentVersion,loaded:scope.total,matched:scope.matched,provenanceUnknown:scope.unknown,excluded:scope.excluded.map(g=>({module_id:g.module_id,instrument_version:g.instrument_version,n:g.n})),rule:"Rows naming another module_id or instrument_version are excluded from every computation; rows carrying neither column are included as provenance unknown."}} : {};
+  const identity = moduleId != null ? {module_id:moduleId,scoring_hash:scoringHash ?? null} : {};
+  // The constants only: which scoring they apply to is the gate's business (the manifest
+  // carries the module's own scoring_hash beside them).
+  const { appliesTo: _appliesTo, ...calibrationConstants } = cfg.calibration;
+  const manifest={project,...identity,modelVersion,instrumentVersion,generatedAt:new Date().toISOString(),provenance:{dataset:fingerprint(rows,cfg),source:sourceName,deterministic:true,note:"No stochastic component: every figure in this panel is a deterministic function of the rows above and the constants in this file. Re-running on the same fingerprint reproduces the same output."},target:cfg.target,calibration:applies?{...calibrationConstants,threshold:cfg.threshold,status:"illustrative—replace after validation"}:WITHHELD,requiredCanonicalFields:cfg.expected,acceptedFormats:["CSV","JSON array","JSON {rows:[...]}","JSON {data:[...]}"],sourceAdapters:cfg.sources.map(([name,purpose])=>({name,purpose,status:"ready for mapping; access pending"})),missingDataPolicy:{rule:"Absent values are preserved as null and excluded; they are never imputed to 0, 1, or any other default.",weightDefault:"Rows without a weight default to 1 at computation time only; the field is still reported as missing.",labelRule:"Only an explicit 0 or 1 counts as a reference label. Unlabeled rows are excluded from validation, never scored as negatives."},fairnessPolicy:{...policy,prespecified:true,passRule:"PASS requires the confidence interval for the disparity to sit entirely below tolerance. Failing to detect a gap in a small sample is INCONCLUSIVE, not a pass.",suppressionRule:"Subgroups below the reporting minimum are shown with their size but without rates; they are excluded from gap calculations rather than silently dropped."},equityMitigation:!applies?WITHHELD:{status:mit&&!mit.insufficient?"implemented — computed and evaluated on held-out data, proposed but not applied to live output":"implemented — not computable on the loaded cohort",criterion:"equal sensitivity, levelled up to the best-served group",appliedToLiveOutput:false,heldOutEvaluation:true,result:mit&&!mit.insufficient?{axis:mit.axis,target:+mit.target.toFixed(4),sensitivityGap:{before:+(mit.sensGapBefore??0).toFixed(4),after:+(mit.sensGapAfter??0).toFixed(4)},specificityGap:{before:+(mit.specGapBefore??0).toFixed(4),after:+(mit.specGapAfter??0).toFixed(4)},thresholds:mit.thresholds,devN:mit.devN,holdN:mit.holdN}:null,impossibility:"Equal sensitivity, equal specificity, and calibration cannot hold simultaneously across groups with unequal base rates. Closing one gap moves the others; both are reported.",reweighting:"Not implemented and not applicable here: instance reweighting is a fit-time intervention and this model is not fitted — the calibration constants are illustrative. A reweighting control over unlearned constants would be connected to nothing.",legacyStatus:"not implemented",measured:"Subgroup performance, disparity estimates with confidence intervals, and a pass/fail verdict against a pre-specified tolerance.",notImplemented:"Application of the adjustment to live patient-facing output, which is an institutional decision rather than a code change.",rationale:"Measurement precedes mitigation: a disparity cannot be honestly claimed reduced before there is an instrument capable of detecting it. This is a stated sequencing decision, not an oversight."},deploymentGate:!applies?WITHHELD:{rule:"A FAIL verdict withholds the model probability and the routing decision (proposal §11). INCONCLUSIVE and NOT ASSESSABLE do not gate — §11 conditions rejection on an audit showing a disparity, not on the absence of evidence.",scope:`The calibrated probability and FLAG/NO FLAG decision. The rule-based ${indexName} is not gated.`,triggered:fairnessGate,basis:fair.overall,axis:fair.axis},fairnessAudit:!applies?WITHHELD:{overall:fair.overall,verdicts:Object.fromEntries(Object.entries(fair.verdicts).map(([k,v])=>[k,v.code])),gaps:Object.fromEntries(Object.entries(fair.gaps).map(([k,g])=>[k,g.assessable?{estimate:+g.d.toFixed(4),ci:[+g.lo.toFixed(4),+g.hi.toFixed(4)],high:g.high,low:g.low,groupsUsed:g.groupsUsed}:{assessable:false,groupsUsed:g.groupsUsed}])),suppressedGroups:fair.suppressedGroups},cohortState:{rows:dq.rows,labeled:dq.labeled,unlabeled:dq.unlabeled,scored:dq.scored,unparsedByField:Object.fromEntries(Object.entries(dq.unparsed).filter(([,c])=>c>0)),source:sourceName,...scopeState}};
   const unparsedFields=Object.entries(dq.unparsed).filter(([,c])=>c>0);
   const psy=useMemo(()=>internalConsistency(rows,itemIds),[rows,itemIds]);
-  const cal=useMemo(()=>calibration(rows,cfg),[rows,cfg]);
-  const rep=useMemo(()=>repeatMeasures(rows),[rows]);
-  const modelCard={...manifest,intendedUse:"Screening and referral decision support only; not a diagnosis.",currentPatientOutput:{score,band,scorable,coverage:Math.round(Number(coverage||0)),attainableRange:scorable||ceiling==null?null:[Math.round(score),Math.round(ceiling)],probability:scorable?+probability.toFixed(4):null,probabilityRange:scorable||probCeiling==null?null:[+probability.toFixed(4),+probCeiling.toFixed(4)],confidence:+confidence.toFixed(4),abstainFloor:ABSTAIN_FLOOR,abstain,phenotype,sex,gender},knownLimitations:["Calibration constants are illustrative until fit on approved data.","An incomplete screen yields no band and no probability; unanswered items are never scored as negatives.","Demo rows are synthetic and must not be reported as study results.","Validation metrics are withheld entirely when no row carries an explicit 0/1 reference label.","Subgroup metrics require sufficient labeled observations in every reported group; groups below the minimum are suppressed, not dropped.","Sex and gender are separate axes; a fairness result is only valid for the axis it was computed on, and rows missing that field are excluded from stratification rather than pooled into an unknown group.","Clinical reference labels must come from the proposal-specified validated instruments and clinician reference standard."],fairnessAxis:{stratifiedBy:fair.axis,available:axes,groupsReported:fair.groups.filter(g=>!g.suppressed).length,groupsSuppressed:fair.suppressedGroups,rowsWithoutAxisValue:fair.notRecorded},safety:{redFlags,decisionRule:"Red flags and acute safety concerns override a negative screen."}};
+  const cal=useMemo(()=>applies?calibration(rows,cfg,policy):null,[rows,cfg,policy,applies]);
+  const rep=useMemo(()=>repeatMeasures(rows,policy),[rows,policy]);
+  const currentPatientOutput = noScreen
+    ? {noScreen:true,reason:NO_SCREEN_TEXT}
+    : {score,band,scorable,coverage:Math.round(Number(coverage||0)),attainableRange:scorable||ceiling==null?null:[Math.round(score),Math.round(ceiling)],probability:!applies?WITHHELD:scorable?+probability.toFixed(4):null,probabilityRange:!applies?WITHHELD:scorable||probCeiling==null?null:[+probability.toFixed(4),+probCeiling.toFixed(4)],confidence:+confidence.toFixed(4),abstainFloor:ABSTAIN_FLOOR,abstain,phenotype,sex,gender,...(routingHold?{routingCleared:false,decision:"withheld — "+routingWithheldDetail}:{})};
+  const modelCard={...manifest,intendedUse:"Screening and referral decision support only; not a diagnosis.",currentPatientOutput,knownLimitations:["Calibration constants are illustrative until fit on approved data.","An incomplete screen yields no band and no probability; unanswered items are never scored as negatives.","Demo rows are synthetic and must not be reported as study results.","Validation metrics are withheld entirely when no row carries an explicit 0/1 reference label.","Subgroup metrics require sufficient labeled observations in every reported group; groups below the minimum are suppressed, not dropped.","Sex and gender are separate axes; a fairness result is only valid for the axis it was computed on, and rows missing that field are excluded from stratification rather than pooled into an unknown group.","Clinical reference labels must come from the proposal-specified validated instruments and clinician reference standard."],fairnessAxis:{stratifiedBy:fair.axis,available:axes,groupsReported:fair.groups.filter(g=>!g.suppressed).length,groupsSuppressed:fair.suppressedGroups,rowsWithoutAxisValue:fair.notRecorded},safety:{redFlags,decisionRule:"Red flags and acute safety concerns override a negative screen."}};
 
   return <div className="rrp">
     <style>{CSS}</style>
@@ -862,15 +1037,20 @@ export default function ResearchReadinessPanel({
 
     {tab==="risk"&&<>
       <div className="rrp-grid">
-        <K label="Current score" value={scorable||ceiling==null?`${Math.round(score)}/100`:`${Math.round(score)}–${Math.round(ceiling)}`} detail={scorable?band:"attainable range / 100"}/>
-        <K label="Calibrated probability" value={fairnessGate?"withheld":scorable||probCeiling==null?pct(probability):`${pct(probability)}–${pct(probCeiling)}`} detail={fairnessGate?"fairness gate — see below":"illustrative until fitted"}/>
-        <K label="Output confidence" value={pct(confidence)} detail={signalQuality==null?`coverage ${Math.round(coverage)}% · no signal-quality input`:`coverage ${Math.round(coverage)}% · quality ${pct(signalQuality)}`}/>
-        <K label="Decision" value={redFlags?.length?"OVERRIDE":fairnessGate?"WITHHELD":abstain?"ABSTAIN":probability>=cfg.threshold?"FLAG":"NO FLAG"} detail={redFlags?.length?"Red flag — model routing withheld":fairnessGate?"Model rejected on this cohort (§11)":patientClass}/>
+        <K label="Current score" value={noScreen?"—":scorable||ceiling==null?`${Math.round(score)}/${scaleMax}`:`${Math.round(score)}–${Math.round(ceiling)}`} detail={noScreen?"no screen in this session":scorable?(bandKnown?band:"—"):`attainable range / ${scaleMax}`}/>
+        <K label="Calibrated probability" value={noScreen||!applies||fairnessGate?"withheld":scorable||probCeiling==null?pct(probability):`${pct(probability)}–${pct(probCeiling)}`} detail={noScreen?"no screen in this session":!applies?`calibration set for ${calNote} scoring`:fairnessGate?"fairness gate — see below":"illustrative until fitted"}/>
+        <K label="Output confidence" value={noScreen?"—":pct(confidence)} detail={noScreen?"no screen in this session":signalQuality==null?`coverage ${Math.round(coverage)}% · no signal-quality input`:`coverage ${Math.round(coverage)}% · quality ${pct(signalQuality)}`}/>
+        <K label="Decision" value={decision[0]} detail={decision[1]}/>
       </div>
-      {fairnessGate&&<div className="rrp-call rrp-danger"><b>Model output withheld — fairness gate.</b> The audit on the loaded cohort returned FAIL: at least one disparity exceeds its pre-specified tolerance across the whole confidence interval. Proposal §11 commits that the model is rejected when an audit shows it widens disparities, so the probability and the routing decision are withheld rather than flagged. The MASQUE index above is unaffected — it is a rule-based sum the clinician can re-derive, not the model. Address the disparity or narrow the cohort; the gate clears when the audit does.</div>}
-      {abstain&&!fairnessGate&&<div className="rrp-call rrp-warn"><b>Graceful abstention:</b> {!scorable
+      {noScreen&&<div className="rrp-call rrp-warn" data-testid="rrp-no-screen"><b>No screen in this session</b> — the panel has nothing to score; absent data is not a negative screen.</div>}
+      {!applies&&<div className="rrp-call rrp-warn" data-testid="rrp-calibration-withheld"><b>Calibration withheld.</b> {withheldReason} The probability, the decision, every validation threshold metric, the Brier score, the calibration block, the flagged rate, the fairness audit and its gate, and the equity mitigation are not shown. Row counts, data quality, AUROC, costs, repeat measures and internal consistency do not depend on it and remain.</div>}
+      {routingHold&&!noScreen&&<div className="rrp-call rrp-warn" data-testid="rrp-routing-withheld"><b>No routing decision.</b> {routingWithheldDetail} Routing is what the safety review gates; the index and the probability are shown for information only.</div>}
+      {fairnessGate&&<div className="rrp-call rrp-danger"><b>Model output withheld — fairness gate.</b> The audit on the loaded cohort returned FAIL: at least one disparity exceeds its pre-specified tolerance across the whole confidence interval. Proposal §11 commits that the model is rejected when an audit shows it widens disparities, so the probability and the routing decision are withheld rather than flagged. The {indexName} above is unaffected — it is a rule-based sum the clinician can re-derive, not the model. Address the disparity or narrow the cohort; the gate clears when the audit does.</div>}
+      {abstain&&!fairnessGate&&!noScreen&&<div className="rrp-call rrp-warn"><b>Graceful abstention:</b> {!scorable
         ? "the answered items do not yet pin the index into a single band, so no probability is issued. Unanswered items are not treated as negatives, and this is not a negative screen."
-        : `output confidence is below the ${pct(ABSTAIN_FLOOR)} floor — collect more required inputs or improve signal quality before using the result for routing.`}</div>}
+        : !bandKnown
+          ? "no band was supplied for this screen, so no decision is issued. An absent band is not a low band, and this is not a negative screen."
+          : `output confidence is below the ${pct(ABSTAIN_FLOOR)} floor — collect more required inputs or improve signal quality before using the result for routing.`}</div>}
       {redFlags?.length>0&&<div className="rrp-call rrp-danger"><b>Safety override:</b> {redFlags.join(" · ")}. Escalate regardless of the model probability.</div>}
       <div className="rrp-call"><b>Transparent explanation.</b> The current prototype uses domain contributions rather than opaque feature attribution. When a trained model is connected, this panel can accept SHAP/permutation contributions through the same normalized explanation structure.</div>
       <div style={{marginTop:10}}>{explanation.length?explanation.map(x=><div className="rrp-row" key={x.key}><div className="rrp-l">{x.label}</div><div className="rrp-track"><div className="rrp-fill" style={{width:`${clamp(x.pct/100)*100}%`}}/></div><div className="rrp-n">{x.pts!=null?`${x.pts}/${x.max}`:`${Math.round(x.pct)}%`}</div></div>):<div className="rrp-small">No domain contributions available yet.</div>}</div>
@@ -880,17 +1060,23 @@ export default function ResearchReadinessPanel({
       <div className="rrp-upload" onClick={()=>fileRef.current?.click()} role="button" tabIndex={0} onKeyDown={e=>(e.key==="Enter"||e.key===" ")&&fileRef.current?.click()}><Upload size={22}/><div style={{fontWeight:650,marginTop:5}}>Load CSV or JSON cohort data</div><div className="rrp-small">Current source: {sourceName}. Imported data remains in the browser.</div><input ref={fileRef} hidden type="file" accept=".csv,.json,application/json,text/csv" onChange={e=>loadFile(e.target.files?.[0])}/></div>
       {error&&<div className="rrp-call rrp-danger">{error}</div>}
       <div className="rrp-grid" style={{marginTop:10}}><K label="Rows" value={dq.rows}/><K label="Columns" value={dq.columns.length}/><K label="Duplicates" value={dq.duplicateCount}/><K label="Reference labels" value={dq.labeled?`${dq.labeled} of ${dq.rows}`:"None"} detail={dq.labeled?"rows with an explicit 0/1":"no rows carry a binary label"}/></div>
+      {scope.scoped&&<div className={"rrp-call"+(scope.excludedN?" rrp-warn":"")} data-testid="rrp-row-scope"><b>Row scope: {rowScope.moduleId} · instrument {rowScope.instrumentVersion}.</b> Of {plural(scope.total,"loaded row","loaded rows")}: {scope.matched} match this module and instrument version; {scope.unknown} carry no <code>module_id</code> or <code>instrument_version</code> and are included as provenance unknown; {scope.excludedN} name another module or instrument version and are excluded from every computation.
+        {scope.excluded.length>0&&<table className="rrp-table" style={{marginTop:8}}><thead><tr><th>module_id</th><th>instrument_version</th><th>Excluded rows</th></tr></thead><tbody>{scope.excluded.map((g,i)=><tr key={i}><td>{g.module_id??"—"}</td><td>{g.instrument_version??"—"}</td><td>{g.n}</td></tr>)}</tbody></table>}</div>}
       {unparsedFields.length>0&&<div className="rrp-call rrp-warn"><b>Present but unreadable:</b> {unparsedFields.map(([k,c])=>`${k} (${c} row${c===1?"":"s"})`).join(", ")}. These columns exist in the source but did not parse to the expected type, so they are treated as missing rather than as zeros. Check for text codes where a number or a 0/1 is expected.</div>}
       <div className="rrp-call"><b>Canonical adapter fields:</b> {cfg.expected.join(", ")}. Source-specific names can be mapped to these fields without changing the clinical apps.</div>
       <table className="rrp-table"><thead><tr><th>Source adapter</th><th>Purpose</th><th>Status</th></tr></thead><tbody>{cfg.sources.map(([n,p])=><tr key={n}><td>{n}</td><td>{p}</td><td className="rrp-mid">Access/mapping pending</td></tr>)}</tbody></table>
       <details style={{marginTop:10}}><summary>Missingness by canonical field</summary><div style={{marginTop:8}}>{Object.entries(dq.missing).map(([k,v])=><div className="rrp-row" key={k}><div className="rrp-l">{k}{dq.unparsed[k]?<span className="rrp-small"> · {dq.unparsed[k]} unreadable</span>:null}</div><div className="rrp-track"><div className="rrp-fill" style={{width:`${v*100}%`}}/></div><div className="rrp-n">{pct(v)}</div></div>)}</div>
         <div className="rrp-small" style={{marginTop:8}}>Absent values are never imputed. A missing label is not a negative case and a missing cost is not $0 — both are excluded from the metrics below rather than counted as zeros.</div></details>
-      <div className="rrp-btnrow"><button className="rrp-btn ghost" onClick={()=>downloadJson(`${project.toLowerCase()}-ingestion-manifest.json`,manifest)}><Download size={14}/> Manifest</button><button className="rrp-btn ghost" onClick={()=>{setRows(normalizeRows(cfg.demo));setSourceName("illustrative demo rows")}}><Activity size={14}/> Restore demo</button>
-        {capturedRows.length>0&&<button className="rrp-btn" onClick={()=>{setRows(normalizeRows(capturedRows));setSourceName(`${capturedRows.length} screen${capturedRows.length===1?"":"s"} captured this session`)}}><Activity size={14}/> Load {capturedRows.length} captured screen{capturedRows.length===1?"":"s"}</button>}</div>
+      <div className="rrp-btnrow"><button className="rrp-btn ghost" onClick={()=>downloadJson(`${fileStem}-ingestion-manifest.json`,manifest)}><Download size={14}/> Manifest</button><button className="rrp-btn ghost" onClick={()=>{setRows(normalizeRows(cfg.demo,cfg),"demo");setSourceName(demoSource)}}><Activity size={14}/> Restore demo</button>
+        {applies&&demoCohorts.length>0&&<label className="rrp-cohort"><span className="rrp-small" style={{marginTop:0}}>Load demo cohort</span><select className="rrp-select" data-testid="rrp-demo-cohort" value="" onChange={e=>loadDemoCohort(e.target.value)}><option value="">Choose…</option>{demoCohorts.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}</select></label>}
+        {capturedRows.length>0&&<button className="rrp-btn" onClick={()=>{setRows(normalizeRows(capturedRows,cfg),"captured");setSourceName(`${capturedRows.length} screen${capturedRows.length===1?"":"s"} captured this session`)}}><Activity size={14}/> Load {capturedRows.length} captured screen{capturedRows.length===1?"":"s"}</button>}</div>
+      {!applies&&demoCohorts.length>0&&<div className="rrp-note" data-testid="rrp-demo-cohort-hidden"><Info size={13} style={{flex:"0 0 auto",marginTop:1}}/><span>Demo cohorts were generated for {calNote} scoring, so none is offered for this module.</span></div>}
+      {loaded.origin==="cohort"&&loaded.cohort&&<div className="rrp-call" data-testid="rrp-demo-cohort-why"><b>{loaded.cohort.label}.</b> {loaded.cohort.why} Synthetic rows, generated deterministically; not study results.</div>}
       {capturedRows.length>0&&<div className="rrp-call"><b>{capturedRows.length} screen{capturedRows.length===1?"":"s"} captured this session.</b> Loading them will report zero labeled rows and withhold validation metrics — correctly. A screen has no reference standard until the follow-up diagnosis is recorded in the <code>reference_diagnosis</code> column.</div>}
     </>}
 
-    {tab==="validation"&&<>{val?<><div className="rrp-grid"><K label="Labeled rows" value={`${val.n} of ${dq.rows}`} detail={dq.unlabeled?`${dq.unlabeled} excluded — no reference label`:"all imported rows labeled"}/><K label="Sensitivity" value={pct(val.sensitivity)} detail={ciText(val.sensCI)||`${val.nPos} positive${val.nPos===1?"":"s"}`}/><K label="Specificity" value={pct(val.specificity)} detail={ciText(val.specCI)||`${val.nNeg} negative${val.nNeg===1?"":"s"}`}/><K label="PPV" value={pct(val.ppv)}/><K label="NPV" value={pct(val.npv)}/><K label="AUROC" value={num(val.auc,2)}/><K label="Brier score" value={num(val.brier,3)} detail="conflates calibration and discrimination"/><K label="Accuracy" value={pct(val.accuracy)}/></div><CalibrationBlock cal={cal}/><RepeatBlock rep={rep}/><div className="rrp-call rrp-warn"><b>Not study results:</b> these metrics currently use illustrative rows. They become meaningful only after importing approved records with proposal-defined reference labels.</div></>
+    {tab==="validation"&&<>{val?(applies?<><div className="rrp-grid"><K label="Labeled rows" value={`${val.n} of ${dq.rows}`} detail={dq.unlabeled?`${dq.unlabeled} excluded — no reference label`:"all imported rows labeled"}/><K label="Sensitivity" value={pct(val.sensitivity)} detail={ciText(val.sensCI)||`${val.nPos} positive${val.nPos===1?"":"s"}`}/><K label="Specificity" value={pct(val.specificity)} detail={ciText(val.specCI)||`${val.nNeg} negative${val.nNeg===1?"":"s"}`}/><K label="PPV" value={pct(val.ppv)}/><K label="NPV" value={pct(val.npv)}/><K label="AUROC" value={num(val.auc,2)}/><K label="Brier score" value={num(val.brier,3)} detail="conflates calibration and discrimination"/><K label="Accuracy" value={pct(val.accuracy)}/></div><CalibrationBlock cal={cal}/><RepeatBlock rep={rep}/><div className="rrp-call rrp-warn"><b>Not study results:</b> these metrics currently use illustrative rows. They become meaningful only after importing approved records with proposal-defined reference labels.</div></>
+      :<><div className="rrp-grid"><K label="Labeled rows" value={`${val.n} of ${dq.rows}`} detail={dq.unlabeled?`${dq.unlabeled} excluded — no reference label`:"all imported rows labeled"}/><K label="AUROC" value={num(val.auc,2)} detail="rank-based on the raw score; needs no calibration"/><K label="Sensitivity · specificity · PPV · NPV" value="withheld" detail={`calibration set for ${calNote} scoring`}/><K label="Brier score · accuracy" value="withheld" detail={`calibration set for ${calNote} scoring`}/></div><div className="rrp-call rrp-warn"><b>Calibration withheld.</b> {withheldReason} Threshold metrics, the Brier score, calibration-in-the-large, the calibration slope and the reliability table are not computed.</div><RepeatBlock rep={rep}/><div className="rrp-call rrp-warn"><b>Not study results:</b> these metrics currently use illustrative rows. They become meaningful only after importing approved records with proposal-defined reference labels.</div></>)
       :<div className="rrp-call rrp-danger"><b>No validation metrics issued.</b> {dq.rows===0
         ? "No rows are loaded."
         : dq.unparsed.label
@@ -918,7 +1104,7 @@ export default function ResearchReadinessPanel({
       <div className="rrp-call"><b>Planned references:</b> use the validated instruments and clinician reference standards specified in the {project} proposal. Retain held-out testing, threshold locking, calibration assessment, and external checks as separate artifacts.</div>
     </>}
 
-    {tab==="fairness"&&<>{dq.hasGroups?<>
+    {tab==="fairness"&&<>{hasGroups?(applies?<>
       <div className={"rrp-call "+(fair.overall==="FAIL"?"rrp-danger":fair.overall==="PASS"?"":"rrp-warn")}>
         <b>Fairness audit: {fair.overall}.</b>{" "}
         {fair.overall==="PASS"&&"Every assessable disparity sits below its pre-specified tolerance across the whole confidence interval."}
@@ -937,18 +1123,7 @@ export default function ResearchReadinessPanel({
                   : <>{pct(g[k].p)}<div className="rrp-small">{pct(g[k].lo)}–{pct(g[k].hi)}</div></>}
               </td>)}
         </tr>)}</tbody></table>
-      <div className="rrp-btnrow" style={{marginTop:12}}>
-        <span className="rrp-small" style={{alignSelf:"center",marginRight:2}}>Stratify by</span>
-        {["sex","gender"].map(ax=>(
-          <button key={ax} className={"rrp-btn"+(fair.axis===ax?"":" ghost")}
-            disabled={!axes[ax]} onClick={()=>setAxis(ax)}
-            title={axes[ax]?`Stratify the audit by ${ax}`:`No ${ax} column in this cohort`}>
-            {ax}{axes[ax]?"":" — absent"}
-          </button>))}
-        {fair.notRecorded>0&&<span className="rrp-small" style={{alignSelf:"center"}}>
-          {fair.notRecorded} of {rows.length} row{rows.length===1?"":"s"} have no {fair.axis} recorded and are excluded from stratification
-        </span>}
-      </div>
+      <AxisButtons axes={axes} fairnessAxes={fairnessAxes} fair={fair} rows={rows} setAxis={setAxis}/>
       <div className="rrp-grid" style={{marginTop:10}}>
         {[["selection","Flag-rate gap","selectionGapTolerance"],["sensitivity","Sensitivity gap","sensitivityGapTolerance"],["specificity","Specificity gap","specificityGapTolerance"]].map(([k,label,tol])=>{
           const g=fair.gaps[k], v=fair.verdicts[k];
@@ -959,15 +1134,34 @@ export default function ResearchReadinessPanel({
               : `${v.code} — ${g.groupsUsed} reportable group${g.groupsUsed===1?"":"s"}`}/>;
         })}
       </div>
-      <MitigationBlock mit={mit} axis={fair.axis}/><div className="rrp-call rrp-warn"><b>How to read this.</b> These results hold for <b>{fair.axis}</b> only — a pass on one axis is not a pass on the other. {TOLERANCE_ATTRIBUTED?"":"The tolerance these verdicts are measured against is unattributed — nobody has signed for it, so treat a PASS as provisional. "}A PASS requires the interval to sit entirely below tolerance — failing to detect a gap in a small sample is INCONCLUSIVE, never a pass. Gaps are max−min across reportable groups, which is biased upward when several groups are compared; intervals are Newcombe hybrid-score intervals built on Kish effective sample sizes, and are an approximation until survey design variables are available. Do not force equal rates when underlying reference prevalence genuinely differs — investigate the cause before reweighting or moving a threshold.</div>
+      <MitigationBlock mit={mit} axis={fair.axis}/><div className="rrp-call rrp-warn"><b>How to read this.</b> These results hold for <b>{fair.axis}</b> only — a pass on one axis is not a pass on the other. {toleranceAttributed?"":"The tolerance these verdicts are measured against is unattributed — nobody has signed for it, so treat a PASS as provisional. "}A PASS requires the interval to sit entirely below tolerance — failing to detect a gap in a small sample is INCONCLUSIVE, never a pass. Gaps are max−min across reportable groups, which is biased upward when several groups are compared; intervals are Newcombe hybrid-score intervals built on Kish effective sample sizes, and are an approximation until survey design variables are available. Do not force equal rates when underlying reference prevalence genuinely differs — investigate the cause before reweighting or moving a threshold.</div>
       {fair.suppressedGroups>0&&<div className="rrp-call"><b>{fair.suppressedGroups} group{fair.suppressedGroups===1?"":"s"} suppressed.</b> Small strata are shown with their size but without rates — both because the estimates would be uninformative and because small-cell rates risk re-identification.</div>}
-    </>:<div className="rrp-call rrp-warn">Add a <code>sex</code> and/or <code>gender</code> column to enable subgroup reporting. They are audited as separate axes — supplying one does not stand in for the other.</div>}</>}
+    </>:<>
+      <div className="rrp-call rrp-warn" data-testid="rrp-fairness-withheld"><b>Fairness audit withheld.</b> {withheldReason} Flag rates, sensitivity, specificity, every gap and verdict, the fairness gate and the equity mitigation all run through it. Group sizes are shown.</div>
+      <table className="rrp-table"><thead><tr><th>Group</th><th>N</th><th>Rates</th></tr></thead>
+        <tbody>{fair.groups.map(g=><tr key={g.group}><td>{g.group}</td><td>{g.n}</td><td className="rrp-mid">{g.suppressed?`Suppressed — below the ${fair.policy.minGroupN}-row reporting minimum`:"withheld — calibration does not apply"}</td></tr>)}</tbody></table>
+      <AxisButtons axes={axes} fairnessAxes={fairnessAxes} fair={fair} rows={rows} setAxis={setAxis}/>
+    </>):<div className="rrp-call rrp-warn">Add a <code>sex</code> and/or <code>gender</code> column to enable subgroup reporting. They are audited as separate axes — supplying one does not stand in for the other.</div>}</>}
 
-    {tab==="population"&&<>{popArtifact?<PopulationArtifact art={popArtifact} onClear={()=>setPopArtifact(null)}/>:pop?<><div className="rrp-grid"><K label="Scored rows" value={pop.n} detail={pop.dropped?`${pop.dropped} excluded — no score`:"all imported rows scored"}/><K label="Weighted denominator" value={num(pop.weightedN,1)}/><K label="Screen-positive estimate" value={pct(pop.prevalence)} detail="screening-level, not diagnosed prevalence"/><K label="Mean annual cost" value={pop.annualCostN?money(pop.annualCost):"—"} detail={pop.annualCostN?`from ${pop.annualCostN} row${pop.annualCostN===1?"":"s"}`:"no cost data"}/><K label="Mean avoidable cost" value={pop.avoidableCostN?money(pop.avoidableCost):"—"} detail={pop.avoidableCostN?`from ${pop.avoidableCostN} row${pop.avoidableCostN===1?"":"s"}`:"no cost data"}/><K label="Potential avoidable share" value={pop.annualCostN&&pop.avoidableCostN?pct(pop.avoidableCost/pop.annualCost):"—"}/></div><div className="rrp-call rrp-warn"><b>These are cohort figures, not survey estimates.</b> They are weighted means with no variance estimation — no strata, no PSUs, no design degrees of freedom. Uploading a survey public-use file here would produce a plausible point estimate and no honest interval. For national estimates run <code>app/etl/masque_population_etl.R</code> and commit the artifact it writes under <code>app/data/</code> — the Population page renders it — or load it here to preview it; this panel will render it instead of this block.</div><div className="rrp-call"><b>Survey readiness:</b> a <code>weight</code> or <code>survey_weight</code> column is honored; rows without one default to 1 at computation time and are still reported as missing above. Final NHANES/NHIS/MEPS estimates still require their design variables, strata/PSUs, cycle pooling rules, inflation adjustments, and source-specific variance methods.</div></>:<div className="rrp-call rrp-warn">No rows carry a usable score, so no population summary is calculated.</div>}</>}
+    {tab==="population"&&<>{popArtifact?<div className="rrp-scroll"><PopulationArtifact art={popArtifact} onClear={()=>setPopArtifact(null)}/></div>:pop?<><div className="rrp-grid"><K label="Scored rows" value={pop.n} detail={pop.dropped?`${pop.dropped} excluded — no score`:"all imported rows scored"}/><K label="Weighted denominator" value={num(pop.weightedN,1)}/><K label="Screen-positive estimate" value={applies?pct(pop.prevalence):"withheld"} detail={applies?"screening-level, not diagnosed prevalence":`calibration set for ${calNote} scoring`}/><K label="Mean annual cost" value={pop.annualCostN?money(pop.annualCost):"—"} detail={pop.annualCostN?`from ${pop.annualCostN} row${pop.annualCostN===1?"":"s"}`:"no cost data"}/><K label="Mean avoidable cost" value={pop.avoidableCostN?money(pop.avoidableCost):"—"} detail={pop.avoidableCostN?`from ${pop.avoidableCostN} row${pop.avoidableCostN===1?"":"s"}`:"no cost data"}/><K label="Potential avoidable share" value={pop.annualCostN&&pop.avoidableCostN?pct(pop.avoidableCost/pop.annualCost):"—"}/></div><div className="rrp-call rrp-warn"><b>These are cohort figures, not survey estimates.</b> They are weighted means with no variance estimation — no strata, no PSUs, no design degrees of freedom. Uploading a survey public-use file here would produce a plausible point estimate and no honest interval. For national estimates run <code>app/{etlScript}</code> and commit the artifact it writes under <code>app/data/</code> — the Population page renders it — or load it here to preview it; this panel will render it instead of this block.</div><div className="rrp-call"><b>Survey readiness:</b> a <code>weight</code> or <code>survey_weight</code> column is honored; rows without one default to 1 at computation time and are still reported as missing above. Final NHANES/NHIS/MEPS estimates still require their design variables, strata/PSUs, cycle pooling rules, inflation adjustments, and source-specific variance methods.</div></>:<div className="rrp-call rrp-warn">No rows carry a usable score, so no population summary is calculated.</div>}</>}
 
-    {tab==="model"&&<><div className="rrp-btnrow"><button className="rrp-btn" onClick={()=>downloadJson(`${project.toLowerCase()}-model-card.json`,modelCard)}><Download size={14}/> Download model card</button><button className="rrp-btn ghost" onClick={()=>downloadJson(`${project.toLowerCase()}-provenance.json`,manifest.provenance)}><Download size={14}/> Provenance</button><button className="rrp-btn ghost" onClick={()=>navigator.clipboard?.writeText(JSON.stringify(modelCard,null,2))}><Copy size={14}/> Copy JSON</button></div><pre className="rrp-code">{JSON.stringify(modelCard,null,2)}</pre></>}
+    {tab==="model"&&<><div className="rrp-btnrow"><button className="rrp-btn" onClick={()=>downloadJson(`${fileStem}-model-card.json`,modelCard)}><Download size={14}/> Download model card</button><button className="rrp-btn ghost" onClick={()=>downloadJson(`${fileStem}-provenance.json`,manifest.provenance)}><Download size={14}/> Provenance</button><button className="rrp-btn ghost" onClick={()=>navigator.clipboard?.writeText(JSON.stringify(modelCard,null,2))}><Copy size={14}/> Copy JSON</button></div><pre className="rrp-code">{JSON.stringify(modelCard,null,2)}</pre></>}
 
     <div className="rrp-note"><ShieldCheck size={13} style={{flex:"0 0 auto",marginTop:1}}/><span>This layer prepares the apps to ingest future approved data, but it does not turn synthetic/demo outputs into validated evidence. Replace calibration constants, mappings, thresholds, and model cards only through the documented validation and fairness process.</span></div>
+  </div>;
+}
+function AxisButtons({axes,fairnessAxes,fair,rows,setAxis}){
+  return <div className="rrp-btnrow" style={{marginTop:12}}>
+    <span className="rrp-small" style={{alignSelf:"center",marginRight:2}}>Stratify by</span>
+    {fairnessAxes.map(ax=>(
+      <button key={ax} className={"rrp-btn"+(fair.axis===ax?"":" ghost")}
+        disabled={!axes[ax]} onClick={()=>setAxis(ax)}
+        title={axes[ax]?`Stratify the audit by ${ax}`:`No ${ax} column in this cohort`}>
+        {ax}{axes[ax]?"":" — absent"}
+      </button>))}
+    {fair.notRecorded>0&&<span className="rrp-small" style={{alignSelf:"center"}}>
+      {fair.notRecorded} of {rows.length} row{rows.length===1?"":"s"} have no {fair.axis} recorded and are excluded from stratification
+    </span>}
   </div>;
 }
 function MitigationBlock({mit,axis}){

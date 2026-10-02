@@ -23,7 +23,7 @@ import { canonicalJson } from "./hash.js";
 import { bandFor, computeScore, negativeValueOf, scaleMaxOf } from "./scoring.js";
 import { checkBindable, getPath, mergeLocales, renderIdentity } from "./bind.js";
 import { GENERIC_LOGIC, isGenericSummary } from "./generic.js";
-import { checkVersionFamily, familyOf, lineageProblems } from "./lineage.js";
+import { checkVersionFamily, familyOf, kinKey, lineageProblems } from "./lineage.js";
 import { mulberry32 } from "./prng.js";
 import * as probeEngine from "./probes.js";
 import { CANONICAL_FIELDS } from "./cohort.js";
@@ -975,6 +975,8 @@ function checkV6Logic(module, c) {
 }
 
 const sameLabel = (a, b) => typeof a === "string" && typeof b === "string" && a.trim().toLowerCase() === b.trim().toLowerCase();
+// A built-in's label may not be reused even disguised (invisible characters, spacing, look-alikes).
+const builtinLabel = (a, b) => sameLabel(a, b) || (kinKey(a) !== "" && kinKey(a) === kinKey(b));
 
 function checkV8(module, loaded, c) {
   const others = arr(loaded).filter(m => m && m !== module && m.key !== module.key);
@@ -990,7 +992,7 @@ function checkV8(module, loaded, c) {
       && module.logic.moduleId === m.logic.moduleId && module.logic !== m.logic && module.hashes.logicSha256 !== m.hashes.logicSha256) {
       c.E("V8", "/logicBinding/moduleId", `Logic id '${module.logic.moduleId}' is reserved for the built-in logic`);
     }
-    if (!builtin && m.origin === "builtin" && sameLabel(module.label, m.label)) c.E("V8", "/label", `Label '${module.label}' belongs to a built-in module`);
+    if (!builtin && m.origin === "builtin" && builtinLabel(module.label, m.label)) c.E("V8", "/label", `Label '${module.label}' belongs to a built-in module`);
     else if (sameLabel(module.label, m.label)) c.W("V8", "/label", `another loaded module is also labelled '${m.label}'`);
   }
 }

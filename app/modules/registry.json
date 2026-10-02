@@ -5,7 +5,9 @@
       "rubric": "./modules/masque/masque.rubric.json",
       "logic": "./modules/masque/masque.logic.js",
       "docs": [
-        "./modules/masque/SOURCES.md"
+        "./modules/masque/SOURCES.md",
+        "./modules/masque/README.md",
+        "./modules/masque/CHANGELOG.md"
       ],
       "default": true
     }

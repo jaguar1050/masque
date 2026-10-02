@@ -20,7 +20,7 @@ export default {
       { value: "kind_x", when: (s) => s.yes("p_one") },
     ],
     activation: [
-      { id: "second-when-y", domains: ["second", "minus"], when: (s) => s.complaint === "kind_y" || s.answered("p_three") },
+      { id: "second-when-y", domains: ["second", "minus"], when: (s) => s.complaint === "kind_y" || s.isAnswered("p_three") },
     ],
   },
   routing: [
@@ -70,8 +70,8 @@ export default {
     ],
   },
   locales: {
-    en: { sum: { first: "Example summary:", words: { p_one: "example one", p_three: "example three" }, twoOften: "Example sentence for level two.", askFour: "Example question to bring.", askDefault: "Example default question to bring." } },
-    es: { sum: { first: "Resumen de ejemplo:", words: { p_one: "ejemplo uno", p_three: "ejemplo tres" }, twoOften: "Frase de ejemplo para el nivel dos.", askFour: "Pregunta de ejemplo para llevar.", askDefault: "Pregunta de ejemplo por defecto." } },
+    en: { sum: { gap: (ctxB) => (ctxB ? "Example gap sentence with the marker." : "Example gap sentence."), first: "Example summary:", words: { p_one: "example one", p_three: "example three" }, twoOften: "Example sentence for level two.", askFour: "Example question to bring.", askDefault: "Example default question to bring." } },
+    es: { sum: { gap: (ctxB) => (ctxB ? "Frase de ejemplo con el marcador." : "Frase de ejemplo."), first: "Resumen de ejemplo:", words: { p_one: "ejemplo uno", p_three: "ejemplo tres" }, twoOften: "Frase de ejemplo para el nivel dos.", askFour: "Pregunta de ejemplo para llevar.", askDefault: "Pregunta de ejemplo por defecto." } },
   },
   probes: {
     version: "0.1.0",

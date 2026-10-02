@@ -87,9 +87,39 @@ export function lineageProblems(provenance) {
   return out;
 }
 
+// Latin look-alikes from the Cyrillic and Greek blocks (lowercase; kinKey lowercases first).
+const CONFUSABLE = {
+  // Cyrillic
+  "\u0430": "a", "\u0432": "b", "\u0435": "e", "\u043a": "k", "\u043c": "m", "\u043d": "h", "\u043e": "o",
+  "\u0440": "p", "\u0441": "c", "\u0442": "t", "\u0443": "y", "\u0445": "x", "\u0455": "s", "\u0456": "i",
+  "\u0458": "j", "\u04bb": "h", "\u0501": "d", "\u051b": "q", "\u051d": "w",
+  // Greek
+  "\u03b1": "a", "\u03b2": "b", "\u03b5": "e", "\u03b6": "z", "\u03b7": "h", "\u03b9": "i", "\u03ba": "k",
+  "\u03bc": "m", "\u03bd": "n", "\u03bf": "o", "\u03c1": "p", "\u03c4": "t", "\u03c5": "y", "\u03c7": "x",
+};
+const CONFUSABLE_RE = new RegExp(`[${Object.keys(CONFUSABLE).join("")}]`, "gu");
+
+/**
+ * The comparison key for identity text (kin fields, built-in labels): NFKC, diacritics and
+ * invisible characters dropped, case folded, Cyrillic/Greek look-alikes mapped to Latin, and
+ * every character that is not a letter or digit removed — so a name followed by U+200B, with
+ * U+00A0 for its spaces, in fullwidth letters or with a trailing "_" compares equal to the name.
+ * Returns "" for a non-string. Display text is never altered; this is for comparison only.
+ */
+export function kinKey(s) {
+  if (typeof s !== "string") return "";
+  return s.normalize("NFKC").normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(CONFUSABLE_RE, (c) => CONFUSABLE[c])
+    .replace(/[^\p{L}\p{N}]/gu, "");
+}
+
 /**
  * Whether `rubric` is kin to a loaded built-in (§3.11 row 5): its id or bound logic moduleId
- * is the built-in's, or it reuses one of the built-in's KIN_FIELDS values.
+ * is the built-in's, or it reuses one of the built-in's KIN_FIELDS values. Values are compared
+ * by kinKey, so invisible characters, spacing, punctuation, case and look-alike letters do not
+ * hide a reused value.
  * @returns {{builtin: Object, reasons: string[]} | null}
  */
 export function kinOf(rubric, builtins) {
@@ -100,8 +130,8 @@ export function kinOf(rubric, builtins) {
     const lb = rubric.logicBinding;
     if (isObj(lb) && typeof lb.moduleId === "string" && b.logic && lb.moduleId === b.logic.moduleId && b.hashes.logicSha256) reasons.push("logic");
     for (const f of KIN_FIELDS) {
-      const v = getPath(rubric, f);
-      if (typeof v === "string" && v.trim() && v === getPath(b.rubric, f)) reasons.push(f);
+      const k = kinKey(getPath(rubric, f));
+      if (k && k === kinKey(getPath(b.rubric, f))) reasons.push(f);
     }
     if (reasons.length) return { builtin: b, reasons };
   }

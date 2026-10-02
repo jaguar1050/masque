@@ -17,7 +17,8 @@
 // devices and the voice stub → the `pages` spec → the test page (waits for
 // dataset.masqueTests) → the E2E specs (voice, print, upload, editor, then any other spec
 // file found). Writes report.json next to this file, prints the JSON report on stdout, and
-// exits non-zero on FAIL or INVALID. Changes nothing under app/ except report.json.
+// exits non-zero on FAIL or INVALID. stdout holds the report only (everything else goes to
+// stderr). Changes nothing under app/ except report.json.
 import { spawn, execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -152,7 +153,17 @@ async function staticTree() {
   }
 }
 
+/**
+ * stdout carries the JSON report and nothing else, so a caller can parse it. Libraries that
+ * print through console.log / info / warn / debug (pdfjs-dist warns about its optional canvas
+ * package when ctx.pdfText first loads it) are sent to stderr with the run log.
+ */
+function keepStdoutForTheReport() {
+  for (const k of ["log", "info", "warn", "debug"]) console[k] = (...args) => console.error(...args);
+}
+
 async function main() {
+  keepStdoutForTheReport();
   const opts = parseArgs(process.argv.slice(2));
   const started = Date.now();
   const vendor = ensureVendor({ log: (m) => console.error(`[vendor] ${m}`) });

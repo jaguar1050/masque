@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { BarChart3, Info, ShieldCheck, TriangleAlert, Database, FileJson, Terminal } from "lucide-react";
 import PopulationArtifact, { hasCostRows, isTotal, fmtValue, labelOf, eligibilityText } from "./PopulationArtifact.jsx";
 import { checkSchema, checkArtifactMarker } from "./MASQUE_SchemaCheck.js";
+import { scopeCss } from "./engine/css.js";
 
 /*  Project MASQUE — Population estimates page
     ------------------------------------------------------------------
@@ -25,6 +26,13 @@ import { checkSchema, checkArtifactMarker } from "./MASQUE_SchemaCheck.js";
 
     Adding an estimate is a data commit, not a code change: run the ETL, commit the
     JSON under app/data/, add one line to population-estimates.index.json.
+
+    Hosts. app/population.html mounts it with no props and gets this page exactly as before.
+    screenAIr's Research tab mounts it `embedded` (its own brand row and footer hidden; the
+    shell provides both), with an optional `banner` node rendered first, and passes
+    `baseUrl` (the app/ folder) so every fetch, the index-listed artifact paths included,
+    resolves against app/ wherever the hosting page sits. `indexPath`, `schemaPath` and
+    `mapPath` default to the constants below. The stylesheet is scoped under `.sa-pop`.
 */
 
 const APP_VERSION = "0.3.0";
@@ -89,12 +97,16 @@ const CSS = `
 .pop .notew{font-size:11.5px;color:var(--muted);display:flex;gap:7px;margin-top:12px;align-items:flex-start}
 .pop .foot{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.04em;text-align:center;margin-top:22px}
 .pop a{color:var(--petrol)}
+.pop .pa-scroll{overflow-x:auto;max-width:100%}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 `;
+// Scoped once: `:root` tokens land on .sa-pop, `*` becomes `.sa-pop *` (design 03 §5.10).
+const SCOPED_CSS = scopeCss(CSS, ".sa-pop");
 
-async function fetchJson(rel) {
-  // Modules run from blob: URLs under the loader, so resolve against the page, not the module.
-  const url = new URL(rel, document.baseURI).href;
+async function fetchJson(rel, base) {
+  // Modules run from blob: URLs under the loader, so resolve against the page (or the
+  // host's baseUrl), never against the module.
+  const url = new URL(rel, base || document.baseURI).href;
   const res = await fetch(url, { cache: "no-cache" });
   if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${rel}`);
   return res.json();
@@ -108,24 +120,33 @@ function conceptStatus(c) {
   return "todo";
 }
 
-export default function MasquePopulation() {
+export default function MasquePopulation({
+  baseUrl = null,
+  indexPath = INDEX_PATH,
+  schemaPath = SCHEMA_PATH,
+  mapPath = MAP_PATH,
+  embedded = false,
+  banner = null,
+} = {}) {
   const [st, setSt] = useState({ phase: "loading" });
+  const base = baseUrl || document.baseURI;
 
   useEffect(() => {
     let cancelled = false;
+    setSt({ phase: "loading" });
     (async () => {
       const out = { phase: "ready", schema: null, schemaError: null, map: null, mapError: null,
                     index: null, indexError: null, artifacts: [] };
-      try { out.schema = await fetchJson(SCHEMA_PATH); } catch (e) { out.schemaError = e.message; }
-      try { out.map    = await fetchJson(MAP_PATH);    } catch (e) { out.mapError = e.message; }
-      try { out.index  = await fetchJson(INDEX_PATH);  } catch (e) { out.indexError = e.message; }
+      try { out.schema = await fetchJson(schemaPath, base); } catch (e) { out.schemaError = e.message; }
+      try { out.map    = await fetchJson(mapPath, base);    } catch (e) { out.mapError = e.message; }
+      try { out.index  = await fetchJson(indexPath, base);  } catch (e) { out.indexError = e.message; }
       const entries = Array.isArray(out.index?.artifacts) ? out.index.artifacts : [];
       for (const entry of entries) {
         const path = typeof entry === "string" ? entry : entry?.path;
         const rec = { path: path || "(no path)", entry, art: null, errors: [] };
         if (!path) { rec.errors.push("index entry has no path"); out.artifacts.push(rec); continue; }
         try {
-          const art = await fetchJson(path);
+          const art = await fetchJson(path, base);
           rec.errors.push(...checkArtifactMarker(art));
           if (out.schema) rec.errors.push(...checkSchema(out.schema, art));
           else rec.errors.push("the schema could not be loaded, so the artifact was not validated and is not rendered");
@@ -136,7 +157,7 @@ export default function MasquePopulation() {
       if (!cancelled) setSt(out);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [base, indexPath, schemaPath, mapPath]);
 
   const valid   = st.artifacts ? st.artifacts.filter(a => a.art && a.errors.length === 0) : [];
   const refused = st.artifacts ? st.artifacts.filter(a => a.errors.length > 0) : [];
@@ -147,17 +168,19 @@ export default function MasquePopulation() {
   const definitionTodo = !definition.trim() || definition.trim().toUpperCase().startsWith("TODO");
 
   return (
-    <div className="pop">
-      <style>{CSS}</style>
+    <div className="sa-pop"><div className="pop">
+      <style>{SCOPED_CSS}</style>
       <div className="wrap">
 
-        <div className="brandrow">
+        {banner}
+
+        {!embedded && <div className="brandrow">
           <div className="mark"><BarChart3 size={18} /></div>
           <div>
             <div className="t1">MASQUE Population <span className="num" style={{fontSize:12,color:"var(--muted)",fontWeight:400}}>v{APP_VERSION}</span></div>
             <div className="t2">Hidden-prevalence estimates from U.S. open data — computed offline with the survey design, rendered here without arithmetic</div>
           </div>
-        </div>
+        </div>}
 
         <div className="card">
           <div className="chdr"><Database size={16} color="var(--petrol)" /><div><div className="ce">How a number gets here</div><div className="ct">Open in, open out</div></div></div>
@@ -175,7 +198,7 @@ export default function MasquePopulation() {
         {st.phase === "ready" && valid.map(a => (
           <div className="card" key={a.path}>
             <div className="chdr"><FileJson size={16} color="var(--petrol)" /><div><div className="ce">Population estimate</div><div className="ct num">{a.path}</div></div></div>
-            <PopulationArtifact art={a.art} />
+            <div className="pa-scroll"><PopulationArtifact art={a.art} /></div>
           </div>
         ))}
 
@@ -197,10 +220,10 @@ export default function MasquePopulation() {
             <div className="empty">
               <b>Nothing on this page is a number.</b> The estimator, the schema and this renderer exist; what does not exist yet is a run of the estimator on a public-use file. The state of the variable map below is live — it is read from the same file the ETL reads — and the command beneath it is the one that would produce the first artifact.
             </div>
-            {st.indexError && <div className="call warn"><b>Index unreadable.</b> {st.indexError} — expected <code>{INDEX_PATH}</code> containing <code>{"{ \"artifacts\": [] }"}</code>.</div>}
+            {st.indexError && <div className="call warn"><b>Index unreadable.</b> {st.indexError} — expected <code>{indexPath}</code> containing <code>{"{ \"artifacts\": [] }"}</code>.</div>}
             {st.schemaError && <div className="call warn"><b>Schema unreadable.</b> {st.schemaError} — no artifact can be validated, so none would be rendered even if listed.</div>}
 
-            <div className="chdr" style={{marginTop:14}}><Terminal size={15} color="var(--petrol)" /><div><div className="ce">Variable map</div><div className="ct">{st.map ? `${st.map._meta?.dataset || "?"} ${st.map._meta?.cycle || ""} · ${st.map._meta?.mapFile || MAP_PATH} v${mapVersion || "?"}` : "not loaded"}</div></div></div>
+            <div className="chdr" style={{marginTop:14}}><Terminal size={15} color="var(--petrol)" /><div><div className="ce">Variable map</div><div className="ct">{st.map ? `${st.map._meta?.dataset || "?"} ${st.map._meta?.cycle || ""} · ${st.map._meta?.mapFile || mapPath} v${mapVersion || "?"}` : "not loaded"}</div></div></div>
             {st.mapError && <div className="call warn">{st.mapError}</div>}
             {st.map && (
               <>
@@ -258,9 +281,9 @@ export default function MasquePopulation() {
           </span></div>
         </div>
 
-        <p className="foot">PROTOTYPE · not for clinical use · screening-level, not diagnosed prevalence · this page performs no arithmetic<br/>app {APP_VERSION}{mapVersion ? ` · map ${mapVersion}` : ""}{valid.length ? ` · ${valid.length} artifact${valid.length === 1 ? "" : "s"} rendered` : " · no artifact rendered"}</p>
+        {!embedded && <p className="foot">PROTOTYPE · not for clinical use · screening-level, not diagnosed prevalence · this page performs no arithmetic<br/>app {APP_VERSION}{mapVersion ? ` · map ${mapVersion}` : ""}{valid.length ? ` · ${valid.length} artifact${valid.length === 1 ? "" : "s"} rendered` : " · no artifact rendered"}</p>}
       </div>
-    </div>
+    </div></div>
   );
 }
 

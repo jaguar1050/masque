@@ -70,6 +70,10 @@ export default [
     build: (ctx) => { const r = ctx.rubric(); r.id = "example-other"; r.label = ctx.root.label.toUpperCase(); return { rubric: r, loaded: [ctx.root] }; },
   },
   {
+    code: "V8", sev: "E", path: "/label", what: "label of a built-in disguised with invisible characters and no-break spaces",
+    build: (ctx) => { const r = ctx.rubric(); r.id = "example-other"; r.label = ctx.root.label.replace(/ /g, " ") + "​"; return { rubric: r, loaded: [ctx.root] }; },
+  },
+  {
     code: "V8", sev: "E", path: "/id", what: "id with a built-in id as prefix",
     build: (ctx) => { const r = ctx.rubric(); r.id = `${ctx.root.id}-copy`; r.label = "Example copy"; return { rubric: r, loaded: [ctx.root] }; },
   },

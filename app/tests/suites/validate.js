@@ -241,6 +241,30 @@ export async function core(deps) {
     { const r = deepCopyJson(okDerived); r.logicBinding = { moduleId: root.logic.moduleId, logicSha256: "e".repeat(64) }; await rowIs("logic-binding-changed", r, "rederive", 4); }
     { const r = ctx.rubric(); r.id = "example-kin"; r.label = "Example kin"; delete r.logicBinding; r.logicBinding = "generic"; await rowIs("kin-name", r, "rederive", 5); }
     { const r = ctx.rubric(); r.id = "example-kin"; r.label = "Example kin"; r.name = "Example other name"; r.fhir.questionnaireName = "ExampleOther"; r.fhir.questionnaireTitle = "Example other title"; r.fhir.publisher = "Example other publisher"; r.cds.title = "Example other CDS"; r.cds.source.label = "Example other source"; await rowIs("kin-logic", r, "rederive", 5); }
+    // Kin values disguised with invisible characters, no-break spaces, punctuation, case or
+    // look-alike letters are still kin (kinKey); every other identity field differs.
+    {
+      const disguise = (r, f) => {
+        r.id = "example-kin"; r.label = "Example kin"; r.logicBinding = "generic";
+        r.name = f(r.name); r.fhir.questionnaireTitle = f(r.fhir.questionnaireTitle); r.fhir.publisher = f(r.fhir.publisher);
+        r.fhir.questionnaireName = r.fhir.questionnaireName + "_"; r.cds.title = f(r.cds.title); r.cds.source.label = f(r.cds.source.label);
+        return r;
+      };
+      const variants = {
+        "zero-width": (s) => s + "​",
+        "nbsp": (s) => s.replace(/ /g, " ") + " ",
+        "case-punct": (s) => ` ${s.toUpperCase()}.`,
+        "lookalike": (s) => s.replace(/a/g, "а").replace(/e/g, "е").replace(/o/g, "о"),
+        "fullwidth": (s) => s.replace(/[!-~]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) + 0xFEE0)),
+      };
+      for (const [name, f] of Object.entries(variants)) {
+        const r = disguise(ctx.rubric(), f);
+        const c = await rowIs(`kin-disguised/${name}`, r, "rederive", 5);
+        check(c.root === root && /name/.test(c.reasons.join(" ")), `/lineage/kin-disguised/${name}/reason`, {}, "kin of the built-in by name", c.reasons);
+      }
+      check(lineage.kinKey("A​ b -C") === "abc" && lineage.kinKey(null) === "" && lineage.kinKey("​ ._") === "",
+        "/lineage/kinKey", {}, "invisible, spacing and punctuation dropped; empty for none", [lineage.kinKey("A​ b -C"), lineage.kinKey("​ ._")]);
+    }
     // A plain upload R (unrelated to the built-in), then a derivation of R.
     const unrelated = () => {
       const r = ctx.rubric();

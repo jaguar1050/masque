@@ -28,6 +28,6 @@ rendered wrongly. Edit the ETL or the map, never the numbers.
 
 - Row-level survey data. Public-use files are downloaded by whoever runs the ETL and are
   identified in the artifact by name and SHA-256 only.
-- Clinic cohort rows. Those are uploaded into the research panel on the screener and
-  scribe pages and never leave the browser.
+- Clinic cohort rows. Those are uploaded into the research panel in the Research tab of
+  screenAIr (`app/screenair.html`) and never leave the browser.
 - Anything synthetic. The test fixture lives under `app/tests/fixtures/` and is not deployed.
