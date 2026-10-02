@@ -115,6 +115,19 @@ export default function ScreenAIr({ env }) {
   const tabRefs = useRef({});
   const activeRef = useRef(null);
   activeRef.current = activeKey;
+  // The sticky header's height, as --sa-sticky-top for sticky content inside a panel (the
+  // Rubric Editor's section nav and side panel), so it sticks below the header, not under it.
+  const headerRef = useRef(null);
+  const [stickyTop, setStickyTop] = useState(null);
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el || typeof ResizeObserver !== "function") return undefined;
+    const measure = () => setStickyTop(Math.ceil(el.getBoundingClientRect().height) + 8);
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    measure();
+    return () => ro.disconnect();
+  }, []);
 
   const entry = useMemo(() => entries.find((e) => e.key === activeKey) || null, [entries, activeKey]);
   const module = isUsable(entry) ? entry.module : null;
@@ -463,10 +476,10 @@ export default function ScreenAIr({ env }) {
   const restoreShown = clinician && phase.status === "ready" && savedList.length > 0 && !restoreDismissed;
 
   return (
-    <div className="sa-shell" data-tab={tab} data-mode={mode} data-milestone="M3">
+    <div className="sa-shell" data-tab={tab} data-mode={mode} data-milestone="M3" style={stickyTop ? { "--sa-sticky-top": `${stickyTop}px` } : undefined}>
       <style>{SHELL_CSS}</style>
 
-      <header className="sa-top">
+      <header className="sa-top" ref={headerRef}>
         <div className="sa-top-in">
           <div className="sa-brand">
             <span className="sa-mark" aria-hidden="true"><Stethoscope size={16} /></span>

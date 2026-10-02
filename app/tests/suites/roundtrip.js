@@ -19,7 +19,10 @@
 //                 root record copied onto unrelated content is never a verified derivation
 //   module-js     a self-contained .js module (uploaded with consent) and a derivation of it:
 //                 the module file is exported once as <id>.logic.js, no sibling rubric.json,
-//                 and the zip loads again with no blocking error and identical outputs
+//                 and the zip loads again with no blocking error and identical outputs; the
+//                 root loads from its own folder (the copy in the derivation's folder only
+//                 supplies logic), the derivation stays derived-from-upload (row 6) through a
+//                 second export and upload, and downloaded alone it brings its root with it
 // The upload path is registry.classifyFiles + prepareUpload (WP12-M3). While those are WP12
 // stubs, the suite runs the same §3.9 steps itself (unzip → pair rubric and logic → built-in
 // logic recognised by SHA-256, never run → classifyLineage → bindModule → validateModule) so
@@ -357,6 +360,45 @@ export default {
           }
           sweeps += n;
           c.check(mism === 0, `/module-js/reload/${orig.id}/outputs`, firstS, "identical outputs", `${mism}/${n} differ`);
+        }
+        // The derivation's folder carries its root's module file as <derived-id>.logic.js. That
+        // copy only supplies logic: the root loads from its own folder, the derivation binds to
+        // the copy in its folder, and its lineage still names the root (row 6).
+        const zipName = "screenair-modules.zip";
+        const rootR = back2.find((x) => x.entry && x.entry.module.id === MM.id);
+        const derR = back2.find((x) => x.entry && x.entry.module.id === D4.module.id);
+        c.check(!!rootR && rootR.entry.sourceFileNames.length === 1 && rootR.entry.sourceFileNames[0] === `${zipName} › ${MM.id}/${MM.id}.logic.js`, "/module-js/reload/root-from-own-folder", null, `${MM.id}/${MM.id}.logic.js`, rootR && rootR.entry.sourceFileNames);
+        c.check(!!rootR && rootR.entry.classification.kind === "uploaded", "/module-js/reload/root-kind", null, "uploaded", rootR && rootR.entry.classification.kind);
+        c.check(!!derR && derR.entry.classification.kind === "derived-from-upload" && derR.entry.classification.row === 6 && derR.entry.classification.root && derR.entry.classification.root.id === MM.id,
+          "/module-js/reload/derived-lineage", null, ["derived-from-upload", 6, MM.id], derR && [derR.entry.classification.kind, derR.entry.classification.row, derR.entry.classification.root && derR.entry.classification.root.id]);
+        c.check(!!derR && derR.entry.sourceFileNames.includes(`${zipName} › ${D4.module.id}/${D4.module.id}.logic.js`), "/module-js/reload/derived-binds-own-copy", null, "its own folder's logic copy", derR && derR.entry.sourceFileNames);
+        c.check(!back2.some((x) => x.skipped && x.file === `${zipName} › ${MM.id}/${MM.id}.logic.js`), "/module-js/reload/root-file-not-skipped", null, "the root's own file is the one loaded", back2.filter((x) => x.skipped).map((x) => [x.file, x.skipped]));
+        // Exported again from the reloaded entries: the same layout, and it loads again the same way.
+        {
+          const ents = [MM.id, D4.module.id].map((id) => back2.find((x) => x.entry && x.entry.module.id === id)).filter(Boolean).map((x) => x.entry);
+          const fr = await exportAll.buildExportFiles([builtinA, ...ents], { appVersion: "0.4.0", now: NOW, fetchBytes });
+          const frNames = fr.map((f) => f.name);
+          const mf2 = JSON.parse(dec(fr.find((f) => f.name === "manifest.json").bytes));
+          const sc = (id) => (mf2.modules.find((x) => x.id === id) || {}).selfContained === true;
+          c.check(sc(MM.id) && !sc(D4.module.id) && frNames.includes(`${D4.module.id}/${D4.module.id}.rubric.json`) && !frNames.includes(`${MM.id}/${MM.id}.rubric.json`),
+            "/module-js/reexport/layout", null, "module self-contained, derivation rubric + logic copy", mf2.modules.map((x) => [x.id, !!x.selfContained]));
+          const back3 = await up([new File([zip.zipStore(fr)], zipName, { type: "application/zip" })], await registry.loadBuiltins({ env: h.env }));
+          const d3 = back3.find((x) => x.entry && x.entry.module.id === D4.module.id);
+          c.check(!back3.some((r) => !r.entry && !r.skipped && r.errors.length) && !!d3 && d3.entry.validation.ok && d3.entry.module.hashes.contentHash === D4.module.hashes.contentHash && d3.entry.classification.kind === "derived-from-upload" && d3.entry.classification.root.id === MM.id,
+            "/module-js/reexport/reload", null, "loads again, derived-from-upload", back3.map((x) => [x.file, x.entry && x.entry.classification.kind, x.skipped, x.errors]));
+        }
+        // The derivation downloaded alone (Download this module): its folder's copy of the root's
+        // module file is the only one, so the root loads from it and the lineage still verifies.
+        {
+          const za = await exportAll.buildExportZip([D4.entry], { appVersion: "0.4.0", now: NOW, fetchBytes, single: true });
+          const backA = await up([new File([za.bytes], za.name, { type: "application/zip" })], await registry.loadBuiltins({ env: h.env }));
+          const dA = backA.find((x) => x.entry && x.entry.module.id === D4.module.id);
+          const rA = backA.find((x) => x.entry && x.entry.module.id === MM.id);
+          c.check(!backA.some((r) => !r.entry && !r.skipped && r.errors.length) && !!dA && !!rA, "/module-js/alone/loads", null, "the derivation and its root load", backA.map((x) => [x.file, x.entry && x.entry.module.id, x.skipped, x.errors]));
+          if (dA) {
+            c.check(dA.entry.validation.ok && canon(dA.entry.module.rubric) === canon(D4.module.rubric) && dA.entry.module.hashes.logicSha256 === MM.hashes.logicSha256, "/module-js/alone/same", null, "same rubric and logic", dA.entry.validation.errors.slice(0, 3));
+            c.check(dA.entry.classification.kind === "derived-from-upload" && dA.entry.classification.root && dA.entry.classification.root.id === MM.id, "/module-js/alone/lineage", null, ["derived-from-upload", MM.id], [dA.entry.classification.kind, dA.entry.classification.root && dA.entry.classification.root.id]);
+          }
         }
       }
     } else c.note("self-contained module round trip: skipped while registry.prepareUpload is a WP12-M3 stub");

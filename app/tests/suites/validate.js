@@ -169,6 +169,15 @@ export async function core(deps) {
   }
   for (const code of CODES) check(covered.has(code), `/coverage/${code}`, { code }, "≥ 1 passing mutation", "none");
 
+  // V60's module-phrase half matches only whole module phrases: the bare band words and the
+  // bare word "index" (ordinary patient words) and a partial indexName stay clean.
+  {
+    const r = ctx.rubric();
+    r.locales.en.ui.sub = "Example high-pitched, low or moderate sound; an example of an index finger; examples index.";
+    const rep = await runCase({ rubric: r });
+    check(!rep.errors.some(e => e.code === "V60"), "/v60/bare-words", { sub: r.locales.en.ui.sub }, "no V60", summarise(rep));
+  }
+
   // ------------------------------------------------------------- the shape fixture(s)
   try {
     for (const { name, module, validation } of await deps.loadShape()) {

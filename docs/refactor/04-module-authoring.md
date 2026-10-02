@@ -50,8 +50,10 @@ machine can check.
   by the shell on every surface. Putting one in a module is error V38.
 - **The Patient Companion shows no score, band, probability or research capture.** Patient
   wording may not contain "score", "likelihood", "probability", "puntuación"/"puntaje" or a
-  "number / number" pattern (V60, `OMISSION_PATTERNS`), and may not repeat a red flag's clinician
-  `points` or `action` (V24).
+  "number / number" pattern (V60, `OMISSION_PATTERNS`), may not name the module's own
+  `copy.indexName` or a band label built from its `copy.screener.bandSuffix` (V60, matched as a
+  whole phrase, any case; the bare words "low", "moderate", "high" and "index" are not flagged),
+  and may not repeat a red flag's clinician `points` or `action` (V24).
 - **Absent is not negative.** An unanswered item is never scored as "no". Every scale needs an
   option with `f === 0` (V13) so that "none" is something a person says, not a default.
 - **Gate, don't warn.** Red flags, the coverage gate, the sign gate, the referral gate and the
@@ -658,7 +660,7 @@ feedback. Each code is exercised by at least one mutated fixture in `app/tests/f
 | V57 | E | The logic source imports, re-exports or dynamically imports. |
 | V58 | E | A file exceeds `LIMITS` or is not valid UTF-8. |
 | V59 | W | The logic source mentions page or network APIs (`window`, `document`, `fetch`, `localStorage`, `eval`, …); listed in the consent dialog. A signal for the reviewer, not a sandbox. |
-| V60 | E | A patient-facing module string (or a summary sentence produced during the smoke run) matches an omission pattern. |
+| V60 | E | A patient-facing module string (or a summary sentence produced during the smoke run) matches an omission pattern, or names the module's own `copy.indexName`, a full band label ("<band> likelihood <bandSuffix>"), a multi-word `copy.screener.bandSuffix` or `copy.note.likelihoodOf` (whole phrase, case-insensitive). |
 
 The built-in MASQUE module validates with zero errors and the expected warnings (V12 for
 `n_allo`, which has no short label; V33 for the Spanish strings that fall back to English).

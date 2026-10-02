@@ -58,8 +58,13 @@ export const SHELL_CSS = `
 .sa-shell .sa-print-frame > tbody > tr > td{display:block;width:100%;margin:0;padding:0;border:0}
 .sa-shell .sa-print-frame{border-collapse:collapse}
 .sa-shell .sa-print-frame > thead{display:none}
-/* a panel wider than the viewport scrolls inside itself, never the page (§5.10, 375 px) */
-.sa-shell .sa-panel{min-width:0;max-width:100%;overflow-x:auto}
+/* a panel never widens the page (§5.10, 375 px). overflow-x:clip, not auto: clip makes no
+   scroll container, so position:sticky inside a panel (the Rubric Editor's section nav and side
+   panel) sticks while the page scrolls. Wide content scrolls in its own wrapper (.sa-table-wrap,
+   the editor's .re-scroll, the population tables). */
+.sa-shell .sa-panel{min-width:0;max-width:100%;overflow-x:clip}
+/* the Rubric Editor: the centred column and side gutter of the other tabs */
+.sa-shell .sa-panel-editor .sa-editor{max-width:1080px;margin:0 auto;padding:16px 16px 64px}
 
 /* placeholder panel (loading, editor unavailable) */
 .sa-shell .sa-placeholder{max-width:720px;margin:28px auto;padding:0 16px}

@@ -155,4 +155,28 @@ export default [
     code: "V60", sev: "E", path: "/logic/locales/en/sum/clinNote", what: "a clinNote template whose output names a score",
     build: (ctx) => { const l = ctx.logic(); l.locales.en.sum.clinNote = (v) => `Example note, instrument v${v}, score 12/30.`; return { rubric: ctx.rubric(), logic: l }; },
   },
+  // V60, module-specific half: the module's own copy.indexName and band phrases (case-insensitive,
+  // whole phrase). The base's indexName is "Example index"; its bandSuffix is the engine default
+  // "on the {indexName}". The bare band words and "index" alone are checked NOT to trip V60 in
+  // the validate suite (they are ordinary words in patient text).
+  {
+    code: "V60", sev: "E", path: "/locales/en/ui/sub", what: "a patient subtitle naming the module's copy.indexName (other case)",
+    build: (ctx) => { const r = ctx.rubric(); r.locales.en.ui.sub = "Example patient subtitle on the EXAMPLE  index."; return { rubric: r }; },
+  },
+  {
+    code: "V60", sev: "E", path: "/locales/es/items/p_two/q", what: "a Spanish patient question naming a custom copy.indexName",
+    build: (ctx) => { const r = ctx.rubric(); r.copy.indexName = "Example pattern index"; r.locales.es.items.p_two.q = "¿Pregunta de ejemplo sobre el example pattern index?"; return { rubric: r }; },
+  },
+  {
+    code: "V60", sev: "E", path: "/locales/en/ui/forYouIf/1", what: "a patient line repeating the module's band interpretation (copy.screener.bandSuffix)",
+    build: (ctx) => { const r = ctx.rubric(); r.copy.screener.bandSuffix = "of an example masked pattern"; r.locales.en.ui.forYouIf[1] = "Example reason: signs of an example masked pattern."; return { rubric: r }; },
+  },
+  {
+    code: "V60", sev: "E", path: "/logic/locales/en/sum/askFour", what: "a sum string naming the module's copy.indexName",
+    build: (ctx) => { const l = ctx.logic(); l.locales.en.sum.askFour = "Example question about my example index."; return { rubric: ctx.rubric(), logic: l }; },
+  },
+  {
+    code: "V60", sev: "E", path: "/logic/patientSummary/said/0/text", what: "a summary sentence (smoke output) naming the module's copy.indexName",
+    build: (ctx) => { const l = ctx.logic(); l.patientSummary.said[0].text = () => "Example summary sentence about the Example index."; return { rubric: ctx.rubric(), logic: l }; },
+  },
 ];

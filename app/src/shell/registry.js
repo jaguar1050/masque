@@ -592,6 +592,7 @@ export async function prepareUpload(classified, { entries = [], consent = false,
   });
   const units = [];
   const logicFiles = [];
+  const moduleFiles = [];
   const builtinNames = new Set(loadedLogics(entries).filter(l => l.builtin).map(l => l.moduleId));
   const builtinShaById = new Map(loadedLogics(entries).filter(l => l.builtin).map(l => [l.moduleId, l.sha256]));
 
@@ -647,18 +648,41 @@ export async function prepareUpload(classified, { entries = [], consent = false,
       let rubricText;
       try { rubricText = serializeRubric(def.rubric); }
       catch (err) { results.push(fileResult(c, `${file}: the module's rubric is not plain JSON (${msgOf(err)})`)); continue; }
-      units.push({
+      // Its logic can also bind a rubric of the same upload (a derivation exported beside it).
+      const pooled = typeof lg.moduleId === "string"
+        ? { moduleId: lg.moduleId, sha256: c.sha256, logic: lg, text: c.text, name: file, file: c.name, bytes: c.bytes, inspect: c.inspect, uploaded: true, used: false }
+        : null;
+      if (pooled) ctx.pool.push(pooled);
+      const unit = {
         rubric: def.rubric, rubricText, rubricBytes: null, rubricSha256: await sha256Hex(rubricText), fileName: c.name, fileNames: [c.name],
         warnings: c.warnings, upload: true,
         logic: { logic: lg, text: c.text, sha256: c.sha256, name: file, bytes: c.bytes, inspect: c.inspect, uploaded: true },
-      });
-      // Its logic can also bind a rubric of the same upload (a derivation exported beside it).
-      if (typeof lg.moduleId === "string") {
-        ctx.pool.push({ moduleId: lg.moduleId, sha256: c.sha256, logic: lg, text: c.text, name: file, file: c.name, bytes: c.bytes, inspect: c.inspect, uploaded: true, used: false });
-      }
+      };
+      units.push(unit);
+      moduleFiles.push({ c, pooled, unit, rubricId: typeof def.rubric.id === "string" ? def.rubric.id : null });
       continue;
     }
     results.push(fileResult(c, fill(UPLOAD_MESSAGES.notLogic, { file })));
+  }
+
+  // One unit per self-contained module file, by SHA-256. A derivation of a self-contained
+  // module is exported with its root's module file as <derived-id>/<derived-id>.logic.js
+  // (exportAll.js), so a Download-all zip can hold the same file twice. The copy in the folder
+  // named after its own rubric id is the module; any other identical copy only supplies logic
+  // (the derivation binds to the copy in its own folder). Without the root's own folder (the
+  // derivation downloaded alone) the first copy is the module, so the root still loads.
+  const chosenBySha = new Map();
+  const folderOf = (c) => (c.path && c.path.includes("/") ? c.path.split("/")[0] : null);
+  for (const mf of moduleFiles) {
+    const prev = chosenBySha.get(mf.c.sha256);
+    const own = !!mf.rubricId && folderOf(mf.c) === mf.rubricId;
+    if (!prev || (own && !(prev.rubricId && folderOf(prev.c) === prev.rubricId))) chosenBySha.set(mf.c.sha256, mf);
+  }
+  for (const mf of moduleFiles) {
+    const chosen = chosenBySha.get(mf.c.sha256);
+    if (chosen === mf) continue;
+    units.splice(units.indexOf(mf.unit), 1);
+    logicFiles.push({ c: mf.c, pooled: mf.pooled, copyOf: chosen.c.name });
   }
 
   ctx.sameUpload = units;
@@ -672,8 +696,10 @@ export async function prepareUpload(classified, { entries = [], consent = false,
     }
     results.push(r);
   }
-  for (const { c, pooled } of logicFiles) {
+  for (const { c, pooled, copyOf } of logicFiles) {
     if (pooled && pooled.used) continue;
+    // An identical copy of a module file that no rubric bound to: nothing to load twice.
+    if (copyOf) { results.push({ ...fileResult(c, null), errors: [], skipped: `the same file as ${copyOf}` }); continue; }
     // A built-in's own logic that came with a skipped duplicate is not an error.
     if (c.kind === "builtin-logic" && results.some(r => r.skipped)) continue;
     results.push(fileResult(c, UPLOAD_MESSAGES.logicAlone));

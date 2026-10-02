@@ -17,7 +17,7 @@ import {
   COPY_SLOTS, CONTRACT_VERSION, FORMAT, GLOBAL_PLACEHOLDERS, IDENTITY_TEMPLATE_FIELDS, LOGIC_PATHS,
   RUBRIC_KEYS, SUPPORTED_LOCALES,
 } from "./contract.js";
-import { HIGHEST_BAND, LOWEST_BAND, PROBE_KIND, TIERS } from "./vocab.js";
+import { BANDS, HIGHEST_BAND, LOWEST_BAND, PROBE_KIND, TIERS } from "./vocab.js";
 import { CAVEATS, LIMITS, OMISSION_PATTERNS } from "./policy.js";
 import { canonicalJson } from "./hash.js";
 import { bandFor, computeScore, negativeValueOf, scaleMaxOf } from "./scoring.js";
@@ -1427,6 +1427,60 @@ function omissionHit(s) {
   return typeof s === "string" && OMISSION_PATTERNS.some(re => re.test(s));
 }
 
+const V60_MSG = "patient-facing text may not name a score, likelihood or probability";
+
+/**
+ * V60, module-specific half: the clinician-facing phrases this module itself defines for its
+ * index and bands, which OMISSION_PATTERNS cannot know. Matched case-insensitively as whole
+ * phrases (no letter or digit directly before or after; runs of whitespace match any
+ * whitespace). The phrases are, from the bound (rendered) copy:
+ *   - copy.indexName (the default is "{name} index");
+ *   - each full band label the Screener pill renders, "<band> likelihood <screener.bandSuffix>";
+ *   - copy.screener.bandSuffix on its own (the module's interpretation of a band, the phrase
+ *     after "<band> likelihood") and copy.note.likelihoodOf, when multi-word.
+ * The bare band words (vocab BANDS: "low", "moderate", "high") are NOT matched on their own:
+ * they are ordinary words in patient questions and options ("high-pitched", "a low hum"), so a
+ * band is recognised only inside its full phrase. Likewise a single-word bandSuffix counts only
+ * inside its full band label, and "index" alone is not flagged — only the module's indexName.
+ * Returns (s) → the matched phrase, or null.
+ */
+function modulePhraseMatcher(module) {
+  const copy = isObj(module.copy) ? module.copy : {};
+  const scr = isObj(copy.screener) ? copy.screener : {};
+  const note = isObj(copy.note) ? copy.note : {};
+  const clean = (s) => (typeof s === "string" ? s.replace(/\s+/g, " ").trim() : "");
+  const words = (s) => s.split(" ").filter(w => /[\p{L}\p{N}]/u.test(w)).length;
+  const suffix = clean(scr.bandSuffix);
+  const phrases = new Set();
+  const add = (s, minWords) => { s = clean(s); if (s && words(s) >= minWords) phrases.add(s); };
+  add(copy.indexName, 1);
+  for (const b of BANDS) add(`${b} likelihood ${suffix}`, 2);
+  add(suffix, 2);
+  add(note.likelihoodOf, 2);
+  const reEsc = (w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const res = [...phrases].map(p => [p, new RegExp(
+    "(?<![\\p{L}\\p{N}])" + p.split(" ").map(reEsc).join("\\s+") + "(?![\\p{L}\\p{N}])", "iu")]);
+  return (s) => {
+    if (typeof s !== "string") return null;
+    for (const [p, re] of res) if (re.test(s)) return p;
+    return null;
+  };
+}
+
+/** A V60 reason reworded for a closure's output ("produces …"). */
+function smokeV60(why) {
+  return why === V60_MSG
+    ? "patient text that names a score, likelihood or probability"
+    : why.replace(/^patient-facing text may not name/, "patient text that names");
+}
+
+/** The V60 reason for one patient-facing string, or null: OMISSION_PATTERNS, then the module's own phrases. */
+function v60Reason(s, phraseHit) {
+  if (omissionHit(s)) return V60_MSG;
+  const p = phraseHit ? phraseHit(s) : null;
+  return p ? `patient-facing text may not name the module's index or band label ("${p}")` : null;
+}
+
 function runSmoke(module, c, rec) {
   const logic = module.logic;
   const reported = new Set();
@@ -1437,6 +1491,7 @@ function runSmoke(module, c, rec) {
     c.E(code, path, msg);
   };
   let states = 0;
+  const phraseHit = modulePhraseMatcher(module);
 
   /** Call a closure twice (V48), check its result type (V46). Returns {ok, value}. */
   const call = (closureId, path, fn, args, check) => {
@@ -1678,7 +1733,8 @@ function runSmoke(module, c, rec) {
           }
           if (!fires) continue;
           const r = call(rc.text[0], rc.text[1], rc.text[2], [s], strCheck);
-          if (r.ok && omissionHit(r.value)) once("V60", rc.text[1], `produces patient text that names a score, likelihood or probability: "${r.value.slice(0, 80)}"`);
+          const why = r.ok ? v60Reason(r.value, phraseHit) : null;
+          if (why) once("V60", rc.text[1], `produces ${smokeV60(why)}: "${r.value.slice(0, 80)}"`);
         }
       }
       // sum.gap is called by the engine with the marker booleans (gapRule.markers order).
@@ -1694,7 +1750,8 @@ function runSmoke(module, c, rec) {
             const bools = markers.map((_, k) => k < n && !!(mask & (1 << k)));
             const r = call("sum.gap", gp, gap, bools, strCheck);
             if (!r.ok) break;
-            if (omissionHit(r.value)) { once("V60", gp, `produces patient text that names a score, likelihood or probability: "${r.value.slice(0, 80)}"`); break; }
+            const why = v60Reason(r.value, phraseHit);
+            if (why) { once("V60", gp, `produces ${smokeV60(why)}: "${r.value.slice(0, 80)}"`); break; }
           }
         }
       }
@@ -1719,7 +1776,8 @@ function runSmoke(module, c, rec) {
     if (typeof fn !== "function") continue;
     const p = `/logic/locales/${esc(loc)}/sum/clinNote`;
     const r = call("sum.clinNote", p, fn, [module.instrumentVersion], strCheck);
-    if (r.ok && omissionHit(r.value)) once("V60", p, `produces patient text that names a score, likelihood or probability: "${r.value.slice(0, 80)}"`);
+    const why = r.ok ? v60Reason(r.value, phraseHit) : null;
+    if (why) once("V60", p, `produces ${smokeV60(why)}: "${r.value.slice(0, 80)}"`);
   }
   return states;
 }
@@ -1773,8 +1831,11 @@ function checkV60Static(module, c) {
   // placeholder), each item's patientClin or, without one, its text (the "For my clinician"
   // block and the exports), and the label of each domain a patient domain step falls back to
   // when English has no title for that step (§3.5).
+  // Each is checked against OMISSION_PATTERNS and the module's own index and band phrases
+  // (modulePhraseMatcher).
   const r = module.rubric;
-  const v60 = (s, p) => { if (omissionHit(s)) c.E("V60", p, "patient-facing text may not name a score, likelihood or probability"); };
+  const phraseHit = modulePhraseMatcher(module);
+  const v60 = (s, p) => { const why = v60Reason(s, phraseHit); if (why) c.E("V60", p, why); };
   v60(r.name, "/name");
   arr(r.domains).forEach((d, i) => {
     if (!isObj(d)) return;
@@ -1803,16 +1864,14 @@ function checkV60Static(module, c) {
       if (!isObj(L)) continue;
       for (const k of Object.keys(L)) {
         if (k === "reviewed" || k === "editedLocally" || k === "stale") continue;
-        walkStrings(L[k], ptr("locales", loc, k), (s, p) => { if (omissionHit(s)) c.E("V60", p, "patient-facing text may not name a score, likelihood or probability"); });
+        walkStrings(L[k], ptr("locales", loc, k), v60);
       }
     }
   }
   const ll = module.logic.locales;
   if (isObj(ll)) {
     for (const loc of Object.keys(ll)) {
-      walkStrings(isObj(ll[loc]) ? ll[loc].sum : undefined, `/logic/locales/${esc(loc)}/sum`, (s, p) => {
-        if (omissionHit(s)) c.E("V60", p, "patient-facing text may not name a score, likelihood or probability");
-      });
+      walkStrings(isObj(ll[loc]) ? ll[loc].sum : undefined, `/logic/locales/${esc(loc)}/sum`, v60);
     }
   }
 }
