@@ -12,7 +12,8 @@
 // Also: createExtractor(lexicon) agrees with extract and reports the lexicon version;
 // cueBefore/negatedNear agree with the baseline negatedNear; faersToUtterances agrees with the
 // baseline on FAERS-shaped records (array and {results} forms, missing ids, records without
-// reactions or narrative). No difference is allowed: extraction has no AD (§8.4).
+// reactions or narrative). Also: a lowercase form of a different length ("İ") does not shift
+// the hit positions or the cue window. No difference is allowed: extraction has no AD (§8.4).
 import { collector, guarded, loadMasque, need, validationNote } from "../harness/kit.js";
 import { pick, sizes } from "../harness/matrix.js";
 
@@ -160,6 +161,20 @@ export default {
       try { want = ext.faersToUtterances(f.input); } catch (err) { want = `throws: ${err.message}`; }
       try { got = extraction.faersToUtterances(f.input); } catch (err) { got = `throws: ${err.message}`; }
       c.diff(want, got, { at: `/faersToUtterances/${f.name}`, input: f.input, keyOrder: true });
+    }
+
+    // Lowercasing that changes the length ("İ" → "i̇") must not shift the cue window: hit
+    // positions and the window are measured in the original text's index space.
+    {
+      const tiny = { version: "t", negation: { window: 12, cues: ["no "] }, thirdParty: { window: 10, cues: [] }, historical: { window: 10, cues: [] },
+        bool: [{ id: "spin", ph: ["spinning"] }], ctx: [], scale: [], multi: [], redFlags: {} };
+      for (const text of ["no Istanbul spinning", "no İstanbul spinning", "no İİ spinning"]) {
+        const got = extraction.extract(tiny, text).map((x) => `${x.id}=${x.value}@${x.cueIndex}`);
+        const want = [`spin=no@${text.indexOf("spinning")}`];
+        c.diff(want, got, { at: "/extract/@unicodeLowercase", input: { text } });
+      }
+      c.check(extraction.allHits("İİ spinning SPINNING", ["spinning"]).join(",") === "3,12", "/allHits/@unicodeLowercase", { text: "İİ spinning SPINNING" }, "3,12",
+        extraction.allHits("İİ spinning SPINNING", ["spinning"]).join(","));
     }
     return c.result();
   }),

@@ -262,6 +262,14 @@ export function buildDataDictionary(module, { appVersion = APP_VERSION } = {}) {
 const SURFACES = ["screener", "scribe"];
 
 /**
+ * The QuestionnaireResponse group answer for a domain's points (decision F13, AD14): FHIR
+ * valueInteger only for an integer; a fractional sum (a scale factor below 1) is valueDecimal.
+ */
+function domainPtsAnswer(pts) {
+  return Number.isInteger(pts) ? { valueInteger: pts } : { valueDecimal: pts };
+}
+
+/**
  * The transaction Bundle a screen writes back (design §4.7). Base: the baseline Scribe bundle
  * (Scb L1396-1458), with the surface switches kept verbatim from each baseline:
  *   screener — referralGate surface "screener" (no referral while a red flag is open); a
@@ -319,7 +327,7 @@ export function buildBundle(module, screen, { surface, now = new Date().toISOStr
   // answer element. Collapsing those into a zero renders absent data as negative data.
   entries.push({ resource: { resourceType: "QuestionnaireResponse", status: scorable ? "completed" : "in-progress",
     questionnaire: fhir.questionnaireUrl, subject, authored: now,
-    item: module.domains.map(d => ({ linkId: d.key, text: domains[d.key].label, answer: [{ valueInteger: domains[d.key].pts }],
+    item: module.domains.map(d => ({ linkId: d.key, text: domains[d.key].label, answer: [domainPtsAnswer(domains[d.key].pts)],
       item: d.items.map(it => {
         const v = normalizeAnswer(answers?.[it.id]);
         const node = { linkId: it.id, text: it.text };

@@ -78,7 +78,9 @@ export function rankSuggestions(module, { answers = {}, complaint = "", phenotyp
   const maxScored = info && Number.isInteger(info.maxScored) ? info.maxScored : 4;
   const maxTotal = info && Number.isInteger(info.maxTotal) ? info.maxTotal : maxScored;
 
-  const open = module.allItems.filter(it => a[it.id] === undefined && !sk[it.id] && (scorable || active.has(it.domain)));
+  // The pool widens while the screen is NOT scorable (design §4.2, decision F12). The baseline
+  // Scribe tests `scorable ||` (Scb L860), the inverse of its own comment; AD13.
+  const open = module.allItems.filter(it => a[it.id] === undefined && !sk[it.id] && (!scorable || active.has(it.domain)));
   open.sort((x, y) => {
     const xa = active.has(x.domain) ? 1 : 0, ya = active.has(y.domain) ? 1 : 0;
     if (xa !== ya) return ya - xa;

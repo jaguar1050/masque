@@ -164,19 +164,41 @@ function findEocd(view) {
   return -1;
 }
 
-async function inflateRaw(data, name) {
+/**
+ * Inflate one entry, streaming: the output is read chunk by chunk and the stream is cancelled
+ * as soon as it exceeds `limit` (the entry's declared uncompressed size), so a small entry that
+ * declares 10 bytes and inflates to gigabytes never gets past `limit` + one chunk in memory.
+ */
+async function inflateRaw(data, name, limit) {
   if (typeof DecompressionStream !== "function") {
     throw new ZipError("this zip is compressed and this browser cannot decompress it; re-download it from screenAIr");
   }
   let ds;
   try { ds = new DecompressionStream("deflate-raw"); }
   catch (_) { throw new ZipError("this zip is compressed and this browser cannot decompress it; re-download it from screenAIr"); }
+  const chunks = [];
+  let size = 0, over = false;
+  let reader;
   try {
-    const stream = new Blob([data]).stream().pipeThrough(ds);
-    return new Uint8Array(await new Response(stream).arrayBuffer());
+    reader = new Blob([data]).stream().pipeThrough(ds).getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.length;
+      if (size > limit) { over = true; break; }
+      chunks.push(value);
+    }
   } catch (err) {
     throw new ZipError(`"${name}" could not be decompressed (${err && err.message ? err.message : err})`);
   }
+  if (over) {
+    try { await reader.cancel(); } catch (_) { /* already errored or closed */ }
+    throw new ZipError(`zip entry "${name}" has the wrong size (it inflates to more than the ${limit} bytes it declares)`);
+  }
+  const out = new Uint8Array(size);
+  let o = 0;
+  for (const c of chunks) { out.set(c, o); o += c.length; }
+  return out;
 }
 
 /**
@@ -255,7 +277,7 @@ export async function unzip(bytes) {
     if (total > MAX_UNZIPPED) throw new ZipError(`the zip expands to more than ${MAX_UNZIPPED} bytes`);
     let data;
     if (method === 0) data = raw.slice();
-    else if (method === 8) data = await inflateRaw(raw, name);
+    else if (method === 8) data = await inflateRaw(raw, name, usize);  // usize ≤ the remaining budget (checked above)
     else throw new ZipError(`zip entry "${name}" uses compression method ${method}, which screenAIr cannot read`);
     if (data.length !== usize) throw new ZipError(`zip entry "${name}" has the wrong size (${data.length} ≠ ${usize})`);
     if (crc32(data) !== crc) throw new ZipError(`zip entry "${name}" failed its CRC-32 check (the file is damaged)`);

@@ -14,6 +14,17 @@ import { evaluateRules, renderTpl } from "./evaluate.js";
 import { computeScore } from "./scoring.js";
 
 const isObj = (x) => x !== null && typeof x === "object" && !Array.isArray(x);
+/** An own entry of a lookup table, never an inherited property ("toString", "__proto__"). */
+const ownEntry = (table, key) => (isObj(table) && typeof key === "string" && Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined);
+/**
+ * Whether `complaint` is one of the module's declared phenotype values (decision F11). The
+ * referral and the CDS index card key on the complaint; one nobody entered ("" included) or
+ * one the module does not declare is never resolved through the default.
+ */
+export function isDeclaredPhenotype(module, complaint) {
+  const values = module && module.phenotypes && Array.isArray(module.phenotypes.values) ? module.phenotypes.values : [];
+  return typeof complaint === "string" && complaint !== "" && values.some(v => isObj(v) && v.value === complaint);
+}
 const arr = (x) => (Array.isArray(x) ? x : []);
 
 function freeze(x) {
@@ -324,15 +335,17 @@ export function gapSignals(module, ctx) {
 }
 
 /**
- * The referral a settled screen proposes (§4.5): null when routingError is set or the module
- * has no referral table; otherwise byPhenotype[complaint] ?? default. Callers still apply
- * referralGate.
+ * The referral a settled screen proposes (§4.5): null when routingError is set, the module
+ * has no referral table, or the complaint is not a declared phenotype value ("" included,
+ * decision F11, AD15); otherwise the own entry byPhenotype[complaint] ?? default. Callers still
+ * apply referralGate.
  */
 export function referralFor(module, complaint, { routingError = null } = {}) {
   if (routingError) return null;
   const ref = module.phenotypes && module.phenotypes.referral;
   if (!ref) return null;
-  const hit = (isObj(ref.byPhenotype) && typeof complaint === "string" && ref.byPhenotype[complaint]) || ref.default;
+  if (!isDeclaredPhenotype(module, complaint)) return null;
+  const hit = ownEntry(ref.byPhenotype, complaint) || ref.default;
   return hit ? { specialty: hit.specialty, reason: hit.reason } : null;
 }
 
@@ -364,8 +377,11 @@ export function cdsPreview(module, state, { routingError = null, bandLabel = nul
   const err = routingError || state.phenotypeError || null;
   if (err || !state.scorable || state.band === LOWEST_BAND || !BANDS.includes(state.band)) return { safety: null, index: null };
   if (typeof preview.indexTitle !== "string" || typeof preview.indexBody !== "string") return { safety: null, index: null };
+  // No index card for a complaint nobody entered or the module does not declare (F11, AD15):
+  // the default term would name a phenotype the clinician never chose.
+  if (!isDeclaredPhenotype(module, state.complaint)) return { safety: null, index: null };
   const term = module.phenotypes && module.phenotypes.cdsTerm;
-  const cdsTerm = term ? ((isObj(term.byPhenotype) && term.byPhenotype[state.complaint]) || term.default) : null;
+  const cdsTerm = term ? (ownEntry(term.byPhenotype, state.complaint) || term.default) : null;
   if (typeof cdsTerm !== "string" || !cdsTerm) return { safety: null, index: null };
   return {
     safety: null,

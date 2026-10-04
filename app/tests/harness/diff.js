@@ -379,13 +379,93 @@ export const ALLOWED_DIFFERENCES = [
     },
     detector: () => true,
   },
+  {
+    id: "AD13",
+    ready: true,
+    owner: "rules (WP5)",
+    what: "Scribe suggestions: the pool widens to every unanswered item while the screen is NOT scorable (Scb L856-860 comment); the baseline code tests `scorable ||` (decision F12)",
+    // ctx.AD13 = {intended}: the baseline `suggestions` slice evaluated with the scorable flag
+    // inverted, i.e. the filter its own comment describes. The new list is accepted only when it
+    // equals that list exactly.
+    appliesTo: (path, ctx) => !!(ctx && ctx.AD13),
+    normalise(a, b, ctx) {
+      if (!Array.isArray(a) || !Array.isArray(b)) return [a, b];
+      return !same(a, b) && same(b, ctx.AD13.intended) ? [b, b] : [a, b];
+    },
+    // input = {baseline, intended}: the two filters disagree on this state
+    detector: (input) => !!(input && !same(input.baseline, input.intended)),
+  },
+  {
+    id: "AD14",
+    ready: true,
+    owner: "golden (WP4)",
+    what: "QuestionnaireResponse domain group answer: valueDecimal for fractional points (the baseline writes valueInteger with a non-integer value) (decision F13)",
+    // ctx.AD14 = {} (presence enables it). Only {valueInteger: x} → {valueDecimal: x} with the
+    // same non-integer x, at a QuestionnaireResponse group's answer.
+    appliesTo: (path, ctx) => !!(ctx && ctx.AD14) && /\/item\/\d+\/answer\/\d+$/.test(path),
+    normalise(a, b) {
+      if (!isObj(a) || !isObj(b)) return [a, b];
+      const ka = Object.keys(a), kb = Object.keys(b);
+      if (ka.length !== 1 || kb.length !== 1 || ka[0] !== "valueInteger" || kb[0] !== "valueDecimal") return [a, b];
+      const x = a.valueInteger, y = b.valueDecimal;
+      return typeof x === "number" && x === y && !Number.isInteger(y) ? [b, b] : [a, b];
+    },
+    // input = {domains: computeScore domains} — some domain's points are fractional
+    detector: (input) => !!(input && input.domains && Object.values(input.domains).some((d) => typeof d.pts === "number" && !Number.isInteger(d.pts))),
+  },
+  {
+    id: "AD15",
+    ready: true,
+    owner: "golden / rules (WP3, WP4)",
+    what: "no referral ServiceRequest and no CDS index card when the complaint is not a declared phenotype value (\"\" included); the baseline fell back to the default phenotype (decision F11)",
+    // ctx.AD15 = {complaint, declared: [phenotype values], indexSrc: the index card's src,
+    //            cardText?: the baseline index card's rendered text, cardShape?: its DOM shape
+    //            (the list of tag.class entries a rendered region reports)}.
+    // Applies only when the complaint is not declared. Exact forms: the bundle entry array
+    // without its one routine ServiceRequest; the CDS preview text "" where the baseline rendered
+    // the index card (never the safety card); referralFor's undefined where the baseline issued
+    // a referral; and, for a rendered region, the baseline text with `cardText` removed once and
+    // the baseline shape with the contiguous `cardShape` run removed once.
+    appliesTo: (path, ctx) => !!(ctx && ctx.AD15) && !(ctx.AD15.declared || []).includes(ctx.AD15.complaint),
+    normalise(a, b, ctx) {
+      const p = ctx.AD15;
+      const isRef = (e) => !!(e && e.resource && e.resource.resourceType === "ServiceRequest" && e.resource.priority === "routine");
+      if (Array.isArray(a) && Array.isArray(b) && a.every((x) => typeof x === "string") && b.every((x) => typeof x === "string")) {
+        const run = p.cardShape;
+        if (!Array.isArray(run) || !run.length || a.length !== b.length + run.length) return [a, b];
+        for (let i = 0; i + run.length <= a.length; i++) {
+          if (!same(a.slice(i, i + run.length), run)) continue;
+          const a2 = [...a.slice(0, i), ...a.slice(i + run.length)];
+          if (same(a2, b)) return [b, b];
+        }
+        return [a, b];
+      }
+      if (Array.isArray(a) && Array.isArray(b)) {
+        if (b.some(isRef) || a.filter(isRef).length !== 1 || a.length !== b.length + 1) return [a, b];
+        return [a.filter((e) => !isRef(e)), b];
+      }
+      if (typeof a === "string" && b === "") {
+        const src = p.indexSrc;
+        return typeof src === "string" && src && a.startsWith(src) ? [b, b] : [a, b];
+      }
+      if (typeof a === "string" && typeof b === "string" && typeof p.cardText === "string" && p.cardText && p.cardText.startsWith(p.indexSrc || "\u0000")) {
+        const i = a.indexOf(p.cardText);
+        return i >= 0 && a.slice(0, i) + a.slice(i + p.cardText.length) === b ? [b, b] : [a, b];
+      }
+      if (isObj(a) && b === undefined && Object.keys(a).length === 1 && typeof a.text === "string" && a.text.startsWith("Referral: ")) return [b, b];
+      return [a, b];
+    },
+    // input = {complaint, declared, baselineIssued}: the baseline issued a referral or an index
+    // card for a complaint that is not declared
+    detector: (input) => !!(input && input.baselineIssued && !(input.declared || []).includes(input.complaint)),
+  },
 ];
 
 const AD_BY_ID = new Map(ALLOWED_DIFFERENCES.map((d) => [d.id, d]));
 
 export function allowedDifference(id) {
   const d = AD_BY_ID.get(id);
-  if (!d) throw new Error(`unknown allowed difference "${id}" (design §8.4 lists AD1-AD12)`);
+  if (!d) throw new Error(`unknown allowed difference "${id}" (design §8.4 lists AD1-AD12; the orchestrator decisions F11-F13 add AD13-AD15)`);
   return d;
 }
 

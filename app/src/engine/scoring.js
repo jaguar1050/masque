@@ -5,7 +5,9 @@
 // order and the scale maximum injected from the bound module instead of module constants.
 // The arithmetic is two-sided: an unanswered item contributes its best case to the ceiling
 // and its worst case to the floor, and a band is issued only when the whole attainable range
-// lands in one band. An unanswered item is never scored as a denial; "unsure" (Patient
+// lands in one band. The range also covers the exact best- and worst-case completions (run
+// through the same rounding), so fractional contributions cannot let completing the open items
+// contradict a settled band. An unanswered item is never scored as a denial; "unsure" (Patient
 // Companion only) scores as unanswered.
 //
 // Pure: no React, no side effects. Apps call
@@ -77,32 +79,52 @@ export function computeScore(module, answers = {}) {
   const scaleMax = scaleMaxFor(module);
   const domains = {};
   let total = 0, posHead = 0, negHead = 0, answered = 0, count = 0;
+  // The best-case and worst-case completions, run through the same pipeline as `total`
+  // (item order, per-domain round to 0.1, sum, round, clamp): every open item at its
+  // itemBounds max (resp. min). Each step is non-decreasing, so these are the exact highest and
+  // lowest totals any completion can reach.
+  let totalHi = 0, totalLo = 0;
   const open = [];
   for (const d of domainsOf(module)) {
     const key = d.key;
-    let sum = 0, dOpen = 0;
+    let sum = 0, sumHi = 0, sumLo = 0, dOpen = 0;
     for (const it of d.items) {
       count++;
       const v = normalizeAnswer(src[it.id]);
       if (v === undefined) {
         const b = itemBounds(it);
-        posHead += b.max; negHead += -b.min; dOpen += Math.abs(it.w);
+        posHead += b.max; negHead += -b.min;
+        sumHi += b.max; sumLo += b.min;
+        // Attainable headroom (max − min), not |w|: a scale item whose top option is below
+        // f = 1 cannot move the index by its full weight.
+        dOpen += b.max - b.min;
         open.push({ ...it, domain: key, domainLabel: d.label });
       } else {
         answered++;
-        sum += scoreItem(it, v);
+        const p = scoreItem(it, v);
+        sum += p; sumHi += p; sumLo += p;
       }
     }
     sum = Math.round(sum * 10) / 10;
+    dOpen = Math.round(dOpen * 10) / 10;
     domains[key] = {
       pts: sum, max: d.max, pct: Math.round((sum / d.max) * 100),
       label: d.label, openPts: dOpen, negative: !!d.negative,
     };
     total += sum;
+    totalHi += Math.round(sumHi * 10) / 10;
+    totalLo += Math.round(sumLo * 10) / 10;
   }
-  total = Math.max(0, Math.min(scaleMax, Math.round(total)));
-  const ceiling = Math.max(total, Math.min(scaleMax, Math.round(total + posHead)));
-  const floor   = Math.min(total, Math.max(0,        Math.round(total - negHead)));
+  const clampTotal = (x) => Math.max(0, Math.min(scaleMax, Math.round(x)));
+  total = clampTotal(total);
+  // The range is the union of the baseline bound (headroom added to the clamped, rounded total)
+  // and the exact pipeline bound above. The baseline bound alone can be too narrow when
+  // contributions are fractional (rounding the total before adding headroom), which let a
+  // settled band be contradicted by completing the open items; the pipeline bound alone would
+  // be narrower than the baseline's where the total clamps at 0, which changes built-in output.
+  // The union is never narrower than either: it gates at least as often as both.
+  const ceiling = Math.max(total, Math.min(scaleMax, Math.round(total + posHead)), clampTotal(totalHi));
+  const floor   = Math.min(total, Math.max(0,        Math.round(total - negHead)), clampTotal(totalLo));
   const coverage = count ? Math.round((answered / count) * 100) : 0;
 
   const scorable = bandFor(cuts, floor) === bandFor(cuts, ceiling);

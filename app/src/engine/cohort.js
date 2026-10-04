@@ -102,13 +102,19 @@ export function screenToCohortRow(module, screen, { appVersion = APP_VERSION, sa
   return row;
 }
 
-/** Rows to CSV (Scr L606-616): the union of keys in first-seen order; RFC 4180 quoting. */
+/**
+ * Rows to CSV (Scr L606-616): the union of keys in first-seen order; RFC 4180 quoting of any
+ * value containing a quote, comma, CR or LF. A text value that a spreadsheet would read as a
+ * formula (leading =, +, -, @, tab or CR) is neutralised with a leading apostrophe; numbers
+ * are written as they are, so a negative number stays a number.
+ */
 export function rowsToCsv(rows) {
   if (!rows.length) return "";
   const cols = [...new Set(rows.flatMap(r => Object.keys(r)))];
   const esc = v => {
-    const s = v === null || v === undefined ? "" : String(v);
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    let s = v === null || v === undefined ? "" : String(v);
+    if (typeof v !== "number" && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   return [cols.join(","), ...rows.map(r => cols.map(c => esc(r[c])).join(","))].join("\n");
 }

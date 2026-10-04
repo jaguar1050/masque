@@ -7,13 +7,16 @@
 //   Scribe   routingRecs(scribe state)       vs buildRecs(band, complaint, domains, scorable && routingCleared, answers)
 //   derivePhenotype                          vs the `complaint` slice (Scb L846-850)
 //   activeDomains                            vs the active-domain slice (Scb L857-859)
-//   rankSuggestions (with skipped, vmp)      vs the `suggestions` slice (Scb L856-879)
+//   rankSuggestions (with skipped, vmp)      vs the `suggestions` slice (Scb L856-879), AD13 only
+//                                            (the slice run with scorable inverted is the intended list)
 //   gapSignals labels / alert                vs both `gapFlags` slices (Scr L873-878, Scb L916-920)
-//   cdsPreview                               vs the CDS preview slice (Scr L1329-1349), by rendered textContent
+//   cdsPreview                               vs the CDS preview slice (Scr L1329-1349), by rendered textContent,
+//                                            AD15 only (no index card for an undeclared complaint)
 //   buildNote(routingRecs …)                 vs buildNote(buildRecs …), AD6 only
 // Exhaustively: captureLabel vs capLabel for every item value, context item and flag (AD6 on
 // red-flag captures); referralFor vs the referral text of the baseline Screener and Scribe
-// bundles for every complaint.
+// bundles for every complaint (AD15 for ""); referralFor/cdsPreview never read an inherited
+// property of the byPhenotype tables.
 // Fail-closed (D6, §3.3): a copy of the MASQUE logic with a throwing routing rule, and one with
 // a throwing derive rule, over 2,000 states each (500 with ?quick=1): the rule-error card on
 // both surfaces; routingError set; no referral ServiceRequest while the red-flag Flag and
@@ -26,6 +29,9 @@ import { flatItems, ruleStream, sizes } from "../harness/matrix.js";
 
 const NOW = "2026-10-01T12:00:00.000Z";
 const AD6 = ALLOWED_DIFFERENCES.find((d) => d.id === "AD6");
+const AD13 = ALLOWED_DIFFERENCES.find((d) => d.id === "AD13");
+const AD15 = ALLOWED_DIFFERENCES.find((d) => d.id === "AD15");
+const INDEX_SRC = "CDS Hooks card · order-select";
 const useMemo = (f) => f();
 const hpc = (recs) => (recs || []).map((r) => ({ h: r.h, p: r.p, chips: r.chips }));
 const INJECTED = "injected by the rules suite";
@@ -60,7 +66,8 @@ export default {
 
     // ------------------------------------------------------------------ the rule matrix
     const rng = h.rng(h.seed ^ 0x52554c45); // "RULE"
-    let n = 0, ad6Pre = 0, ad6Seen = 0, cdsCards = 0;
+    let n = 0, ad6Pre = 0, ad6Seen = 0, cdsCards = 0, ad13Pre = 0, ad13Seen = 0, ad15Pre = 0, ad15Seen = 0;
+    const declared = ((module.phenotypes && module.phenotypes.values) || []).map((v) => v.value);
     const t0 = performance.now();
     for (const st of ruleStream(rng, spec, sizes(h.quick).rules)) {
       const { answers, complaint, ctx, rf, safetyReviewed, skipped, vmp } = st;
@@ -90,7 +97,12 @@ export default {
       const sugB = S["scribe.suggestions"](React, useMemo, scb.ALL_ITEMS, scb.ITEMS, scb.ASK, scb.VMPATHI_TAG, scb.VMPATHI_INFO,
         answers, complaintB, vmp, sB.scorable, skipped);
       const sugN = scribe.rankSuggestions(module, { answers, complaint: ph.value, phenotypeError: ph.error, vmp, scorable: sN.scorable, skipped });
-      c.diff(sugB, sugN.list, { at: "/rankSuggestions", input, keyOrder: true });
+      // AD13 (F12): the baseline filter tests `scorable ||`, the inverse of its own comment; the
+      // slice with scorable inverted is the list the comment describes.
+      const sugI = S["scribe.suggestions"](React, useMemo, scb.ALL_ITEMS, scb.ITEMS, scb.ASK, scb.VMPATHI_TAG, scb.VMPATHI_INFO,
+        answers, complaintB, vmp, !sB.scorable, skipped);
+      const rs = c.diff(sugB, sugN.list, { at: "/rankSuggestions", input, keyOrder: true, allow: ["AD13"], ctx: { AD13: { intended: sugI } } });
+      if (AD13.detector({ baseline: sugB, intended: sugI })) { ad13Pre++; if (rs.observed.has("AD13")) ad13Seen++; }
       const routingCleared = !override && safetyReviewed;
       const recsSB = scb.buildRecs(sB.band, complaintB, sB.domains, sB.scorable && routingCleared, answers);
       const stB = rules.buildRoutingState(module, { surface: "scribe", answers, ctx, complaint: ph.value, phenotypeError: ph.error, score: sN, activeFlags: rf, safetyReviewed });
@@ -112,7 +124,9 @@ export default {
       const pv = rules.cdsPreview(module, stS, { routingError: outS.error });
       const card = pv.safety || pv.index;
       if (card) cdsCards++;
-      c.diff(textB, card ? `${card.src}${card.title}${card.body}` : "", { at: "/cdsPreview", input });
+      const rc = c.diff(textB, card ? `${card.src}${card.title}${card.body}` : "", { at: "/cdsPreview", input, allow: ["AD15"],
+        ctx: { AD15: { complaint, declared, indexSrc: INDEX_SRC } } });
+      if (AD15.detector({ complaint, declared, baselineIssued: textB.startsWith(INDEX_SRC) })) { ad15Pre++; if (rc.observed.has("AD15")) ad15Seen++; }
 
       // The note, end to end (AD6).
       const vmpNote = vmp;
@@ -128,7 +142,9 @@ export default {
       if (n % 1000 === 0) await new Promise((r) => setTimeout(r, 0));
     }
     h.expect("AD6", { precondition: ad6Pre > 0, observed: ad6Seen === ad6Pre });
-    c.note(`rule states: ${n} (seed 0x${h.seed.toString(16)}), ${cdsCards} with a CDS card; AD6 on the note ${ad6Seen}/${ad6Pre}; ${Math.round(performance.now() - t0)} ms`);
+    h.expect("AD13", { precondition: ad13Pre > 0, observed: ad13Seen === ad13Pre });
+    h.expect("AD15", { precondition: ad15Pre > 0, observed: ad15Seen === ad15Pre });
+    c.note(`rule states: ${n} (seed 0x${h.seed.toString(16)}), ${cdsCards} with a CDS card; AD6 on the note ${ad6Seen}/${ad6Pre}; AD13 on suggestions ${ad13Seen}/${ad13Pre}; AD15 on the CDS preview ${ad15Seen}/${ad15Pre}; ${Math.round(performance.now() - t0)} ms`);
 
     // ------------------------------------------------------------------ captureLabel vs capLabel
     let capN = 0, capPre = 0, capSeen = 0;
@@ -156,6 +172,7 @@ export default {
     // ------------------------------------------------------------------ referralFor vs the baseline bundles
     const fullHigh = scr.SAMPLE_CASES.otologic.a;
     const sHigh = scb.computeScore(fullHigh);
+    let refPre = 0, refSeen = 0;
     for (const complaint of ["", ...spec.phenotypeValues]) {
       const ref = rules.referralFor(module, complaint);
       const want = (bundle) => (bundle.entry.map((e) => e.resource).find((r) => r.resourceType === "ServiceRequest" && r.priority === "routine") || {}).code;
@@ -164,10 +181,32 @@ export default {
       const bScb = fixed(() => scb.buildBundle({ patient: scb.PATIENT, answers: fullHigh, total: sHigh.total, floor: sHigh.floor, ceiling: sHigh.ceiling,
         coverage: sHigh.coverage, scorable: sHigh.scorable, band: sHigh.band, domains: sHigh.domains, complaint, note: "", activeFlags: [], emergent: false, routingCleared: true }));
       const got = ref ? { text: `Referral: ${ref.specialty} — evaluate for ${ref.reason}` } : undefined;
-      c.diff(want(bScr), got, { at: `/referralFor/${complaint || "(none)"}/screener`, input: { complaint } });
-      c.diff(want(bScb), got, { at: `/referralFor/${complaint || "(none)"}/scribe`, input: { complaint } });
+      const ad15 = { AD15: { complaint, declared, indexSrc: INDEX_SRC } };
+      for (const [surface, b] of [["screener", bScr], ["scribe", bScb]]) {
+        const rr = c.diff(want(b), got, { at: `/referralFor/${complaint || "(none)"}/${surface}`, input: { complaint }, allow: ["AD15"], ctx: ad15 });
+        if (AD15.detector({ complaint, declared, baselineIssued: !!want(b) })) { refPre++; if (rr.observed.has("AD15")) refSeen++; }
+      }
       c.check(rules.referralFor(module, complaint, { routingError: { family: "routing", ruleId: "x", message: "y" } }) === null,
         `/referralFor/${complaint || "(none)"}/@routingError`, { complaint }, null, "a referral");
+    }
+    h.expect("AD15", { precondition: refPre > 0, observed: refSeen === refPre });
+
+    // Inherited properties never resolve a lookup (the byPhenotype tables are plain objects): a
+    // declared value named like an Object.prototype member falls back to the default.
+    {
+      const ph = { values: [{ value: "toString" }, { value: "constructor" }, { value: "x" }],
+        referral: { byPhenotype: { x: { specialty: "X", reason: "x" } }, default: { specialty: "D", reason: "d" } },
+        cdsTerm: { byPhenotype: { x: "xterm" }, default: "dterm" } };
+      const fake = { ...module, phenotypes: { ...module.phenotypes, ...ph } };
+      for (const v of ["toString", "constructor"]) {
+        c.diff({ specialty: "D", reason: "d" }, rules.referralFor(fake, v), { at: `/referralFor/@inherited/${v}`, input: { complaint: v } });
+      }
+      c.check(rules.referralFor(fake, "__proto__") === null, "/referralFor/@inherited/__proto__", { complaint: "__proto__" }, null, rules.referralFor(fake, "__proto__"));
+      c.check(rules.referralFor(fake, "hasOwnProperty") === null, "/referralFor/@undeclared", { complaint: "hasOwnProperty" }, null, rules.referralFor(fake, "hasOwnProperty"));
+      const st = rules.buildRoutingState(fake, { surface: "screener", answers: fullHigh, ctx: {}, complaint: "toString",
+        score: scoring.computeScore(fake, fullHigh), activeFlags: {}, safetyReviewed: true });
+      const pv = rules.cdsPreview(fake, st);
+      c.check(!!pv.index && pv.index.title.includes("dterm"), "/cdsPreview/@inherited", { complaint: "toString" }, "an index card with the default term", pv.index && pv.index.title);
     }
 
     // ------------------------------------------------------------------ fail-closed

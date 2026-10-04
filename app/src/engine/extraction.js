@@ -33,9 +33,27 @@ const isObj = (x) => x !== null && typeof x === "object" && !Array.isArray(x);
 const NO_CUES = Object.freeze({ window: 0, cues: Object.freeze([]) });
 const cueSpec = (x) => (isObj(x) && Array.isArray(x.cues) ? x : NO_CUES);
 
+/**
+ * `text` lowercased without changing its length, so an index into the result is an index into
+ * `text`. String.prototype.toLowerCase is used whenever it keeps the length (every text the
+ * baseline was written for); otherwise each code point whose lowercase form has a different
+ * length ("İ" → "i̇") is kept as it is. The hit positions and the cue windows are then measured
+ * in the same index space as the original text.
+ */
+export function lowerSameLength(text) {
+  const low = text.toLowerCase();
+  if (low.length === text.length) return low;
+  let out = "";
+  for (const ch of text) {
+    const l = ch.toLowerCase();
+    out += l.length === ch.length ? l : ch;
+  }
+  return out;
+}
+
 /** Index of the first phrase (in list order) found in `text`, case-insensitively; -1 if none (Ext L172-175). */
 export function firstHit(text, phrases) {
-  const low = text.toLowerCase();
+  const low = lowerSameLength(text);
   for (const p of phrases) { const i = low.indexOf(p); if (i !== -1) return i; }
   return -1;
 }
@@ -46,7 +64,7 @@ export function firstHit(text, phrases) {
  * of what else in the sentence is denied.
  */
 export function allHits(text, phrases) {
-  const low = text.toLowerCase();
+  const low = lowerSameLength(text);
   const out = [];
   for (const p of phrases) {
     let i = low.indexOf(p);
@@ -57,7 +75,7 @@ export function allHits(text, phrases) {
 
 /** Whether any cue of `spec` ({window, cues}) occurs in the `spec.window` characters before `idx` (Ext L197-200). */
 export function cueBefore(text, idx, spec) {
-  const pre = text.slice(Math.max(0, idx - spec.window), idx).toLowerCase();
+  const pre = lowerSameLength(text.slice(Math.max(0, idx - spec.window), idx));
   return spec.cues.some(c => pre.includes(c));
 }
 

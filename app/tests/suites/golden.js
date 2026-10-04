@@ -9,8 +9,9 @@
 //   CSV header      cohortColumnsCsv vs the baseline row header, AD2 only
 // Per screen — the 9 sample cases (4 Screener samples + 5 Simulator scenarios) and the empty
 // screen × rf ∈ {none, rf_asym, rf_thunderclap + rf_asym} × routingCleared ∈ {true, false}:
-//   Bundle (screener surface)   vs the baseline Screener's, AD1 only
-//   Bundle (scribe surface)     vs the baseline Scribe's, AD6 only
+//   Bundle (screener surface)   vs the baseline Screener's, AD1, AD14 and AD15 only
+//   Bundle (scribe surface)     vs the baseline Scribe's, AD6 and AD14 only (its complaint is
+//                               always a derived, declared phenotype value, so never AD15)
 //   Note                        vs the baseline Scribe's, AD6 only (line by line)
 //   Cohort row                  vs the baseline Screener's (AD2, AD4) and Scribe's (AD2 scribe, AD4)
 //   CSV                         rowsToCsv of all rows, AD2 and AD4
@@ -77,6 +78,9 @@ export default {
     const rowsB = [], rowsN = [], rowsS = [], rowsSN = [];
     let seed = 1;
     let ad1Pre = 0, ad1Seen = 0, ad6Pre = 0, ad6Seen = 0, ad10Seen = 0, ad10Pre = 0, ad2Seen = 0, ad2Pre = 0;
+    let ad14Pre = 0, ad14Seen = 0, ad15Pre = 0, ad15Seen = 0;
+    const declared = ((module.phenotypes && module.phenotypes.values) || []).map((v) => v.value);
+    const hasReferral = (b) => b.entry.some((e) => e.resource.resourceType === "ServiceRequest" && e.resource.priority === "routine");
     for (const cs of cases) for (const rf of RF_SETS) for (const routingCleared of [true, false]) {
       const input = { case: cs.id, rf, routingCleared };
       const a = cs.a;
@@ -95,7 +99,14 @@ export default {
       const bN = fhir.buildBundle(module, { patient: module.demo.patient, answers: a, score: sN, complaint: cs.complaint, activeFlags: flagsN,
         emergent, routingCleared, routingError: null }, { surface: "screener", now: NOW });
       const ad1 = { AD1: { total: sB.total, floor: sB.floor } };
-      c.diff(bB, bN, { at: "/bundle/screener", input, keyOrder: true, allow: ["AD1"], ctx: ad1 });
+      const rb = c.diff(bB, bN, { at: "/bundle/screener", input, keyOrder: true, allow: ["AD1", "AD14", "AD15"],
+        ctx: { ...ad1, AD14: {}, AD15: { complaint: cs.complaint, declared, indexSrc: "CDS Hooks card · order-select" } } });
+      const ad14Here = AD.AD14.detector({ domains: sB.domains });
+      if (ad14Here) { ad14Pre++; if (rb.observed.has("AD14")) ad14Seen++; }
+      if (AD.AD15.detector({ complaint: cs.complaint, declared, baselineIssued: hasReferral(bB) })) {
+        ad15Pre++;
+        if (rb.observed.has("AD15") && !hasReferral(bN)) ad15Seen++;
+      }
       if (AD.AD1.detector({ surface: "screener", score: sB })) {
         // AD1 has two sites (the attainable-range low value and the Observation note); each
         // must show the floor, so each is checked on its own.
@@ -121,7 +132,9 @@ export default {
         activeFlags: flagsScb, emergent, routingCleared: cleared }));
       const bSN = fhir.buildBundle(module, { patient: module.demo.patient, answers: a, score: sN, complaint: complaintS, activeFlags: flagsN,
         emergent, routingCleared: cleared, routingError: null }, { surface: "scribe", now: NOW });
-      const r2 = c.diff(bS, bSN, { at: "/bundle/scribe", input, keyOrder: true, allow: ["AD6"], ctx: { AD6: pairs } });
+      c.check(declared.includes(complaintS), "/bundle/scribe/complaint", input, `a declared phenotype value (${declared.join(", ")})`, complaintS);
+      const r2 = c.diff(bS, bSN, { at: "/bundle/scribe", input, keyOrder: true, allow: ["AD6", "AD14"], ctx: { AD6: pairs, AD14: {} } });
+      if (ad14Here) { ad14Pre++; if (r2.observed.has("AD14")) ad14Seen++; }
       const ad6Strings = flagsScb.flatMap((f) => [f.text, f.points, f.action]);
       const ad6Here = AD.AD6.detector({ strings: ad6Strings, pairs });
       if (ad6Here) { ad6Pre++; if (r2.observed.has("AD6")) ad6Seen++; }
@@ -177,7 +190,9 @@ export default {
     h.expect("AD6", { precondition: ad6Pre > 0, observed: ad6Seen === ad6Pre });
     h.expect("AD2", { precondition: ad2Pre > 0, observed: ad2Seen === ad2Pre });
     h.expect("AD10", { precondition: ad10Pre > 0, observed: ad10Seen === ad10Pre });
-    c.note(`screens: ${cases.length} cases × ${RF_SETS.length} flag sets × routingCleared {true, false}; AD1 seen ${ad1Seen}/${ad1Pre}, AD6 ${ad6Seen}/${ad6Pre}, AD2 ${ad2Seen}/${ad2Pre}, AD10 ${ad10Seen}/${ad10Pre}`);
+    h.expect("AD14", { precondition: ad14Pre > 0, observed: ad14Seen === ad14Pre });
+    h.expect("AD15", { precondition: ad15Pre > 0, observed: ad15Seen === ad15Pre });
+    c.note(`screens: ${cases.length} cases × ${RF_SETS.length} flag sets × routingCleared {true, false}; AD1 seen ${ad1Seen}/${ad1Pre}, AD6 ${ad6Seen}/${ad6Pre}, AD2 ${ad2Seen}/${ad2Pre}, AD10 ${ad10Seen}/${ad10Pre}, AD14 ${ad14Seen}/${ad14Pre}, AD15 ${ad15Seen}/${ad15Pre}`);
 
     // CSV (AD2, AD4) and the header-only CSV.
     c.diff(scr.rowsToCsv(rowsB), cohort.rowsToCsv(rowsN), { at: "/csv/screener", allow: ["AD2", "AD4"], ctx: { AD2: { moduleId: module.id } } });
