@@ -86,6 +86,13 @@ export default async function upload(page, ctx) {
   check(/This file contains executable code\. It will run inside this page with the same permissions as screenAIr/.test(consentText), "/consent/text", "the consent warning", consentText.slice(0, 120));
   check(/window/.test(consentText) && /localStorage/.test(consentText) && /globalThis/.test(consentText), "/consent/apis", "window, globalThis, localStorage listed", consentText);
   check(/[0-9a-f]{64}/.test(consentText), "/consent/sha256", "the full SHA-256", consentText);
+  // The API list is a heuristic: the dialog says so and never claims the code reaches nothing.
+  check(/heuristic/.test(consentText) && /can reach anything this page can/.test(consentText) && !/References no page or network API/.test(consentText), "/consent/heuristic", "the checks are heuristics; the code can reach anything the page can", consentText);
+  {
+    const kinds = await page.evaluate(() => [...document.querySelectorAll("[data-testid=upload-files] tbody tr")].map((tr) => [tr.dataset.kind, tr.lastElementChild.textContent]));
+    const lg = kinds.find(([k]) => k === "logic");
+    check(!!lg && /'shape'/.test(lg[1]) && /after consent/.test(lg[1]), "/dialog/logic-binding-text", "pairs with a rubric of this upload … ('shape'; checked after consent)", kinds);
+  }
   check(await page.evaluate(() => window.__uploadFixtureSideEffect === undefined), "/consent/not-run", "unset", await page.evaluate(() => window.__uploadFixtureSideEffect));
   check(await page.isDisabled("[data-testid=upload-validate]"), "/consent/validate-gated", "Validate disabled until consent", "enabled");
   await page.click("[data-testid=upload-cancel]");
@@ -286,6 +293,20 @@ export default async function upload(page, ctx) {
           const footer = await page.textContent("#sa-footer");
           check(/instrument \S*-local/.test(footer), "/derived/footer-version", "instrument …-local…", footer);
           check(await page.locator("[data-testid=unsaved-notice]").count() === 1, "/saved/unsaved-notice", "shown", "absent");
+          // Removing an edited module that exists only in this tab is confirmed (it cannot come back).
+          await page.click("[data-testid=module-info-button]");
+          await page.click("[data-testid=module-info] button:has-text('Remove from this session')");
+          const rm = await waitFor(() => !!document.querySelector("[data-testid=remove-dialog]"));
+          if (check(rm, "/remove/unsaved/confirm", "a confirmation before discarding the only copy", "removed at once")) {
+            const txt = await page.textContent("[data-testid=remove-dialog]");
+            check(/exists only in this tab/.test(txt) && /Rubric Editor draft/.test(txt), "/remove/unsaved/text", "only in this tab … its Rubric Editor draft", txt);
+            check(await page.evaluate(() => document.activeElement && document.activeElement.dataset.testid) === "confirm-cancel", "/remove/unsaved/focus", "Cancel focused", await page.evaluate(() => document.activeElement && document.activeElement.dataset.testid));
+            await page.click("[data-testid=remove-dialog] [data-testid=confirm-cancel]");
+            await page.waitForTimeout(200);
+            check(await active() === derivedId, "/remove/unsaved/cancel-keeps", derivedId, await active());
+          }
+          await page.keyboard.press("Escape");
+          await waitFor(() => !document.querySelector("[data-testid=module-info]"));
         }
       }
     }
@@ -341,6 +362,39 @@ export default async function upload(page, ctx) {
     }
   }
   await page.evaluate(() => { try { localStorage.removeItem("screenair.saved.v1"); } catch (_) {} });
+
+  // ------------------------------------------------------------------ a saved module whose logic is not loaded
+  // Its restore fails until the logic is uploaded again: the banner says what is needed and
+  // stays after the failed Restore, instead of disappearing for good.
+  {
+    await fresh();
+    await openUpload();
+    await choose([
+      { name: "shape-bound.rubric.json", data: await fixtureText("shape-bound.rubric.json") },
+      { name: "shape.logic.js", data: await fixtureText("shape.logic.js") },
+    ]);
+    await waitFor(() => !!document.querySelector("[data-testid=upload-consent]"));
+    await page.check("[data-testid=upload-consent-box]");
+    await validateAndWait();
+    if (check(await loadReady(), "/saved-logic/load", "Load enabled", await page.textContent("[data-testid=upload-results]").catch(() => ""))) {
+      await page.click("[data-testid=upload-load]");
+      await waitFor(() => document.querySelector(".sa-shell main")?.dataset.module === "shape", null, 15000);
+      await page.click("[data-testid=module-info-button]");
+      const about = await page.textContent("[data-testid=module-info]");
+      check(/uploaded as/.test(about) && /shape-bound\.rubric\.json/.test(about), "/saved-logic/uploaded-as", "uploaded as shape-bound.rubric.json, shape.logic.js", about.slice(0, 300));
+      await page.click("[data-testid=module-info] button:has-text('Remember in this browser')").catch(() => {});
+      await page.keyboard.press("Escape");
+      await fresh();
+      const needs = await page.textContent("[data-testid=restore-needs]").catch(() => "");
+      check(/needs logic file `shape\.logic\.js`/.test(needs), "/saved-logic/banner-needs", "names the logic file it needs", needs);
+      await page.click("[data-testid=restore-saved]");
+      await page.waitForTimeout(600);
+      check(await page.locator("[data-testid=restore-banner]").count() === 1, "/saved-logic/banner-kept", "the banner stays while a restore failed", "hidden");
+      const toast = await page.textContent("[data-testid=toast]").catch(() => "");
+      check(/not restored/.test(toast) && /shape\.logic\.js/.test(toast), "/saved-logic/toast", "not restored — … needs logic file `shape.logic.js` …", toast);
+    }
+    await page.evaluate(() => { try { localStorage.removeItem("screenair.saved.v1"); } catch (_) {} });
+  }
 
   notes.unshift(`${n} checks`);
   return { verdict: diffs.length ? "fail" : "pass", n, diffs, expectedMissing: [], notes };

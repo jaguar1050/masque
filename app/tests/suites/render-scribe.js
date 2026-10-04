@@ -22,6 +22,10 @@
 //   routing   a bundle without a referral, onModuleError called (and the same for a throwing
 //             routing rule)
 //   mic       micAllowed=false disables Listen (when the browser has speech recognition)
+//   session   inside a SessionProvider: Append adds a session row, the dirty summary and the
+//             "Captured this session" count read the session; Reset clears the session rows too
+//             (Research and the module-switch confirmation must not keep them)
+//   a11y      the transcript, note and FHIR scroll boxes take keyboard focus and are labelled
 // The live microphone (interim/final, stops, lang) is the Playwright `voice` spec.
 import React from "react";
 import { flushSync } from "react-dom";
@@ -321,7 +325,41 @@ export default {
         c.check(!q("scribe-probes"), "/shape/probes", null, "no probe rail", "shown");
         c.check(all(m.container, ".prompt[data-suggestion]").length > 0, "/shape/suggestions", null, "suggestions", 0);
         c.check(txt(q("scribe-footer")).includes("extraction lexicon — · probe set —"), "/shape/footer", null, "lexicon and probe set —", txt(q("scribe-footer")));
+        c.check(txt(q("scribe-footer")).includes("probe set — · gold set — (not benchmarked)"), "/shape/footer-gold-set", null, "probe set — · gold set — (not benchmarked)", txt(q("scribe-footer")));
         c.check(!!q("provenance-badge"), "/shape/badge", null, "provenance badge near the readout", null);
+      } finally { m.unmount(); }
+    }
+
+    // Session: captured rows live in the session store; Reset clears them there too.
+    {
+      const common = await h.env.loader.importModule(h.appUrl("src/ui/common.jsx"));
+      const api = { current: null };
+      const dirty = [];
+      function Grab() { api.current = common.useSession(); return null; }
+      function Host() {
+        const s = common.useSession();
+        return React.createElement(Scribe, { module, onCapture: ({ source, row }) => s.addRow(source, row), onDirty: (tab, x) => dirty.push(x) });
+      }
+      const m = h.mount(React.createElement(common.SessionProvider, null, React.createElement(Grab), React.createElement(Host)));
+      try {
+        c.check(typeof (api.current && api.current.clearRows) === "function", "/session/clearRows", null, "session API has clearRows", api.current && Object.keys(api.current));
+        await setView(m.container, "fhir");
+        for (let k = 0; k < 2; k++) await act(() => m.container.querySelector("[data-testid=scribe-append]").click());
+        c.check(api.current.cohorts.scribe.length === 2, "/session/append", null, 2, api.current.cohorts.scribe.length);
+        c.check(dirty.at(-1) === "2 captured rows", "/session/dirty", null, "2 captured rows", dirty.at(-1));
+        c.check(/Captured this session: 2\./.test(txt(m.container.querySelector("[data-testid=scribe-research-link]"))), "/session/count", null, "Captured this session: 2.", txt(m.container.querySelector("[data-testid=scribe-research-link]")));
+        await act(() => m.container.querySelector("[data-testid=scribe-reset]").click());
+        c.check(api.current.cohorts.scribe.length === 0, "/session/reset-clears-rows", null, 0, api.current.cohorts.scribe.length);
+        c.check(dirty.at(-1) === null, "/session/reset-dirty", null, null, dirty.at(-1));
+        c.check(/Captured this session: 0\./.test(txt(m.container.querySelector("[data-testid=scribe-research-link]"))), "/session/reset-count", null, "Captured this session: 0.", txt(m.container.querySelector("[data-testid=scribe-research-link]")));
+        // Keyboard-scrollable, labelled scroll boxes.
+        const box = (id) => m.container.querySelector(`[data-testid=${id}]`);
+        const ok = (el) => !!el && el.tabIndex === 0 && !!el.getAttribute("aria-label") && el.getAttribute("role") === "region";
+        c.check(ok(box("scribe-transcript")), "/a11y/transcript", null, "tabIndex 0 + role region + aria-label", box("scribe-transcript") && box("scribe-transcript").outerHTML.slice(0, 160));
+        await setView(m.container, "fhir");
+        c.check(ok(box("scribe-bundle")), "/a11y/bundle", null, "tabIndex 0 + role region + aria-label", box("scribe-bundle") && box("scribe-bundle").outerHTML.slice(0, 160));
+        await setView(m.container, "note");
+        c.check(ok(box("scribe-note")), "/a11y/note", null, "tabIndex 0 + role region + aria-label", box("scribe-note") && box("scribe-note").outerHTML.slice(0, 160));
       } finally { m.unmount(); }
     }
 

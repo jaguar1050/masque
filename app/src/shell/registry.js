@@ -141,22 +141,25 @@ async function loadOne(item, index, { env, loaded }) {
     docs,
   };
   try {
-    const [rubricBytes, logicBytes] = await Promise.all([
-      fetchBytes(at(item.rubric), item.rubric),
-      fetchBytes(at(item.logic), item.logic),
-    ]);
+    // Both fetches start together, but the rubric is read first: when only the logic fails,
+    // the picker and the failure card still name the module by its label, not its file.
+    const rubricP = fetchBytes(at(item.rubric), item.rubric);
+    const logicP = fetchBytes(at(item.logic), item.logic);
+    logicP.catch(() => {}); // awaited below; a rubric failure must not leave it unhandled
+    const rubricBytes = await rubricP;
     checkSize(rubricBytes, LIMITS.rubricBytes, item.rubric);
     const rubricText = decodeUtf8(rubricBytes, item.rubric);
-    const logicText = decodeUtf8(logicBytes, item.logic);
-    const [rubricSha, logicSha] = await Promise.all([sha256Hex(rubricBytes), sha256Hex(logicBytes)]);
-    entry.files.rubric = { name: item.rubric, text: rubricText, sha256: rubricSha };
-    entry.files.logic = { name: item.logic, text: logicText, sha256: logicSha };
+    entry.files.rubric = { name: item.rubric, text: rubricText, sha256: await sha256Hex(rubricBytes) };
 
     let rubric;
     try { rubric = JSON.parse(rubricText); }
     catch (e) { throw new LoadError("LOAD", item.rubric, `Not valid JSON: ${e.message}`); }
     if (rubric && typeof rubric.id === "string") entry.key = `builtin:${rubric.id}`;
     if (rubric && typeof rubric.label === "string") entry.label = rubric.label;
+
+    const logicBytes = await logicP;
+    const logicText = decodeUtf8(logicBytes, item.logic);
+    entry.files.logic = { name: item.logic, text: logicText, sha256: await sha256Hex(logicBytes) };
 
     let logicNs;
     try {
@@ -364,7 +367,8 @@ async function classifyOne(name, bytes, { entries, env, zip = null, path = null 
     }
     if (!insp.hasDefaultExport) { c.error = fill(UPLOAD_MESSAGES.noDefault, { file }); return c; }
     c.needsConsent = true;
-    if (insp.format === FORMAT.logic) { c.kind = "logic"; c.kindLabel = "logic (executable)"; c.intended = "pairs with its rubric in this upload"; }
+    // Its moduleId is known only after consent; classifyFiles words the pairing once every file is read.
+    if (insp.format === FORMAT.logic) { c.kind = "logic"; c.kindLabel = "logic (executable)"; c.intended = "pairs with a rubric of this upload that names its logic id"; }
     else if (insp.format === FORMAT.module) { c.kind = "module"; c.kindLabel = "module (executable)"; c.intended = "rubric and logic in one file"; }
     else if (insp.format === null || insp.format === undefined) { c.kind = "executable"; c.kindLabel = "executable (kind determined after consent)"; c.intended = "determined after consent"; }
     else { c.needsConsent = false; c.error = fill(UPLOAD_MESSAGES.notLogic, { file }); }
@@ -432,6 +436,16 @@ export async function classifyFiles(files, { entries = [], env } = {}) {
       return parts.length === 2 && (/\.rubric\.json$/i.test(parts[1]) || /\.logic\.m?js$/i.test(parts[1]));
     });
     for (const m of moduleFiles) out.push(await classifyOne(`${name} › ${m.name}`, m.bytes, { entries, env, zip: name, path: m.name }));
+  }
+  // A logic file binds only a rubric of the same upload that names a logic id (§3.9). Say which
+  // ids those rubrics name, or that there is none, instead of promising a pairing.
+  const named = [...new Set(out.filter(c => c.kind === "rubric" && !c.error && isObj(c.rubric.logicBinding) && typeof c.rubric.logicBinding.moduleId === "string")
+    .map(c => c.rubric.logicBinding.moduleId))];
+  for (const c of out) {
+    if (c.kind !== "logic" || c.error) continue;
+    c.intended = named.length
+      ? `pairs with a rubric of this upload whose logic id it carries (${named.map(x => `'${x}'`).join(", ")}; checked after consent)`
+      : "no rubric in this upload names a logic file: select its rubric JSON together with it";
   }
   return out;
 }
@@ -503,7 +517,9 @@ async function bindUnit(unit, ctx) {
   } catch (err) { result.errors.push(`Could not classify ${unit.fileName}: ${msgOf(err)}`); return result; }
   result.classification = classification;
   if (classification.kind === "duplicate") {
-    result.skipped = `already loaded: ${classification.root ? classification.root.label : result.label}`;
+    // A copy of a file earlier in this same upload is not "already loaded": nothing is loaded yet.
+    const sameFile = classification.root ? ctx.batchFiles.get(classification.root) : null;
+    result.skipped = sameFile ? `the same file as ${sameFile}` : `already loaded: ${classification.root ? classification.root.label : result.label}`;
     return result;
   }
   if (classification.kind === "rederive") {
@@ -549,10 +565,13 @@ async function bindUnit(unit, ctx) {
   result.entry = {
     key, origin, classification, module, validation: report, files, loadedAt,
     label: module.label, isDefault: false,
-    sourceFileNames: unit.fileNames || [unit.fileName],
+    // Only a real upload has file names to show; a rubric made in this page (the editor's Apply,
+    // a restore from this browser) was never a file.
+    ...(unit.upload ? { sourceFileNames: unit.fileNames || [unit.fileName] } : {}),
     jsonOnly: !(logic && logic.uploaded),
   };
   ctx.batch.push(module);
+  ctx.batchFiles.set(module, unit.fileName);
   return result;
 }
 
@@ -561,6 +580,7 @@ function newCtx(entries) {
     entries: arr(entries),
     pool: [],
     batch: [],
+    batchFiles: new Map(), // module bound in this upload -> the file it came from
     sameUpload: [],
     keys: new Set(arr(entries).map(e => e && e.key).filter(Boolean)),
   };
@@ -804,8 +824,35 @@ export function saveModule(entry) {
 }
 
 /**
+ * The module a saved derivation's logic came with, from its provenance (the root first: a
+ * derivation keeps its root's logic), as {id, label}; null when the rubric records none. Read
+ * for the wording of "needs logic" only; restoring never trusts it.
+ */
+function savedParent(rec) {
+  let r;
+  try { r = JSON.parse(rec.rubricText); } catch (_) { return null; }
+  const prov = isObj(r) && isObj(r.provenance) ? r.provenance : null;
+  const recs = prov ? [prov.root, prov.derivedFrom, ...arr(prov.lineage)].filter(x => isObj(x) && typeof x.moduleId === "string") : [];
+  const sha = isObj(rec.logicRef) ? rec.logicRef.sha256 : null;
+  const p = recs.find(x => sha && x.logicSha256 === sha) || recs[0] || null;
+  if (!p || p.moduleId === rec.id) return null;
+  return { id: p.moduleId, label: typeof p.label === "string" && p.label ? p.label : p.moduleId };
+}
+
+/** What a saved module whose logic is not loaded needs, in words (banner and restore error). */
+export function neededLogicText(saved) {
+  const ref = saved && isObj(saved.logicRef) ? saved.logicRef : null;
+  if (!ref) return "";
+  const file = `${ref.name ? `\`${ref.name}\` ` : ""}(sha256 ${String(ref.sha256).slice(0, 16)}…)`;
+  return saved.parent
+    ? `needs the logic of ${saved.parent.label} (${saved.parent.id}): upload ${saved.parent.label}'s rubric together with its logic file ${file}, then restore again`
+    : `needs logic file ${file}: upload it together with the rubric`;
+}
+
+/**
  * The modules remembered in this browser. `needsLogicUpload` is true when the recorded logic
- * is not loaded in this page (an uploaded logic file must be uploaded again).
+ * is not loaded in this page (an uploaded logic file must be uploaded again); `parent` names the
+ * module that logic came with, when the saved rubric records one.
  * @param {{entries?: Object[]}} [ctx]
  */
 export function listSaved({ entries = registered() } = {}) {
@@ -814,6 +861,7 @@ export function listSaved({ entries = registered() } = {}) {
     id: x.id, label: typeof x.label === "string" ? x.label : x.id, origin: typeof x.origin === "string" ? x.origin : "uploaded",
     logicRef: isObj(x.logicRef) ? x.logicRef : null, savedAt: x.savedAt || null,
     needsLogicUpload: isObj(x.logicRef) ? !logics.some(l => l.sha256 === x.logicRef.sha256) : false,
+    parent: savedParent(x),
   }));
 }
 
@@ -830,7 +878,7 @@ export async function restoreSaved(id, { entries = registered() } = {}) {
   try { rubric = parseRubricText(rec.rubricText).rubric; }
   catch (err) { throw new Error(`The saved copy of '${id}' is damaged: ${msgOf(err)}`); }
   if (isObj(rec.logicRef) && isObj(rubric.logicBinding) && !loadedLogics(entries).some(l => l.sha256 === rec.logicRef.sha256)) {
-    throw new Error(`needs logic file ${rec.logicRef.name ? `\`${rec.logicRef.name}\` ` : ""}(sha256 ${String(rec.logicRef.sha256).slice(0, 16)}…): upload it together with the rubric`);
+    throw new Error(neededLogicText({ logicRef: rec.logicRef, parent: savedParent(rec) }));
   }
   const r = await prepareRubric(rubric, { entries, rubricText: rec.rubricText, fileName: `${id}.rubric.json` });
   if (r.skipped) throw new Error(`'${rec.label || id}' is ${r.skipped}`);

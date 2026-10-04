@@ -74,6 +74,19 @@ function hashOf(text) {
   return (h >>> 0).toString(16);
 }
 
+// Pages load Babel standalone with `defer`, so the first paint does not wait for it. Deferred
+// scripts run before module scripts in document order, so Babel is normally present when the
+// loader runs; this also covers a page that loads it later (or never: then it rejects once the
+// page has finished loading).
+function babelReady() {
+  if (window.Babel) return Promise.resolve(window.Babel);
+  return new Promise((resolve, reject) => {
+    const settle = () => (window.Babel ? resolve(window.Babel) : reject(new Error('Babel standalone did not load.')));
+    if (document.readyState === 'complete') settle();
+    else window.addEventListener('load', settle, { once: true });
+  });
+}
+
 function keyOf(spec, baseUrl) {
   return new URL(candidates(spec)[0], baseUrl).href;
 }
@@ -113,9 +126,7 @@ async function build(spec, baseUrl, append = '') {
   if (graph.has(probe)) return graph.get(probe);
 
   const pending = (async () => {
-    const { url, source } = await fetchModule(spec, baseUrl);
-
-    if (!window.Babel) throw new Error('Babel standalone did not load.');
+    const [{ url, source }] = await Promise.all([fetchModule(spec, baseUrl), babelReady()]);
 
     // runtime:'classic' keeps the JSX factory as React.createElement, which is
     // what these files expect -- they all `import React from "react"`.
@@ -212,10 +223,20 @@ export async function importModule(spec, { baseUrl = document.baseURI, append = 
 // ---------------------------------------------------------------------------
 
 // Identifiers that reach page or network APIs (validator code V59). Listed in
-// the consent dialog before an uploaded file runs; a signal, not a sandbox.
+// the consent dialog before an uploaded file runs. A heuristic signal, not a
+// sandbox: code can reach the same APIs without naming any of them, so an
+// empty list never means the code is harmless.
 const API_NAMES = ['window', 'document', 'globalThis', 'fetch', 'XMLHttpRequest', 'WebSocket',
   'localStorage', 'sessionStorage', 'indexedDB', 'navigator', 'eval', 'Function'];
+// Other ways to the global object or the page. These are also ordinary variable
+// names, so they count only when the file declares no binding of that name.
+const GLOBAL_ALIASES = ['self', 'top', 'parent', 'frames', 'opener', 'location'];
 const API_IMPORT_META = 'import.meta';
+// Objects whose members are page APIs: a computed member of one (`window[k]`)
+// can be any of them.
+const GLOBAL_OBJECTS = ['window', 'globalThis', 'self', 'top', 'parent', 'frames', 'opener'];
+// `(() => {}).constructor` is the Function constructor without naming it.
+const API_CONSTRUCTOR = '.constructor';
 
 const SKIP_KEYS = new Set(['loc', 'start', 'end', 'extra', 'range',
   'leadingComments', 'trailingComments', 'innerComments', 'comments']);
@@ -262,16 +283,57 @@ function isReference(parent, parentKey) {
   return !isKey && !isLabel;
 }
 
+// The names a binding pattern declares (`a`, `{ b, c: d }`, `[e, ...f]`, `g = 1`).
+function patternNames(node, out) {
+  if (!node) return out;
+  switch (node.type) {
+    case 'Identifier': out.add(node.name); break;
+    case 'ObjectPattern':
+      for (const p of node.properties) patternNames(p.type === 'RestElement' ? p.argument : p.value, out);
+      break;
+    case 'ArrayPattern': for (const e of node.elements) patternNames(e, out); break;
+    case 'AssignmentPattern': patternNames(node.left, out); break;
+    case 'RestElement': patternNames(node.argument, out); break;
+    default: break;
+  }
+  return out;
+}
+
+function memberName(node) {
+  if (!node || !node.property) return null;
+  if (!node.computed && node.property.type === 'Identifier') return node.property.name;
+  if (node.computed && node.property.type === 'StringLiteral') return node.property.value;
+  return null;
+}
+
 // One recursive walk collecting everything both entry points need.
 function scan(ast) {
   const imports = [];   // {kind, site}
   const apis = new Set();
+  const aliasRefs = new Set(); // GLOBAL_ALIASES seen in reference position
+  const declared = new Set();  // every name the file binds anywhere
   const refCounts = new Map(); // identifier name -> occurrences in reference position
   let defaultExport = null;
 
   const visit = (node, parent, parentKey) => {
     if (!node || typeof node.type !== 'string') return;
     switch (node.type) {
+      case 'VariableDeclarator':
+        patternNames(node.id, declared); break;
+      case 'FunctionDeclaration':
+      case 'FunctionExpression':
+      case 'ArrowFunctionExpression':
+      case 'ObjectMethod':
+      case 'ClassMethod':
+        if (node.id) declared.add(node.id.name);
+        for (const p of node.params || []) patternNames(p, declared);
+        break;
+      case 'ClassDeclaration':
+      case 'ClassExpression':
+        if (node.id) declared.add(node.id.name);
+        break;
+      case 'CatchClause':
+        patternNames(node.param, declared); break;
       case 'ImportDeclaration':
         imports.push({ kind: 'import declaration', site: site(node) }); break;
       case 'ExportAllDeclaration':
@@ -288,12 +350,17 @@ function scan(ast) {
         if (!defaultExport) defaultExport = node;
         break;
       case 'MemberExpression':
-      case 'OptionalMemberExpression':
-        // `window.localStorage`, `globalThis.fetch`: the property is the API reached.
-        if (!node.computed && node.object && node.object.type === 'Identifier' &&
-            (node.object.name === 'window' || node.object.name === 'globalThis' || node.object.name === 'self') &&
-            node.property && API_NAMES.includes(node.property.name)) apis.add(node.property.name);
+      case 'OptionalMemberExpression': {
+        // `window.localStorage`, `globalThis["fetch"]`: the property is the API reached;
+        // `window[k]` can be any of them.
+        const name = memberName(node);
+        if (node.object && node.object.type === 'Identifier' && GLOBAL_OBJECTS.includes(node.object.name)) {
+          if (name !== null) { if (API_NAMES.includes(name)) apis.add(name); }
+          else if (node.computed) apis.add(`${node.object.name}[…]`);
+        }
+        if (name === 'constructor') apis.add(API_CONSTRUCTOR);
         break;
+      }
       case 'MetaProperty':
         if (node.meta && node.meta.name === 'import' && node.property && node.property.name === 'meta') apis.add(API_IMPORT_META);
         break;
@@ -301,6 +368,7 @@ function scan(ast) {
         if (isReference(parent, parentKey)) {
           refCounts.set(node.name, (refCounts.get(node.name) || 0) + 1);
           if (API_NAMES.includes(node.name)) apis.add(node.name);
+          if (GLOBAL_ALIASES.includes(node.name)) aliasRefs.add(node.name);
         }
         break;
       default:
@@ -317,8 +385,10 @@ function scan(ast) {
     }
   };
   visit(ast.program, null, null);
+  for (const n of aliasRefs) if (!declared.has(n)) apis.add(n);
 
-  const order = [...API_NAMES, API_IMPORT_META];
+  const order = [...API_NAMES, ...GLOBAL_ALIASES, API_IMPORT_META,
+    ...GLOBAL_OBJECTS.map((o) => `${o}[…]`), API_CONSTRUCTOR];
   return { imports, apiRefs: order.filter((n) => apis.has(n)), defaultExport, refCounts };
 }
 
@@ -413,7 +483,7 @@ export function inspectSource(source, { filename = 'module.js' } = {}) {
  *   maxBytes: the caller's limit. Both are needed for the size check.
  */
 export async function importSource(source, { filename = 'module.js', byteLength = null, maxBytes = null } = {}) {
-  if (!window.Babel) throw new Error('Babel standalone did not load.');
+  await babelReady();
   if (byteLength != null && maxBytes != null && byteLength > maxBytes) {
     throw new Error(`${filename} is too large (${byteLength} > ${maxBytes} bytes)`);
   }

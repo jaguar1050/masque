@@ -20,11 +20,62 @@
 //   releaseStart leaves no live session; Listen is disabled while a patient-facing view is shown;
 //   Hand to patient (patient mode) stops capture. Until the shell mounts the generic Scribe these
 //   checks are reported as waiting on WP12-M2 (FAIL, never a vacuous PASS).
+// Part 3 — layout, in the shell at 1280 and 375 px: after the whole demo transcript, in every
+//   Scribe view (Safety, Ask next, Note, FHIR) no element of the Scribe panel ends right of the
+//   panel or the viewport unless a scrolling ancestor inside the panel holds it (the FHIR <pre>
+//   scrolls inside its card). "No page scroll" alone missed this: the panel clips (overflow-x).
 
 const MIC_TOAST = "Microphone stopped — the Patient Companion never runs with the microphone on.";
 const UNSUPPORTED = "This browser has no speech recognition. Chrome, Edge and Safari support it — otherwise type what the patient says.";
 const INSECURE = "Microphone capture needs a secure page (https, or localhost while developing).";
 const NOT_ALLOWED = "Microphone permission was refused. Allow the microphone for this site and try again.";
+
+/** In-page: the elements of `sel` whose right edge passes the panel or the viewport without a
+ *  clipping/scrolling ancestor inside the panel (those are clipped or scrolled, not cut off). */
+function overflowing(sel) {
+  const panel = document.querySelector(sel);
+  if (!panel) return ["panel not found"];
+  const pr = panel.getBoundingClientRect();
+  const limit = Math.min(document.documentElement.clientWidth, pr.right) + 1;
+  const bad = [];
+  for (const el of panel.querySelectorAll("*")) {
+    const r = el.getBoundingClientRect();
+    if ((!r.width && !r.height) || r.right <= limit) continue;
+    if (getComputedStyle(el).position === "fixed" || el.closest(".toast")) continue;
+    let a = el.parentElement, held = false;
+    for (; a && a !== panel; a = a.parentElement) if (getComputedStyle(a).overflowX !== "visible") { held = true; break; }
+    if (held) continue;
+    bad.push(`${el.tagName.toLowerCase()}${el.dataset.testid ? `[${el.dataset.testid}]` : ""}.${String(el.className).split(" ").filter(Boolean).slice(0, 2).join(".")} right ${Math.round(r.right)} > ${Math.round(limit)}`);
+  }
+  return bad.slice(0, 8);
+}
+
+async function layoutPart(ctx, check, notes) {
+  const shellUrl = new URL("app/screenair.html#tab=scribe", ctx.baseUrl).href;
+  for (const width of [1280, 375]) {
+    const p = await ctx.newPage();
+    try {
+      await p.setViewportSize({ width, height: 800 });
+      await p.goto(shellUrl, { waitUntil: "load" });
+      await p.waitForFunction(() => document.documentElement.dataset.masqueReady === "true", null, { timeout: 60000 });
+      await p.waitForSelector("#sa-panel-scribe [data-testid=scribe-app]", { timeout: 60000 });
+      const step = p.locator("#sa-panel-scribe [data-testid=scribe-step]");
+      for (let i = 0; i < 80 && (await step.count()) && !(await step.isDisabled()); i++) await step.click();
+      for (const v of ["safety", "prompts", "note", "fhir"]) {
+        await p.click(`#sa-panel-scribe [data-testid=scribe-view-${v}]`);
+        await p.waitForTimeout(150);
+        const bad = await p.evaluate(overflowing, "#sa-panel-scribe");
+        check(bad.length === 0, `/layout/${width}/${v}`, "nothing past the panel or the viewport", bad);
+      }
+      const pre = await p.evaluate(() => { const e = document.querySelector("#sa-panel-scribe [data-testid=scribe-bundle]"); return e ? { sw: e.scrollWidth, cw: e.clientWidth } : null; });
+      if (pre && pre.sw > pre.cw) notes.push(`layout ${width}px: the FHIR bundle scrolls inside its card (${pre.sw} > ${pre.cw})`);
+    } catch (err) {
+      check(false, `/layout/${width}/error`, "no error", String(err && err.message ? err.message : err).split("\n")[0]);
+    } finally {
+      await p.close();
+    }
+  }
+}
 
 export default async function voice(page, ctx) {
   const diffs = [];
@@ -246,6 +297,9 @@ export default async function voice(page, ctx) {
     }
     notes.push("shell: module switch with a live capture is not exercised here (needs a second module, WP12-M3 upload); the Scribe's remount stop is covered on the dev page");
   }
+
+  // ------------------------------------------------------------------ part 3: layout
+  if (generic) await layoutPart(ctx, check, notes);
 
   notes.unshift(`${n} checks; lexicon lang ${lexLang}`);
   return { verdict: diffs.length ? "fail" : "pass", n, diffs, expectedMissing: [], notes };

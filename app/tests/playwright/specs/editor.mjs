@@ -9,8 +9,14 @@
 //          the active module and the screens; editing a non-active module; Create and switch
 //          goes through the switch confirmation; Download all twice with a fixed clock gives
 //          byte-equal zips that pass `unzip -t`; no horizontal scroll at 375 px.
+//          Modal keyboard handling of the editor's Confirm and Apply dialogs (initial focus, Tab
+//          trap, inert background, Escape, focus returned); the Apply dialog's calibration notice
+//          for a parent with research; the availability line in the shell's wording; the logic
+//          and impact scroll boxes keyboard-focusable and labelled; a saved draft's time shown in
+//          local time (Chromium timezone override).
 // shape    tests/dev/editor.html?fixture=shape-bare: Create lexicon and Create English patient
-//          wording from the UI.
+//          wording from the UI; the created negation.window is not marked "edited"; a scoring
+//          change on a parent without research shows no calibration notice.
 // shell    screenair.html: the Rubric Editor tab of the real shell (WP12): Create and switch
 //          through the shell's confirmation (which lists the dirty Screener), the remembered
 //          module restored after a reload, and Download all from the shell passing `unzip -t`.
@@ -135,6 +141,37 @@ export default async function editor(page, ctx) {
     await settle(page);
   }
 
+  // The editor's Confirm dialog: modal keyboard handling (a red-flag tier change, then Escape).
+  await page.click("[data-section-nav=flags]");
+  {
+    const sel = page.locator('[data-path="/redFlags/0/tier"]');
+    if (check(await sel.count() === 1, "/dev/confirm/tier-select", "the first red flag's tier select", 0)) {
+      const tier0 = await sel.inputValue();
+      await sel.focus();
+      await sel.selectOption(tier0 === "emergent" ? "urgent" : "emergent");
+      await page.waitForSelector("[data-testid=editor-confirm]", { timeout: 10000 });
+      await page.waitForTimeout(100);
+      const st = () => page.evaluate(() => {
+        const a = document.activeElement;
+        const box = document.querySelector("[data-testid=editor-confirm]");
+        return { inside: !!(box && a && box.contains(a)), which: a ? (a.dataset.confirm || a.tagName) : null, inert: !!document.querySelector("[data-testid=editor-main]")?.closest("[inert]") };
+      });
+      const s0 = await st();
+      check(s0.inside && s0.which === "cancel", "/dev/confirm/initial-focus", "Cancel focused", s0);
+      check(s0.inert, "/dev/confirm/inert", "background inert", s0);
+      for (let i = 0; i < 4; i++) await page.keyboard.press("Tab");
+      check((await st()).inside, "/dev/confirm/tab-trap", "focus stays in the dialog", await st());
+      await page.keyboard.press("Shift+Tab");
+      check((await st()).inside, "/dev/confirm/shift-tab-trap", "focus stays in the dialog", await st());
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(150);
+      const s1 = await page.evaluate(() => ({ open: !!document.querySelector("[data-testid=editor-confirm]"), focus: document.activeElement && document.activeElement.dataset.path, inert: !!document.querySelector("[data-testid=editor-main]")?.closest("[inert]") }));
+      check(!s1.open && !s1.inert, "/dev/confirm/escape", "closed, background live", s1);
+      check(s1.focus === "/redFlags/0/tier", "/dev/confirm/focus-return", "/redFlags/0/tier", s1.focus);
+      check((await page.locator("[data-testid=editor-status]").innerText()).startsWith("0 changes") && await sel.inputValue() === tier0, "/dev/confirm/escape-cancels", `0 changes, tier ${tier0}`, [await page.locator("[data-testid=editor-status]").innerText(), await sel.inputValue()]);
+    }
+  }
+
   // Apply: a built-in label is refused; Create module keeps the active module and the screens.
   await page.click("[data-section-nav=domains]");
   await page.locator(`[data-path="${wPath}"]`).fill(String(Number(w0) + 1));
@@ -142,6 +179,29 @@ export default async function editor(page, ctx) {
   await settle(page);
   await page.click("[data-testid=editor-apply]");
   await page.waitForSelector("[data-testid=apply-dialog] [data-apply=label]", { timeout: 20000 });
+  // Modal keyboard handling of the Apply dialog, then Escape and open it again.
+  {
+    await page.waitForTimeout(150);
+    const st = () => page.evaluate(() => {
+      const a = document.activeElement;
+      const box = document.querySelector("[data-testid=apply-dialog]");
+      return { inside: !!(box && a && box.contains(a)), which: a ? (a.dataset.apply || a.dataset.applyAction || a.tagName) : null, inert: !!document.querySelector("[data-testid=editor-main]")?.closest("[inert]") };
+    });
+    const s0 = await st();
+    check(s0.inside && s0.which === "id", "/dev/apply/initial-focus", "the module id field", s0);
+    check(s0.inert, "/dev/apply/inert", "background inert", s0);
+    for (let i = 0; i < 25; i++) await page.keyboard.press("Tab");
+    check((await st()).inside, "/dev/apply/tab-trap", "focus stays in the dialog", await st());
+    check(await page.locator("[data-testid=apply-dialog] [data-notice=scoring]").count() === 1, "/dev/apply/calibration-notice", "shown (the parent has research)", 0);
+    const av = await page.locator("[data-testid=apply-availability]").innerText().catch(() => "");
+    check(/^Clinician Screener ✓ · /.test(av) && /Research(: | ✓ \(population estimates and readiness\))/.test(av), "/dev/apply/availability-wording", "the shell's availability wording", av);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(150);
+    const s1 = await page.evaluate(() => ({ open: !!document.querySelector("[data-testid=apply-dialog]"), focus: document.activeElement && document.activeElement.dataset.testid, inert: !!document.querySelector("[data-testid=editor-main]")?.closest("[inert]") }));
+    check(!s1.open && !s1.inert && s1.focus === "editor-apply", "/dev/apply/escape", "closed, focus back on Apply", s1);
+    await page.click("[data-testid=editor-apply]");
+    await page.waitForSelector("[data-testid=apply-dialog] [data-apply=label]", { timeout: 20000 });
+  }
   const builtinLabel = await page.evaluate(() => window.__editorDev.entries()[0].module.label);
   await page.fill("[data-apply=label]", builtinLabel);
   await page.fill("[data-apply=note]", "editor spec: one weight up");
@@ -229,6 +289,13 @@ export default async function editor(page, ctx) {
     await p.waitForTimeout(1500);
     widths.push(["impact", await p.evaluate(() => document.documentElement.scrollWidth)]);
     check(widths.every(([, w]) => w <= 375), "/narrow/no-horizontal-scroll", "≤ 375", widths);
+    const focusable = (sel) => p.evaluate((q) => { const e = document.querySelector(q); return e ? { tab: e.tabIndex, label: e.getAttribute("aria-label"), role: e.getAttribute("role") } : null; }, sel);
+    const imp = await focusable("[data-testid=editor-impact] .re-scroll");
+    check(!!imp && imp.tab === 0 && !!imp.label && imp.role === "region", "/narrow/impact-scroll-focusable", "tabIndex 0 + labelled region", imp);
+    await p.click("[data-section-nav=logic]");
+    await p.waitForTimeout(150);
+    const lg = await focusable("[data-section=logic] pre");
+    check(!!lg && lg.tab === 0 && !!lg.label && lg.role === "region", "/narrow/logic-scroll-focusable", "tabIndex 0 + labelled region", lg);
     await p.close();
   }
 
@@ -238,9 +305,29 @@ export default async function editor(page, ctx) {
     await ready(p, url(`?now=${NOW}&fixture=shape-bare&active=upload:shape-bare`));
     await devReady(p);
     await p.selectOption("[data-testid=editor-module]", "upload:shape-bare");
+    // A scoring change on a parent without research: no calibration notice in the Apply dialog.
+    const hasResearch = await p.evaluate(() => { const e = window.__editorDev.entries().find((x) => x.key === "upload:shape-bare"); return !!(e && e.module.research); });
+    await p.click("[data-section-nav=domains]");
+    const sw = p.locator('[data-path="/domains/0/items/0/w"]');
+    await sw.fill(String(Number(await sw.inputValue()) + 1));
+    await p.click("[data-set-max='0']").catch(() => {});
+    await settle(p);
+    if (!hasResearch && !(await applyDisabled(p))) {
+      await p.click("[data-testid=editor-apply]");
+      await p.waitForSelector("[data-testid=apply-dialog] [data-apply=note]", { timeout: 20000 });
+      check(await p.locator("[data-testid=apply-dialog] [data-notice=scoring]").count() === 0, "/shape/apply/no-calibration-notice", "no research → no calibration notice", await p.locator("[data-testid=apply-dialog] [data-notice=scoring]").innerText().catch(() => ""));
+      await p.keyboard.press("Escape");
+      await p.waitForSelector("[data-testid=apply-dialog]", { state: "detached", timeout: 5000 }).catch(() => {});
+    } else {
+      notes.push(`shape: calibration-notice absence not exercised (research ${hasResearch}, Apply ${await applyDisabled(p) ? "disabled" : "enabled"})`);
+    }
+    await p.click("[data-revert-all]");
+    await settle(p);
     await p.click("[data-section-nav=lexicon]");
     await p.click("[data-create-lexicon]");
     await settle(p);
+    const winEdited = await p.evaluate(() => { const e = document.querySelector('[data-path="/lexicon/negation/window"]'); const f = e && e.closest(".re-field"); return f ? !!f.querySelector(".re-edit") || f.classList.contains("re-changed") : "absent"; });
+    check(winEdited === false, "/shape/create-lexicon/window-not-edited", "negation.window not marked edited", winEdited);
     const v28 = (await errorCodes(p)).filter((x) => x === "V28").length;
     check(v28 > 0, "/shape/create-lexicon/V28", "V28 names every flag without a phrase", await errorCodes(p));
     await p.click("[data-section-nav=patient]");
@@ -251,6 +338,32 @@ export default async function editor(page, ctx) {
     const rows = await p.$$eval("[data-patient-item]", (xs) => xs.length);
     check(rows > 0, "/shape/create-patient/rows", "one row per item", rows);
     await p.close();
+  }
+
+  // ======================================================================== saved draft, local time
+  {
+    const p = await ctx.newPage();
+    try {
+      const cdp = await p.context().newCDPSession(p);
+      await cdp.send("Emulation.setTimezoneOverride", { timezoneId: "America/New_York" });
+      await ready(p, url(`?now=${NOW}`));
+      await devReady(p);
+      await p.evaluate((savedAt) => {
+        const key = window.__editorDev.activeKey;
+        const e = window.__editorDev.entries().find((x) => x.key === key);
+        localStorage.setItem(`screenair.draft.v1.${key}`, JSON.stringify({ savedAt, parentSha: e.module.hashes.rubricSha256, rubric: e.module.rubric }));
+      }, NOW);
+      await ready(p, url(`?now=${NOW}`));
+      await devReady(p);
+      const banner = await p.waitForSelector("[data-testid=editor-resume]", { timeout: 10000 }).then((e) => e.innerText()).catch(() => "");
+      // 12:00Z on 2026-10-01 is 08:00 in New York (EDT).
+      check(banner.includes("2026-10-01 08:00"), "/draft/local-time", "2026-10-01 08:00 (America/New_York)", banner);
+    } catch (err) {
+      check(false, "/draft/error", "no error", String(err && err.message ? err.message : err).split("\n")[0]);
+    } finally {
+      await p.evaluate(() => { try { for (const k of Object.keys(localStorage)) if (k.startsWith("screenair.draft.v1.")) localStorage.removeItem(k); } catch (_) { /* blocked */ } }).catch(() => {});
+      await p.close();
+    }
   }
 
   // ======================================================================== the shell

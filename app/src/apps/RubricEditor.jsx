@@ -35,13 +35,12 @@ import {
   setMaxToSum,
 } from "../engine/derive.js";
 import { serializeRubric } from "../engine/bind.js";
-import { availability } from "../engine/lineage.js";
 import { buildExportZip, fetchBytesFor } from "../engine/exportAll.js";
 import { downloadBytes, downloadText } from "../engine/download.js";
 import { APP_VERSION, CAVEATS, LOCALE_NAMES } from "../engine/policy.js";
 import { COPY_SLOTS } from "../engine/contract.js";
 import { ENGINE_COPY_DEFAULTS } from "../engine/generic.js";
-import { useSession } from "../ui/common.jsx";
+import { availabilityText, useModal, useSession } from "../ui/common.jsx";
 
 // ------------------------------------------------------------------------------- chrome
 
@@ -198,6 +197,7 @@ textarea.re-in{min-height:52px;resize:vertical}
 .re-dl{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
 .re-form{background:#F7FAF9;border:1px dashed #C9D6D3;border-radius:10px;padding:10px 12px;margin-top:10px}
 .re-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.re-scroll:focus-visible,.re-ro pre:focus-visible,.re-side:focus-visible{outline:2px solid #137A80;outline-offset:2px}
 `;
 
 const DIALOG_CSS = `
@@ -251,14 +251,17 @@ function lsSet(key, value) {
   try { if (value === null) window.localStorage.removeItem(key); else window.localStorage.setItem(key, JSON.stringify(value)); } catch (_) { /* storage blocked: the draft lives in memory */ }
 }
 
-/** The availability summary line of a result card (§5.2). */
-export function availabilityText(module) {
-  const a = availability(module);
-  const parts = ["Clinician Screener ✓"];
-  parts.push(a.scribe.reason ? `Ambient Scribe: ${a.scribe.reason}` : "Ambient Scribe ✓");
-  parts.push(a.patient.available ? "Patient Companion ✓" : `Patient Companion unavailable (${a.patient.reason})`);
-  parts.push(a.research.reason ? `Research: ${a.research.reason}` : `Research ✓${a.research.population ? " (population estimates)" : ""}`);
-  return parts.join(" · ");
+/** The availability summary line of a result card (§5.2): the shared builder in ui/common.jsx,
+ *  worded as the shell's Module info and upload dialog. Re-exported for existing callers. */
+export { availabilityText };
+
+/** An ISO timestamp as local "YYYY-MM-DD HH:MM" (the clinician's clock, not UTC); the raw
+ *  text when it does not parse. */
+export function localStamp(iso) {
+  const d = new Date(String(iso || ""));
+  if (Number.isNaN(d.getTime())) return String(iso || "").replace("T", " ").slice(0, 16);
+  const p2 = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
 }
 
 function sectionOf(path) {
@@ -304,7 +307,10 @@ function Field({ path, label, kind = "text", hint = null, lower = false, placeho
   const value = getAt(ed.rubric, path);
   const parentValue = getAt(ed.parent.rubric, path);
   const reason = lockReason(path);
-  const changed = ed.changedSet.has(path) || (value !== parentValue && JSON.stringify(value) !== JSON.stringify(parentValue));
+  // A field inside a block this draft created (Create lexicon, Create English wording) is new,
+  // not edited: the parent has no value there to differ from or revert to.
+  const inCreatedBlock = parentValue === undefined && ed.changes.some((c) => path.startsWith(`${c.path}/`) && getAt(ed.parent.rubric, c.path) === undefined);
+  const changed = !inCreatedBlock && (ed.changedSet.has(path) || (value !== parentValue && JSON.stringify(value) !== JSON.stringify(parentValue)));
   const errs = ed.errorsAt(path);
   const ack = ed.ackFor(path);
   const id = `re-f-${path.replace(/[^A-Za-z0-9]+/g, "-")}`;
@@ -421,9 +427,14 @@ function PhraseList({ path, label, minOne = false }) {
 
 /** A modal confirmation (no window.confirm). */
 function Confirm({ state, onClose }) {
+  const backdropRef = useRef(null);
+  const cancelRef = useRef(null);
+  // Modal keyboard handling (initial focus on Cancel — the safe action, Tab trap, Escape,
+  // inert background, focus returned to the opener), the shell dialogs' contract (ui/common.jsx).
+  useModal(!!state, { backdropRef, initialFocusRef: cancelRef, onClose, fallbackFocus: "[data-testid=rubric-editor] [data-section-nav]" });
   if (!state) return null;
   return (
-    <div className="re-apply">
+    <div className="re-apply" ref={backdropRef}>
       <style>{DCSS}</style>
       <div className="re-overlay" role="dialog" aria-modal="true" aria-label={state.title} data-testid="editor-confirm">
         <div className="re-dialog">
@@ -432,7 +443,7 @@ function Confirm({ state, onClose }) {
           {arr(state.lines).length > 0 && <ul className="re-body">{state.lines.map((l, i) => <li key={i}>{l}</li>)}</ul>}
           <div className="re-caveat">{CAVEATS.prototype}</div>
           <div className="re-actions">
-            <button type="button" className="re-btn" onClick={onClose}>{EDITOR_COPY.cancel}</button>
+            <button type="button" className="re-btn" ref={cancelRef} data-confirm="cancel" onClick={onClose}>{EDITOR_COPY.cancel}</button>
             <button type="button" className="re-btn re-primary" data-confirm="ok" onClick={() => { const f = state.onConfirm; onClose(); f(); }}>
               {state.confirmLabel || EDITOR_COPY.confirm}
             </button>
@@ -1051,7 +1062,7 @@ function LogicSection() {
       <h4>Probes</h4>
       <div className="re-sub">{probes.length} probes{probes.length ? ` (${Object.entries(kinds).map(([k, n]) => `${k} ${n}`).join(", ")})` : ""}{logic.probes && logic.probes.version ? ` · probe set ${logic.probes.version}` : ""}</div>
       <h4>Reads</h4>
-      <pre>{JSON.stringify(logic.reads, null, 2)}</pre>
+      <pre tabIndex={0} role="region" aria-label="Logic reads (read-only)">{JSON.stringify(logic.reads, null, 2)}</pre>
     </div>
   );
 }
@@ -1143,7 +1154,7 @@ function ImpactPane() {
       <h3>{EDITOR_COPY.impact}</h3>
       <div className="re-sub" style={{ marginBottom: 6 }}>{EDITOR_COPY.impactNote}</div>
       {!rows ? <div className="re-sub">{EDITOR_COPY.impactEmpty}</div> : (
-        <div className="re-scroll">
+        <div className="re-scroll" tabIndex={0} role="region" aria-label="Impact preview table">
           <table className="re-table">
             <thead><tr><th>Case</th><th>Total · range · band</th><th>Routing (Screener / Scribe)</th><th>Gap</th><th>Patient summary</th></tr></thead>
             <tbody>
@@ -1487,7 +1498,7 @@ export default function RubricEditor({ entries, activeKey, env, onApply, onDownl
           {resume && (
             <div className="re-banner" data-testid="editor-resume">
               <Info size={14} aria-hidden="true" />
-              <span>{fill(EDITOR_COPY.savedDraft, { date: String(resume.savedAt || "").replace("T", " ").slice(0, 16) })}{resume.parentSha && resume.parentSha !== parent.hashes.rubricSha256 ? ` ${EDITOR_COPY.savedDraftOther}` : ""}</span>
+              <span>{fill(EDITOR_COPY.savedDraft, { date: localStamp(resume.savedAt) })}{resume.parentSha && resume.parentSha !== parent.hashes.rubricSha256 ? ` ${EDITOR_COPY.savedDraftOther}` : ""}</span>
               <button type="button" className="re-btn re-small" data-resume onClick={() => { setDraft(resume.rubric); setResume(null); }}>{EDITOR_COPY.resume}</button>
               <button type="button" className="re-btn re-small" onClick={() => { lsSet(LS_PREFIX + editKey, null); setResume(null); }}>{EDITOR_COPY.discard}</button>
             </div>
@@ -1519,7 +1530,7 @@ export default function RubricEditor({ entries, activeKey, env, onApply, onDownl
               {section === "logic" && <LogicSection />}
               {section === "downloads" && <DownloadsSection />}
             </div>
-            <div className="re-side">
+            <div className="re-side" tabIndex={0} role="region" aria-label="Validation and changes">
               <ValidationPane />
               <ChangesPane />
             </div>
@@ -1566,6 +1577,22 @@ export function ApplyDialog({ open, mode = "apply", parent, draft, loaded = [], 
   const [submitting, setSubmitting] = useState(false);
   const loadedMods = useMemo(() => arr(loaded).map((x) => (x && x.module && x.module.hashes ? x.module : x)).filter((m) => m && m.hashes), [loaded]);
   const at = useMemo(() => nowIso(now), [now]);
+  const backdropRef = useRef(null);
+  const firstFieldRef = useRef(null);
+  // Modal keyboard handling, the shell dialogs' contract (ui/common.jsx): initial focus, Tab
+  // trap, Escape = Cancel unless a create is in flight, inert background, focus returned. Nested
+  // inside the upload dialog, the shell's trap already confines Tab to this innermost
+  // aria-modal and leaves Escape to it while a derivation is open.
+  const submittingRef = useRef(false);
+  useModal(!!open, { backdropRef, initialFocusRef: firstFieldRef, onClose: () => onCancel && onCancel(), canClose: () => !submittingRef.current, fallbackFocus: "[data-testid=editor-apply]" });
+  // The fields appear once the changes are classified: focus moves from the provisional first
+  // control (Cancel) to the module id, unless the user has already moved it elsewhere.
+  const ready = !!changes;
+  useEffect(() => {
+    if (!open || !ready || !firstFieldRef.current || !backdropRef.current) return;
+    const active = document.activeElement;
+    if (!active || active === document.body || (backdropRef.current.contains(active) && active.dataset.applyAction === "cancel")) firstFieldRef.current.focus();
+  }, [open, ready]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -1627,11 +1654,16 @@ export function ApplyDialog({ open, mode = "apply", parent, draft, loaded = [], 
   const rootName = changes && changes.rootModule ? `${changes.rootModule.name}` : (changes ? changes.rootRecord.label : "");
   const rootVersion = changes ? changes.rootRecord.instrumentVersion : "";
   const otherLocs = changes ? Object.keys(draft.locales || {}).filter((l) => l !== "en" && arr((check.result && check.result.rubric.locales && check.result.rubric.locales[l] && check.result.rubric.locales[l].stale)).length) : [];
+  // The calibration warning concerns the research panel: only a parent with a research
+  // configuration has figures to withhold.
+  const scoringNotice = !!changes && changes.vsRoot.scoringChanged && !!parent.research;
+  const cdsNotice = !!changes && changes.vsRoot.scoringChanged && !!(parent.rubric.cds && parent.rubric.cds.examples && parent.rubric.cds.examples.settled !== undefined);
   const fieldMsg = (f) => idProblems.filter((p) => p.field === f).map((p, i) => <div key={i} className="re-msg">{p.msg}</div>);
 
   const submit = async (switchTo) => {
     setSubmitError(null);
     setSubmitting(true);
+    submittingRef.current = true;
     try {
       const rubric = await deriveRubric(parent, draft, {
         id: form.id.trim(), label: form.label.trim(),
@@ -1645,13 +1677,14 @@ export function ApplyDialog({ open, mode = "apply", parent, draft, loaded = [], 
     } catch (err) {
       setSubmitError(String(err && err.message ? err.message : err));
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
 
   const title = mode === "prepare" ? `Load as a module derived from ${parent.label}` : "Apply changes as a new module";
   return (
-    <div className="re-apply">
+    <div className="re-apply" ref={backdropRef}>
       <style>{DCSS}</style>
       <div className="re-overlay" role="dialog" aria-modal="true" aria-label={title} data-testid="apply-dialog">
         <div className="re-dialog">
@@ -1661,7 +1694,7 @@ export function ApplyDialog({ open, mode = "apply", parent, draft, loaded = [], 
             <>
               <div className="re-field">
                 <label className="re-l" htmlFor="re-ap-id">Module id</label>
-                <input id="re-ap-id" className="re-in" data-apply="id" value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value.toLowerCase() })} />
+                <input id="re-ap-id" ref={firstFieldRef} className="re-in" data-apply="id" value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value.toLowerCase() })} />
                 {fieldMsg("id")}
               </div>
               <div className="re-field">
@@ -1701,14 +1734,12 @@ export function ApplyDialog({ open, mode = "apply", parent, draft, loaded = [], 
                 <input id="re-ap-author" className="re-in" data-apply="author" value={form.author} onChange={(e) => setForm({ ...form, author: e.target.value })} />
               </div>
 
-              {(changes.vsRoot.scoringChanged || changes.localesEdited.length > 0 || otherLocs.length > 0) && <h3>Notices</h3>}
-              {changes.vsRoot.scoringChanged && (
-                <>
-                  <div className="re-notice" data-notice="scoring">Scoring differs from {rootName} {rootVersion} — the research panel will withhold every calibration-dependent figure for this module.</div>
-                  {parent.rubric.cds && parent.rubric.cds.examples && parent.rubric.cds.examples.settled !== undefined && (
-                    <div className="re-notice" data-notice="cds">The CDS example card written for {rootName} {rootVersion} will be removed.</div>
-                  )}
-                </>
+              {(scoringNotice || cdsNotice || changes.localesEdited.length > 0 || otherLocs.length > 0) && <h3>Notices</h3>}
+              {scoringNotice && (
+                <div className="re-notice" data-notice="scoring">Scoring differs from {rootName} {rootVersion} — the research panel will withhold every calibration-dependent figure for this module.</div>
+              )}
+              {cdsNotice && (
+                <div className="re-notice" data-notice="cds">The CDS example card written for {rootName} {rootVersion} will be removed.</div>
               )}
               {changes.localesEdited.length > 0 && (
                 <div className="re-notice" data-notice="edited-wording">Edited patient wording: {changes.localesEdited.map((l) => LOCALE_NAMES[l] || l).join(", ")} will be marked unreviewed.</div>

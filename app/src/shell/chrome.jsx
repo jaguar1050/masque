@@ -454,7 +454,13 @@ export function ModuleInfo({ open, entry, entries = [], appVersion = APP_VERSION
                 <ol className="sa-v sa-info-list">{prov.lineage.map((r, i) => <li key={i}>{recordLine(r)}</li>)}</ol></div>
             ) : null}
             {prov && prov.source ? <KV label="derived from file">{`${prov.source.name || DASH} (sha256 ${String(prov.source.sha256 || "").slice(0, 16)}…)`}</KV> : null}
-            {entry.files && entry.files.rubric ? <KV label="rubric file">{`${entry.files.rubric.name} (sha256 ${String(entry.files.rubric.sha256 || "").slice(0, 16)}…)`}</KV> : null}
+            {entry.files && entry.files.rubric ? (
+              // A rubric made in this page (the editor's Apply, Load as derived, a restore) was never
+              // a file: its hash is shown without a file name.
+              arr(entry.sourceFileNames).includes(entry.files.rubric.name)
+                ? <KV label="rubric file">{`${entry.files.rubric.name} (sha256 ${String(entry.files.rubric.sha256 || "").slice(0, 16)}…)`}</KV>
+                : <KV label="rubric">{`no file: made in this page or restored from this browser (sha256 ${String(entry.files.rubric.sha256 || "").slice(0, 16)}…)`}</KV>
+            ) : null}
             {entry.files && entry.files.logic ? <KV label="logic file">{`${entry.files.logic.name} (sha256 ${String(entry.files.logic.sha256 || "").slice(0, 16)}…)`}</KV> : null}
             {arr(entry.sourceFileNames).length ? <KV label="uploaded as">{entry.sourceFileNames.join(", ")}</KV> : null}
             {rootChanged ? <p className="sa-info-note">The root built-in's rubric file has changed since this module was derived (scoring, instrument and lexicon unchanged).</p> : null}

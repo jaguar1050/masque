@@ -23,7 +23,7 @@ import { zipStore } from "../engine/zip.js";
 import { ProvenanceBadge } from "../ui/common.jsx";
 import { patientPrintHeader } from "../apps/PatientCompanion.jsx";
 import {
-  forgetSaved, listSaved, loadBuiltins, markEntry, prepareRubric, register, registered, restoreSaved, saveModule, unregister,
+  forgetSaved, listSaved, loadBuiltins, markEntry, neededLogicText, prepareRubric, register, registered, restoreSaved, saveModule, unregister,
 } from "./registry.js";
 import {
   CaveatStrip, ConfirmDialog, InvalidModule, LIVE_VOICE, MicIndicator, ModuleInfo, PatientFooter, PrintFrame, TAB_LABELS,
@@ -46,6 +46,9 @@ const TAB_STORAGE_KEY = "screenair.tab";
 const MODULE_STORAGE_KEY = "screenair.module";
 const EMPTY_DIRTY = { screener: null, scribe: null, patient: null, research: null };
 const DIRTY_ORDER = ["screener", "scribe", "patient", "research"];
+// The Rubric Editor's autosaved draft of a module is stored under this prefix + the entry key
+// (apps/RubricEditor.jsx); removing an edited module that exists nowhere else clears it too.
+const EDITOR_DRAFT_PREFIX = "screenair.draft.v1.";
 
 export const MIC_TOAST = "Microphone stopped — the Patient Companion never runs with the microphone on.";
 export const RETURN_TEXT = "The clinician view shows scores, research data and module tools. Hand the device back to the clinician before continuing.";
@@ -80,6 +83,11 @@ function sessionSet(key, value) {
   try { if (value == null) sessionStorage.removeItem(key); else sessionStorage.setItem(key, value); } catch (_) { /* storage blocked */ }
 }
 
+/** The restore banner's state: which modules are saved and which of them can restore now. */
+function savedSignature(list) {
+  return list.map((s) => `${s.id}:${s.needsLogicUpload ? "needs-logic" : "ready"}`).join("|");
+}
+
 function isUsable(entry) {
   return !!(entry && entry.module && entry.validation && entry.validation.ok);
 }
@@ -106,12 +114,15 @@ export default function ScreenAIr({ env }) {
   const [moduleErrors, setModuleErrors] = useState([]);
   const [printCtx, setPrintCtx] = useState(null);
   const [savedList, setSavedList] = useState([]);
-  const [restoreDismissed, setRestoreDismissed] = useState(false);
+  // The banner state it was dismissed in: it returns when that changes (a module's logic was
+  // uploaded, so it can now restore; another module was remembered or removed).
+  const [restoreDismissed, setRestoreDismissed] = useState(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [confirm, setConfirm] = useState(null);
   const [toast, setToast] = useState(null);
   const [patientSession, setPatientSession] = useState(0);
+  const [hashSeq, setHashSeq] = useState(0);
   const tabRefs = useRef({});
   const activeRef = useRef(null);
   activeRef.current = activeKey;
@@ -131,7 +142,10 @@ export default function ScreenAIr({ env }) {
 
   const entry = useMemo(() => entries.find((e) => e.key === activeKey) || null, [entries, activeKey]);
   const module = isUsable(entry) ? entry.module : null;
-  const patientView = useMemo(() => (module ? projectForPatient(module) : null), [module]);
+  // A patient-mode reload naming a module that is no longer loaded shows no other module's name,
+  // wording or print header (D26): the fallback module stays mounted for the clinician only.
+  const hidePatientModule = mode === "patient" && patientMissing;
+  const patientView = useMemo(() => (module && !hidePatientModule ? projectForPatient(module) : null), [module, hidePatientModule]);
   const patientFacing = mode === "patient" || tab === "patient";
   const micAllowed = mode !== "patient" && tab !== "patient";
 
@@ -181,20 +195,29 @@ export default function ScreenAIr({ env }) {
     writeHash({ tab, module: mode === "patient" ? (patientMissing ? initialHash.module : id) : (builtin ? id : null), mode });
     sessionSet(TAB_STORAGE_KEY, tab);
     if (builtin && id) sessionSet(MODULE_STORAGE_KEY, id);
-  }, [phase.status, tab, mode, entry, patientMissing, initialHash]);
+  }, [phase.status, tab, mode, entry, patientMissing, initialHash, hashSeq]);
 
   const modeRef = useRef(mode);
   modeRef.current = mode;
   const tabRef = useRef(tab);
   tabRef.current = tab;
+  const switchRef = useRef(null);
   useEffect(() => {
     const onHash = () => {
       const h = readHash();
       if (h.tab && h.tab !== tabRef.current) setTab(h.tab);
       if (h.mode === "patient" && modeRef.current !== "patient") setMode("patient");
-      // Leaving patient mode needs the confirmation: a hand edit of the address does not.
-      if (h.mode !== "patient" && modeRef.current === "patient") writeHash({ tab: tabRef.current, module: h.module, mode: "patient" });
-      if (!h.tab) writeHash({ tab: tabRef.current, module: h.module, mode: modeRef.current });
+      // A hand edit of module= switches to that built-in, through the usual switch (which lists
+      // what it clears). Anything else — an unknown id, a non-built-in, any change in patient
+      // mode — is not followed. Leaving patient mode needs the confirmation, not an address edit.
+      if (h.module && modeRef.current !== "patient" && h.mode !== "patient") {
+        const cur = registered().find((e) => e.key === activeRef.current);
+        const hit = registered().find((e) => e.origin === "builtin" && e.module && e.module.id === h.module);
+        if (hit && hit !== cur && switchRef.current) switchRef.current(hit.key);
+      }
+      // Then the address is rewritten from the state, so it never shows a module, tab or mode
+      // the page is not showing.
+      setHashSeq((n) => n + 1);
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
@@ -275,6 +298,7 @@ export default function ScreenAIr({ env }) {
       onConfirm: () => { setConfirm(null); doSwitch(key, after); },
     });
   }, [activeKey, dirtyLines, doSwitch]);
+  switchRef.current = switchModule;
 
   // ------------------------------------------------------------------ downloads
   const fetchBytes = useCallback(async (p) => {
@@ -350,7 +374,8 @@ export default function ScreenAIr({ env }) {
     const all = registered();
     setEntries(all);
     refreshSaved(all);
-    setRestoreDismissed(true);
+    // Restored modules leave the banner; one that failed keeps it, with what it needs.
+    setRestoreDismissed(null);
     setToast(problems.length ? `Restored ${n} module${n === 1 ? "" : "s"}; not restored — ${problems.join(" · ")}` : `Restored ${n} module${n === 1 ? "" : "s"}. Choose one from the Module menu.`);
   }, [savedList, refreshSaved]);
 
@@ -365,20 +390,35 @@ export default function ScreenAIr({ env }) {
   }, [refreshSaved]);
 
   const removeEntry = useCallback((e) => {
+    // An edited module that was neither remembered nor downloaded exists only in this tab:
+    // removing it loses it, so it is confirmed, and its editor draft goes with it.
+    const onlyHere = e.origin === "derived" && !e.savedAt && !e.downloadedAt;
     const finish = () => {
       try { unregister(e.key); } catch (_) { /* built-ins stay */ }
+      if (onlyHere) { try { localStorage.removeItem(EDITOR_DRAFT_PREFIX + e.key); } catch (_) { /* storage blocked */ } }
       const all = registered();
       setEntries(all);
       refreshSaved(all);
       setInfoOpen(false);
     };
-    if (e.key === activeKey) {
-      const fallback = entries.find((x) => x.origin === "builtin" && x.isDefault) || entries.find((x) => x.origin === "builtin");
-      switchModule(fallback ? fallback.key : null, { after: finish, title: "Remove the active module?", confirmLabel: "Remove and switch module" });
-    } else {
-      finish();
-    }
-  }, [activeKey, entries, switchModule, refreshSaved]);
+    const proceed = () => {
+      if (e.key === activeKey) {
+        const fallback = entries.find((x) => x.origin === "builtin" && x.isDefault) || entries.find((x) => x.origin === "builtin");
+        switchModule(fallback ? fallback.key : null, { after: finish, title: "Remove the active module?", confirmLabel: "Remove and switch module" });
+      } else {
+        finish();
+      }
+    };
+    if (!onlyHere) { proceed(); return; }
+    const label = e.module ? e.module.label : e.label;
+    setConfirm({
+      kind: "remove", title: "Remove this edited module?",
+      body: `${label} exists only in this tab: it was not remembered in this browser or downloaded. Removing it discards it and its Rubric Editor draft; it cannot be restored.`,
+      lines: [], notes: [], confirmLabel: "Remove module", initialFocus: "cancel",
+      extra: e.module ? { label: "Download it first", testId: "confirm-download", onClick: () => { setConfirm(null); downloadOne(e); } } : null,
+      onConfirm: () => { setConfirm(null); proceed(); },
+    });
+  }, [activeKey, entries, switchModule, refreshSaved, downloadOne]);
 
   // ------------------------------------------------------------------ patient mode (D26)
   // A companion that holds answers is not handed on silently: the next patient would see them.
@@ -405,6 +445,34 @@ export default function ScreenAIr({ env }) {
       onConfirm: () => { setConfirm(null); setPatientMissing(false); setMode("clinician"); },
     });
   }, []);
+  // Patient mode shows no clinician dialog: an upload, the module drawer or a pending clinician
+  // confirmation opened before the switch (e.g. by an address edit) is closed. The return
+  // dialog is the patient view's own.
+  useEffect(() => {
+    if (mode !== "patient") return;
+    setUploadOpen(false);
+    setInfoOpen(false);
+    setConfirm((c) => (c && c.kind === "return" ? c : null));
+  }, [mode]);
+
+  // Handing over moves focus to the Patient Companion's heading, so keyboard and screen-reader
+  // users start at the top of the patient view rather than on <body>.
+  const prevMode = useRef(mode);
+  useEffect(() => {
+    const was = prevMode.current;
+    prevMode.current = mode;
+    if (mode !== "patient" || was === "patient") return undefined;
+    const t = setTimeout(() => {
+      const panel = document.getElementById("sa-panel-patient");
+      const heading = panel && panel.querySelector("h1, h2");
+      const target = heading || document.querySelector("[data-testid=patient-mode-title]");
+      if (!target) return;
+      if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
+      target.focus();
+    }, 0);
+    return () => clearTimeout(t);
+  }, [mode, patientSession]);
+
   const closeConfirm = useCallback(() => setConfirm(null), []);
   const closeUpload = useCallback(() => setUploadOpen(false), []);
   const closeInfo = useCallback(() => setInfoOpen(false), []);
@@ -431,10 +499,10 @@ export default function ScreenAIr({ env }) {
 
   // ------------------------------------------------------------------ chrome text
   const lastError = moduleErrors.length ? moduleErrors[moduleErrors.length - 1] : null;
-  const caveatLines = module
+  const caveatLines = module && !hidePatientModule
     ? (patientFacing ? provenanceLines(module, "patient", { locale: printCtx ? printCtx.loc : "en" }) : provenanceLines(module, "clinician"))
     : [];
-  const printHeader = module && patientFacing && patientView
+  const printHeader = hidePatientModule ? CAVEATS.prototype : module && patientFacing && patientView
     ? patientPrintHeader(patientView, printCtx)
     : [CAVEATS.prototype, ...clinicianMarkers(module)].join(" · ");
 
@@ -473,7 +541,8 @@ export default function ScreenAIr({ env }) {
     );
   }
 
-  const restoreShown = clinician && phase.status === "ready" && savedList.length > 0 && !restoreDismissed;
+  const restoreShown = clinician && phase.status === "ready" && savedList.length > 0 && savedSignature(savedList) !== restoreDismissed;
+  const needLogic = savedList.filter((s) => s.needsLogicUpload);
 
   return (
     <div className="sa-shell" data-tab={tab} data-mode={mode} data-milestone="M3" style={stickyTop ? { "--sa-sticky-top": `${stickyTop}px` } : undefined}>
@@ -525,9 +594,14 @@ export default function ScreenAIr({ env }) {
 
       {restoreShown ? (
         <div className="sa-banner sa-restore" role="region" aria-label="Saved modules" data-testid="restore-banner">
-          <span>{savedList.length} module{savedList.length === 1 ? "" : "s"} saved in this browser{savedList.some((s) => s.needsLogicUpload) ? " (some need their logic file uploaded again)" : ""}</span>
+          <span>{savedList.length} module{savedList.length === 1 ? "" : "s"} saved in this browser</span>
+          {needLogic.length ? (
+            <ul className="sa-restore-needs" data-testid="restore-needs">
+              {needLogic.map((s) => <li key={s.id}>{s.label} {neededLogicText(s)}</li>)}
+            </ul>
+          ) : null}
           <button type="button" className="sa-btn sa-btn-small" onClick={restoreAll} data-testid="restore-saved">Restore</button>
-          <button type="button" className="sa-btn sa-btn-small" onClick={() => setRestoreDismissed(true)}>Dismiss</button>
+          <button type="button" className="sa-btn sa-btn-small" onClick={() => setRestoreDismissed(savedSignature(savedList))}>Dismiss</button>
           <button type="button" className="sa-link" onClick={() => { for (const s of savedList) forgetSaved(s.id); refreshSaved(registered()); }}>Forget them</button>
         </div>
       ) : null}
@@ -554,7 +628,7 @@ export default function ScreenAIr({ env }) {
         </div>
       ) : null}
 
-      <UploadDialog open={uploadOpen} onClose={closeUpload} entries={entries} env={env} onLoaded={onLoaded}
+      <UploadDialog open={uploadOpen && clinician} onClose={closeUpload} entries={entries} env={env} onLoaded={onLoaded}
         activeEntry={entry} onDownloadCurrent={entry && entry.module ? () => downloadOne(entry) : null} />
       <ModuleInfo open={infoOpen && clinician} entry={entry} entries={entries} appVersion={APP_VERSION} onClose={closeInfo}
         onRemember={entry && entry.origin !== "builtin" ? (e) => rememberEntries([e]) : null}
@@ -565,7 +639,7 @@ export default function ScreenAIr({ env }) {
         confirmLabel={confirm ? confirm.confirmLabel : "OK"} cancelLabel={confirm && confirm.cancelLabel ? confirm.cancelLabel : "Cancel"}
         onConfirm={confirm ? confirm.onConfirm : () => {}} onCancel={closeConfirm}
         initialFocus={confirm && confirm.initialFocus ? confirm.initialFocus : "confirm"} extra={confirm && confirm.extra ? confirm.extra : null}
-        testId={confirm ? ({ return: "return-dialog", hand: "hand-dialog" }[confirm.kind] || "switch-dialog") : "switch-dialog"} />
+        testId={confirm ? ({ return: "return-dialog", hand: "hand-dialog", remove: "remove-dialog" }[confirm.kind] || "switch-dialog") : "switch-dialog"} />
       <Toast message={toast} onDone={closeToast} />
     </div>
   );

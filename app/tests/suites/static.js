@@ -377,6 +377,29 @@ export default {
       n += 1;
       const html = await h.fetchText(page);
       if (!/<meta\s+name=["']robots["']\s+content=["']noindex,\s*nofollow["']/i.test(html)) fail("pages", `${page} lacks <meta name="robots" content="noindex, nofollow">`);
+      // Deployed pages (app/*.html): Babel standalone never blocks the first paint, and the
+      // loader URL carries a version so a cached loader of another release is not reused.
+      if (page.includes("/")) continue;
+      for (const tag of html.match(/<script\b[^>]*\bsrc=["'][^"']*babel[^"']*["'][^>]*>/gi) || []) {
+        if (!/\b(defer|async)\b/.test(tag)) fail("pages", `${page}: ${tag} blocks the first paint (add defer)`);
+      }
+      for (const m of html.matchAll(/masque-loader\.js(\?[^'"]*)?['"]/g)) {
+        if (!m[1] || !/^\?v=/.test(m[1])) fail("pages", `${page} imports masque-loader.js without a ?v=<release> query`);
+      }
+    }
+    // .htaccess: the header-level noindex covers every published source kind, and pages and
+    // modules are revalidated on each load.
+    if (files.includes(".htaccess")) {
+      n += 1;
+      const ht = await h.fetchText(".htaccess");
+      const robots = /<FilesMatch "([^"]+)">\s*Header set X-Robots-Tag "noindex, nofollow"/.exec(ht);
+      for (const ext of ["js", "jsx", "mjs", "json", "py", "R", "md", "csv"]) {
+        if (!robots || !new RegExp(`[(|]${ext}[|)]`).test(robots[1])) fail("pages", `.htaccess: no X-Robots-Tag for .${ext}`);
+      }
+      const cache = /<FilesMatch "([^"]+)">\s*Header set Cache-Control "no-cache"/.exec(ht);
+      for (const ext of ["html", "js", "jsx", "mjs", "json"]) {
+        if (!cache || !new RegExp(`[(|]${ext}[|)]`).test(cache[1])) fail("pages", `.htaccess: .${ext} is not revalidated (Cache-Control: no-cache)`);
+      }
     }
 
     // ------------------------------------------------------------------ t-css

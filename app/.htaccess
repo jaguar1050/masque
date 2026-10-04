@@ -7,8 +7,11 @@
   # The population page fetches the estimates index, the schema and the variable
   # map; the ETL script and its README are published alongside them as source.
   AddType application/json .json
-  AddType text/plain .R .md .csv
-  AddCharset UTF-8 .js .mjs .jsx .html .css .json .R .md .csv
+  # The ETL sources are published to be read, not run: plain text, never a download
+  # or a CGI handler.
+  AddType text/plain .R .md .csv .py
+  RemoveHandler .py .R
+  AddCharset UTF-8 .js .mjs .jsx .html .css .json .R .md .csv .py
 </IfModule>
 
 # No directory listing of src/.
@@ -16,8 +19,18 @@ Options -Indexes
 
 <IfModule mod_headers.c>
   # Prototype tooling: keep it out of search indexes at the header level too,
-  # for crawlers that fetch .jsx directly and never see the <meta> tag.
-  <FilesMatch "\.(jsx|mjs|json|R|md|csv)$">
+  # for crawlers that fetch the sources directly and never see the <meta> tag.
+  <FilesMatch "\.(js|jsx|mjs|json|py|R|md|csv)$">
     Header set X-Robots-Tag "noindex, nofollow"
   </FilesMatch>
+  # Pages and modules are revalidated on every load (a 304 when unchanged), so a
+  # release is picked up at once: a cached page of one release never runs with
+  # the loader or modules of another.
+  <FilesMatch "\.(html|js|jsx|mjs|json)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript application/javascript application/json
 </IfModule>

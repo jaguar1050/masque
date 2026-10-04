@@ -187,6 +187,11 @@ function fill(tpl, vars) {
   return String(tpl).replace(/\{(name|appVersion|instrument)\}/g, (m, k) => (vars[k] === undefined || vars[k] === null ? m : String(vars[k])));
 }
 
+/*  Text colour of the tier tag (non-clinical style only). The tier palette's coral and amber
+    read 3.9:1 and 3.7:1 on their own tints at 11px; these darker shades of the same hues reach
+    5.3:1 and 5.5:1 (WCAG AA). Background, border and checkbox colours are unchanged. */
+const TIER_TEXT = { now: "#A8432B", soon: "#8E5516" };
+
 /** Tier display for a red flag's tier (Pat L263-272); an unknown tier reads as the slower one. */
 function tierOf(tier) {
   return TIER_DISPLAY[tier] || TIER_DISPLAY.urgent;
@@ -463,7 +468,7 @@ function Safety({ allFlags, flags, rf, setRf, safetyDone, setSafetyDone, urgent,
               <div className="box">{rf[f.id] && <Check size={15} />}</div>
               <div className="ft">
                 {f.q}
-                <span className="tier" style={{ background: d.bg, color: d.color }}>
+                <span className="tier" style={{ background: d.bg, color: TIER_TEXT[d.key] || d.color }}>
                   {d.key === "now" ? t.tierNow : t.tierSoon}
                 </span>
               </div>

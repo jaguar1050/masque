@@ -116,6 +116,7 @@ export const SHELL_CSS = `
 .sa-shell .sa-restore{background:#E7F0EF;border:1px solid #C6DAD7;color:#123E42}
 .sa-shell .sa-unsaved{background:var(--amberbg);border:1px solid #E7D3AE;color:#6B4512}
 .sa-shell .sa-banner > span{flex:1 1 240px;min-width:0}
+.sa-shell .sa-restore-needs{order:1;flex:1 1 100%;min-width:0;margin:0;padding-left:18px;font-size:12.5px;overflow-wrap:anywhere}
 
 /* main area */
 .sa-shell .sa-main{display:block;min-width:0}

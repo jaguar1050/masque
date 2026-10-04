@@ -408,11 +408,12 @@ export default function UploadDialog({ open, onClose, entries, env, onLoaded, ac
                 <li key={i}>
                   <code>{c.name}</code> · {size(c.size)} · sha256 <code className="sa-hash">{c.sha256}</code>
                   {c.inspect && arr(c.inspect.apiRefs).length
-                    ? <div data-testid="upload-apirefs">References page or network APIs: {c.inspect.apiRefs.join(", ")}</div>
-                    : <div>References no page or network API by name.</div>}
+                    ? <div data-testid="upload-apirefs">Names page or network APIs: {c.inspect.apiRefs.join(", ")}</div>
+                    : <div data-testid="upload-apirefs-none">None of the page or network API names this check looks for were found.</div>}
                 </li>
               ))}
             </ul>
+            <p className="sa-hint" data-testid="upload-heuristic">This list comes from a text check, which is a heuristic: code can reach anything this page can without naming it, so a short or empty list does not make a file safe.</p>
             <label className="sa-check">
               <input type="checkbox" checked={consent} onChange={(e) => { setConsent(e.target.checked); setResults(null); }} data-testid="upload-consent-box" />
               I understand and want to run this code

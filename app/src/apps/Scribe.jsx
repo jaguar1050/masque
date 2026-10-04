@@ -18,7 +18,7 @@ import { scopeCss } from "../engine/css.js";
 import { richText } from "../engine/patient.js";
 import { PROBE_KIND, LOWEST_BAND, INDETERMINATE } from "../engine/vocab.js";
 import { APP_VERSION, SITE } from "../engine/policy.js";
-import { ProvenanceBadge, TabNote } from "../ui/common.jsx";
+import { ProvenanceBadge, TabNote, useOptionalSession } from "../ui/common.jsx";
 
 /*  apps/Scribe.jsx — the generic Ambient Scribe (design 03 §5.4, §9.9). Owner: WP8.
 
@@ -181,13 +181,19 @@ details.about[open] .chev{transform:rotate(180deg)}.chev{transition:.2s}
 `;
 
 // New chrome only (non-clinical): the panel link card, the lexicon / secure-context
-// notices and the probe evaluation-error tag. Classes carry the sa-scribe- prefix.
+// notices and the probe evaluation-error tag. Classes carry the sa-scribe- prefix. The grid
+// override lets the two cards shrink below their content's min-content width (minmax(0,1fr),
+// min-width:0), so a long FHIR line scrolls inside its <pre> instead of widening the card past
+// the panel. (The scroll boxes take keyboard focus; the baseline :focus-visible ring covers them.)
 const SCRIBE_EXTRA_CSS = `
 .sa-scribe-link{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:14px}
 .sa-scribe-link .sa-scribe-linktext{flex:1 1 260px;font-size:12.5px;color:#33474A}
 .sa-scribe-notice{display:flex;gap:7px;align-items:flex-start;font-size:12px;color:#6B4A18;background:var(--amberbg);border:1px solid #E4C88E;border-radius:10px;padding:9px 11px;margin:0 0 12px}
 .sa-scribe-evalerr{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:#8E3520;background:var(--coralbg);border-radius:5px;padding:2px 6px;margin-left:6px}
 .sa-scribe-prov{margin-bottom:10px}
+.grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.grid>*{min-width:0}
+@media (max-width:820px){.grid{grid-template-columns:minmax(0,1fr)}}
 `;
 
 const CSS = scopeCss(SCRIBE_CSS, ".sa-scribe") + scopeCss(SCRIBE_EXTRA_CSS, ".sa-scribe");
@@ -250,6 +256,9 @@ export default function Scribe({
   const [view, setView] = useState("safety");          // safety | prompts | note | fhir
   const [toast, setToast] = useState("");
   const scrollRef = useRef(null);
+  // The session store (the shell's SessionProvider), when there is one: captured rows are
+  // mirrored there through onCapture, and Reset clears them there too.
+  const session = useOptionalSession();
 
   // native voice capture — see the shared voice module
   const [voiceState, setVoiceState] = useState("idle"); // idle | starting | listening | restarting | stopped | error
@@ -381,6 +390,9 @@ export default function Scribe({
     setTranscript([]); setCursor(0); setPlaying(false); setAnswers({}); setCtx({});
     setVmp({}); setAsked({}); setSkipped({}); setRf({}); setSafetyReviewed(false); setView("safety");
     setProbeAns({}); setProbeNotes([]); setCohort([]);
+    // The captured rows leave the session as well: Research and the module-switch
+    // confirmation must not keep listing rows this tab has cleared.
+    if (session && typeof session.clearRows === "function") session.clearRows("scribe");
     setToast("Encounter cleared");
   }
   function submitInput() {
@@ -505,16 +517,19 @@ export default function Scribe({
   }, [module, score, complaint, activeFlags, safetyReviewed, routingCleared, answers, ctx]); // eslint-disable-line
 
   const answeredCount = Object.keys(answers).length;
+  // Captured rows as the session holds them (what Research lists and a module switch would
+  // drop); this tab's own list off the shell (no session).
+  const rowCount = session ? session.cohorts.scribe.length : cohort.length;
   const dirtySummary = useMemo(() => {
     const parts = [];
     if (transcript.length) parts.push(`transcript (${plural(transcript.length, "line", "lines")})`);
     if (answeredCount) parts.push(plural(answeredCount, "answer", "answers"));
     const flagCount = Object.keys(rf).length;
     if (flagCount) parts.push(plural(flagCount, "red flag", "red flags"));
-    if (cohort.length) parts.push(plural(cohort.length, "captured row", "captured rows"));
+    if (rowCount) parts.push(plural(rowCount, "captured row", "captured rows"));
     if (!parts.length && (safetyReviewed || Object.keys(ctx).length || Object.keys(vmp).length || probeNotes.length)) parts.push("screen in progress");
     return parts.length ? parts.join(", ") : null;
-  }, [transcript.length, answeredCount, rf, cohort.length, safetyReviewed, ctx, vmp, probeNotes.length]);
+  }, [transcript.length, answeredCount, rf, rowCount, safetyReviewed, ctx, vmp, probeNotes.length]);
   useEffect(() => { if (cb.current.onDirty) cb.current.onDirty("scribe", dirtySummary); }, [dirtySummary]);
 
   const hasContent = transcript.length > 0;
@@ -526,7 +541,7 @@ export default function Scribe({
   const aboutLines = Array.isArray(scribeCopy.about) ? scribeCopy.about : [];
   const benchmark = versions.goldSet
     ? ` — benchmarked in-sample only, see EXTRACTION_BENCHMARK${versions.goldSetLexicon && versions.goldSetLexicon !== versions.lexicon ? ` (benchmarked on lexicon ${versions.goldSetLexicon}; not re-run)` : ""}`
-    : " — gold set — (not benchmarked)";
+    : " · gold set — (not benchmarked)";
 
   return (
     <div className="sa-app sa-scribe" data-testid="scribe-app">
@@ -605,7 +620,7 @@ export default function Scribe({
               </div>
             )}
 
-            <div className="tsc" ref={scrollRef} data-testid="scribe-transcript">
+            <div className="tsc" ref={scrollRef} data-testid="scribe-transcript" tabIndex={0} role="region" aria-label="Encounter transcript">
               {hasLexicon && !hasContent && !interim && <div className="empty">
                 {voiceSupported && secure ? <>Press <b>Listen</b> to capture the encounter from the microphone, </> : <>Press </>}
                 {hasScript ? <><b>Play demo visit</b> to watch a scripted one — or type what the patient says below.</> : <>or type what the patient says below.</>}</div>}
@@ -831,7 +846,7 @@ export default function Scribe({
 
             {view === "note" && (
               <div style={{marginTop:8}}>
-                <div className="note" data-testid="scribe-note">{note}</div>
+                <div className="note" data-testid="scribe-note" tabIndex={0} role="region" aria-label="Draft note">{note}</div>
                 <div className="btnrow">
                   <button className="act ghost" onClick={() => { try { navigator.clipboard.writeText(note); } catch(_){} setToast("Note copied"); }}><Copy size={14} /> Copy note</button>
                   <button className="act" disabled={!canSign} data-testid="scribe-sign"
@@ -852,7 +867,7 @@ export default function Scribe({
                 <button className="act ghost" onClick={()=>downloadJsonFile(`${filePrefix}-data-dictionary-v${instrument}.json`, buildDataDictionary(module, { appVersion }))}><Download size={14}/> Dictionary</button>
               </div>
               <div style={{marginTop:8}}>
-                <pre className="code" data-testid="scribe-bundle" dangerouslySetInnerHTML={{ __html: fhirHtml(bundle) }} />
+                <pre className="code" data-testid="scribe-bundle" tabIndex={0} role="region" aria-label="FHIR bundle" dangerouslySetInnerHTML={{ __html: fhirHtml(bundle) }} />
                 <div className="btnrow">
                   <button className="act ghost" onClick={() => { try { navigator.clipboard.writeText(JSON.stringify(bundle,null,2)); } catch(_){} setToast("FHIR bundle copied"); }}><Copy size={14} /> Copy bundle</button>
                   <button className="act" onClick={() => setToast("Posted to FHIR server (simulated)")}><FileJson size={14} /> Post bundle</button>
@@ -876,7 +891,7 @@ export default function Scribe({
         {/* The readiness panel moved to the Research tab (AD8). */}
         <div className="card sa-scribe-link" data-testid="scribe-research-link">
           <div className="sa-scribe-linktext">
-            Research readiness for this screen — calibration, validation, fairness and the model card — is in the <b>Research</b> tab. Captured this session: <span className="num">{cohort.length}</span>.
+            Research readiness for this screen — calibration, validation, fairness and the model card — is in the <b>Research</b> tab. Captured this session: <span className="num">{rowCount}</span>.
           </div>
           {onOpenTab && <button className="act ghost" onClick={() => cb.current.onOpenTab && cb.current.onOpenTab("research")} data-testid="scribe-open-research"><ArrowRight size={14} /> Open Research</button>}
         </div>

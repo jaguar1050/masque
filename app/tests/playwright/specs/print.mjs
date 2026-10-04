@@ -22,6 +22,8 @@
 //              mounting apps/PatientCompanion.jsx); until then they are reported as waiting
 //              (FAIL, never a vacuous PASS). With emulateMedia("print") on the shell, the tab bar
 //              and the header controls are hidden.
+//   contrast   the red-flag tier tags on the dev page's safety step: text against its own
+//              background ≥ 4.5:1 (WCAG AA for their 11px text).
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -134,6 +136,27 @@ export default async function print(page, ctx) {
       const m = re.exec(text);
       check(!m, `/${label}/@pattern`, `no match for ${re}`, m && text.slice(Math.max(0, m.index - 40), m.index + 40));
     }
+  }
+
+  // ------------------------------------------------------------------ contrast: tier tags
+  {
+    await ready(page, devUrl());
+    await page.waitForSelector("[data-testid=patient-app] .mp .wrap", { timeout: 30000 });
+    const ratios = await page.evaluate(async () => {
+      const wrap = document.querySelector("[data-testid=patient-app] .mp .wrap");
+      const bs = wrap.querySelectorAll(":scope > .nav button");
+      if (bs.length) { bs[bs.length - 1].click(); await new Promise((r) => setTimeout(r, 50)); }
+      const rgb = (c) => (c.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+      const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+      return [...wrap.querySelectorAll(".flag .tier")].map((t) => {
+        const cs = getComputedStyle(t);
+        const a = lum(rgb(cs.color)), b = lum(rgb(cs.backgroundColor));
+        return { text: t.textContent, ratio: Math.round(((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)) * 100) / 100 };
+      });
+    });
+    check(ratios.length > 0, "/contrast/tier/present", "tier tags on the safety step", 0);
+    for (const r of ratios) check(r.ratio >= 4.5, `/contrast/tier/${r.text}`, ">= 4.5", r.ratio);
+    if (ratios.length) notes.push(`tier tag contrast: ${[...new Set(ratios.map((r) => `${r.text} ${r.ratio}:1`))].join(", ")}`);
   }
 
   // ------------------------------------------------------------------ dev page: en, es, derived
