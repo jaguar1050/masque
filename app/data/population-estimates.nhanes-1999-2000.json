@@ -1,8 +1,8 @@
 {
   "masqueArtifact": "population-estimates",
   "unitOfAnalysis": "person",
-  "generatedAt": "2026-09-28T06:03:27Z",
-  "producedBy": "masque_population_etl.R 0.6.0 / R survey 4.2.1",
+  "generatedAt": "2026-10-04T16:15:52Z",
+  "producedBy": "masque_population_etl.R 0.6.1 / R survey 4.2.1",
   "source": {
     "dataset": "NHANES",
     "cycle": "1999-2000",
@@ -22,7 +22,7 @@
     "domainAnalysis": true
   },
   "phenotype": {
-    "definition": "Severe headaches or migraines (MPQ090 = yes) AND at least one of: dizziness or balance problems in the past year (BAQ020A or BAQ020B = yes; a 'no' to the gate question BAQ010 counts as no), any reported hearing trouble (AUQ130 = a little trouble, a lot of trouble, or deaf), or ears ringing, roaring or buzzing in the past year (AUQ190 = yes). Adults aged 40 and over; complete cases only. This is the proposal <U+00A7>7.1 phenotype narrowed to what NHANES 1999-2004 can express: no sinonasal arm and no recalcitrance (utilization) arm.",
+    "definition": "Severe headaches or migraines (MPQ090 = yes) AND at least one of: dizziness or balance problems in the past year (BAQ020A or BAQ020B = yes; a 'no' to the gate question BAQ010 counts as no), any reported hearing trouble (AUQ130 = a little trouble, a lot of trouble, or deaf), or ears ringing, roaring or buzzing in the past year (AUQ190 = yes). Adults aged 40 and over; complete cases only. This is the proposal §7.1 phenotype narrowed to what NHANES 1999-2004 can express: no sinonasal arm and no recalcitrance (utilization) arm.",
     "rule": {
       "all": ["headache_migraine"],
       "any": ["dizziness_balance", "hearing_difficulty", "tinnitus"],

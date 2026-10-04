@@ -4,8 +4,8 @@ There are **two** connections, they go to different places, and conflating them 
 
 | | What it is | How it connects |
 |---|---|---|
-| **Cohort rows** | Individual patients from your clinical pilot | Upload CSV/JSON straight into the research panel on the screener or scribe — already works |
-| **Population estimates** | National figures from NHIS / NHANES / MEPS | Offline ETL → JSON artifact → committed under `app/data/` → rendered by `app/population.html` |
+| **Cohort rows** | Individual patients from your clinical pilot | Upload CSV/JSON into the research readiness panel (screenAIr, `app/screenair.html`, Research tab → Research readiness → Data ingestion) |
+| **Population estimates** | National figures from NHIS / NHANES / NAMCS / FAERS / MEPS | Offline ETL → JSON artifact → committed under `app/data/` → rendered by the Population estimates section of screenAIr's Research tab (`app/population.html` now redirects there) |
 
 This folder (`app/etl/`) is the published copy of the estimator. `reference/MASQUE_v0.3.1/etl/` is the 0.3.1 release copy and stays as it was; the differences are listed in `docs/refactor/02-app-divergences.md`.
 
@@ -53,7 +53,7 @@ Each concept carries a `_status` the ETL reads:
 | `unmapped` (with `vars: []`) | this cycle cannot express it | runs; the artifact lists it under `unmapped` and the page shows the "narrower than §7.1" banner |
 | `mapped` (with `vars` filled) | in use | runs |
 
-The map is data rather than code on purpose: a cycle change becomes a reviewable diff, and the ETL refuses to run while anything is still TODO. Three more things the map declares, all read by the ETL: `phenotype_rule` `{"all": [...], "any": [...]}` — positive when every `all` concept is positive and at least one `any` concept is positive, complete cases only, and every concept it names must be mapped (an unmapped arm would otherwise silently narrow the phenotype instead of being reported as absent); `eligibility` `{"var", "min", "max", "reason"}` — the subpopulation the items were asked of, applied as a design subset; and per-concept `skipNegative` `{"var", "codes"}` — a gate answer that routed respondents past the detail items counts as no, not as missing. When you declare a concept unmapped, drop it from the rule and say so in `phenotype_definition`.
+The map is data rather than code on purpose: a cycle change becomes a reviewable diff, and the ETL refuses to run while anything is still TODO. Three more things the map declares, all read by the ETL: `phenotype_rule` `{"all": [...], "any": [...]}` — positive when every `all` concept is positive and at least one `any` concept is positive, complete cases only, and every concept it names must be mapped (an unmapped arm would otherwise silently narrow the phenotype instead of being reported as absent); `eligibility` `{"var", "min", "max", "missing", "concept", "reason"}` — the subpopulation the items were asked of, applied as a design subset (`missing`: codes of `var` that mean unknown, e.g. NHIS age 97/98/99, which make the respondent ineligible rather than very old; `concept`: restrict to records positive for that concept, e.g. sinusitis; `reason` is required and copied into the artifact); per-concept `skipNegative` `{"var", "codes", "missingCodes"}` — a gate answer that routed respondents past the detail items counts as no, not as missing; and per-concept `missingCodes` — the item codes recoded to missing (absent: 7/8/9, the NHIS convention every current map relies on; `[]`: none). `demographics.sex` and `demographics.gender` each take `{"var", "recode", "missing"}`. When you declare a concept unmapped, drop it from the rule and say so in `phenotype_definition`.
 
 Two things to expect while you do this:
 
@@ -76,8 +76,16 @@ What it does that matters:
 
 - Builds a proper `svydesign` with `nest = TRUE` and `survey.lonely.psu = "adjust"`.
 - **Produces subgroup estimates by subsetting the design, not the data frame.** Filtering rows before `svydesign()` drops the strata and PSUs that contribute to a subpopulation's variance and silently gives you wrong standard errors. This is the single most common error in survey analysis.
-- Recodes 7/8/9 (Refused / Not Ascertained / Don't Know) to `NA` **and keeps them `NA`** through the positive-code test, so a respondent who refused leaves the denominator instead of counting as negative. (0.1.0 got the first half of this right and the second half wrong; see the script header.)
-- Applies NCHS presentation standards (RSE > 30% or unweighted n < 30 → suppressed) in the ETL, where the steward's rule belongs.
+- Recodes 7/8/9 (Refused / Not Ascertained / Don't Know), or the concept's own `missingCodes`, to `NA` **and keeps them `NA`** through the positive-code test, so a respondent who refused leaves the denominator instead of counting as negative. (0.1.0 got the first half of this right and the second half wrong; see the script header.) A concept read from several items is positive if any item is positive, missing if none is positive and any is missing, and negative only when every item was answered no (0.6.1; before, a refusal plus a "no" scored negative).
+- Applies the steward's suppression rule in the ETL, where it belongs. Every row is suppressed when its 95% interval or its RSE cannot be computed, when the RSE exceeds 30%, or when the unweighted n is below `_meta.minUnweightedN` (default 30). Maps that set `_meta.minPositiveCases` also require that many phenotype-positive sample records; `_meta.suppressionStandard` names the standard in each `suppressReason`. As the committed maps set them:
+
+  | Maps | min unweighted n | min positive records | Standard named |
+  |---|---|---|---|
+  | NHIS 2019–2023, NHANES 1999–2004 | 30 | — | presentation standard |
+  | NAMCS 2015–2019 (both) | 30 | 30 | NCHS reliability standard |
+  | FAERS (both) | 30 | 30 | NCHS thresholds applied by analogy |
+  | MEPS 2019–2021 (all eight) | 100 | 30 (prevalence rows and cost rows among phenotype-positive adults; not cost rows over all eligible adults) | AHRQ MEPS reliability standard |
+- Writes the artifact as UTF-8, and refuses to run when no UTF-8 locale is available (under a POSIX locale R had written the map's "§" as the text `<U+00A7>`).
 - Hashes the source file so the §8 reproducibility check has something to check against.
 - Keeps sex and gender strictly separate. If the cycle has no gender item, gender estimates are **omitted, not substituted from sex**, and the artifact says so in its caveats.
 - Tags every estimate with a `unit`, so the renderer never guesses whether a number is a proportion or dollars.
@@ -90,9 +98,9 @@ Copy the JSON the ETL wrote into `app/data/` and add one line to `app/data/popul
 { "path": "./data/population-estimates.nhis-2024.json", "addedOn": "2026-09-24", "note": "NHIS 2024 Sample Adult" }
 ```
 
-`app/population.html` fetches the index, validates each listed artifact against `population_estimates.schema.json`, and renders it with its intervals, degrees of freedom, design specification, phenotype definition, unmapped concepts, caveats and source hash. An artifact that fails validation is shown as **refused**, never rendered. Nothing in the page performs arithmetic on it.
+The Population estimates section of screenAIr's Research tab (built-in modules that declare `research.population`, and verified derivations of them) fetches the index, validates each listed artifact against `population_estimates.schema.json`, and renders it with its intervals, degrees of freedom, design specification, phenotype definition, unmapped concepts, caveats and source hash. An artifact that fails validation is shown as **refused**, never rendered. Nothing in the page performs arithmetic on it.
 
-To preview an artifact before committing it, upload it into the research panel on the screener or scribe page: the panel keys on `masqueArtifact: "population-estimates"`, switches to the population tab, and renders it with the same component. To check an artifact on a machine with no Node and no R, open `app/tests/population-artifact-check.html` (local only, not deployed): it runs the same schema check and can verify the source hash against the downloaded file.
+To preview an artifact before committing it, upload it into the research readiness panel (Research tab → Research readiness → Data ingestion) of a module that shows population estimates: the panel keys on `masqueArtifact: "population-estimates"`, checks it against the same schema, refuses it with the failures listed if it does not pass, and otherwise switches to the Population & cost tab and renders it with the same component. To check an artifact on a machine with no Node and no R, open `app/tests/population-artifact-check.html` (local only, not deployed): it runs the same schema check and can verify the source hash against the downloaded file.
 
 ---
 

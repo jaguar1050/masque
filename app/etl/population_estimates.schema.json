@@ -229,7 +229,8 @@
           "estimate",
           "se",
           "ci",
-          "unweightedN"
+          "unweightedN",
+          "suppress"
         ],
         "properties": {
           "name": {
@@ -272,14 +273,15 @@
             "description": "95% interval. [null, null] only when it could not be computed, in which case the estimate is suppressed."
           },
           "unweightedN": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Sample records in the denominator: records with a non-missing phenotype for a proportion, records with a non-missing value of the cost variable for a cost row."
           },
           "weightedN": {
             "type": "number"
           },
           "df": {
             "type": "integer",
-            "description": "Design degrees of freedom — strata minus PSUs, not sample size."
+            "description": "Design degrees of freedom — number of PSUs minus number of strata, not sample size."
           },
           "rse": {
             "type": "number",
@@ -287,14 +289,14 @@
           },
           "suppress": {
             "type": "boolean",
-            "description": "Set by the ETL per the steward's own presentation standard. The panel shows the cell as suppressed and never prints the value."
+            "description": "Set by the ETL per the steward's own presentation standard. Required: a renderer treats any value other than false (and any row without a finite interval) as suppressed, shows the cell as suppressed and never prints the value."
           },
           "suppressReason": {
             "type": "string"
           },
           "unweightedPositives": {
             "type": "integer",
-            "description": "Sample records positive for the phenotype in this domain."
+            "description": "Sample records positive for the phenotype in this domain. Omitted on a cost row computed over the whole eligible domain, which is not a count of phenotype-positive records."
           }
         }
       }

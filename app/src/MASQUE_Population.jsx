@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { BarChart3, Info, ShieldCheck, TriangleAlert, Database, FileJson, Terminal } from "lucide-react";
-import PopulationArtifact, { hasCostRows, isTotal, fmtValue, labelOf, eligibilityText } from "./PopulationArtifact.jsx";
+import PopulationArtifact, { hasCostRows, isTotal, isSuppressed, fmtValue, labelOf, eligibilityText } from "./PopulationArtifact.jsx";
 import { checkSchema, checkArtifactMarker } from "./MASQUE_SchemaCheck.js";
 import { scopeCss } from "./engine/css.js";
 
@@ -305,8 +305,8 @@ function SummaryTable({ artifacts }) {
   // Subgroup cells show the same quantity as the headline, never another row that happens to share the domain.
   const bySex = (art, total, lvl) => total && (art.estimates || []).find(e => e.name === total.name && e.domain === `sex=${lvl}`);
   const cell = e => !e ? <td className="v">—</td>
-    : e.suppress ? <td className="v">suppressed<small className="why">{stdOf(e)}</small></td>
-    : <td className="v">{fmtValue(e)}<small>{Array.isArray(e.ci) ? `${fmtValue(e, e.ci[0])}–${fmtValue(e, e.ci[1])}` : "no interval"}</small></td>;
+    : isSuppressed(e) ? <td className="v">suppressed<small className="why">{stdOf(e)}</small></td>
+    : <td className="v">{fmtValue(e)}<small>{`${fmtValue(e, e.ci[0])}–${fmtValue(e, e.ci[1])}`}</small></td>;
   return (
     <div className="card">
       <div className="chdr"><BarChart3 size={16} color="var(--petrol)" /><div><div className="ce">Across sources</div><div className="ct">Headline estimate by source and cycle</div></div></div>

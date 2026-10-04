@@ -11,7 +11,7 @@
 // Every module-specific word comes from the bound module; nothing here names a module. The
 // population files resolve against env.appBase (D25), so the tab works from any page depth.
 
-import React, { useMemo, useState } from "react";
+import React, { useId, useMemo, useRef, useState } from "react";
 import { BarChart3, ClipboardCheck } from "lucide-react";
 import ResearchReadinessPanel from "../ResearchReadinessPanel.jsx";
 import PopulationEstimates from "../MASQUE_Population.jsx";
@@ -166,6 +166,12 @@ export default function ResearchTab({ module, appVersion = APP_VERSION, env, onD
   const [rowsPick, setRowsPick] = useState(null);       // null = default (see defaultRowsChoice)
 
   const open = (key) => { setSection(key); setVisited((v) => (v[key] ? v : { ...v, [key]: true })); };
+  // Tablist semantics as in the shell's tab bar: roving tabindex, arrow keys / Home / End move
+  // and select, each tab controls its panel (audit fix).
+  const uid = useId();
+  const tabId = (key) => `${uid}-rt-tab-${key}`;
+  const panelId = (key) => `${uid}-rt-panel-${key}`;
+  const segRefs = useRef({});
 
   const screenChoice = screenPick && (screenPick === "none" || screens[screenPick]) ? screenPick : latestSource(screens);
   const snap = screenChoice === "none" ? null : screens[screenChoice];
@@ -187,6 +193,22 @@ export default function ResearchTab({ module, appVersion = APP_VERSION, env, onD
     : null;
 
   const segs = [["population", RESEARCH_COPY.segPopulation, BarChart3], ["readiness", RESEARCH_COPY.segReadiness, ClipboardCheck]];
+  const segKeys = segs.map(([key]) => key);
+  const onSegKeyDown = (e) => {
+    const i = segKeys.indexOf(section);
+    let next = null;
+    if (e.key === "ArrowRight") next = segKeys[(i + 1) % segKeys.length];
+    else if (e.key === "ArrowLeft") next = segKeys[(i - 1 + segKeys.length) % segKeys.length];
+    else if (e.key === "Home") next = segKeys[0];
+    else if (e.key === "End") next = segKeys[segKeys.length - 1];
+    if (!next) return;
+    e.preventDefault();
+    open(next);
+    if (segRefs.current[next]) segRefs.current[next].focus();
+  };
+  // The schema an artifact uploaded into the readiness panel is checked against: the gate's own
+  // schema path, resolved against app/ like the population page's fetches. No gate, no schema.
+  const schemaUrl = gate.show && gate.paths && gate.paths.schema ? new URL(gate.paths.schema, appBase).href : null;
 
   return (
     <div className="sa-app sa-research" data-testid="research-tab" data-module={module.id}>
@@ -194,9 +216,11 @@ export default function ResearchTab({ module, appVersion = APP_VERSION, env, onD
       <div className="sa-rt-wrap">
       <TabNote kind="research" />
       <div className="sa-rt-head">
-        <div className="sa-rt-seg" role="tablist" aria-label="Research sections">
+        <div className="sa-rt-seg" role="tablist" aria-label="Research sections" aria-orientation="horizontal">
           {segs.map(([key, label, Icon]) => (
-            <button key={key} type="button" role="tab" aria-selected={section === key ? "true" : "false"}
+            <button key={key} type="button" role="tab" id={tabId(key)} aria-selected={section === key ? "true" : "false"}
+              aria-controls={panelId(key)} tabIndex={section === key ? 0 : -1}
+              ref={(el) => { segRefs.current[key] = el; }} onKeyDown={onSegKeyDown}
               data-testid={`research-seg-${key}`} onClick={() => open(key)}>
               <Icon size={14} aria-hidden="true" />{label}
             </button>
@@ -206,9 +230,10 @@ export default function ResearchTab({ module, appVersion = APP_VERSION, env, onD
       </div>
       </div>
 
+      <section hidden={section !== "population"} data-testid="research-population" role="tabpanel"
+        id={panelId("population")} aria-labelledby={tabId("population")} aria-label={RESEARCH_COPY.segPopulation}>
       {visited.population && (
-        <section hidden={section !== "population"} data-testid="research-population" aria-label={RESEARCH_COPY.segPopulation}>
-          {gate.show ? (
+          gate.show ? (
             <div className="sa-rt-pop">
               <PopulationEstimates embedded baseUrl={appBase} indexPath={gate.paths.index}
                 schemaPath={gate.paths.schema} mapPath={gate.paths.map} banner={banner} />
@@ -217,14 +242,15 @@ export default function ResearchTab({ module, appVersion = APP_VERSION, env, onD
             <div className="sa-rt-wrap sa-rt-body">
               <div className="sa-rt-msg" data-testid="research-pop-message" data-gate={gate.kind}>{gate.message}</div>
             </div>
-          )}
-        </section>
+          )
       )}
+      </section>
 
+      <section hidden={section !== "readiness"} data-testid="research-readiness" role="tabpanel"
+        id={panelId("readiness")} aria-labelledby={tabId("readiness")} aria-label={RESEARCH_COPY.segReadiness}
+        className="sa-rt-wrap sa-rt-body">
       {visited.readiness && (
-        <section hidden={section !== "readiness"} data-testid="research-readiness" aria-label={RESEARCH_COPY.segReadiness}
-          className="sa-rt-wrap sa-rt-body">
-          {!research ? (
+          !research ? (
             <div className="sa-rt-msg" data-testid="research-no-config">{RESEARCH_COPY.noResearch}</div>
           ) : (
             <>
@@ -260,8 +286,8 @@ export default function ResearchTab({ module, appVersion = APP_VERSION, env, onD
                   noScreen={!snap}
                   routingCleared={snap ? snap.routingCleared !== false : true}
                   routingWithheldDetail={routingWithheldDetail(snap)}
-                  populationArtifacts={gate.show}
-                  score={snap ? snap.score : null} ceiling={snap ? snap.ceiling ?? null : null}
+                  populationArtifacts={gate.show} populationSchemaUrl={schemaUrl}
+                  score={snap ? snap.score : null} floor={snap ? snap.floor ?? null : null} ceiling={snap ? snap.ceiling ?? null : null}
                   scorable={snap ? !!snap.scorable : false}
                   band={snap ? snap.band ?? null : null} domains={snap ? snap.domains || {} : {}}
                   coverage={snap ? snap.coverage ?? 0 : 0}
@@ -273,9 +299,9 @@ export default function ResearchTab({ module, appVersion = APP_VERSION, env, onD
                 />
               </div>
             </>
-          )}
-        </section>
+          )
       )}
+      </section>
     </div>
   );
 }

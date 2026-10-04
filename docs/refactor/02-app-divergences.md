@@ -354,3 +354,52 @@ patient" case clicks the button and waits for patient mode, while the shell now 
 "Start a new patient session?" when the Patient Companion holds answers, so the wait times out
 before the patient-mode checks run. It is a test/shell mismatch outside this change, recorded for
 the integration triage; the refactor is not green until it passes.
+
+## Audit fixes — research and data (4 October 2026)
+
+Every committed estimate is unchanged: all 19 artifacts were regenerated from the same source
+files (sha256 as recorded) with the edited ETL and compared field by field; no estimate, interval,
+n, df or suppression flag moved. Only the artifacts whose content changed were replaced.
+
+- **ETL 0.6.0 → 0.6.1** (`app/etl/masque_population_etl.R`). UTF-8: under a POSIX locale R wrote the
+  map's "§" as the text `<U+00A7>` in the three NHANES definitions; the script now switches LC_CTYPE
+  to UTF-8 or refuses to run, and writes UTF-8 bytes. A multi-item concept with one item missing and
+  none positive is missing, not negative (only NHANES `dizziness_balance` has two items; no number
+  changed). Optional per-concept `missingCodes` (default 7/8/9, so every map reads as before);
+  `demographics.gender` takes `recode`/`missing` like sex. Cost rows: `unweightedN` counts
+  non-missing cost (identical in every committed artifact), and cost rows over the whole eligible
+  domain no longer carry `unweightedPositives`.
+- **Artifacts replaced:** `nhanes-1999-2000`, `-2001-2002`, `-2003-2004` (definition now reads "§7.1";
+  `producedBy` 0.6.1; `generatedAt`), and the four `meps-*-sinus` files (`unweightedPositives`
+  dropped from the six eligible-domain cost rows each; `producedBy`; `generatedAt`). `downloadedAt`
+  kept. The other twelve still say 0.6.0: regenerating them changes nothing but that label.
+- **Schema:** `suppress` is now required on every estimate (all 19 artifacts and the test fixture
+  carry it); `df` described correctly as PSUs minus strata.
+- **Readiness panel.** An uploaded population artifact is checked with `checkArtifactMarker` +
+  `checkSchema` against the gate's schema (`populationSchemaUrl`, passed by the Research tab) and
+  refused with the failures listed; no schema, no rendering. Model card / manifest: an incomputable
+  equity-mitigation gap is `null`, not `0`. Calibration-in-the-large and the slope are withheld below
+  the reporting minimum (`minGroupN`, 30), as the function's own comment required. PPV and NPV show
+  their denominators (flagged / unflagged rows). The avoidable share is Σw·avoidable / Σw·annual over
+  rows carrying both costs, with that n shown (same value on the demo rows). These are intended
+  changes from the baseline panel: `research` compares the five KPIs on their own and the rest of
+  each tab exactly; the functions `research-parity` diffs are untouched.
+- **F14 (allowed difference).** The Research tab passes `snap.floor`; the panel's attainable range,
+  the lower bound of the probability range and `currentPatientOutput.attainableRange` /
+  `probabilityRange` run floor–ceiling (they used the point total as the floor). A host that passes no
+  floor gets the old behaviour. `research-parity` adds an "unscorable-floor" screen and normalises
+  exactly `attainableRange[0]` and `probabilityRange[0]`; it also normalises the M2 `null`-for-`0`.
+- **PopulationArtifact.** A row is printed only with `suppress === false` and a finite estimate and
+  interval; list fields are Array-guarded; the renderer sits in an error boundary (reported in place,
+  host stays up). `money()` picks the unit after rounding: $1.00 billion, never "$1000.0 million".
+  The Population page's summary table uses the same suppression rule.
+- **Research tab.** The section switch is a full tablist: arrow keys / Home / End, roving tabindex,
+  `aria-controls` to `role="tabpanel"` sections (always present; content still mounts on first visit).
+- **Docs and index text.** The index note no longer says cycles are never pooled (NAMCS 2015–2019 and
+  MEPS 2019–2021 are); the NAMCS single-year counts are now adult visits (28, 26, 5, 6; sinusitis
+  overlap 26, 10, 8, 10 — summing to the pooled 65 and 54), recounted with the ETL, where the old
+  all-ages counts had two years at or above 30. `app/data/README.md` no longer says the folder is
+  empty and notes that the NHANES fetch manifest was written on the lead's machine and that the
+  provenance `directory` field is a scratch path (the provenance files are not edited).
+  `README_DATA_CONNECTION.md` gives the suppression rule per map, the full eligibility and
+  missing-code fields, and the Research tab in place of `population.html` (now a redirect).

@@ -13,6 +13,13 @@
 //               modelVersion default, file names) and AD4 are normalised.
 //   population  the embedded edited page vs the baseline component: textContent identical outside
 //               the brand row and the footer (AD9); the edited page with no props identical to it.
+//   audit fixes two intended document differences, normalised here and nowhere else
+//               (02-app-divergences.md, "Audit fixes — research and data"):
+//               F14  with a `floor` prop, currentPatientOutput.attainableRange[0] is the floor and
+//                    probabilityRange[0] its probability (the baseline, which ignores `floor`, prints
+//                    the score). Exercised by the "unscorable-floor" screen; checked exactly.
+//               M2   an incomputable equity-mitigation gap is null where the baseline wrote 0
+//                    (`?? 0`): equityMitigation.result.{sensitivity,specificity}Gap.{before,after}.
 import React from "react";
 import { flushSync } from "react-dom";
 import { collector, guarded, loadMasque, need, waitError } from "../harness/kit.js";
@@ -202,7 +209,32 @@ export default {
       ["red-flags", screen({ redFlags: ["Example flag A"] })],
       ["low-coverage", screen({ score: 20, ceiling: 20, band: "low", coverage: 30, sex: null, gender: "woman" })],
       ["axes-diverge", screen({ score: 50, ceiling: 50, band: "moderate", sex: "male", gender: "nonbinary" })],
+      ["unscorable-floor", screen({ score: 30, floor: 22, ceiling: 70, scorable: false, band: "indeterminate", coverage: 40 })],
     ];
+    // F14: the calibrated probability of a value, as the panel computes it (research.calibration).
+    const prob4 = (x) => +(1 / (1 + Math.exp(-research.calibration.slope * (x - research.calibration.midpoint)))).toFixed(4);
+    let sawF14 = false, sawM2 = 0;
+    /** Apply the two audit-fix normalisers to a copy of the new document (exact, or left as is). */
+    const auditNormalise = (key, sname, props, a, b) => {
+      const out = JSON.parse(JSON.stringify(b));
+      if (key === "modelCard" && props.floor != null && out.currentPatientOutput && a.currentPatientOutput) {
+        const na = a.currentPatientOutput, nb = out.currentPatientOutput;
+        const exact = Array.isArray(nb.attainableRange) && nb.attainableRange[0] === Math.round(props.floor)
+          && Array.isArray(na.attainableRange) && na.attainableRange[0] === Math.round(props.score)
+          && Array.isArray(nb.probabilityRange) && nb.probabilityRange[0] === prob4(props.floor)
+          && Array.isArray(na.probabilityRange) && na.probabilityRange[0] === prob4(props.score);
+        c.check(exact, `/documents/${sname}/F14`, { floor: props.floor, score: props.score }, { attainableRange0: Math.round(props.floor), probabilityRange0: prob4(props.floor) },
+          { attainableRange: nb.attainableRange, probabilityRange: nb.probabilityRange });
+        if (exact) { nb.attainableRange[0] = na.attainableRange[0]; nb.probabilityRange[0] = na.probabilityRange[0]; sawF14 = true; }
+      }
+      const ra = a.equityMitigation && a.equityMitigation.result, rb = out.equityMitigation && out.equityMitigation.result;
+      if (ra && rb) {
+        for (const g of ["sensitivityGap", "specificityGap"]) for (const w of ["before", "after"]) {
+          if (rb[g] && ra[g] && rb[g][w] === null && ra[g][w] === 0) { rb[g][w] = 0; sawM2 += 1; }
+        }
+      }
+      return out;
+    };
     const files = [
       ...datasets.filter(([n]) => n.startsWith("cohort-")).map(([n, a]) => [`${n}.json`, JSON.stringify(a)]),
       ["alias.csv", csv],
@@ -232,7 +264,8 @@ export default {
               c.check(!!da[key] && !!db[key], `${at}/downloaded`, null, "a download", [!!da[key], !!db[key]]);
               if (!da[key] || !db[key]) continue;
               c.check(da[key].name === db[key].name, `${at}/fileName`, null, da[key].name, db[key].name);
-              const r = c.diff(da[key].json, db[key].json, { at, allow: ["AD8", "AD4"], ctx, input: { screen: sname, file: fname } });
+              const nb = auditNormalise(key, sname, props, da[key].json, db[key].json);
+              const r = c.diff(da[key].json, nb, { at, allow: ["AD8", "AD4"], ctx, input: { screen: sname, file: fname } });
               if (r.observed.has("AD8")) sawAD8 = true;
             }
           }
@@ -240,6 +273,8 @@ export default {
       }
     });
     h.expect("AD8", { precondition: true, observed: sawAD8 });
+    c.check(sawF14, "/documents/unscorable-floor/F14-observed", null, "the floor reached the model card", sawF14);
+    c.note(`audit fixes: F14 normalised on the unscorable-floor screen; M2 (null gap where the baseline wrote 0) normalised ${sawM2} time${sawM2 === 1 ? "" : "s"}`);
 
     // ---------------------------------------------------------------- population (AD9)
     const BasePop = (await h.oracle("MASQUE_Population.jsx")).default;

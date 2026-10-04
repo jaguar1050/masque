@@ -1,9 +1,10 @@
 #!/usr/bin/env Rscript
-# masque_population_etl.R  v0.6.0
+# masque_population_etl.R  v0.6.1
 #
 # Reads a survey public-use file, applies the MASQUE §7.1 computable phenotype from
 # a versioned mapping file, and emits a design-aware population-estimates artifact
-# that the Population page (app/population.html) and ResearchReadinessPanel render.
+# that the Population estimates page (MASQUE_Population.jsx, in screenAIr's Research tab) and
+# ResearchReadinessPanel render.
 #
 #   Rscript app/etl/masque_population_etl.R \
 #     --data           ./adult24.csv \
@@ -126,13 +127,43 @@
 #      longer ends in "..". Caveat text only; no estimate changes.
 #   7. `_meta.suppressionStandard` names whose reliability rule the thresholds are, in
 #      each suppressReason. Unset keeps the NCHS wording.
+#
+# CHANGES 0.6.0 -> 0.6.1 — audit fixes. Re-run against all 19 committed maps: every estimate,
+# interval, n and suppression flag is unchanged; the only artifact differences are listed here.
+#
+#   1. UTF-8. Under a non-UTF-8 locale (POSIX / C) R's write() converted the map's "§" to the
+#      literal text "<U+00A7>" in the three NHANES artifacts. The script now switches LC_CTYPE to
+#      a UTF-8 locale or refuses to run, and writes the JSON as UTF-8 bytes explicitly.
+#   2. A multi-variable concept with one item missing and none positive is now MISSING, not
+#      negative: a refusal plus a "no" is not a "no" (invariant 1). Any positive item still makes
+#      the concept positive, and a documented skip pattern still makes it negative.
+#   3. `missingCodes` on a concept (and on its `skipNegative`): the codes recoded to missing.
+#      Absent, it is the NHIS 7/8/9 default every earlier map relied on; [] recodes nothing.
+#   4. `demographics.gender` takes `recode` and `missing` exactly as `sex` does.
+#   5. Cost rows: `unweightedN` counts the records with a non-missing cost in the domain (it
+#      counted non-missing phenotype), and a cost row over the whole eligible domain carries no
+#      `unweightedPositives` (it is not a count of phenotype-positive records).
 # ---------------------------------------------------------------------------
 
 suppressPackageStartupMessages({
   library(survey); library(jsonlite); library(digest)
 })
 
-ETL_VERSION <- "0.6.0"
+ETL_VERSION <- "0.6.1"
+
+# --- UTF-8 or nothing ----------------------------------------------------------
+# Maps and artifacts carry non-ASCII text (§, em dashes, Bárány). Under a POSIX/C locale R
+# re-encodes it on the way out as "<U+00A7>", which then sits in a committed artifact as if it
+# were the definition. Switch the character-type locale to UTF-8, or refuse to run.
+if (!isTRUE(l10n_info()$`UTF-8`)) {
+  for (loc in c("C.UTF-8", "C.utf8", "en_US.UTF-8", "en_US.utf8", "English_United States.utf8")) {
+    if (nzchar(suppressWarnings(Sys.setlocale("LC_CTYPE", loc))) && isTRUE(l10n_info()$`UTF-8`)) break
+  }
+}
+if (!isTRUE(l10n_info()$`UTF-8`)) {
+  stop("No UTF-8 locale is available (LC_CTYPE is ", Sys.getlocale("LC_CTYPE"), "). ",
+       "Run under a UTF-8 locale (e.g. LC_ALL=C.UTF-8, or R >= 4.2 on Windows) so non-ASCII map text is written as itself.")
+}
 
 # Lonely PSUs (a stratum contributing a single PSU after subsetting) are common in
 # domain analysis. "adjust" centres them at the population mean rather than erroring
@@ -243,8 +274,13 @@ for (v in c(d$weight, d$strata, d$psu)) {
 # MUST become NA, and NA must stay NA through the positive-code test: a respondent
 # who refused is neither positive nor negative and leaves the denominator.
 na_codes <- function(x, codes) { x[x %in% codes] <- NA; x }
+# A concept's `missingCodes` (or its skipNegative's): absent -> the NHIS 7/8/9 default every map
+# before 0.6.1 relied on; [] -> nothing is recoded. Read before unlist(), which turns [] into NULL.
+DEFAULT_MISSING <- c(7, 8, 9)
+missing_codes_of <- function(x) if (is.null(x)) DEFAULT_MISSING else unlist(x)
 
-pos <- function(varnames, codes, skip = NULL, prefixes = NULL, absent_negative = FALSE, terms = NULL, delimiter = "|") {
+pos <- function(varnames, codes, skip = NULL, prefixes = NULL, absent_negative = FALSE, terms = NULL, delimiter = "|",
+                missing = DEFAULT_MISSING) {
   if (!length(varnames)) return(rep(NA_integer_, nrow(df)))
   terms <- toupper(unlist(terms))
   if (length(terms)) {
@@ -272,16 +308,19 @@ pos <- function(varnames, codes, skip = NULL, prefixes = NULL, absent_negative =
   codes <- unlist(codes)
   cols <- lapply(varnames, function(v) {
     if (!v %in% names(df)) stop(sprintf("Mapped variable %s not present in the data file", v))
-    x <- na_codes(df[[v]], c(7, 8, 9))
+    x <- na_codes(df[[v]], missing)
     ifelse(is.na(x), NA_integer_, as.integer(x %in% codes))
   })
   m <- do.call(cbind, cols)
-  out <- as.integer(apply(m, 1, function(r) if (all(is.na(r))) NA_integer_ else max(r, na.rm = TRUE)))
+  # Positive if any item is positive; otherwise MISSING if any item is missing; negative only
+  # when every item was answered and none was positive. (Before 0.6.1 a refusal on one item plus
+  # a "no" on another scored negative — absent data rendered as negative data.)
+  out <- as.integer(apply(m, 1, function(r) if (any(r == 1L, na.rm = TRUE)) 1L else if (anyNA(r)) NA_integer_ else 0L))
   # A documented skip pattern: a gate answer that routed the respondent past the
   # detail items means "no", not "unknown". Only applied where the detail is NA.
   if (!is.null(skip) && !is.null(skip$var)) {
     if (!skip$var %in% names(df)) stop(sprintf("skipNegative variable %s not present in the data file", skip$var))
-    g <- na_codes(df[[skip$var]], c(7, 8, 9))
+    g <- na_codes(df[[skip$var]], missing_codes_of(skip$missingCodes))
     out[is.na(out) & !is.na(g) & g %in% unlist(skip$codes)] <- 0L
   }
   out
@@ -290,7 +329,8 @@ pos <- function(varnames, codes, skip = NULL, prefixes = NULL, absent_negative =
 for (nm in names(concepts)) {
   df[[paste0("C_", nm)]] <- pos(unlist(concepts[[nm]]$vars), concepts[[nm]]$positiveCodes, concepts[[nm]]$skipNegative,
                                 concepts[[nm]]$positivePrefixes, concepts[[nm]]$absentIsNegative,
-                                concepts[[nm]]$positiveTerms, concepts[[nm]]$delimiter)
+                                concepts[[nm]]$positiveTerms, concepts[[nm]]$delimiter,
+                                missing_codes_of(concepts[[nm]]$missingCodes))
 }
 
 # Sex / gender kept strictly separate — see fix #16. If the cycle carries no gender
@@ -302,8 +342,18 @@ if (!is.null(sx$var) && sx$var %in% names(df)) {
   raw <- na_codes(df[[sx$var]], unlist(sx$missing))
   for (code in names(sx$recode)) df$SEX_LBL[!is.na(raw) & raw == as.integer(code)] <- sx$recode[[code]]
 }
+# Gender is read the same way as sex: `missing` codes become NA, and with a `recode` only the
+# listed codes get a label (anything else stays NA). Without a `recode` the raw value is the label.
 gd <- map$demographics$gender
-df$GENDER_LBL <- if (!is.null(gd$var) && gd$var %in% names(df)) as.character(df[[gd$var]]) else NA_character_
+df$GENDER_LBL <- NA_character_
+if (!is.null(gd$var) && gd$var %in% names(df)) {
+  raw <- na_codes(df[[gd$var]], unlist(gd$missing))
+  if (length(gd$recode)) {
+    for (code in names(gd$recode)) df$GENDER_LBL[!is.na(raw) & raw == as.integer(code)] <- gd$recode[[code]]
+  } else {
+    df$GENDER_LBL <- ifelse(is.na(raw), NA_character_, as.character(raw))
+  }
+}
 
 df$MASQUE_PHENO <- phenotype_of(df)
 if (all(is.na(df$MASQUE_PHENO))) {
@@ -330,24 +380,27 @@ UNIT <- if (is.null(map$`_meta`$unitOfAnalysis)) "person" else map$`_meta`$unitO
 # Whose reliability rule the thresholds are: named in the suppression reason so a suppressed
 # MEPS row does not cite NCHS. Unset keeps the wording every earlier artifact carries.
 STD <- map$`_meta`$suppressionStandard
-est_row <- function(name, domain, obj, sub, unit = "proportion") {
+# n_var: the column whose non-missing records are the unweighted denominator (the phenotype for
+# a prevalence row, the cost for a cost row). count_positives = FALSE for a row that is not about
+# phenotype-positive records (a cost over the whole eligible domain): no unweightedPositives.
+est_row <- function(name, domain, obj, sub, unit = "proportion", n_var = "MASQUE_PHENO", count_positives = TRUE) {
   e  <- as.numeric(coef(obj))[1]
   se <- as.numeric(SE(obj))[1]
   ci <- as.numeric(confint(obj, df = degf(sub)))[1:2]
-  n  <- sum(!is.na(sub$variables$MASQUE_PHENO))
-  npos <- sum(sub$variables$MASQUE_PHENO == 1, na.rm = TRUE)
+  n  <- sum(!is.na(sub$variables[[n_var]]))
+  npos <- if (count_positives) sum(sub$variables$MASQUE_PHENO == 1, na.rm = TRUE) else NA_integer_
   rse <- if (is.finite(e) && e != 0) se / abs(e) else NA_real_
   ci_ok <- all(is.finite(ci))
   # NCHS presentation standards suppress unreliable proportions. Applied here rather
   # than in the panel: the steward's rule belongs with the steward's data.
-  suppress <- !ci_ok || is.na(rse) || (!is.na(rse) && rse > 0.30) || n < MIN_N || (!is.null(MIN_POS) && npos < MIN_POS)
+  suppress <- !ci_ok || is.na(rse) || (!is.na(rse) && rse > 0.30) || n < MIN_N || (!is.null(MIN_POS) && count_positives && npos < MIN_POS)
   row <- list(name = name, unit = unit)
   if (!is.null(domain)) row$domain <- domain      # omitted for the total, per the schema
   row$estimate    <- e
   row$se          <- se
   row$ci          <- if (ci_ok) ci else I(c(NA_real_, NA_real_))
   row$unweightedN <- n
-  row$unweightedPositives <- npos
+  if (count_positives) row$unweightedPositives <- npos
   row$weightedN   <- sum(weights(sub), na.rm = TRUE)
   row$df          <- degf(sub)
   if (!is.na(rse)) row$rse <- rse           # omitted, not null, when the estimate is zero
@@ -413,10 +466,12 @@ for (ce in map$costEstimates) {
   des <- update(des, COSTDOM = if (among_all) df$MASQUE_ELIG else df$MASQUE_ELIG & !is.na(df$MASQUE_PHENO) & df$MASQUE_PHENO == 1)
   pos_dom <- subset(des, COSTDOM & !is.na(COSTV))
   MIN_POS_SAVED <- MIN_POS; if (among_all) MIN_POS <- NULL   # an all-eligible cost row is not a count of positives
-  estimates[[length(estimates) + 1]] <- est_row(ce$name, NULL, stat(pos_dom), pos_dom, unit = if (is.null(ce$unit)) "usd" else ce$unit)
+  estimates[[length(estimates) + 1]] <- est_row(ce$name, NULL, stat(pos_dom), pos_dom, unit = if (is.null(ce$unit)) "usd" else ce$unit,
+                                                n_var = "COSTV", count_positives = !among_all)
   for (lvl in stats::na.omit(unique(df$SEX_LBL))) {
     sub <- subset(des, COSTDOM & !is.na(COSTV) & SEX_LBL == lvl)
-    estimates[[length(estimates) + 1]] <- est_row(ce$name, paste0("sex=", lvl), stat(sub), sub, unit = if (is.null(ce$unit)) "usd" else ce$unit)
+    estimates[[length(estimates) + 1]] <- est_row(ce$name, paste0("sex=", lvl), stat(sub), sub, unit = if (is.null(ce$unit)) "usd" else ce$unit,
+                                                  n_var = "COSTV", count_positives = !among_all)
   }
   MIN_POS <- MIN_POS_SAVED
 }
@@ -467,6 +522,10 @@ artifact <- list(
 if (is.null(artifact$phenotype$eligibility)) artifact$phenotype$eligibility <- NULL
 if (!length(artifact$phenotype$codeMap)) artifact$phenotype$codeMap <- NULL
 if (!length(artifact$phenotype$termMap)) artifact$phenotype$termMap <- NULL
-write(toJSON(artifact, auto_unbox = TRUE, pretty = TRUE, na = "null", null = "null", digits = NA), out_path)
+# Written as UTF-8 bytes, never through the locale's character conversion (see the 0.6.1 notes).
+json_text <- enc2utf8(as.character(toJSON(artifact, auto_unbox = TRUE, pretty = TRUE, na = "null", null = "null", digits = NA)))
+out_con <- file(out_path, open = "wb")
+writeBin(charToRaw(paste0(json_text, "\n")), out_con)
+close(out_con)
 cat(sprintf("wrote %s — %d estimates, %d unmapped concepts, source sha256 %s\n",
             out_path, length(estimates), length(unmapped), substr(file_hash, 1, 12)))

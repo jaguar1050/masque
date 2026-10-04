@@ -24,6 +24,13 @@
 //                 from an upload, plain upload with and without research, forged derivedFrom),
 //                 and the embedded page rendering every index-listed artifact through baseUrl.
 //   sources       the "Current screen from" and "Captured rows" selectors and the model version.
+//   audit         the audit fixes (docs/refactor/02-app-divergences.md, "Audit fixes — research and
+//                 data"): PPV/NPV denominators, calibration-in-the-large and slope withheld below the
+//                 reporting minimum, the avoidable share on rows carrying both costs (compat compares
+//                 these KPIs on their own and the rest of each tab exactly); the attainable floor
+//                 (F14); an uploaded population artifact schema-checked (refused with its failures);
+//                 PopulationArtifact's suppression rule, money() and error boundary; the section
+//                 tablist (roles, aria-controls, roving tabindex, arrow keys).
 import React from "react";
 import { flushSync } from "react-dom";
 import { collector, guarded, loadMasque, need, waitError } from "../harness/kit.js";
@@ -72,6 +79,47 @@ function kpi(root, label) {
   const k = qa(root, ".rrp .rrp-kpi").find((x) => textOf(x.querySelector(".rrp-k")) === label);
   if (!k) return null;
   return { value: textOf(k.querySelector(".rrp-v")), detail: textOf(k.querySelector(".rrp-small")) };
+}
+
+/** The panel's textContent with the KPIs labelled in `labels` removed (compared on their own). */
+function textWithoutKpis(root, labels) {
+  const copy = root.querySelector(".rrp").cloneNode(true);
+  for (const s of copy.querySelectorAll("style")) s.remove();
+  for (const k of copy.querySelectorAll(".rrp-kpi")) if (labels.includes(textOf(k.querySelector(".rrp-k")))) k.remove();
+  return copy.textContent;
+}
+
+/** KPIs the audit fixes changed on purpose (02-app-divergences.md, "Audit fixes — research and data"). */
+const AUDIT_KPIS = ["PPV", "NPV", "Calibration-in-the-large", "Calibration slope", "Potential avoidable share"];
+
+/** Baseline vs edited panel on the audit-fix KPIs of the visible tab: same value, the new detail. */
+function auditKpis(c, ra, rb, at) {
+  for (const label of AUDIT_KPIS) {
+    const ka = kpi(ra, label), kb = kpi(rb, label);
+    if (!ka && !kb) continue;
+    const where = `${at}/audit-fix/${label}`;
+    if (!c.check(!!ka && !!kb, `${where}/present`, null, "on both panels", [!!ka, !!kb])) continue;
+    if (label === "PPV" || label === "NPV") {
+      const re = label === "PPV" ? /^denominator: \d+ flagged rows?$/ : /^denominator: \d+ unflagged rows?$/;
+      c.check(ka.value === kb.value && re.test(kb.detail || ""), where, null, `${ka.value} · ${re}`, kb);
+    } else if (label === "Potential avoidable share") {
+      c.check(ka.value === kb.value && /^(from \d+ rows? carrying both costs|no scored row carries both costs)$/.test(kb.detail || ""), where, null, `${ka.value} · from n rows carrying both costs`, kb);
+    } else {
+      // Every compat cohort is the adapter's demo (< 30 labeled rows): withheld (M3).
+      c.check(kb.value === "withheld" && /below the 30-row reporting minimum$/.test(kb.detail || ""), where, { baseline: ka }, "withheld · … below the 30-row reporting minimum", kb);
+    }
+  }
+}
+
+/** Feed an artifact file to the panel and wait until it renders (.pa) or is refused (.rrp-danger). */
+async function loadArtifact(root, name, text) {
+  const input = root.querySelector('.rrp input[type="file"]');
+  const dt = new DataTransfer();
+  dt.items.add(new File([text], name, { type: "application/json" }));
+  input.files = dt.files;
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+  await until(() => root.querySelector(".rrp .pa") || root.querySelector(".rrp-danger"), 10000);
+  await tick(10);
 }
 
 /** Feed `text` to the panel's hidden file input as `name`, and wait for the rows to land. */
@@ -206,8 +254,13 @@ export default {
             c.check(!b.container.querySelector('[data-testid="rrp-error"]'), `/compat/${project}/${st}/renders`, { project, st }, "panel", "error card");
             for (let i = 0; i < TABS.length; i++) {
               if (project !== "MASQUE" && TABS[i] === "model") continue;
-              const want = tabText(a.container, i);
+              let want = tabText(a.container, i);
               let got = tabText(b.container, i);
+              if (TABS[i] === "validation" || TABS[i] === "population") {
+                auditKpis(c, a.container, b.container, `/compat/${project}/${st}/tab/${TABS[i]}`);
+                want = textWithoutKpis(a.container, AUDIT_KPIS);
+                got = textWithoutKpis(b.container, AUDIT_KPIS);
+              }
               // Driven by module.research, the panel also offers "Load demo cohort" (AD8, from
               // research.demoCohorts, which PROJECTS.MASQUE never carried): checked present, then
               // left out of the baseline comparison.
@@ -411,6 +464,7 @@ export default {
     }
 
     // cohorts: the three demo cohorts against their `why` text (Q26).
+    const PCAL = await load(`src/${RRP}`, { append: "export { calibration, normalizeRows, FAIRNESS_POLICY };" });
     {
       const api = { current: null };
       const m = mountTab(masque, api);
@@ -437,6 +491,12 @@ export default {
         const fair = tabText(root, 3);
         const verdict = (fair.match(/Fairness audit: ([A-Z ]+?)\./) || [])[1] || null;
         const val = tabText(root, 2);
+        {
+          // M3: calibration-in-the-large is printed only at or above the reporting minimum.
+          const cal = PCAL.calibration(PCAL.normalizeRows(cohort.makeCohort(dc.spec), research), research, PCAL.FAIRNESS_POLICY);
+          const citl = kpi(root, "Calibration-in-the-large");
+          if (cal) c.check(!!citl && (citl.value === "withheld") === !cal.reliable, `/audit/cohorts/${dc.id}/citl`, { n: cal.n }, cal.reliable ? "a value" : "withheld", citl);
+        }
         const want = expectFor[dc.id];
         const whySays = /NOT ASSESSABLE/.test(dc.why) ? "NOT ASSESSABLE" : /\bFAIL\b/.test(dc.why) ? "FAIL" : /\bPASS\b/.test(dc.why) ? "PASS" : null;
         // Q26: a verdict that disagrees with the cohort's own `why` text is reported to the lead,
@@ -585,6 +645,175 @@ export default {
       m.unmount();
     }
 
+    // ------------------------------------------------------------------ audit fixes
+    await auditFixes(h, c, { load, Panel, mountTab, openReadiness, masque, research, scoring, itemIds, scr: snapshotOf });
+
     return c.result();
   }),
 };
+
+/** The audit fixes of 02-app-divergences.md ("Audit fixes — research and data"), each driven through the UI. */
+async function auditFixes(h, c, { load, Panel, mountTab, openReadiness, masque, research, scoring, itemIds, scr }) {
+  const cal = research.calibration;
+  const logistic = (x) => 1 / (1 + Math.exp(-cal.slope * (x - cal.midpoint)));
+  const pct0 = (v) => `${Math.round(v * 100)}%`;
+
+  // F14: the attainable range runs floor–ceiling, on the risk tab and in the model card.
+  {
+    const props = { project: research.projectKey, research, moduleId: masque.id, scoringHash: masque.hashes.scoringHash,
+      score: 40, floor: 31, ceiling: 70, scorable: false, band: null, coverage: 60, itemIds, capturedRows: [], instrumentVersion: masque.instrumentVersion };
+    const m = h.mount(E(Panel, props));
+    const cur = kpi(m.container, "Current score"), prob = kpi(m.container, "Calibrated probability");
+    c.check(cur && cur.value === "31–70", "/audit/F14/current-score", props, "31–70", cur);
+    c.check(prob && prob.value === `${pct0(logistic(31))}–${pct0(logistic(70))}`, "/audit/F14/probability-range", props, `${pct0(logistic(31))}–${pct0(logistic(70))}`, prob);
+    const card = JSON.parse(tabText(m.container, 5).match(/\{[\s\S]*\}/)[0]);
+    const out = card.currentPatientOutput || {};
+    c.check(JSON.stringify(out.attainableRange) === "[31,70]" && Array.isArray(out.probabilityRange) && out.probabilityRange[0] === +logistic(31).toFixed(4),
+      "/audit/F14/model-card", props, { attainableRange: [31, 70], probabilityRange0: +logistic(31).toFixed(4) }, { attainableRange: out.attainableRange, probabilityRange: out.probabilityRange });
+    m.unmount();
+    // Through the Research tab: the snapshot's floor reaches the panel.
+    const api = { current: null };
+    const t = mountTab(masque, api);
+    openReadiness(t.container);
+    const cases = (masque.sampleCases || []).map((x) => x.id);
+    flushSync(() => api.current.publish(scr(masque, scoring, cases[0], "screener", "2026-10-01T12:30:00.000Z", { score: 44, floor: 29, ceiling: 66, scorable: false, band: null })));
+    const cur2 = kpi(t.container, "Current score");
+    c.check(cur2 && cur2.value === "29–66", "/audit/F14/research-tab", null, "29–66 (snapshot floor–ceiling)", cur2);
+    t.unmount();
+  }
+
+  // M2: an incomputable equity gap is null in the model card, never 0. The cohort is built so the
+  // held-out half has no female positive case (the panel's deterministic split, replicated
+  // here): the held-out sensitivity gap cannot be computed.
+  {
+    const P = await load(`src/${RRP}`, { append: "export { normalizeRows, equityAdjustment, FAIRNESS_POLICY };" });
+    const devHalf = (id) => { let x = 0x811c9dc5; for (let k = 0; k < id.length; k++) { x ^= id.charCodeAt(k); x = Math.imul(x, 0x01000193) >>> 0; } return x % 2 === 0; };
+    const ids = { dev: [], hold: [] };
+    for (let i = 0; ids.dev.length < 60 || ids.hold.length < 60; i++) { const id = `m2-${i}`; (devHalf(id) ? ids.dev : ids.hold).push(id); }
+    const rows = [];
+    const add = (half, n, sex, label) => { for (let i = 0; i < n; i++) rows.push({ subject_id: ids[half].shift(), score: label ? 80 : 20, label, sex }); };
+    add("dev", 12, "female", 1); add("dev", 12, "male", 1); add("dev", 6, "female", 0); add("dev", 6, "male", 0);
+    add("hold", 0, "female", 1); add("hold", 6, "male", 1); add("hold", 6, "female", 0); add("hold", 6, "male", 0);
+    const mit = P.equityAdjustment(P.normalizeRows(rows, research), research, P.FAIRNESS_POLICY, "sex");
+    c.check(mit && !mit.insufficient && mit.sensGapBefore === null && mit.sensGapAfter === null, "/audit/M2/precondition", null, "held-out sensitivity gap not computable", mit && { insufficient: mit.insufficient, before: mit.sensGapBefore, after: mit.sensGapAfter });
+    const m = h.mount(E(Panel, { project: research.projectKey, research, score: 72, ceiling: 72, scorable: true, band: "high", coverage: 100, itemIds, capturedRows: [] }));
+    tabText(m.container, 1);
+    await loadFile(m.container, "equity.json", JSON.stringify(rows));
+    const card = JSON.parse(tabText(m.container, 5).match(/\{[\s\S]*\}/)[0]);
+    const res = card.equityMitigation && card.equityMitigation.result;
+    c.check(!!res && res.sensitivityGap && res.sensitivityGap.before === null && res.sensitivityGap.after === null && Number.isFinite(res.specificityGap.before),
+      "/audit/M2/model-card", null, { sensitivityGap: { before: null, after: null }, specificityGap: "numbers" }, res && { sensitivityGap: res.sensitivityGap, specificityGap: res.specificityGap });
+    m.unmount();
+  }
+
+  // M3 (PPV/NPV denominators) and M4 (avoidable share on rows carrying both costs), on a CSV.
+  {
+    const m = h.mount(E(Panel, { project: research.projectKey, research, score: 72, ceiling: 72, scorable: true, band: "high", coverage: 100, itemIds, capturedRows: [] }));
+    const csv = "score,label,annual_cost,avoidable_cost\n90,1,1000,500\n40,0,2000,\n55,1,,300\n85,1,3000,600\n20,0,800,100\n";
+    tabText(m.container, 1);
+    await loadFile(m.container, "costs.csv", csv);
+    tabText(m.container, 4);
+    const share = kpi(m.container, "Potential avoidable share");
+    // Rows carrying both costs: 1000/500, 3000/600, 800/100 → 1200 / 4800 = 25%. The old
+    // division of means over different rows gave (500+300+600+100)/4 ÷ (1000+2000+3000+800)/4 = 22%.
+    c.check(share && share.value === "25%" && share.detail === "from 3 rows carrying both costs", "/audit/M4/avoidable-share", { csv }, "25% · from 3 rows carrying both costs", share);
+    tabText(m.container, 2);
+    const ppv = kpi(m.container, "PPV"), npv = kpi(m.container, "NPV");
+    const flagged = [90, 40, 55, 85, 20].filter((x) => logistic(x) >= research.threshold).length;
+    c.check(ppv && ppv.detail === `denominator: ${flagged} flagged row${flagged === 1 ? "" : "s"}`, "/audit/M3/ppv-denominator", { csv }, `denominator: ${flagged} flagged rows`, ppv);
+    c.check(npv && npv.detail === `denominator: ${5 - flagged} unflagged row${5 - flagged === 1 ? "" : "s"}`, "/audit/M3/npv-denominator", { csv }, `denominator: ${5 - flagged} unflagged rows`, npv);
+    const citl = kpi(m.container, "Calibration-in-the-large"), slope = kpi(m.container, "Calibration slope");
+    c.check(citl && citl.value === "withheld" && slope && slope.value === "withheld", "/audit/M3/calibration-withheld", { csv }, "withheld below the reporting minimum", [citl, slope]);
+    m.unmount();
+  }
+
+  // Uploaded population artifact: schema-checked before anything renders.
+  {
+    const fixture = await h.fixture("population-estimates.synthetic.json");
+    const api = { current: null };
+    const t = mountTab(masque, api);
+    openReadiness(t.container);
+    tabText(t.container, 1);
+    const bad = clone(fixture);
+    delete bad.estimates[0].suppress;
+    bad.estimates[1].estimate = "0.12";
+    await loadArtifact(t.container, "bad-artifact.json", JSON.stringify(bad));
+    const danger = t.container.querySelector(".rrp-danger");
+    const items = danger ? qa(danger, "li").map(textOf) : [];
+    c.check(!!danger && /population-estimates file refused/.test(textOf(danger)) && !t.container.querySelector(".rrp .pa"), "/audit/upload/refused", null, "refused, nothing rendered", danger && textOf(danger));
+    c.check(items.includes("$.estimates[0].suppress: required") && items.includes("$.estimates[1].estimate: expected number, got string"), "/audit/upload/errors-listed", null,
+      ["$.estimates[0].suppress: required", "$.estimates[1].estimate: expected number, got string"], items);
+    await loadArtifact(t.container, "good-artifact.json", JSON.stringify(fixture));
+    c.check(!!t.container.querySelector(".rrp .pa") && !t.container.querySelector(".rrp-danger"), "/audit/upload/valid-rendered", null, "rendered", textOf(t.container.querySelector(".rrp")).slice(0, 200));
+    t.unmount();
+  }
+
+  // PopulationArtifact: suppression rule, money(), Array guards, error boundary.
+  {
+    const PA = await load("src/PopulationArtifact.jsx");
+    const fixture = await h.fixture("population-estimates.synthetic.json");
+    const money = [[999.96e6, "$1.00 billion"], [999.94e6, "$999.9 million"], [1.5e9, "$1.50 billion"], [999999.6, "$1.0 million"], [12345, "$12,345"], [-999.96e6, "-$1.00 billion"]];
+    for (const [v, want] of money) c.check(PA.money(v) === want, `/audit/money/${v}`, null, want, PA.money(v));
+    const art = clone(fixture);
+    const [tot, male, female] = art.estimates;
+    tot.suppress = false; tot.ci = [0.1, 0.2]; tot.estimate = 0.15;
+    delete male.suppress; male.estimate = 0.11; male.ci = [0.05, 0.2];
+    female.suppress = false; female.estimate = 0.12; female.ci = [null, null];
+    const m = h.mount(E(PA.default, { art }));
+    const cells = qa(m.container, ".pa-table tbody tr").map((tr) => textOf(qa(tr, "td")[2]));
+    c.check(cells.length === 2 && cells.every((x) => x === "suppressed"), "/audit/suppression/rows", null, ["suppressed", "suppressed"], cells);
+    c.check(!/11\.0%|12\.0%/.test(textOf(m.container)), "/audit/suppression/no-value-printed", null, "no 11.0% / 12.0%", "printed");
+    m.unmount();
+    const s1 = clone(fixture); s1.estimates[0].suppress = "false"; s1.estimates[0].estimate = 0.15; s1.estimates[0].ci = [0.1, 0.2];
+    const m1 = h.mount(E(PA.default, { art: s1 }));
+    const k = textOf(m1.container.querySelector(".pa-kpi .pa-v"));
+    c.check(k === "—", "/audit/suppression/string-flag", null, "—", k);
+    m1.unmount();
+    // Wrong shapes where lists belong: rendered without throwing.
+    const odd = clone(fixture); odd.caveats = "one string"; odd.phenotype.unmapped = "x"; odd.phenotype.rule = { all: "a", any: null }; odd.estimates = { not: "a list" };
+    let threw = null;
+    try { const m2 = h.mount(E(PA.default, { art: odd })); m2.unmount(); } catch (err) { threw = String(err.message || err); }
+    c.check(threw === null, "/audit/guards/no-throw", null, "rendered", threw);
+    // Error boundary: an object where a count belongs throws inside the renderer; the boundary
+    // reports it in place. React's development build reports the caught error to the console and
+    // the window; both are absorbed for the duration of this one render, and only this one.
+    const boom = clone(fixture); boom.estimates[1].unweightedN = { not: "a number" };
+    const onErr = (e) => e.preventDefault();
+    const realError = console.error;
+    window.addEventListener("error", onErr);
+    console.error = () => {};
+    let mb = null;
+    try { mb = h.mount(E(PA.default, { art: boom, onClear: () => {} })); }
+    finally { console.error = realError; window.removeEventListener("error", onErr); }
+    const fb = mb && mb.container.querySelector('[data-testid="pa-render-error"]');
+    c.check(!!fb && /This artifact could not be rendered\./.test(textOf(fb)) && !!fb.querySelector(".pa-btn"), "/audit/boundary", null, "reported in place, with the clear button", mb && textOf(mb.container).slice(0, 200));
+    if (mb) mb.unmount();
+  }
+
+  // The section tablist: roles, aria-controls, roving tabindex, arrow keys.
+  {
+    const t = mountTab(masque, { current: null });
+    document.body.appendChild(t.container);
+    try {
+      const list = t.container.querySelector('[role="tablist"]');
+      const tabs = qa(list, '[role="tab"]');
+      const ok = tabs.length === 2 && tabs.every((b) => {
+        const p = t.container.querySelector(`#${CSS.escape(b.getAttribute("aria-controls") || "")}`);
+        return p && p.getAttribute("role") === "tabpanel" && p.getAttribute("aria-labelledby") === b.id;
+      });
+      c.check(ok, "/audit/tablist/controls", null, "each tab controls a tabpanel labelled by it", tabs.map((b) => [b.id, b.getAttribute("aria-controls")]));
+      const state = () => tabs.map((b) => `${b.getAttribute("aria-selected")}/${b.tabIndex}`).join(",");
+      c.check(state() === "true/0,false/-1", "/audit/tablist/roving-initial", null, "true/0,false/-1", state());
+      const key = (k) => flushSync(() => document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true })));
+      tabs[0].focus();
+      key("ArrowRight");
+      c.check(state() === "false/-1,true/0" && document.activeElement === tabs[1] && !t.container.querySelector('[data-testid="research-readiness"]').hidden, "/audit/tablist/arrow-right", null, "readiness selected, focused, shown", state());
+      key("ArrowRight");
+      c.check(state() === "true/0,false/-1" && document.activeElement === tabs[0], "/audit/tablist/wraps", null, "population selected, focused", state());
+      key("End");
+      c.check(state() === "false/-1,true/0", "/audit/tablist/end", null, "false/-1,true/0", state());
+      key("Home");
+      c.check(state() === "true/0,false/-1", "/audit/tablist/home", null, "true/0,false/-1", state());
+    } finally { t.container.remove(); t.unmount(); }
+  }
+}

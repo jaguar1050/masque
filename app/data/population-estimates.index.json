@@ -1,5 +1,5 @@
 {
-  "_note": "Adding a population estimate is a data commit, not a code change: run app/etl/masque_population_etl.R, commit the JSON it writes into this folder, and add its path here. app/population.html validates each listed file against app/etl/population_estimates.schema.json before rendering it and refuses anything that fails. Paths are relative to app/. One artifact per survey cycle (plus an age-restricted comparator where noted); cycles and surveys are not pooled.",
+  "_note": "Adding a population estimate is a data commit, not a code change: run app/etl/masque_population_etl.R, commit the JSON it writes into this folder, and add its path here. The Population estimates section of screenAIr's Research tab (app/screenair.html; app/population.html redirects there) validates each listed file against app/etl/population_estimates.schema.json before rendering it and refuses anything that fails. Paths are relative to app/. One artifact per survey cycle (plus an age-restricted comparator where noted). Different surveys are never pooled. Cycles are pooled only where the entry says so: NAMCS 2015-2019 (four years stacked, weights divided by four) and MEPS 2019-2021 (weights divided by three, per AHRQ HC-036); NHIS and NHANES cycles are not pooled.",
   "artifacts": [
     {
       "path": "./data/population-estimates.nhis-2023.json",
@@ -127,7 +127,7 @@
       "cycle": "2015, 2016, 2018, 2019 as single years",
       "status": "below reliability standard",
       "reviewedOn": "2026-09-27",
-      "reason": "In every single year fewer than 30 sample visits carry the phenotype (headache plus dizziness, hearing or tinnitus diagnosis at one visit: 28, 30, 5 and 6 visits of all ages) or the sinusitis-with-headache overlap (31, 10, 8 and 11), so single-year estimates fail the NCHS standard. The four years are pooled instead, as NCHS recommends for rare conditions; the pooled estimates are listed above. 2017 is absent: no codebook was available for that year when the files were collected (reported by the project lead).",
+      "reason": "In every single year fewer than 30 sample adult visits (age 18 and over, the population the pooled estimates use) carry the phenotype (headache plus dizziness, hearing or tinnitus diagnosis at one visit: 28, 26, 5 and 6 adult visits in 2015, 2016, 2018 and 2019) or the sinusitis-with-headache overlap (26, 10, 8 and 10 adult visits), so single-year estimates fail the NCHS standard. Counted on 2026-10-04 by running the ETL with the pooled maps on each single-year file; they sum to the pooled artifacts' 65 and 54 phenotype-positive visits. An earlier version of this note gave counts for visits of all ages (28, 30, 5 and 6; 31, 10, 8 and 11), two of which are not below 30. The four years are pooled instead, as NCHS recommends for rare conditions; the pooled estimates are listed above. 2017 is absent: no codebook was available for that year when the files were collected (reported by the project lead).",
       "wouldChange": "NAMCS 2017 and later years, which would add sample visits to the pool."
     },
     {
