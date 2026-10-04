@@ -34,6 +34,54 @@ export default [
     code: "V11", sev: "E", path: "/redFlags/0/id", what: "a red flag id that names an Object.prototype property",
     build: (ctx) => { const r = ctx.rubric(); r.redFlags[0].id = "constructor"; return { rubric: r, via: "shape" }; },
   },
+  // V11, the FHIR linkId namespace: domain keys (group linkIds) share it with every id, and
+  // "safety" (the red-flag group's linkId) is reserved for every kind (audit e3).
+  {
+    code: "V11", sev: "E", path: "/domains/1/key", what: "a domain key equal to an item id (two FHIR linkIds alike)",
+    build: (ctx) => {
+      const r = ctx.rubric(); r.domains[1].key = "p_one";
+      for (const st of [...r.steps.screener, ...r.steps.patient]) if (Array.isArray(st.domainKeys)) st.domainKeys = st.domainKeys.map(k => (k === "second" ? "p_one" : k));
+      if (r.infoPrompts.gateDomain === "second") r.infoPrompts.gateDomain = "p_one";
+      return { rubric: r, via: "shape" };
+    },
+  },
+  {
+    code: "V11", sev: "E", path: "/domains/0/key", what: "a domain key \"safety\" (the red-flag group's linkId)",
+    build: (ctx) => { const r = ctx.rubric(); r.domains[0].key = "safety"; return { rubric: r, via: "shape" }; },
+  },
+  {
+    code: "V11", sev: "E", path: "/redFlags/0/id", what: "a red flag id \"safety\" (the red-flag group's linkId)",
+    build: (ctx) => { const r = ctx.rubric(); r.redFlags[0].id = "safety"; return { rubric: r, via: "shape" }; },
+  },
+  // V11, the Scribe's info prompts (audit e2): every field the Scribe reads is checked.
+  {
+    code: "V11", sev: "E", path: "/infoPrompts/gateDomain", what: "an info-prompt gate that is not a domain",
+    build: (ctx) => { const r = ctx.rubric(); r.infoPrompts.gateDomain = "p_nope"; return { rubric: r, via: "shape" }; },
+  },
+  {
+    code: "V11", sev: "E", path: "/infoPrompts/prompts/0", what: "an info prompt that is null",
+    build: (ctx) => { const r = ctx.rubric(); r.infoPrompts.prompts[0] = null; return { rubric: r, via: "shape" }; },
+  },
+  {
+    code: "V11", sev: "E", path: "/infoPrompts/prompts/0/ask", what: "an info prompt without its question",
+    build: (ctx) => { const r = ctx.rubric(); delete r.infoPrompts.prompts[0].ask; return { rubric: r, via: "shape" }; },
+  },
+  {
+    code: "V11", sev: "E", path: "/infoPrompts/maxScored", what: "maxScored given as text",
+    build: (ctx) => { const r = ctx.rubric(); r.infoPrompts.maxScored = "4"; return { rubric: r, via: "shape" }; },
+  },
+  {
+    code: "V11", sev: "E", path: "/infoPrompts/maxTotal", what: "a negative maxTotal",
+    build: (ctx) => { const r = ctx.rubric(); r.infoPrompts.maxTotal = -1; return { rubric: r, via: "shape" }; },
+  },
+  {
+    code: "V11", sev: "E", path: "/infoPrompts/tagPrefix", what: "a tagPrefix that is not text",
+    build: (ctx) => { const r = ctx.rubric(); r.infoPrompts.tagPrefix = 5; return { rubric: r, via: "shape" }; },
+  },
+  {
+    code: "V11", sev: "E", path: "/domains/1/key", what: "an info prompt id equal to a domain key (reported at the key)",
+    build: (ctx) => { const r = ctx.rubric(); r.infoPrompts.prompts[0].id = "second"; return { rubric: r, via: "shape" }; },
+  },
   {
     code: "V10", sev: "E", path: "/domains/0/key", what: "a domain key that names an Object.prototype property",
     build: (ctx) => { const r = ctx.rubric(); r.domains[0].key = "constructor"; return { rubric: r, via: "shape" }; },

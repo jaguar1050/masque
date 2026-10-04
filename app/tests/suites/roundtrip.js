@@ -17,6 +17,9 @@
 //                 bytes and binds by SHA-256 without running, with ALLOW_JS_UPLOAD false too
 //   tampering     the same zip with one weight changed by hand → Load as derived (row 4); a
 //                 root record copied onto unrelated content is never a verified derivation
+//   upload-bytes  an upload in a non-canonical JSON layout is exported with its own bytes (and
+//                 the manifest's rubricSha256 names the shipped file), so a derivation of it
+//                 comes back derived-from-upload (row 6), not as a plain upload
 //   module-js     a self-contained .js module (uploaded with consent) and a derivation of it:
 //                 the module file is exported once as <id>.logic.js, no sibling rubric.json,
 //                 and the zip loads again with no blocking error and identical outputs; the
@@ -308,6 +311,49 @@ export default {
       const builtins3 = fresh3.filter((e) => e.module).map((e) => e.module);
       const cl = await lineage.classifyLineage(forged, { builtins: builtins3, loaded: builtins3, sameUpload: [] });
       c.check(cl.kind !== "verified" && cl.origin !== "derived", "/tamper/forged-root", null, "never a verified derivation", cl);
+    }
+
+    // ------------------------------------------------------------ upload bytes kept
+    // An upload whose file is valid JSON but not in the canonical 2-space form, and a
+    // derivation of it. The derivation records the upload's SHA-256 as its root, so Download
+    // all must write the upload's own bytes (not a re-serialisation) or the derivation would
+    // come back as a plain upload (row 7) instead of derived-from-upload (row 6) (audit e8).
+    {
+      const { bind, validate, hash } = eng;
+      const r = JSON.parse(JSON.stringify(S.rubric));
+      r.id = "shape-four"; r.label = "Shape four-space";
+      const text = JSON.stringify(r, null, 4) + "\n";
+      const sha = await hash.sha256Hex(text);
+      const cls = await lineage.classifyLineage(r, { builtins: [M], loaded: [M], rubricSha256: sha });
+      const R4 = await bind.bindModule(r, null, {
+        origin: cls.origin, classification: cls, key: "upload:shape-four", loadedAt: NOW,
+        sources: { rubricText: text, logicText: null }, files: { rubric: { name: "shape-four.rubric.json", text, sha256: sha }, logic: null },
+      });
+      const R4v = await validate.validateModule({ module: R4, loaded: [M] });
+      const R4entry = { key: R4.key, origin: R4.origin, classification: R4.classification, module: R4, validation: R4v, files: R4.files, loadedAt: NOW };
+      const dd = derive.createDraft(R4).rubric;
+      dd.domains[0].items[0].text += " (edited)";
+      const D5 = await derive.deriveAndBind(R4, dd, { loaded: [M, R4], now: NOW, note: "roundtrip: derived from a four-space upload" });
+      c.check(R4v.ok && D5.validation.ok && D5.classification.kind === "derived-from-upload" && D5.module.provenance.root.rubricSha256 === sha,
+        "/upload-bytes/setup", null, "upload valid; derivation row 6 naming the upload's SHA-256", [R4v.errors.slice(0, 2), D5.classification.kind]);
+      const fb = await exportAll.buildExportFiles([rootEntry, R4entry, D5.entry], { appVersion: "0.4.0", now: NOW, fetchBytes });
+      const rf = fb.find((f) => f.name === `${R4.id}/${R4.id}.rubric.json`);
+      c.check(!!rf && dec(rf.bytes) === text && (await h.sha256(rf.bytes)) === sha, "/upload-bytes/export/bytes", null, "the upload's own bytes", rf ? dec(rf.bytes).slice(0, 40) : "missing");
+      const mfb = JSON.parse(dec(fb.find((f) => f.name === "manifest.json").bytes));
+      for (const mm of mfb.modules) {
+        if (mm.selfContained) continue;
+        const name = `${mm.id}/${mm.id}.rubric.json`;
+        c.check(mm.hashes.rubricSha256 === mm.files[name] && !("loadedRubricSha256" in mm.hashes), `/upload-bytes/manifest/${mm.id}`, null, "rubricSha256 = the shipped rubric file's", [mm.hashes.rubricSha256, mm.files[name]]);
+      }
+      const zb = zip.zipStore(fb);
+      const freshU = await registry.loadBuiltins({ env: h.env });
+      let rs;
+      try { rs = await registryZipUpload(registry, h.env, zb, freshU); }
+      catch (err) { if (!waitsOn(err)) throw err; rs = (await localZipUpload(eng, zb, freshU)).results; }
+      const rb = rs.find((x) => x.id === R4.id), db = rs.find((x) => x.id === D5.module.id);
+      c.check(!!rb && !!rb.module && rb.module.hashes.rubricSha256 === sha, "/upload-bytes/reload/upload", null, sha, rb && rb.module && rb.module.hashes.rubricSha256);
+      c.check(!!db && !!db.module && db.classification.kind === "derived-from-upload" && db.classification.row === 6 && db.module.origin === "derived" && db.validation && db.validation.ok,
+        "/upload-bytes/reload/derived-row6", null, ["derived-from-upload", 6], db && db.classification && [db.classification.kind, db.classification.row, db.classification.reasons]);
     }
 
     // ------------------------------------------------------------ a self-contained module

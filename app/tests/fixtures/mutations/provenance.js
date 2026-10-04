@@ -93,6 +93,13 @@ export default [
     },
   },
   {
+    code: "V55", sev: "E", path: "/locales/es/reviewed", what: "a derivation marking reviewed a translation its root has unreviewed (hand-edited file, audit e9)",
+    build: async (ctx) => {
+      const r = ctx.rubric(); r.domains[0].items[0].text = "Example item one, edited"; r.locales.es.reviewed = true;
+      return { rubric: await ctx.derive(r, { keepReviewed: true }), origin: "derived", classification: verified(ctx), root: ctx.root };
+    },
+  },
+  {
     code: "V56", sev: "E", path: "/fhir/screenIdPrefix", what: "a rendered identifier equal to a loaded module's",
     build: async (ctx) => {
       const o = ctx.rubric(); o.id = "example-b"; o.label = "Example B";

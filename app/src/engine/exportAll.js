@@ -12,7 +12,7 @@
 import { CONTRACT_VERSION, FORMAT } from "./contract.js";
 import { APP_VERSION, CAVEATS } from "./policy.js";
 import { serializeRubric } from "./bind.js";
-import { sha256Hex, utf8Bytes } from "./hash.js";
+import { canonicalJson, sha256Hex, utf8Bytes } from "./hash.js";
 import { buildCdsHooks, buildDataDictionary, buildQuestionnaire } from "./fhir.js";
 import { cohortColumnsCsv } from "./cohort.js";
 import { zipStore } from "./zip.js";
@@ -50,8 +50,8 @@ manifest.json
     Modules that failed to load are listed under "failed", without files.
 <id>/<id>.rubric.json
     The module's rubric: all of its data (domains, items, weights, scale factors, cut-points,
-    red flags, wording, lexicon, research configuration, provenance and change log). A JSON
-    rubric holds no code.
+    red flags, wording, lexicon, research configuration, provenance and change log), byte for
+    byte as it was loaded when those bytes are still available. A JSON rubric holds no code.
 <id>/<id>.logic.js
     The module's logic, byte for byte as it was loaded (absent for a data-only module). This
     file is code. A derived module carries its root's logic unchanged. A module that was
@@ -100,9 +100,22 @@ that asks for a change note and assigns "-local" versions.
 Prototype · not for clinical use
 `;
 
-/** `screenair-modules-YYYY-MM-DD.zip` */
+/**
+ * The calendar date a person sees (YYYY-MM-DD), in the local time zone; a bare "YYYY-MM-DD" is
+ * taken as written. (The same rule as derive.js localDate; not imported, so this file keeps
+ * its small import set.)
+ */
+function localDate(now) {
+  if (typeof now === "string" && /^\d{4}-\d{2}-\d{2}$/.test(now)) return now;
+  const d = now === null || now === undefined || now === "" ? new Date() : new Date(now);
+  if (Number.isNaN(d.getTime())) return String(now).slice(0, 10);
+  const p2 = (n) => String(n).padStart(2, "0");
+  return `${String(d.getFullYear()).padStart(4, "0")}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+}
+
+/** `screenair-modules-YYYY-MM-DD.zip` (the local date of `now`) */
 export function exportZipName(now) {
-  return `screenair-modules-${String(now || new Date().toISOString()).slice(0, 10)}.zip`;
+  return `screenair-modules-${localDate(now)}.zip`;
 }
 
 function basename(p) {
@@ -199,6 +212,32 @@ async function fetchOrFail(fetchBytes, path, what) {
 const json = (x) => utf8Bytes(JSON.stringify(x, null, 2));
 
 /**
+ * The rubric file of a module: the bytes it was loaded from when the registry still has them
+ * and they are the bytes the module's rubricSha256 names (a derivation from it records that
+ * SHA-256 as its root, §3.11 row 6, so a re-serialised copy would no longer match after a round
+ * trip); otherwise the canonical serialisation. A UTF-8 byte-order mark the decoder dropped is
+ * restored when that is what the recorded SHA-256 says.
+ */
+async function rubricBytesOf(entry, m) {
+  const want = m.hashes.rubricSha256;
+  const texts = [];
+  const f = entry.files && entry.files.rubric;
+  if (isObj(f) && typeof f.text === "string" && f.text) texts.push(f.text);
+  if (m.sources && typeof m.sources.rubricText === "string" && m.sources.rubricText) texts.push(m.sources.rubricText);
+  for (const t of texts) {
+    for (const cand of [t, "\uFEFF" + t]) {
+      const bytes = utf8Bytes(cand);
+      if ((await sha256Hex(bytes)) !== want) continue;
+      // Only bytes that hold this very rubric (never a stale text that happens to be recorded).
+      try {
+        if (canonicalJson(JSON.parse(cand.replace(/^\uFEFF/, ""))) === canonicalJson(m.rubric)) return bytes;
+      } catch (_) { /* not JSON: not a rubric file */ }
+    }
+  }
+  return utf8Bytes(serializeRubric(m.rubric));
+}
+
+/**
  * Every file of a Download-all export (§5.8), sorted by name.
  * @param {Array<Object>} entries  RegistryEntry[] (built-in, uploaded, derived; failed ones too)
  * @param {{appVersion?:string, now?:string, fetchBytes?:function(string):Promise<ArrayBuffer|Uint8Array>}} [opts]
@@ -235,7 +274,13 @@ export async function buildExportFiles(entries, { appVersion = APP_VERSION, now 
       own[name] = await sha256Hex(bytes);
     };
     const selfContained = !!m.hashes.logicSha256 && isSelfContained(entry);
-    await add(selfContained ? `generated/${id}.rubric.json` : `${id}.rubric.json`, utf8Bytes(serializeRubric(m.rubric)));
+    // A self-contained module's rubric file is its .logic.js; the generated copy is readable JSON.
+    const rubricFile = selfContained ? `generated/${id}.rubric.json` : `${id}.rubric.json`;
+    await add(rubricFile, selfContained ? utf8Bytes(serializeRubric(m.rubric)) : await rubricBytesOf(entry, m));
+    // The manifest's rubricSha256 names the rubric file shipped (for a self-contained module,
+    // the .logic.js it was loaded from). Only when the loaded bytes are no longer available
+    // does it differ from the SHA-256 the module was loaded with, which is then kept beside it.
+    const shippedSha = selfContained ? m.hashes.rubricSha256 : own[`${id}/${rubricFile}`];
     if (m.hashes.logicSha256) {
       const text = logicTextOf(entry, list);
       if (typeof text !== "string") throw new Error(`Download all: the logic source of ${m.label} is not available`);
@@ -252,7 +297,7 @@ export async function buildExportFiles(entries, { appVersion = APP_VERSION, now 
     }
     const prefix = m.fhir.filePrefix;
     const iv = m.instrumentVersion;
-    await add(`generated/${prefix}-questionnaire-v${iv}.json`, json(buildQuestionnaire(m, { date: generatedAt.slice(0, 10) })));
+    await add(`generated/${prefix}-questionnaire-v${iv}.json`, json(buildQuestionnaire(m, { date: localDate(generatedAt) })));
     await add(`generated/${prefix}-cds-hooks.json`, json(buildCdsHooks(m)));
     await add(`generated/${prefix}-data-dictionary-v${iv}.json`, json(buildDataDictionary(m, { appVersion })));
     await add(`generated/${prefix}-cohort-columns.csv`, utf8Bytes(cohortColumnsCsv(m) + "\n"));
@@ -285,8 +330,9 @@ export async function buildExportFiles(entries, { appVersion = APP_VERSION, now 
         goldSet: m.versions.goldSet, goldSetLexicon: m.versions.goldSetLexicon,
       },
       hashes: {
-        rubricSha256: m.hashes.rubricSha256, logicSha256: m.hashes.logicSha256, instrumentHash: m.hashes.instrumentHash,
+        rubricSha256: shippedSha, logicSha256: m.hashes.logicSha256, instrumentHash: m.hashes.instrumentHash,
         scoringHash: m.hashes.scoringHash, lexiconHash: m.hashes.lexiconHash,
+        ...(shippedSha !== m.hashes.rubricSha256 ? { loadedRubricSha256: m.hashes.rubricSha256 } : {}),
       },
       classification: serialClassification(m.classification),
       provenance: m.provenance ?? null,

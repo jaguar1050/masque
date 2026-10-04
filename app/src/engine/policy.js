@@ -62,6 +62,15 @@ export const CAVEATS = {
  * Beyond score / likelihood / probability and an "NN/NNN" figure: a band word, a percentage figure
  * (a threshold written with a comparison sign, such as a criterion's "≥50%", is not a result and is
  * allowed), the words percent / percentage, and chance / odds / risk.
+ *
+ * No lookbehind anywhere (Safari before 16.4 cannot parse one, and every page importing this
+ * file would fail). The percentage pattern therefore matches the context before the digit
+ * instead of looking behind it: a digit d before "%" counts unless the run of digits, "." and
+ * "," ending at d is preceded (after any whitespace) by a comparison sign. Its first
+ * alternative is that whitespace and the non-sign character (or string start) before it; the
+ * second, no whitespace and a character that is neither a sign, whitespace nor part of the run.
+ * test() gives exactly what the former negative-lookbehind form gave (checked on a random
+ * corpus); a match's index may start up to that context earlier.
  */
 export const OMISSION_PATTERNS = [
   /\bscor(?:e|es|ed|ing)\b/i,
@@ -70,7 +79,7 @@ export const OMISSION_PATTERNS = [
   /\b\d{1,3}\s*\/\s*\d{2,3}\b/,
   /\bpuntuaci[oó]n|\bpuntaje\b/i,
   /\bbands?\b|\bbandas?\b/i,
-  /(?<![≥≤<>=]\s*[\d.,]*)\d\s*[%％]/,
+  /(?:(?:^|[^≥≤<>=\s])\s+|^|[^≥≤<>=\s\d.,])[\d.,]*\d\s*[%％]/,
   /\bper\s?cent(?:age)?s?\b|\bporcentajes?\b|\bpor\s+ciento\b/i,
   /\bchances?\b|\bodds\b/i,
   /\brisks?\b|\briesgos?\b/i,

@@ -55,6 +55,14 @@ export default [
     build: (ctx) => { const r = ctx.rubric(); r.phenotypes.referral.byPhenotype.kind_z = { specialty: "Example", reason: "Example" }; return { rubric: r, via: "shape" }; },
   },
   {
+    code: "V27", sev: "E", path: "/phenotypes/values/0/value", what: "a phenotype value that names an Object.prototype property (audit e1)",
+    build: (ctx) => {
+      const r = ctx.rubric(); r.phenotypes.values[0].value = "toString"; r.phenotypes.scribeDefault = "toString";
+      for (const s of r.sampleCases) if (s.complaint === "kind_x") s.complaint = "toString";
+      return { rubric: r, via: "shape" };
+    },
+  },
+  {
     code: "V28", sev: "E", path: "/lexicon/redFlags/p_rf_b", what: "a red flag with an empty phrase list",
     build: (ctx) => { const r = ctx.rubric(); r.lexicon.redFlags.p_rf_b = []; return { rubric: r }; },
   },

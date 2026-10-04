@@ -22,13 +22,15 @@
 //   lexicon       a phrase added → lexicon -local, instrument locked, gold set "not re-run";
 //                 the last cue phrase of a flag removed → V28
 //   locales       English edit → es stale path and reviewed:false, stale-translation line;
-//                 an English red-flag edit → staleRedFlagPaths
+//                 an English red-flag edit → staleRedFlagPaths; a hand-edited "reviewed": true
+//                 never rises above the parent's
 //   add-item      the Add item rules (V11, V13, V15, V32) and a valid item round trip;
 //                 domains cannot be added, removed or reordered (lockViolations)
 //   shape         Create lexicon (V28 names every flag) and Create English patient wording
 //                 (V23/V32), then a valid derivation of the upload (row 6)
 //   identity      a label equal to a built-in's is refused; id and label collisions get -2 / (2)
-//   locks         locked fields are reported; revertChange and Revert all restore the parent
+//   locks         locked fields are reported; revertChange and Revert all restore the parent;
+//                 setAt refuses __proto__ / constructor / prototype segments
 import React from "react";
 import { collector, guarded, loadMasque, need } from "../harness/kit.js";
 
@@ -89,7 +91,11 @@ export default {
     {
       const m = R1.module, rb = R1.rubric;
       c.check(new RegExp(`^local-${M.id}-[0-9a-f]{6}$`).test(m.id), "/instrument/id", null, `local-${M.id}-<hex6>`, m.id);
-      c.check(m.label === `${M.label} — edited ${NOW.slice(0, 10)}`, "/instrument/label", null, `${M.label} — edited ${NOW.slice(0, 10)}`, m.label);
+      // The label carries the date the user sees: NOW's local calendar date (functional audit L4).
+      const t = new Date(NOW);
+      const localDay = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+      c.check(derive.localDate(NOW) === localDay && derive.localDate("2026-10-02") === "2026-10-02", "/instrument/localDate", null, localDay, derive.localDate(NOW));
+      c.check(m.label === `${M.label} — edited ${localDay}`, "/instrument/label", null, `${M.label} — edited ${localDay}`, m.label);
       c.check(new RegExp(`^${M.instrumentVersion.replace(/\./g, "\\.")}-local\\.[0-9a-f]{6}$`).test(m.instrumentVersion), "/instrument/version", null, "<root>-local.<hash6>", m.instrumentVersion);
       c.check(m.instrumentVersion.endsWith(m.hashes.instrumentHash.slice(0, 6)), "/instrument/version/hash6", null, m.hashes.instrumentHash.slice(0, 6), m.instrumentVersion);
       for (const k of ["questionnaireUrl", "codeSystem", "indexCode"]) {
@@ -223,6 +229,16 @@ export default {
       f.locales.es.redFlags[flagId].q += " (editado)";
       const ch2 = await derive.classifyChanges(M, f, { readsObserved: ro });
       c.check(!ch2.staleRedFlagPaths.length, "/locales/staleRedFlag/updated", null, [], ch2.staleRedFlagPaths);
+      // A hand-edited file (Load as derived) typing "reviewed": true into an unreviewed locale:
+      // the derivation never raises a locale's reviewed above its parent's, so the
+      // unreviewed-translation banner stays (audit e9).
+      const hv = fresh();
+      hv.domains[posDomain].items[0].text += " (edited)";
+      c.check(M.rubric.locales.es.reviewed === false, "/locales/reviewed/root-es", null, false, M.rubric.locales.es.reviewed);
+      hv.locales.es.reviewed = true;
+      const rv = await run(M, hv);
+      c.check(rv.validation.ok && rv.rubric.locales.es.reviewed === false && rv.rubric.locales.en.reviewed === M.rubric.locales.en.reviewed,
+        "/locales/reviewed/never-rises", null, "es reviewed:false (as the parent's), en unchanged", [rv.rubric.locales.es.reviewed, rv.rubric.locales.en.reviewed, codes(rv.validation)]);
     }
 
     // -------------------------------------------------------------- add item
@@ -359,6 +375,13 @@ export default {
       let b2 = add;
       for (const ch of derive.diffRubrics(M.rubric, add)) b2 = derive.revertChange(b2, M.rubric, ch);
       c.check(canon(b2) === canon(M.rubric), "/revert/added-item", null, "the parent", derive.diffRubrics(M.rubric, b2));
+      // setAt refuses path segments that would reach a prototype (hardening).
+      for (const p of ["/__proto__/polluted", "/domains/0/constructor/prototype/polluted", "/copy/prototype"]) {
+        let threw = false;
+        try { derive.setAt({ domains: [{}], copy: {} }, p, "x"); } catch (_) { threw = true; }
+        c.check(threw && ({}).polluted === undefined && Object.prototype.polluted === undefined, `/setAt/refuses${p}`, null, "throws, nothing polluted", threw);
+      }
+      c.check(derive.getAt(derive.setAt({}, "/copy/indexName", "x"), "/copy/indexName") === "x", "/setAt/plain", null, "x", "not set");
     }
 
     c.note(`MASQUE readsObserved: ${Object.keys(ro.items || {}).length} items; acknowledgePaths: ${derive.acknowledgePaths(M, ro).length} fields`);

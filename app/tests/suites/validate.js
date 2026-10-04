@@ -177,6 +177,23 @@ export async function core(deps) {
     const rep = await runCase({ rubric: r });
     check(!rep.errors.some(e => e.code === "V60"), "/v60/bare-words", { sub: r.locales.en.ui.sub }, "no V60", summarise(rep));
   }
+  // V60 on the name, item texts and fallback domain labels applies only where they reach a
+  // patient: a module without English patient wording has no Patient Companion (audit e16).
+  // With one, the item-text finding names the remedy (a patientClin line).
+  {
+    const words = (r) => { r.name = "Example fall risk"; r.domains[0].label = "Example risk factors"; r.domains[1].items[0].text = "Example symptom score of 7/10 or more"; return r; };
+    const none = words(ctx.rubric());
+    delete none.locales; delete none.defaultLocale; none.logicBinding = "generic";
+    const repNone = await runCase({ rubric: none, logic: null });
+    const v60 = (rep) => rep.errors.filter(e => e.code === "V60").map(e => e.path).sort();
+    check(!v60(repNone).length, "/v60/no-patient-surface", { what: "no locales: name, item text, domain label are clinician text" }, [], v60(repNone));
+    const shaped = words(ctx.rubric());
+    shaped.logicBinding = "generic";
+    const repSurf = await runCase({ rubric: shaped, logic: null });
+    check(JSON.stringify(v60(repSurf)) === JSON.stringify(["/domains/0/label", "/domains/1/items/0/text", "/name"]), "/v60/patient-surface", { what: "English patient wording: the same strings are patient-facing" }, ["/domains/0/label", "/domains/1/items/0/text", "/name"], v60(repSurf));
+    const textErr = repSurf.errors.find(e => e.code === "V60" && e.path === "/domains/1/items/0/text");
+    check(!!textErr && /patientClin/.test(textErr.msg), "/v60/patient-surface/hint", {}, "the message suggests patientClin", textErr && textErr.msg);
+  }
 
   // ------------------------------------------------------------- the shape fixture(s)
   try {

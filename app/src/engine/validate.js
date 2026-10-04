@@ -42,6 +42,10 @@ const VERSION_RE = /^\d+(\.\d+)*(-[a-z0-9.-]+)?$/;
 const HEX64 = /^[0-9a-f]{64}$/;
 const LOCAL_TAG = /-local(?:[.-]|$)/;
 const ABS_URL = /^[a-z][a-z0-9+.-]*:\/\/[^\s{}]+$/i;
+// V35: the identity fields that render to URLs; every other IDENTITY_TEMPLATE_FIELDS value is
+// an identifier token (file names, screen ids, codes, CDS ids).
+const URL_IDENTITY_FIELDS = ["fhir.questionnaireUrl", "fhir.codeSystem", "fhir.answerSystem", "fhir.criteriaSystem", "fhir.weightExtension", "cds.source.url"];
+const IDENT_TOKEN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const PLACEHOLDER_RE = /\{([A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)*)\}/g;
 const SMOKE_SEED = 0x5A1C;
 const SMOKE_RANDOM_STATES = 256;
@@ -253,12 +257,18 @@ function checkInstrument(r, c) {
   }
 }
 
+// The FHIR Questionnaire's red-flag group uses this linkId, so no id of any kind may take it.
+const RESERVED_LINK_IDS = new Set(["safety"]);
+
 function idNamespace(r, c) {
-  // V11: one id namespace across items, context items, flags and info prompts.
+  // V11: one id namespace across items, context items, flags, info prompts and domain keys.
+  // Domain keys join it because the FHIR Questionnaire uses a domain's key as its group linkId
+  // and an item's id as the item's linkId: a key equal to an id would give two linkIds alike.
   const seen = new Map();
   const visit = (id, path, what) => {
     if (typeof id !== "string" || !ID_RE.test(id)) { c.E("V11", path, `${what} id must match /^[a-z][a-z0-9_]*$/`); return; }
     if (isProtoName(id)) { c.E("V11", path, `${what} id "${id}" is reserved: it names a property every JavaScript object inherits, so a lookup by it would read as present when the data is absent`); return; }
+    if (RESERVED_LINK_IDS.has(id)) { c.E("V11", path, `${what} id "${id}" is reserved: the FHIR Questionnaire's red-flag group uses the linkId "${id}"`); return; }
     if (seen.has(id)) c.E("V11", path, `id "${id}" is already used by ${seen.get(id)}`);
     else seen.set(id, `${what} ${path}`);
   };
@@ -277,6 +287,38 @@ function idNamespace(r, c) {
   arr(r.contextItems).forEach((ci, i) => { if (isObj(ci)) visit(ci.id, ptr("contextItems", i, "id"), "context item"); });
   arr(r.redFlags).forEach((f, i) => { if (isObj(f)) visit(f.id, ptr("redFlags", i, "id"), "red flag"); });
   if (isObj(r.infoPrompts)) arr(r.infoPrompts.prompts).forEach((p, i) => { if (isObj(p)) visit(p.id, ptr("infoPrompts", "prompts", i, "id"), "info prompt"); });
+  // Domain keys last, so a collision is reported at the key. A key V10 already refuses (not a
+  // slug, an Object.prototype name) is not reported twice.
+  arr(r.domains).forEach((d, i) => {
+    if (!isObj(d) || typeof d.key !== "string" || !ID_RE.test(d.key) || isProtoName(d.key)) return;
+    const path = ptr("domains", i, "key");
+    if (RESERVED_LINK_IDS.has(d.key)) { c.E("V11", path, `domain key "${d.key}" is reserved: the FHIR Questionnaire's red-flag group uses the linkId "${d.key}"`); return; }
+    if (seen.has(d.key)) {
+      // Two domains with one key are V10's finding; only a key shared with an id is V11's.
+      if (!seen.get(d.key).startsWith("domain ")) c.E("V11", path, `domain key "${d.key}" is already used by ${seen.get(d.key)} (domain keys and ids share one namespace: both are FHIR linkIds)`);
+    } else seen.set(d.key, `domain ${path}`);
+  });
+}
+
+function checkInfoPrompts(r, c) {
+  // V11: the Scribe's info prompts. They share the id namespace (idNamespace); their shape is
+  // checked here, because the Scribe reads every field without a guard.
+  const ip = r.infoPrompts;
+  if (ip === undefined) return;
+  if (!isObj(ip)) { c.E("V11", "/infoPrompts", "infoPrompts must be {gateDomain, tagPrefix, maxScored, maxTotal, prompts}"); return; }
+  const domainKeys = arr(r.domains).filter(isObj).map(d => d.key);
+  if (typeof ip.gateDomain !== "string" || !domainKeys.includes(ip.gateDomain)) c.E("V11", "/infoPrompts/gateDomain", `gateDomain must be a domain key (got ${JSON.stringify(ip.gateDomain)})`);
+  if (ip.tagPrefix !== undefined && typeof ip.tagPrefix !== "string") c.E("V11", "/infoPrompts/tagPrefix", "tagPrefix must be a string");
+  for (const k of ["maxScored", "maxTotal"]) {
+    if (ip[k] !== undefined && !(Number.isInteger(ip[k]) && ip[k] >= 0)) c.E("V11", `/infoPrompts/${k}`, `${k} must be a non-negative integer`);
+  }
+  if (!Array.isArray(ip.prompts)) { c.E("V11", "/infoPrompts/prompts", "prompts must be a list of {id, tag, ask}"); return; }
+  ip.prompts.forEach((p, i) => {
+    const pp = ptr("infoPrompts", "prompts", i);
+    if (!isObj(p)) { c.E("V11", pp, "an info prompt is {id, tag, ask}"); return; }
+    // The id is idNamespace's (pattern, reserved names, uniqueness across every id kind).
+    for (const k of ["tag", "ask"]) if (!nonEmpty(p[k])) c.E("V11", `${pp}/${k}`, `${k} must be a non-empty string`);
+  });
 }
 
 function checkContext(r, c) {
@@ -486,7 +528,10 @@ function checkPhenotypes(r, c) {
   arr(ph.values).forEach((v, i) => {
     const p = ptr("phenotypes", "values", i);
     if (!isObj(v) || !nonEmpty(v.value)) { c.E("V27", p, "a phenotype value is {value, h, d}"); return; }
-    if (values.includes(v.value)) c.E("V27", p + "/value", `duplicate phenotype value "${v.value}"`);
+    // Values key the referral and cdsTerm tables (plain objects): a name every object inherits
+    // ("toString") would read as present there when the module defines nothing for it.
+    if (isProtoName(v.value)) c.E("V27", p + "/value", `phenotype value "${v.value}" is reserved: it names a property every JavaScript object inherits, so a lookup by it would read as present when the data is absent`);
+    else if (values.includes(v.value)) c.E("V27", p + "/value", `duplicate phenotype value "${v.value}"`);
     values.push(v.value);
     for (const k of ["h", "d"]) if (typeof v[k] !== "string") c.E("V27", `${p}/${k}`, `${k} must be a string`);
   });
@@ -673,13 +718,16 @@ function checkLocales(r, c, merged) {
 function checkIdentityAndResearch(r, c, identity, { origin, classification }) {
   // V35
   const fieldPath = (f) => "/" + f.split(".").map(esc).join("/");
-  for (const f of ["fhir.questionnaireUrl", "fhir.codeSystem", "fhir.answerSystem", "fhir.criteriaSystem", "fhir.weightExtension", "cds.source.url"]) {
+  for (const f of URL_IDENTITY_FIELDS) {
     const v = getPath(identity, f);
     if (typeof v !== "string" || !ABS_URL.test(v)) c.E("V35", fieldPath(f), `${f} must render to an absolute URL (got ${JSON.stringify(v)})`);
   }
   for (const f of IDENTITY_TEMPLATE_FIELDS) {
     const v = getPath(identity, f);
     if (typeof v !== "string" || !v.trim() || /[{}]/.test(v) || /\s/.test(v)) c.E("V35", fieldPath(f), `${f} must render to a non-empty identifier without spaces or braces (got ${JSON.stringify(v)})`);
+    // The other identity fields name files (filePrefix), screen ids, codes and CDS ids: a
+    // single safe token, so "{id}/../.." can never become a path in Download all.
+    else if (!URL_IDENTITY_FIELDS.includes(f) && !IDENT_TOKEN.test(v)) c.E("V35", fieldPath(f), `${f} must render to letters, digits, ".", "_" and "-" only, starting with a letter or digit, at most 64 characters (got ${JSON.stringify(v)})`);
   }
   for (const f of ["questionnaireName", "questionnaireTitle", "publisher", "description", "safetyGroupText", "indexDisplay", "documentType", "documentTitle"]) {
     if (!nonEmpty(identity.fhir[f])) c.E("V35", `/fhir/${f}`, `fhir.${f} must be non-empty`);
@@ -731,6 +779,7 @@ function checkIdentityAndResearch(r, c, identity, { origin, classification }) {
   if (Array.isArray(rs.fairnessAxes) && Array.isArray(rs.expected)) {
     rs.fairnessAxes.forEach((a, i) => { if (!rs.expected.includes(a)) c.E("V37", `/research/fairnessAxes/${i}`, `"${a}" is not an expected column`); });
   }
+  checkDemoCohorts(rs.demoCohorts, c);
   if (rs.population !== undefined) {
     const pop = rs.population;
     if (!isObj(pop)) c.E("V37", "/research/population", "population must be {index, schema, map}");
@@ -744,6 +793,51 @@ function checkIdentityAndResearch(r, c, identity, { origin, classification }) {
       c.E("V37", "/research/population", "Population estimates are accepted only for built-in modules and verified derivations of one; remove `research.population`");
     }
   }
+}
+
+// The most rows one demo-cohort group may generate (cohort.makeCohort loops n times per group).
+const DEMO_GROUP_MAX_N = 5000;
+
+function checkDemoCohorts(dc, c) {
+  // V37: research.demoCohorts, the specs cohort.makeCohort generates rows from. makeCohort
+  // reads spec.seed, spec.prevalence, spec.hi/lo {pos:[base, span], neg:[base, span]}, and
+  // per group sex[0], gender[0], n, hi and labeled; extraRows are copied as rows.
+  if (dc === undefined) return;
+  if (!Array.isArray(dc)) { c.E("V37", "/research/demoCohorts", "demoCohorts must be a list of {id, label, why, spec}"); return; }
+  const fin = (x) => typeof x === "number" && Number.isFinite(x);
+  const range = (x) => Array.isArray(x) && x.length === 2 && fin(x[0]) && fin(x[1]);
+  const ids = new Set();
+  dc.forEach((d, i) => {
+    const p = ptr("research", "demoCohorts", i);
+    if (!isObj(d)) { c.E("V37", p, "a demo cohort is {id, label, why, spec}"); return; }
+    if (!nonEmpty(d.id)) c.E("V37", p + "/id", "id must be a non-empty string");
+    else if (ids.has(d.id)) c.E("V37", p + "/id", `duplicate demo cohort id "${d.id}"`);
+    ids.add(d.id);
+    if (!nonEmpty(d.label)) c.E("V37", p + "/label", "label must be a non-empty string");
+    if (d.why !== undefined && typeof d.why !== "string") c.E("V37", p + "/why", "why must be a string");
+    const s = d.spec;
+    if (!isObj(s)) { c.E("V37", p + "/spec", "spec must be {seed, prevalence, hi, lo, groups, extraRows?}"); return; }
+    if (!Number.isInteger(s.seed)) c.E("V37", p + "/spec/seed", "seed must be an integer");
+    if (!fin(s.prevalence) || s.prevalence < 0 || s.prevalence > 1) c.E("V37", p + "/spec/prevalence", "prevalence must be a number in [0, 1]");
+    const groups = Array.isArray(s.groups) ? s.groups : null;
+    if (!groups || !groups.length) c.E("V37", p + "/spec/groups", "groups must be a non-empty list of {sex, gender, n, hi, labeled}");
+    for (const k of ["hi", "lo"]) {
+      if (groups && !groups.some(g => isObj(g) && (g.hi === true) === (k === "hi"))) continue;   // not drawn from
+      const sc = s[k];
+      if (!isObj(sc) || !range(sc.pos) || !range(sc.neg)) c.E("V37", `${p}/spec/${k}`, `${k} must be {pos: [base, span], neg: [base, span]} with finite numbers`);
+    }
+    arr(groups).forEach((g, j) => {
+      const gp = `${p}/spec/groups/${j}`;
+      if (!isObj(g)) { c.E("V37", gp, "a group is {sex, gender, n, hi, labeled}"); return; }
+      for (const k of ["sex", "gender"]) if (!nonEmpty(g[k])) c.E("V37", `${gp}/${k}`, `${k} must be a non-empty string`);
+      if (!Number.isInteger(g.n) || g.n < 1 || g.n > DEMO_GROUP_MAX_N) c.E("V37", `${gp}/n`, `n must be an integer from 1 to ${DEMO_GROUP_MAX_N}`);
+      for (const k of ["hi", "labeled"]) if (typeof g[k] !== "boolean") c.E("V37", `${gp}/${k}`, `${k} must be true or false`);
+    });
+    if (s.extraRows !== undefined) {
+      if (!Array.isArray(s.extraRows)) c.E("V37", p + "/spec/extraRows", "extraRows must be a list of rows");
+      else s.extraRows.forEach((row, j) => { if (!isObj(row)) c.E("V37", `${p}/spec/extraRows/${j}`, "a row is an object"); });
+    }
+  });
 }
 
 function caveatStrings() {
@@ -905,6 +999,7 @@ function rubricChecks(r, c, opts) {
   checkV9(r, c);
   checkInstrument(r, c);
   idNamespace(r, c);
+  checkInfoPrompts(r, c);
   checkContext(r, c);
   checkPatientContext(r, c);
   checkFlags(r, c);
@@ -1458,8 +1553,10 @@ function modulePhraseMatcher(module) {
   add(suffix, 2);
   add(note.likelihoodOf, 2);
   const reEsc = (w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // "No letter or digit before" is the string start or a non-letter/digit character, matched
+  // (not looked behind: Safari before 16.4 has no lookbehind); only test() is used.
   const res = [...phrases].map(p => [p, new RegExp(
-    "(?<![\\p{L}\\p{N}])" + p.split(" ").map(reEsc).join("\\s+") + "(?![\\p{L}\\p{N}])", "iu")]);
+    "(?:^|[^\\p{L}\\p{N}])" + p.split(" ").map(reEsc).join("\\s+") + "(?![\\p{L}\\p{N}])", "iu")]);
   return (s) => {
     if (typeof s !== "string") return null;
     for (const [p, re] of res) if (re.test(s)) return p;
@@ -1824,6 +1921,17 @@ function checkV47(module, c, rec) {
   }
 }
 
+/**
+ * Whether the module has a patient surface: the condition of patient.js projectForPatient's
+ * `available` (English patient wording with at least one item entry), restated here so the
+ * validator does not import the patient projection.
+ */
+function patientSurface(module) {
+  const en = isObj(module.locales) && isObj(module.locales.en) && isObj(module.locales.en.data) ? module.locales.en.data : null;
+  const items = en && isObj(en.items) ? en.items : null;
+  return !!items && Object.keys(items).some(id => isObj(items[id]));
+}
+
 function checkV60Static(module, c) {
   // Every patient-facing module string: rubric locales (minus their review metadata), the
   // string values of every logic sum, and the rubric strings projectForPatient carries onto
@@ -1833,16 +1941,20 @@ function checkV60Static(module, c) {
   // when English has no title for that step (§3.5).
   // Each is checked against OMISSION_PATTERNS and the module's own index and band phrases
   // (modulePhraseMatcher).
+  // The name, the item texts and the fallback domain labels reach a patient only through the
+  // Patient Companion, which a module without English patient wording does not have
+  // (patientSurface): then they are clinician text and are not checked.
   const r = module.rubric;
   const phraseHit = modulePhraseMatcher(module);
-  const v60 = (s, p) => { const why = v60Reason(s, phraseHit); if (why) c.E("V60", p, why); };
-  v60(r.name, "/name");
+  const v60 = (s, p, hint = "") => { const why = v60Reason(s, phraseHit); if (why) c.E("V60", p, why + hint); };
+  const surface = patientSurface(module);
+  if (surface) v60(r.name, "/name", " (the module name heads the patient page and its exports)");
   arr(r.domains).forEach((d, i) => {
     if (!isObj(d)) return;
     arr(d.items).forEach((it, j) => {
       if (!isObj(it)) return;
       if (typeof it.patientClin === "string") v60(it.patientClin, ptr("domains", i, "items", j, "patientClin"));
-      else v60(it.text, ptr("domains", i, "items", j, "text"));
+      else if (surface) v60(it.text, ptr("domains", i, "items", j, "text"), "; without patientClin the item text is what the patient summary's \"For my clinician\" block shows, so give the item a patientClin line that names no score");
     });
   });
   const steps = isObj(module.steps) ? arr(module.steps.patient) : [];
@@ -1855,8 +1967,8 @@ function checkV60Static(module, c) {
     if (typeof own === "string") continue;
     for (const k of arr(st.domainKeys)) fallbackKeys.add(k);
   }
-  arr(r.domains).forEach((d, i) => {
-    if (isObj(d) && fallbackKeys.has(d.key)) v60(d.label, ptr("domains", i, "label"));
+  if (surface) arr(r.domains).forEach((d, i) => {
+    if (isObj(d) && fallbackKeys.has(d.key)) v60(d.label, ptr("domains", i, "label"), "; a patient step without an English title shows its domain labels, so give the step a title in locales.en.steps");
   });
   if (isObj(r.locales)) {
     for (const loc of Object.keys(r.locales)) {
@@ -1940,12 +2052,20 @@ function checkDerived(module, c, { loaded, root }) {
       if (L.editedLocally !== true) c.E("V55", ptr("locales", loc, "editedLocally"), `the "${loc}" wording differs from the root's, so it is marked editedLocally: true`);
     }
     if (Array.isArray(L.stale) && L.stale.length && L.reviewed !== false) c.E("V55", ptr("locales", loc, "reviewed"), `"${loc}" has stale translations, so it is not reviewed`);
+    // A derivation never reviews a translation: a locale the root has unreviewed (or does not
+    // have) stays unreviewed, whatever a hand-edited file says.
+    const rootReviewed = isObj(rootLocs[loc]) && rootLocs[loc].reviewed === true;
+    if (L.reviewed === true && !rootReviewed) c.E("V55", ptr("locales", loc, "reviewed"), `"${loc}" is not reviewed in the root module, so a derived module may not mark it reviewed`);
   }
 }
 
 // ---- V57-V59: upload --------------------------------------------------------------------
 
-const API_RE = /(?<![.\w$])(window|document|globalThis|fetch|XMLHttpRequest|WebSocket|localStorage|sessionStorage|indexedDB|navigator|eval|Function)(?![\w$])|\bimport\s*\.\s*meta\b/g;
+// No lookbehind (Safari before 16.4 cannot parse one, and this file would not load): the
+// character before a name is matched as group 1 instead — the string start or a character
+// that cannot continue an identifier or a member access. That character is never part of the
+// previous match (a match ends on an identifier character), so no hit is lost; group 2 is the name.
+const API_RE = /(^|[^.\w$])(window|document|globalThis|fetch|XMLHttpRequest|WebSocket|localStorage|sessionStorage|indexedDB|navigator|eval|Function)(?![\w$])|\bimport\s*\.\s*meta\b/g;
 
 /** Source text with comments and string/template literals blanked (a signal scanner, not a parser). */
 function codeOnly(src) {
@@ -1968,7 +2088,7 @@ function codeOnly(src) {
 
 export function apiReferences(src) {
   const found = new Set();
-  for (const m of codeOnly(String(src)).matchAll(API_RE)) found.add(m[1] || "import.meta");
+  for (const m of codeOnly(String(src)).matchAll(API_RE)) found.add(m[2] || "import.meta");
   return [...found];
 }
 

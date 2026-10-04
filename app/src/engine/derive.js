@@ -32,6 +32,8 @@ const MODULE_ID_RE = /^[a-z][a-z0-9-]{1,47}$/;
 const LOCAL_TAG = /-local(?:[.-]|$)/;
 const LOCALE_META = new Set(["reviewed", "editedLocally", "stale"]);
 const GENERIC_ID = "*generic";
+// Path segments setAt refuses: they would write to a prototype, not to the rubric's data.
+const UNSAFE_SEGMENTS = new Set(["__proto__", "constructor", "prototype"]);
 
 // ------------------------------------------------------------------------- JSON pointers
 
@@ -72,6 +74,9 @@ export function getAt(obj, ptr) {
 export function setAt(obj, ptr, value) {
   const segs = ptrParse(ptr);
   if (!segs.length) throw new Error("setAt: cannot replace the root");
+  // A rubric is plain JSON data; these names would reach an object's prototype instead.
+  const bad = segs.find((k) => UNSAFE_SEGMENTS.has(k));
+  if (bad !== undefined) throw new Error(`setAt: the path segment "${bad}" is not allowed`);
   let v = obj;
   for (let i = 0; i < segs.length - 1; i++) {
     const k = segs[i];
@@ -629,8 +634,21 @@ function draftHex6(draftRubric) {
   return sha256HexSync(utf8Bytes(canonicalJson(r))).slice(0, 6);
 }
 
+/**
+ * The calendar date a person sees (YYYY-MM-DD) in the local time zone. `now` is an ISO
+ * timestamp, a Date or a timestamp; a bare "YYYY-MM-DD" is taken as written. A timestamp is an
+ * instant, so its UTC date can be the day before or after the user's (functional audit L4).
+ */
+export function localDate(now = null) {
+  if (typeof now === "string" && /^\d{4}-\d{2}-\d{2}$/.test(now)) return now;
+  const d = now === null || now === undefined || now === "" ? new Date() : new Date(now);
+  if (Number.isNaN(d.getTime())) return String(now).slice(0, 10);
+  const p2 = (n) => String(n).padStart(2, "0");
+  return `${String(d.getFullYear()).padStart(4, "0")}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+}
+
 function isoDate(now) {
-  return String(now || new Date().toISOString()).slice(0, 10);
+  return localDate(now);
 }
 
 /** The family records a draft of `parent` is checked against (§3.11 "Family"). */
@@ -838,6 +856,14 @@ export async function deriveRubric(parent, draftRubric, {
     }
     if (stale.length) { L.stale = stale; L.reviewed = false; }
     else if (L.stale !== undefined) L.stale = [];
+  }
+  // A derivation never reviews a translation: a locale's `reviewed` never rises above the
+  // parent's (a hand-edited file loaded as derived may say `"reviewed": true`; V55 refuses
+  // one that is still higher than the root's).
+  const parentLocs = isObj(pr.locales) ? pr.locales : {};
+  for (const loc of Object.keys(locs)) {
+    if (!isObj(locs[loc]) || locs[loc].reviewed !== true) continue;
+    if (!(isObj(parentLocs[loc]) && parentLocs[loc].reviewed === true)) locs[loc].reviewed = false;
   }
 
   // Research: calibration and population carried unchanged (V54).

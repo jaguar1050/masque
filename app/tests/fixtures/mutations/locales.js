@@ -1,6 +1,17 @@
 // Mutation generators V31-V39: locales, identity, research, caveats, copy (design 03 §4.14,
 // §8.3 `validate`). WP3. Placeholder text only.
 
+/** A well-formed demo cohort (placeholder values; the shape cohort.makeCohort reads). */
+function exampleCohort({ n = 10 } = {}) {
+  return {
+    id: "example-cohort", label: "Example cohort", why: "Example rationale.",
+    spec: {
+      seed: 1, prevalence: 0.5, hi: { pos: [60, 20], neg: [20, 20] }, lo: { pos: [40, 20], neg: [10, 20] },
+      groups: [{ sex: "female", gender: "woman", n, hi: true, labeled: true }],
+    },
+  };
+}
+
 export default [
   {
     code: "V31", sev: "E", path: "/locales/fr", what: "an unsupported locale",
@@ -38,6 +49,20 @@ export default [
     code: "V35", sev: "E", path: "/fhir/questionnaireTitle", what: "an empty Questionnaire title",
     build: (ctx) => { const r = ctx.rubric(); r.fhir.questionnaireTitle = ""; return { rubric: r, via: "shape" }; },
   },
+  // V35, identifier tokens (audit e21; security F2): the non-URL identity fields render to
+  // /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/, so filePrefix can never become a path in Download all.
+  {
+    code: "V35", sev: "E", path: "/fhir/filePrefix", what: "a filePrefix that climbs out of the export folder",
+    build: (ctx) => { const r = ctx.rubric(); r.fhir.filePrefix = "{id}/../.."; return { rubric: r, via: "shape" }; },
+  },
+  {
+    code: "V35", sev: "E", path: "/fhir/filePrefix", what: "a filePrefix starting with a dot",
+    build: (ctx) => { const r = ctx.rubric(); r.fhir.filePrefix = "../../{id}"; return { rubric: r }; },
+  },
+  {
+    code: "V35", sev: "E", path: "/cds/serviceId", what: "a CDS service id with a slash",
+    build: (ctx) => { const r = ctx.rubric(); r.cds.serviceId = "{id}/screen"; return { rubric: r, via: "shape" }; },
+  },
   {
     code: "V36", sev: "E", path: "/cds/examples/redFlagPresent/flagId", what: "a CDS example naming an unknown flag",
     build: (ctx) => { const r = ctx.rubric(); r.cds.examples.redFlagPresent.flagId = "p_rf_z"; return { rubric: r }; },
@@ -65,6 +90,23 @@ export default [
       r.research.fairnessPolicyOverride = { minGroupN: 5, toleranceSetBy: "Example", toleranceRationale: "Example", toleranceSetOn: "2026-10-02" };
       return { rubric: r, via: "shape" };
     },
+  },
+  // V37, research.demoCohorts (audit e23): the shape cohort.makeCohort needs, and a bounded n.
+  {
+    code: "V37", sev: "E", path: "/research/demoCohorts/0/spec/groups/0/n", what: "a demo cohort group of 10^12 rows",
+    build: (ctx) => { const r = ctx.rubric(); r.research.demoCohorts = [exampleCohort({ n: 1e12 })]; return { rubric: r, via: "shape" }; },
+  },
+  {
+    code: "V37", sev: "E", path: "/research/demoCohorts/0/spec/groups", what: "a demo cohort without groups",
+    build: (ctx) => { const r = ctx.rubric(); const d = exampleCohort(); delete d.spec.groups; r.research.demoCohorts = [d]; return { rubric: r, via: "shape" }; },
+  },
+  {
+    code: "V37", sev: "E", path: "/research/demoCohorts/0/spec/groups/0/sex", what: "a demo cohort group without sex",
+    build: (ctx) => { const r = ctx.rubric(); const d = exampleCohort(); delete d.spec.groups[0].sex; r.research.demoCohorts = [d]; return { rubric: r }; },
+  },
+  {
+    code: "V37", sev: "E", path: "/research/demoCohorts/1/id", what: "two demo cohorts with one id",
+    build: (ctx) => { const r = ctx.rubric(); r.research.demoCohorts = [exampleCohort(), exampleCohort()]; return { rubric: r, via: "shape" }; },
   },
   {
     code: "V38", sev: "E", path: "/copy/indexName", what: "a caveat string in module copy",

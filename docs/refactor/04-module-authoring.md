@@ -53,7 +53,10 @@ machine can check.
   "number / number" pattern (V60, `OMISSION_PATTERNS`), may not name the module's own
   `copy.indexName` or a band label built from its `copy.screener.bandSuffix` (V60, matched as a
   whole phrase, any case; the bare words "low", "moderate", "high" and "index" are not flagged),
-  and may not repeat a red flag's clinician `points` or `action` (V24).
+  and may not repeat a red flag's clinician `points` or `action` (V24). The module `name`, each
+  item's `patientClin` (or, without one, its `text`) and the domain labels a patient step falls
+  back to are patient-facing too, but only for a module that has a patient surface (English
+  patient wording, §2.9); give an item a `patientClin` line when its clinician text names a score.
 - **Absent is not negative.** An unanswered item is never scored as "no". Every scale needs an
   option with `f === 0` (V13) so that "none" is something a person says, not a default.
 - **Gate, don't warn.** Red flags, the coverage gate, the sign gate, the referral gate and the
@@ -131,7 +134,7 @@ configuration; the Rubric Editor can edit it and create a lexicon or more patien
 | `redFlags` | R | At least one (§2.4). |
 | `steps` | O | `{ screener?: [...], patient?: [...] }` (§2.5). |
 | `phenotypes` | O | Complaint vocabulary, referral and CDS terms (§2.6). |
-| `infoPrompts` | O | Unscored information prompts the Scribe offers when a gate domain is active. |
+| `infoPrompts` | O | Unscored information prompts the Scribe offers when a gate domain is active: `{gateDomain, tagPrefix?, maxScored?, maxTotal?, prompts: [{id, tag, ask}]}`. `gateDomain` is a domain key, `tagPrefix` a string, `maxScored`/`maxTotal` non-negative integers, and each prompt has an id in the shared namespace and non-empty `tag` and `ask` (V11). |
 | `sampleCases`, `demo` | O | Sample-case buttons; demo patient and scripted transcript (§2.7). |
 | `lexicon` | O | The extraction lexicon for the Ambient Scribe (§2.8). |
 | `defaultLocale` | O | `"en"`, the only value accepted in contract 1. |
@@ -146,13 +149,13 @@ configuration; the Rubric Editor can edit it and create a lexicon or more patien
 
 | Field | | Meaning |
 |---|---|---|
-| `domain.key` | R | `/^[a-z][a-z0-9_]*$/`; the FHIR group `linkId` and the `domain-{key}` code. |
+| `domain.key` | R | `/^[a-z][a-z0-9_]*$/`; the FHIR group `linkId` and the `domain-{key}` code. Because it is a `linkId`, it may not equal any item, context item, red flag or info prompt id (V11). |
 | `domain.label` | R | Clinician label. |
 | `domain.max` | R | Σ of the domain's item weights, exactly (V15). Negative for a negative domain. |
 | `domain.negative` | O | `true` for a domain whose items lower the index (rule-out discriminators). Every weight's sign must match (V15). |
 | `domain.shortTag` | O | Scribe suggestion tag for items with no `tag` (default: label in lower case). |
 | `domain.items` | R | At least one item, in instrument order. |
-| `item.id` | R | `/^[a-z][a-z0-9_]*$/`, unique across items, context items, red flags and info prompts (V11). |
+| `item.id` | R | `/^[a-z][a-z0-9_]*$/`, unique across items, context items, red flags, info prompts and domain keys (V11). No id or key may be `safety` (the red-flag group's `linkId`) or a name every JavaScript object inherits (`constructor`, `toString`, …). |
 | `item.w` | R | Finite and non-zero (V12). |
 | `item.text` | R | Clinician wording: the Questionnaire item text, the Screener question, chips. |
 | `item.scale` | O | `[{label, f}, …]`: present makes the item a choice item whose answer is the option index; absent makes it yes/no. At least two options, `f ∈ [0, 1]`, and at least one `f === 0` (V13). A yes/no item has no `scale` (V14). |
@@ -215,7 +218,8 @@ once (V26). Patient step titles, headings and ledes are locale data (`locales.<l
 cdsTerm?}`. `values` is the complaint picker (heading `h`, description `d`); `scribeDefault` is the
 Scribe's complaint when no derive rule fires; `alwaysActive` lists the domains always in the
 Scribe's suggestion pool; `referral = {byPhenotype: {value: {specialty, reason}}, default}` feeds the
-bundle's referral; `cdsTerm = {byPhenotype, default}` feeds the CDS index card (V27). Without
+bundle's referral; `cdsTerm = {byPhenotype, default}` feeds the CDS index card (V27). A value may
+not be a name every JavaScript object inherits (`toString`, `constructor`, …) (V27). Without
 `referral` there is no referral ServiceRequest; without `cdsTerm` there is no CDS index card.
 
 ### 2.7 Sample cases and demo
@@ -258,6 +262,8 @@ could have no structured use.
 - `reviewed` is `true` only for wording a qualified reviewer has checked. A non-English string that
   falls back to English is a warning, and an error when the locale claims `reviewed: true` (V33).
   An unreviewed locale shows the unreviewed-translation banner on screen, in print and in exports.
+  A derived module never marks reviewed a locale its parent has unreviewed: the derivation keeps
+  it `false`, and V55 refuses a derived locale that claims `reviewed: true` while the root's is not.
 - No locale entry has a `points`, `action` or `differential` key (V34).
 
 Without `locales.en.items` the Patient Companion is disabled for the module, and says so.
@@ -270,7 +276,11 @@ fairnessPolicyOverride?, demoCohorts?, population?}`. The calibration is **illus
 applies only while `appliesTo.scoringHash` equals the module's computed `scoringHash` (§4.2);
 otherwise the Research tab withholds every figure that runs through it and says why.
 A tolerance override must carry `toleranceSetBy`, `toleranceRationale` and `toleranceSetOn`
-(V37). `population = {index, schema, map}` (paths under `./data/` or `./etl/`) is accepted only on
+(V37). `demoCohorts` is a list of `{id, label, why, spec}` with unique ids; `spec = {seed (integer),
+prevalence ∈ [0, 1], hi, lo: {pos: [base, span], neg: [base, span]}, groups, extraRows?}`, and
+`groups` is a non-empty list of `{sex, gender, n, hi, labeled}` with non-empty `sex` and `gender`,
+an integer `n` from 1 to 5000 and boolean `hi`/`labeled` (V37).
+`population = {index, schema, map}` (paths under `./data/` or `./etl/`) is accepted only on
 a built-in or a verified derivation of one (V37, V54): the population estimates describe a
 specific phenotype from survey items, not any rubric's weights.
 
@@ -280,7 +290,10 @@ Twelve fields are **identity templates** (`IDENTITY_TEMPLATE_FIELDS`): `fhir.que
 `codeSystem`, `answerSystem`, `criteriaSystem`, `weightExtension`, `indexCode`, `screenIdPrefix`,
 `filePrefix`, and `cds.serviceId`, `safetyCardUuid`, `indexCardUuid`, `source.url`. Each must
 contain `{id}`, and `questionnaireUrl` must also contain `{instrument}` (V9), so a new id always
-yields a new code-system namespace. The rendered systems must be absolute URLs (V35), and a
+yields a new code-system namespace. The rendered systems and `cds.source.url` must be absolute
+URLs; every other identity template (`indexCode`, `screenIdPrefix`, `filePrefix`, `serviceId`,
+`safetyCardUuid`, `indexCardUuid`) must render to one token matching
+`/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/`, so it can never name a path (V35). A
 rendered identity value may not equal another loaded module's (V56). Without `fhir`/`cds` the
 engine uses `DEFAULT_FHIR` (`http://screenair.example/{id}/…`).
 
@@ -560,14 +573,16 @@ listing what switching clears.
 
 The Rubric Editor's Downloads section offers **Download all modules (.zip)**, **Download this
 module (.zip)**, **Download rubric (.json)** and **Download logic (.js)**. The zip
-(`screenair-modules-YYYY-MM-DD.zip`, deterministic, store-only) contains:
+(`screenair-modules-YYYY-MM-DD.zip`, local date, deterministic, store-only) contains:
 
 ```
 README.txt                    what each file is and how to re-upload; the five axes; release; date
 manifest.json                 format "screenair-export"; per module: versions (each axis separate),
                               hashes, classification, provenance, change log, validation, file hashes;
                               a `failed` list for modules that did not load
-<id>/<id>.rubric.json         the rubric as loaded (with any derived provenance)
+<id>/<id>.rubric.json         the rubric byte for byte as loaded (with any derived provenance), so a
+                              derivation's recorded root SHA-256 still matches after the trip; the
+                              manifest's rubricSha256 is this file's
 <id>/<id>.logic.js            the logic source exactly as loaded (absent for generic logic)
 <id>/CHANGELOG.md             generated from the change log (non-built-ins)
 <id>/<doc>                    built-ins: every file in the registry entry's `docs`, byte-for-byte
@@ -611,7 +626,7 @@ feedback. Each code is exercised by at least one mutated fixture in `app/tests/f
 | V8 | E/W | Module id not unique, or reuses a built-in id or prefix; logic id reserved; label equals a built-in's (E); label equals another loaded module's (W). |
 | V9 | E | An identity template lacks `{id}` (or `questionnaireUrl` lacks `{instrument}`). |
 | V10 | E | No domains, duplicate domain keys, or an empty domain. |
-| V11 | E | An id is reused across items, context items, flags and info prompts, or has a bad pattern. |
+| V11 | E | An id is reused across items, context items, flags, info prompts and domain keys, has a bad pattern, or is reserved (`safety`, an Object.prototype name); `infoPrompts` malformed (gate not a domain, prompt without `tag`/`ask`, non-integer limits). |
 | V12 | E/W | Item weight not finite and non-zero, or empty text (E); `short` missing (W). |
 | V13 | E | Scale has under two options, an empty label, `f` outside [0, 1], or no option with `f === 0`. |
 | V14 | E | A yes/no item carries a `scale`. |
@@ -627,7 +642,7 @@ feedback. Each code is exercised by at least one mutated fixture in `app/tests/f
 | V24 | E | Patient wording repeats a flag's `points` or `action`, or equals its clinician `text`. |
 | V25 | E | Screener steps malformed (safety first, result last, each domain once, extras allowed). |
 | V26 | E | Patient steps malformed. |
-| V27 | E | Phenotype values, default, always-active, tag-boost, referral or CDS-term keys inconsistent. |
+| V27 | E | Phenotype values (unique, not an Object.prototype name), default, always-active, tag-boost, referral or CDS-term keys inconsistent. |
 | V28 | E | Lexicon references a missing item, option or flag, or a flag has no cue phrase. |
 | V29 | E/W | A phrase is empty or not lowercase (E); shorter than 3 characters (W). |
 | V30 | E | Negation/third-party/historical window or cues invalid, gold-set fields missing, bad `lang`. |
@@ -635,9 +650,9 @@ feedback. Each code is exercised by at least one mutated fixture in `app/tests/f
 | V32 | E | English patient wording misses an item, or `opts` do not match the scale. |
 | V33 | W/E | A non-English string falls back to English (W); E when that locale claims `reviewed: true`. |
 | V34 | E | A locale entry has a `points`, `action` or `differential` key. |
-| V35 | E | FHIR systems not absolute URLs, templates do not render, or Questionnaire strings empty. |
+| V35 | E | FHIR systems not absolute URLs, an identifier template does not render to a single safe token, or Questionnaire strings empty. |
 | V36 | E | CDS examples name a missing flag, or the settled example's score and band disagree. |
-| V37 | E | Research configuration invalid, or `population` on a module that may not carry it. |
+| V37 | E | Research configuration invalid (including a malformed or oversized `demoCohorts` spec), or `population` on a module that may not carry it. |
 | V38 | E | Module data contains a caveat string. |
 | V39 | E/W | Unknown placeholder or unbalanced `**` (E); a key that is not a copy slot (W). |
 | V40 | E | A function outside `LOGIC_PATHS`, or non-JSON data elsewhere in the logic. |
@@ -655,12 +670,12 @@ feedback. Each code is exercised by at least one mutated fixture in `app/tests/f
 | V52 | E | A derived module's provenance, lineage, `contentHash` or `derived` change-log entry is incomplete or wrong. |
 | V53 | E | The family version rule is broken (§5.3). |
 | V54 | E | A derived module changed the root's calibration or population, or kept the settled example after a scoring change. |
-| V55 | E | Edited or stale patient wording is not marked unreviewed. |
+| V55 | E | Edited or stale patient wording is not marked unreviewed, or a derived locale claims `reviewed: true` while the root's is not. |
 | V56 | E | A rendered identifier equals another loaded module's. |
 | V57 | E | The logic source imports, re-exports or dynamically imports. |
 | V58 | E | A file exceeds `LIMITS` or is not valid UTF-8. |
 | V59 | W | The logic source mentions page or network APIs (`window`, `document`, `fetch`, `localStorage`, `eval`, …); listed in the consent dialog. A signal for the reviewer, not a sandbox. |
-| V60 | E | A patient-facing module string (or a summary sentence produced during the smoke run) matches an omission pattern, or names the module's own `copy.indexName`, a full band label ("<band> likelihood <bandSuffix>"), a multi-word `copy.screener.bandSuffix` or `copy.note.likelihoodOf` (whole phrase, case-insensitive). |
+| V60 | E | A patient-facing module string (or a summary sentence produced during the smoke run) matches an omission pattern, or names the module's own `copy.indexName`, a full band label ("<band> likelihood <bandSuffix>"), a multi-word `copy.screener.bandSuffix` or `copy.note.likelihoodOf` (whole phrase, case-insensitive). The name, item texts and fallback domain labels count only when the module has English patient wording. |
 
 The built-in MASQUE module validates with zero errors and the expected warnings (V12 for
 `n_allo`, which has no short label; V33 for the Spanish strings that fall back to English).
