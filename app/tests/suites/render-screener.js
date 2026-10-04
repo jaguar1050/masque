@@ -17,6 +17,11 @@
 //             context answers, a red-flag case, and an empty walk), every card compared.
 //   layout    the panel the baseline mounts under the screen is replaced by the Research link
 //             card in the same place (AD8); the tab note leads the panel (AD12 chrome).
+//   F13, F11  the bundle allows AD14 (valueDecimal for fractional domain points); for a sample
+//             whose complaint is not a declared phenotype value (the sim-* scenarios, complaint
+//             "") the card text, card DOM and bundle allow AD15 (no referral and no CDS index
+//             card), with the baseline's own index card (its text and DOM run) as the parameter.
+//             Everything else stays strict.
 // Beyond parity (§9.8 done-when): capture appends a row with module_id through onCapture; the
 // spec and cohort downloads are named per fhir.filePrefix and byte-equal to the engine
 // builders; nine rail buttons in two groups; the snapshot carries safetyReviewed,
@@ -143,16 +148,34 @@ export default {
 
     let observedAD7 = false, observedAD11 = false, sawAD1Pre = false, sawAD1 = false;
 
+    const declared = ((masque.phenotypes && masque.phenotypes.values) || []).map((v) => v.value);
+    const INDEX_SRC = "CDS Hooks card · order-select";
+    /** AD15 parameters for `complaint` against the baseline container, or null when declared. */
+    const ad15For = (complaint, bc) => {
+      if (declared.includes(complaint)) return null;
+      const cds = bc.querySelector(".mq-wrap > .card .cds");
+      const index = cds && (textOf(cds) || "").startsWith(INDEX_SRC) ? cds : null;
+      return {
+        complaint, declared, indexSrc: INDEX_SRC,
+        cardText: index ? textOf(index) : undefined,
+        cardShape: index ? [`${index.tagName.toLowerCase()}.${(index.getAttribute("class") || "").trim().split(/\s+/).filter(Boolean).join(".")}`, ...shapeOf(index)] : undefined,
+      };
+    };
+    let ad14Pre = 0, ad14Seen = 0, ad15Pre = 0, ad15Seen = 0;
+
     /** Compare every region of the two mounted screens. */
-    const compare = (bc, nc, at, input) => {
+    const compare = (bc, nc, at, input, complaint = null) => {
       const a = regions(bc), b = regions(nc);
+      const p15 = complaint === null ? null : ad15For(complaint, bc);
+      const card15 = p15 ? { allow: ["AD15"], ctx: { AD15: p15 } } : {};
       const r11 = c.diff(a.bannerButtons, b.bannerButtons, { at: `${at}/banner/buttons`, input, allow: ["AD11"], ctx: { AD11: ad11 } });
       if (r11.observed.has("AD11")) observedAD11 = true;
       c.diff(a.bannerText, b.bannerText, { at: `${at}/banner/text`, input });
       c.diff(a.brand, b.brand, { at: `${at}/brand`, input, allow: ["AD4"] });
       c.diff(a.rail, b.rail, { at: `${at}/rail`, input });
-      c.diff(a.card, b.card, { at: `${at}/card/text`, input });
-      c.diff(a.cardShape, b.cardShape, { at: `${at}/card/dom`, input });
+      const rt = c.diff(a.card, b.card, { at: `${at}/card/text`, input, ...card15 });
+      const rd = c.diff(a.cardShape, b.cardShape, { at: `${at}/card/dom`, input, ...card15 });
+      if (p15 && p15.cardText) { ad15Pre++; if (rt.observed.has("AD15") && rd.observed.has("AD15")) ad15Seen++; }
       if (a.zones || b.zones) {
         const r7 = c.diff(a.zones, b.zones, { at: `${at}/card/meter/zones`, input, allow: ["AD7"], ctx: { AD7 } });
         if (r7.observed.has("AD7")) observedAD7 = true;
@@ -187,7 +210,7 @@ export default {
           const btn = railButtons(nc).find((b) => b.dataset.sample === sc.id);
           if (!c.check(!!btn, `${at}/rail/button`, input, "a rail button", "none")) return;
           click(btn);
-          compare(bc, nc, `${at}/result`, input);
+          compare(bc, nc, `${at}/result`, input, sc.complaint ?? "");
           c.check(textOf(nc.querySelector("[data-testid=tab-note]")) === common.TAB_NOTES.clinician, `${at}/tabNote`, input, common.TAB_NOTES.clinician, textOf(nc.querySelector("[data-testid=tab-note]")));
           const lb = layout(bc), ln = layout(nc);
           c.diff(lb, ln, { at: `${at}/layout`, input });
@@ -214,14 +237,21 @@ export default {
           click(cardButton(bc, /FHIR bundle$/)); click(cardButton(nc, /FHIR bundle$/));
           const ba = JSON.parse(textOf(bc.querySelector("pre.code"))), bb = JSON.parse(textOf(nc.querySelector("pre.code")));
           const pre = !score.scorable && score.floor < score.total;
-          const r1 = c.diff(ba, bb, { at: `${at}/bundle`, input, allow: ["AD1"], ctx: { AD1: { total: score.total, floor: score.floor } } });
+          const complaint = sc.complaint ?? "";
+          const undeclared = !declared.includes(complaint);
+          const r1 = c.diff(ba, bb, { at: `${at}/bundle`, input, allow: ["AD1", "AD14", ...(undeclared ? ["AD15"] : [])],
+            ctx: { AD1: { total: score.total, floor: score.floor }, AD14: {}, ...(undeclared ? { AD15: { complaint, declared, indexSrc: INDEX_SRC } } : {}) } });
           if (pre) { sawAD1Pre = true; if (r1.observed.has("AD1")) sawAD1 = true; }
+          const ad14Here = Object.values(score.domains).some((d) => typeof d.pts === "number" && !Number.isInteger(d.pts));
+          if (ad14Here) { ad14Pre++; if (r1.observed.has("AD14")) ad14Seen++; }
+          const baseRef = (ba.entry || []).some((e) => e && e.resource && e.resource.resourceType === "ServiceRequest" && e.resource.priority === "routine");
+          if (undeclared && baseRef) { ad15Pre++; if (r1.observed.has("AD15")) ad15Seen++; }
           h.expect("AD1", { precondition: pre, observed: r1.observed.has("AD1") });
           click(cardButton(bc, /FHIR bundle$/)); click(cardButton(nc, /FHIR bundle$/));
 
           // Capture.
           click(cardButton(bc, /^Append this screen$/)); click(cardButton(nc, /^Append this screen$/));
-          compare(bc, nc, `${at}/captured`, input);
+          compare(bc, nc, `${at}/captured`, input, sc.complaint ?? "");
           const row = spies.rows[spies.rows.length - 1];
           c.check(!!row && row.source === "screener" && row.row.module_id === masque.id && row.row.instrument_version === masque.instrumentVersion,
             `${at}/capture/row`, input, { source: "screener", module_id: masque.id }, row && { source: row.source, module_id: row.row.module_id });
@@ -233,7 +263,7 @@ export default {
           // Back through every step.
           for (let s = masque.steps.screener.length - 2; s >= 0; s--) {
             click(navButton(bc, "Back")); click(navButton(nc, "Back"));
-            compare(bc, nc, `${at}/step/${masque.steps.screener[s].key}`, input);
+            compare(bc, nc, `${at}/step/${masque.steps.screener[s].key}`, input, sc.complaint ?? "");
             nSteps++;
           }
         });
@@ -261,6 +291,9 @@ export default {
       } finally { nm.unmount(); }
     }
     h.expect("AD11", { precondition: scenarios.length > 0, observed: observedAD11 });
+    h.expect("AD14", { precondition: ad14Pre > 0, observed: ad14Pre > 0 && ad14Seen === ad14Pre });
+    h.expect("AD15", { precondition: ad15Pre > 0, observed: ad15Pre > 0 && ad15Seen === ad15Pre });
+    c.note(`AD14 on the bundle ${ad14Seen}/${ad14Pre}; AD15 on the card and bundle ${ad15Seen}/${ad15Pre}`);
     h.expect("AD7", { precondition: true, observed: observedAD7 });
 
     // ------------------------------------------------------------------ replay

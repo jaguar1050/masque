@@ -157,7 +157,7 @@ export default {
       // .constructor route to Function and the global aliases are named too; an alias the file
       // declares itself is an ordinary variable.
       const insp = (src) => h.env.loader.inspectSource(src, { filename: "h.js" }).apiRefs;
-      const sneaky = insp('const k = "fe" + "tch"; export default { format: "screenair-logic", a: () => window[k], b: () => (() => 0).constructor, c: () => top.location, d: () => globalThis["eval"] };');
+      const sneaky = insp('const k = "fe" + "tch"; export default { format: "screenair-logic", a: () => window[k], b: () => (() => 0).constructor, c: () => top.document, d: () => globalThis["eval"], e: () => location.href };');
       c.check(["window[…]", ".constructor", "top", "location", "eval"].every((k) => sneaky.includes(k)), "/consent/apiRefs/heuristics", null, ["window[…]", ".constructor", "top", "location", "eval"], sneaky);
       const local = insp('const top = 1; function f(parent) { return parent + top; } export default { format: "screenair-logic", f };');
       c.check(!local.includes("top") && !local.includes("parent"), "/consent/apiRefs/declared-alias", null, [], local);
