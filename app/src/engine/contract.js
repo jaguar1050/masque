@@ -661,4 +661,5 @@ export const COPY_SLOTS = {
  * @property {{screener:Object[], scribe:Object[]}} cohorts
  * @property {function(ScreenSnapshot):void} publish
  * @property {function(("screener"|"scribe"), Object):void} addRow
+ * @property {function(("screener"|"scribe")):void} clearRows   drops that source's captured rows (Scribe Reset)
  */
