@@ -14,7 +14,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SessionProvider, useSession } from "../ui/common.jsx";
-import { projectForPatient } from "../engine/patient.js";
+import { PATIENT_CHROME, langTag, projectForPatient } from "../engine/patient.js";
 import Screener from "../apps/Screener.jsx";
 import Scribe from "../apps/Scribe.jsx";
 import PatientCompanion from "../apps/PatientCompanion.jsx";
@@ -34,8 +34,12 @@ const EDITOR_PATH = "src/apps/RubricEditor.jsx";
  *          onVoiceState: function({state: string}): void, onOpenTab: function(string): void,
  *          onPrintContext: function(Object): void, onApply: function(Object): Promise<Object>,
  *          onDownloadAll: function(): Promise<any>, onDownloaded: function(string[]): void,
- *          onHandToPatient: function(): void, patientSession?: number}} props
+ *          onHandToPatient: function(): void, patientSession?: number, patientLoc?: string}} props
  *   patientSession: bumped by the shell to start a new Patient Companion session (a fresh instance).
+ *   patientLoc: the companion's locale (release 0.4.2): in patient mode the Patient panel is
+ *               labelled with the locale's patient title (PATIENT_CHROME[loc].title), tagged, and
+ *               outside English the hidden clinician panels carry lang="en". In patient mode the
+ *               Patient panel has no aria-labelledby (no tab bar is rendered); its aria-label names it.
  */
 export default function ModuleWorkspace(props) {
   return (
@@ -48,6 +52,7 @@ export default function ModuleWorkspace(props) {
 function Panels({
   module, entry, entries, env, appVersion, site, tab, mode, micAllowed, stopSignal,
   onDirty, onModuleError, onVoiceState, onOpenTab, onPrintContext, onApply, onDownloadAll, onDownloaded, onHandToPatient, patientSession = 0,
+  patientLoc = "en",
 }) {
   const { publish, addRow } = useSession();
   const onCapture = useCallback(({ source, row }) => addRow(source, row), [addRow]);
@@ -59,16 +64,29 @@ function Panels({
 
   const view = useMemo(() => projectForPatient(module), [module]);
 
+  // Patient mode: the patient panel's label is the companion's title in its locale (release 0.4.2);
+  // the clinician tab label everywhere else.
+  const patientLabel = mode === "patient" && patientLoc !== "en" && PATIENT_CHROME[patientLoc] && PATIENT_CHROME[patientLoc].title
+    ? PATIENT_CHROME[patientLoc].title : null;
+
   const panel = (key, children) => {
     const isShown = key === shown;
     const blocked = mode === "patient" && key !== "patient";
+    const ownLabel = key === "patient" ? patientLabel : null;
+    // In patient mode with a non-English companion, <html lang> follows the companion, so the
+    // hidden clinician panels (English labels and content) are tagged English (release 0.4.2).
+    const panelLang = ownLabel ? langTag(patientLoc) : (blocked && patientLoc !== "en" ? "en" : undefined);
+    // Patient mode renders no tab bar, so the Patient panel is named by its aria-label alone
+    // (the locale's title outside English), never by a reference to a tab that is not there.
+    const labelledBy = mode === "patient" && key === "patient" ? undefined : `sa-tab-${key}`;
     return (
       <div
         key={key}
         role="tabpanel"
         id={`sa-panel-${key}`}
-        aria-labelledby={`sa-tab-${key}`}
-        aria-label={TAB_LABELS[key]}
+        aria-labelledby={labelledBy}
+        aria-label={ownLabel || TAB_LABELS[key]}
+        lang={panelLang}
         className={`sa-panel sa-panel-${key}`}
         data-panel={key}
         hidden={!isShown}

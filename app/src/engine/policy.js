@@ -2,8 +2,8 @@
 // and no caveat string may appear in module data (validator V38).
 // Plain data; no imports, no side effects.
 
-/** Release axis (D9, D21; pending the lead, Q2). */
-export const APP_VERSION = "0.4.0";
+/** Release axis (D9, D21; pending the lead, Q2). 0.4.2: the Spanish patient companion completed (2026-10-06). 0.4.3: the EMR Friendly Template (2026-10-06). 0.4.4: the clinical-lead sign-off of the EMR template content recorded (2026-10-07). 0.4.5: the clinical-lead referral rule for dizziness cases (decided 2026-10-07 to 2026-10-10). 0.4.6: the clinical lead's answers on the EMR template's open items (2026-10-10). 0.4.7: 0.4.6 merged with the 2026-10-04 full-audit fixes (decisions F11-F16; allowed differences AD18-AD20) (2026-10-11). */
+export const APP_VERSION = "0.4.7";
 
 /**
  * Site switches. REQUIRE_SAFETY_REVIEW_TO_SIGN: Scb L171. SITE_SALT / SALT_IS_DEFAULT: Scr L66-67.
@@ -21,6 +21,14 @@ export const SITE = {
  * Clinician surfaces use uploaded / edited / scoringChanged; patient-facing surfaces use
  * patient.* / editedWording / staleTranslation, which never name a score, band or probability.
  * unreviewed.es moves Pat L411 (body), Pat L421 (txt) and the heading literal of Pat L685 (title).
+ *
+ * Release 0.4.2 (2026-10-06, user request; an unreviewed team translation, recorded in
+ * the built-in module's SOURCES.md): the patient caveats carry Spanish (`es` for a line, `esShort` for
+ * a marker), chosen by the patient locale and tagged lang="es"; English stays the fallback.
+ * prototypeCompanion.es is the Spanish line shown NEXT TO the English `prototype` marker on a
+ * Spanish patient surface, never instead of it. Every Spanish caveat is engine-owned like the
+ * English ones (V38). The two `esShort` markers name their noun ("cuestionario …"), revised after
+ * the rendered-Spanish review (round 3), so they read right next to "Traducción sin revisar".
  */
 export const CAVEATS = {
   prototype: "Prototype · not for clinical use",
@@ -47,14 +55,25 @@ export const CAVEATS = {
     edited: {
       en: "This version of the questionnaire was changed locally and has not been reviewed.",
       short: "changed locally, not reviewed",
+      es: "Esta versión del cuestionario se modificó localmente y no ha sido revisada.",
+      esShort: "cuestionario modificado localmente, sin revisar",
     },
     uploaded: {
       en: "This questionnaire was loaded from a file and has not been reviewed.",
       short: "loaded from a file, not reviewed",
+      es: "Este cuestionario se cargó desde un archivo y no ha sido revisado.",
+      esShort: "cuestionario cargado desde un archivo, sin revisar",
     },
   },
-  editedWording: { en: "Wording in this language was edited locally and has not been reviewed." },
-  staleTranslation: { en: "The English wording was changed locally; this translation has not been updated to match it." },
+  editedWording: {
+    en: "Wording in this language was edited locally and has not been reviewed.",
+    es: "El texto en este idioma se editó localmente y no ha sido revisado.",
+  },
+  staleTranslation: {
+    en: "The English wording was changed locally; this translation has not been updated to match it.",
+    es: "El texto en inglés se modificó localmente; esta traducción no se ha actualizado para que coincida.",
+  },
+  prototypeCompanion: { es: "Prototipo · no apto para uso clínico" },
 };
 
 /**

@@ -20,7 +20,12 @@
 //              (compiled through importSource) holds import-specifier text (from/import followed by
 //              a quoted ./ or ../ path), which the loader would try to build
 //   encoding   every text file under app/ is UTF-8 without BOM, with LF line endings
-//   pages      every app/*.html (and every test page) carries noindex, nofollow
+//   pages      every app/*.html (and every test page) carries noindex, nofollow; its corner badge
+//              (.masque-proto) and noscript paragraphs carry their own lang="en" (release 0.4.2:
+//              <html lang> follows the patient companion's locale); a deployed page (app/*.html)
+//              loads Babel standalone with defer or async and imports masque-loader.js with
+//              ?v=<APP_VERSION>; app/.htaccess sends X-Robots-Tag noindex, nofollow for every
+//              published source kind and Cache-Control no-cache for pages and modules
 //   t-css      (§5.10) every rule of every app stylesheet starts with its root, no :root outside
 //              shell.css.js, duplicate @keyframes names identical; read from the mounted shell,
 //              Apply dialog and patient page by tests/harness/tcss.js
@@ -56,6 +61,14 @@ const SHARED_LEGACY = ["src/MASQUE_Voice.js", "src/PopulationArtifact.jsx", "src
   "src/MASQUE_SchemaCheck.js", "src/ResearchReadinessPanel.jsx"];
 const BUILTIN_LABEL = "Dizziness and Sinusitis (MASQUE v1)";
 const PAGE_CONTRACT_NAMES = /masque-(?:proto|back|status|loader\.js)\b|data-masque-[a-z-]+|\bmasque(?:Ready|Tests)\b/g;
+// t-emr (release 0.4.3): the files that must stay free of condition words, and the words (word
+// starts, case-insensitive). Generic consult-note headings (allergies, pregnancy, medications,
+// abortive / preventive treatment) are deliberately not listed.
+const EMR_WORD_FILES = ["src/engine/emr.js", "src/engine/generic.js"];
+// The specifier the two clinician apps use for the EMR engine (kept out of import-like text, which
+// the loader and the specifiers rule would read as an import).
+const EMR_APP_SPEC = ["..", "engine", "emr.js"].join("/");
+const CONDITION_WORDS = /\b(?:migrain|vestibul|vertig|dizz|headache|tinnit|hearing|rhinit|rhinosinus|sinus|sinonasal|otolog|otitis|intranasal|nasal|aural|cochle|labyrinth|m[eé]ni[eè]re|bppv|nystagm|hallpike|epley|hints\b|corticosteroid|steroid|antibiot|antihistamin|triptan|cgrp|audiogra|audiometr|b[aá]r[aá]ny|ichd|aafp|aan\b|stroke|arteritis|papill|neuro|syncope|seizure|epilep)/gi;
 const SPECIFIER_TEXT = /(?:from|import)\s*\(?\s*["'`]\.{1,2}\//;
 
 function isCompiled(path) {
@@ -350,6 +363,31 @@ export default {
     notes.push(`t-ids: ${tidFiles.length} files checked against ${tokens.ids.length} ids, ${tokens.phenotypes.length} phenotype values, the brand and the label`);
     if (waived.length) notes.push(`t-ids waived for src/shell/** at M1 (orchestrator decision F2; the rule applies in full from M2): ${waived.length} finding(s), e.g. ${waived.slice(0, 3).join("; ")}`);
 
+    // ------------------------------------------------------------------ t-emr (release 0.4.3)
+    // The EMR template engine and the neutral fallback copy name no condition, test, treatment or
+    // society (raw text, comments included); every clinical word of the template comes from module
+    // data. Generic consult-note headings are allowed: allergies, pregnancy, medications, abortive /
+    // preventive treatment. engine/emr.js imports only ./<letters>.js, and both clinician apps
+    // load it by its explicit specifier (EMR_APP_SPEC, with the .js extension).
+    for (const path of EMR_WORD_FILES) {
+      n += 1;
+      if (!files.includes(path)) { fail("t-emr", `${path} is missing`); continue; }
+      const raw = await h.fetchText(path);
+      for (const m of raw.matchAll(CONDITION_WORDS)) fail("t-emr", `${path}:${raw.slice(0, m.index).split("\n").length} names "${m[0]}"`);
+    }
+    {
+      n += 1;
+      const s = scans.get("src/engine/emr.js");
+      if (!s) fail("t-emr", "src/engine/emr.js was not scanned");
+      else for (const imp of s.imports) if (!/^\.\/[A-Za-z]+\.js$/.test(imp.spec)) fail("t-emr", `src/engine/emr.js:${imp.line} imports "${imp.spec}" (engine files import ./<letters>.js only)`);
+      for (const app of ["src/apps/Screener.jsx", "src/apps/Scribe.jsx"]) {
+        n += 1;
+        const sa = scans.get(app);
+        if (!sa || !sa.imports.some((imp) => imp.spec === EMR_APP_SPEC)) fail("t-emr", `${app} does not load the EMR engine by its explicit specifier (${EMR_APP_SPEC.slice(3)})`);
+      }
+    }
+    notes.push(`t-emr: ${EMR_WORD_FILES.join(", ")} checked for condition words; emr.js imports and the two apps' imports of it checked`);
+
     // ------------------------------------------------------------------ encoding
     let textFiles = 0;
     const exemptUsed = [];
@@ -373,18 +411,40 @@ export default {
     notes.push(`encoding: ${textFiles} text files${exemptUsed.length ? `; CR exempted (F3: pre-existing data files, §2.8 unchanged trees): ${exemptUsed.join(", ")}` : ""}`);
 
     // ------------------------------------------------------------------ pages
+    // The release the deployed pages' loader query must name (read at run time through the
+    // page's loader: this file stays import-free, run.mjs imports it in Node).
+    let appVersion = null;
+    try {
+      appVersion = (await h.env.loader.importModule(h.appUrl("src/engine/policy.js"))).APP_VERSION || null;
+    } catch (err) {
+      fail("pages", `could not read APP_VERSION from src/engine/policy.js: ${String(err && err.message || err).split("\n")[0]}`);
+    }
+    if (!appVersion) fail("pages", "src/engine/policy.js exports no APP_VERSION");
     for (const page of pages.concat(files.filter((p) => p.startsWith("tests/loader-check") && p.endsWith(".html")))) {
       n += 1;
       const html = await h.fetchText(page);
       if (!/<meta\s+name=["']robots["']\s+content=["']noindex,\s*nofollow["']/i.test(html)) fail("pages", `${page} lacks <meta name="robots" content="noindex, nofollow">`);
+      // Release 0.4.2: on a patient page <html lang> follows the companion's locale, so the
+      // page-contract English outside #root (the corner badge, the noscript paragraphs) carries
+      // its own lang="en" (on the element or an ancestor below <html>), never the page's.
+      const pdoc = new DOMParser().parseFromString(html, "text/html");
+      for (const el of [...pdoc.querySelectorAll(".masque-proto"), ...pdoc.querySelectorAll("noscript p")]) {
+        const host = el.closest("[lang]");
+        if (!host || host === pdoc.documentElement || host.getAttribute("lang") !== "en") {
+          fail("pages", `${page}: <${el.tagName.toLowerCase()}${el.className ? ` class="${el.className}"` : ""}> is English page chrome without its own lang="en"`);
+        }
+      }
       // Deployed pages (app/*.html): Babel standalone never blocks the first paint, and the
       // loader URL carries a version so a cached loader of another release is not reused.
       if (page.includes("/")) continue;
       for (const tag of html.match(/<script\b[^>]*\bsrc=["'][^"']*babel[^"']*["'][^>]*>/gi) || []) {
         if (!/\b(defer|async)\b/.test(tag)) fail("pages", `${page}: ${tag} blocks the first paint (add defer)`);
       }
+      // The query names this release (APP_VERSION, engine/policy.js; design 03 S1: the release
+      // label, NEW_RELEASE in the harness and the pages' ?v= move together).
       for (const m of html.matchAll(/masque-loader\.js(\?[^'"]*)?['"]/g)) {
         if (!m[1] || !/^\?v=/.test(m[1])) fail("pages", `${page} imports masque-loader.js without a ?v=<release> query`);
+        else if (appVersion && m[1] !== `?v=${appVersion}`) fail("pages", `${page} imports masque-loader.js${m[1]}, not ?v=${appVersion} (APP_VERSION)`);
       }
     }
     // .htaccess: the header-level noindex covers every published source kind, and pages and

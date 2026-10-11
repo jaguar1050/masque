@@ -11,24 +11,34 @@
 //             apply"), every story/domain step after answering it, and the Summary are compared
 //             as the textContent of the whole `.wrap` (header, banner, progress, card, nav and
 //             footer). The only normalisations are AD4 (the footer's release) and AD10 (es thin /
-//             not-sure ledes from UI.es). The baseline offers no "Not sure" on a scale item, so a
-//             drawn "unsure" there is unanswered on both sides.
+//             not-sure ledes from UI.es), and in es AD14 between them (release 0.4.2, the Spanish
+//             completion: the delta's and the chrome rows' English → Spanish, "¿" on the statement-
+//             questions, "y" → "e", the es clinician lines), each of its rules expected wherever its
+//             source occurs. The baseline offers no "Not sure" on a scale item, so a
+//             drawn "unsure" there is unanswered on both sides. Every es checkpoint of the new side
+//             is also DOM-scanned (release 0.4.2): no element tagged lang="en" but the "English"
+//             locale button, no English text outside it, and each clinician line tagged lang="es".
 //             The summary's action row is compared as its own region: the baseline's
 //             [print, download, startOver] becomes [print, download (.txt), download (.html),
 //             startOver] (AD10's new .html export; §5.5 labels), asserted exactly.
 //   exports   for every parity set that reaches a summary, the .txt and .html files the buttons
 //             save (URL.createObjectURL stubbed) are byte-equal to the engine's summaryText /
 //             summaryHtml for that summary, dated by the fixed clock, and named t.fileName and
-//             its .html twin; Print calls window.print once.
+//             its .html twin; Print calls window.print once. The .txt closes with the dated
+//             caveat line, which in es (only) carries the Spanish companion of the marker (D9).
 // Beyond parity (§9.10 done-when):
 //   errors    a summary rule that throws, and a throwing sum.gap: the rule-error card, Print and
 //             both downloads disabled (Start over not), onModuleError called once (family
-//             "patient"), no summary text rendered;
+//             "patient"), no summary text rendered; in es the card is the Spanish engine card,
+//             tagged lang="es" (D8);
 //   print     onPrintContext on mount and on every locale change, incl. editedLocally/stale for
-//             a derivation with an edited English and a stale es locale; patientPrintHeader();
+//             a derivation with an edited English and a stale es locale; patientPrintHeader() and
+//             its parts (in es: the English marker lang en + its Spanish companion, the
+//             unreviewed title and the patient markers in Spanish, lang es);
 //   notices   the banner (printed: no `noprint`) carries the es caveat, the edited-wording and
-//             stale-translation notices; patient provenance lines for non-built-ins; never a
-//             clinician provenance line;
+//             stale-translation notices (in the locale's language since release 0.4.2, each
+//             tagged); patient provenance lines for non-built-ins (Spanish in es, tagged lang es);
+//             never a clinician provenance line;
 //   omissions rendered text of Safety, every step and the Summary with every flag on and every
 //             item answered, for MASQUE, the shape fixture (a plain upload) and the derivation, in
 //             every locale: no flag text/points/action and no OMISSION_PATTERNS match (the
@@ -40,6 +50,9 @@ import { flushSync } from "react-dom";
 import { collector, guarded, loadMasque, need, validationNote } from "../harness/kit.js";
 import { flatItems, patientStream } from "../harness/matrix.js";
 import { bumpFirstWeight, derivedFixture } from "../harness/derivation.js";
+import { allowedDifference } from "../harness/diff.js";
+import { LOCALE_DELTA } from "../harness/locale-delta.js";
+import { ad14Context, ad14Tally, englishCorpus, englishScan, stringLeaves } from "../harness/spanish.js";
 
 const NOW = "2026-10-01T12:00:00.000Z";
 const PAT = "MASQUE_Patient_v0_3.jsx";
@@ -109,10 +122,13 @@ function answerIndex(q, s) {
  * Walk one mounted component through state `s`. Returns the checkpoints
  * [{at, text, actions?}] and any driving problem (a missing button) as `problems`.
  */
-function walk(container, s, plan, flagIds) {
+function walk(container, s, plan, flagIds, probe = null) {
   const out = [];
   const problems = [];
-  const cp = (at, withActions = false) => out.push({ at, text: snap(container), actions: withActions ? actionLabels(container) : undefined });
+  const cp = (at, withActions = false) => {
+    out.push({ at, text: snap(container), actions: withActions ? actionLabels(container) : undefined });
+    if (probe) probe(at);
+  };
   if (s.loc !== "en") {
     const b = localeButton(container, s.loc);
     if (!b) { problems.push(`no locale button ${s.loc}`); return { out, problems }; }
@@ -220,6 +236,58 @@ export default {
     c.check(JSON.stringify(flagIds) === JSON.stringify(pat.RED_FLAGS.map((f) => f.id)), "/setup/flagOrder", null, pat.RED_FLAGS.map((f) => f.id), flagIds);
     const CAV = policy.CAVEATS;
     const clinicianLines = [CAV.uploaded.en, CAV.edited.en, CAV.scoringChanged.en.split("{root}")[0]];
+    // Release 0.4.2: AD14 for es, the es DOM scan, and the Spanish companion of the marker.
+    const AD4 = allowedDifference("AD4");
+    const P14 = ad14Context({ delta: LOCALE_DELTA, pat, patient, policy, view, loc: "es" });
+    const t14 = ad14Tally();
+    const COMP = (CAV.prototypeCompanion || {}).es;
+    const markerText = (loc) => (loc === "es" ? `${CAV.prototype} \u2014 ${COMP}` : CAV.prototype);
+    const corpusFor = (v) => englishCorpus({
+      english: [...stringLeaves(patient.PATIENT_CHROME.en), ...stringLeaves(v.locales.en ? v.locales.en.data : {}),
+        ...v.domains.flatMap((d) => d.items).map((it) => it.patientClin), CAV.patient.edited.en, CAV.patient.uploaded.en,
+        CAV.editedWording.en, CAV.staleTranslation.en, ns.SUMMARY_ERROR.en, ns.UNAVAILABLE_NOTICE.en],
+      spanish: [...stringLeaves(patient.PATIENT_CHROME.es), ...stringLeaves(v.locales.es ? v.locales.es.data : {}),
+        CAV.patient.edited.es, CAV.patient.uploaded.es, CAV.editedWording.es, CAV.staleTranslation.es],
+    });
+    const corpusMasque = corpusFor(view);
+    let scans = 0, scanTexts = 0;
+    /** The es DOM scan of a mounted companion (`container`), as a named check. */
+    const scanEs = (at, container, corpus, input = null) => {
+      const r = englishScan(container, { corpus, docLang: "es", allowEn: (el) => el.matches('[data-testid="patient-locale-en"]') });
+      scans += 1; scanTexts += r.texts;
+      c.check(!r.langEn.length, `${at}/@scan/langEn`, input, "no lang=\"en\" inside the Companion but the English button", r.langEn.slice(0, 5));
+      c.check(!r.english.length, `${at}/@scan/english`, input, "no English outside lang=\"en\"", r.english.slice(0, 5));
+      return r;
+    };
+    /** The clinician lines of a summary on screen: tagged per line outside English, the list untagged (D3). */
+    const clinLang = (at, container, loc, input = null) => {
+      const lis = qa(wrapOf(container), ".clin li");
+      if (!lis.length) return;
+      const ul = wrapOf(container).querySelector(".clin ul");
+      c.check(!ul.hasAttribute("lang"), `${at}/clin/ul/@lang`, input, "no lang on the list", ul.getAttribute("lang"));
+      const langs = lis.map((li) => li.getAttribute("lang"));
+      c.check(loc === "en" ? langs.every((x) => x === null) : langs.every((x) => x === "es"), `${at}/clin/li/@lang`, input, loc === "en" ? "untagged" : "lang es on every line", langs);
+    };
+    // The scan itself: an untagged English text (a function word; a known English source) and a
+    // stray lang="en" inside the Companion are found; the English locale button is allowed.
+    {
+      const box = document.createElement("div");
+      const probeClin = view.domains.flatMap((d) => d.items).map((it) => it.patientClin).find((t) => !/\b(?:the|and|of|to|or|with|for)\b/i.test(t));
+      box.innerHTML = '<div data-testid="patient-app"><div class="mp" lang="es"><p>Antes de su consulta</p><p>Before your appointment</p><p class="x"></p>'
+        + '<span lang="en">Hello</span><button data-testid="patient-locale-en" lang="en">English</button><p lang="en">the English stays here</p></div></div>';
+      box.querySelector("p.x").textContent = probeClin || "";
+      const r = englishScan(box, { corpus: corpusMasque, docLang: "es", allowEn: (el) => el.matches('[data-testid="patient-locale-en"]') });
+      c.check(!!probeClin && r.english.length === 2 && r.langEn.length === 2, "/scan/self-check", null,
+        "2 English texts (a function word, a patientClin source) and 2 stray lang=\"en\" elements found", { english: r.english, langEn: r.langEn });
+    }
+    // D8: the engine cards carry Spanish; English stays byte for byte.
+    c.check(ns.SUMMARY_ERROR && ns.SUMMARY_ERROR.en === "This summary could not be prepared because the module's summary rules failed. Nothing is shown rather than an incomplete summary."
+      && typeof ns.SUMMARY_ERROR.es === "string" && ns.SUMMARY_ERROR.es !== "" && ns.SUMMARY_ERROR.es !== ns.SUMMARY_ERROR.en, "/engineCards/SUMMARY_ERROR", null, "{en (unchanged), es}", ns.SUMMARY_ERROR);
+    c.check(ns.UNAVAILABLE_NOTICE && ns.UNAVAILABLE_NOTICE.en === "This module carries no patient wording, so the Patient Companion is not available for it."
+      && typeof ns.UNAVAILABLE_NOTICE.es === "string" && ns.UNAVAILABLE_NOTICE.es !== "" && ns.UNAVAILABLE_NOTICE.es !== ns.UNAVAILABLE_NOTICE.en, "/engineCards/UNAVAILABLE_NOTICE", null, "{en (unchanged), es}", ns.UNAVAILABLE_NOTICE);
+    for (const card of [ns.SUMMARY_ERROR, ns.UNAVAILABLE_NOTICE]) {
+      for (const re of policy.OMISSION_PATTERNS) c.check(!card || !re.test(card.es), "/engineCards/@pattern", { pattern: String(re) }, "no match", card && card.es);
+    }
 
     const mountNew = (v, extra = {}) => h.mount(React.createElement(App, { view: v, appVersion: policy.APP_VERSION, ...extra }));
 
@@ -246,7 +314,10 @@ export default {
         const n = mountNew(view, { onPrintContext: (pc) => prints.push(pc) });
         try {
           const wb = walk(b.container, s, plans[s.loc], flagIds);
-          const wn = walk(n.container, s, plans[s.loc], flagIds);
+          const wn = walk(n.container, s, plans[s.loc], flagIds, (cpAt) => {
+            if (s.loc === "es") scanEs(`${at}/${cpAt}`, n.container, corpusMasque, input);
+            if (cpAt === "summary") clinLang(`${at}/summary`, n.container, s.loc, input);
+          });
           for (const p of wb.problems) c.check(false, `${at}/drive/baseline`, input, "drivable", p);
           for (const p of wn.problems) c.check(false, `${at}/drive/new`, input, "drivable", p);
           const len = Math.min(wb.out.length, wn.out.length);
@@ -254,10 +325,11 @@ export default {
           for (let i = 0; i < len; i++) {
             const x = wb.out[i], y = wn.out[i];
             checkpoints += 1;
-            const ctx = s.loc === "es" ? { AD10: { ledes: ledes.es } } : {};
+            const ctx = s.loc === "es" ? { AD10: { ledes: ledes.es }, AD14: P14, loc: s.loc } : { loc: s.loc };
             const isSummary = x.at === "summary";
-            const r = c.diff(x.text, y.text, { at: `${at}/${x.at}`, input, allow: s.loc === "es" ? ["AD4", "AD10"] : ["AD4"], ctx });
+            const r = c.diff(x.text, y.text, { at: `${at}/${x.at}`, input, allow: s.loc === "es" ? ["AD4", "AD14", "AD10"] : ["AD4"], ctx });
             if (r.observed.has("AD4")) ad4Seen += 1;
+            if (s.loc === "es" && typeof x.text === "string" && typeof y.text === "string") t14.add(P14, AD4.normalise(x.text, y.text)[0], y.text);
             if (isSummary && s.loc === "es") {
               const hasLede = x.text.includes(pat.UI.en.thin) || x.text.includes("Worth checking my records or asking directly:");
               if (hasLede) { ad10Pre += 1; if (r.observed.has("AD10")) ad10Seen += 1; }
@@ -284,7 +356,9 @@ export default {
               c.diff(wantHtml, html, { at: `${at}/exports/html`, input });
               c.diff([t.fileName, t.fileName.replace(/\.txt$/, ".html")], got.files.map((f) => f.name), { at: `${at}/exports/names`, input });
               c.diff(["text/plain", "text/html"], got.files.map((f) => f.blob.type), { at: `${at}/exports/types`, input });
-              c.check(txt.split("\n").pop() === `${CAV.prototype} · ${NOW.slice(0, 10)}`, `${at}/exports/txt/dated`, input, "dated caveat line", txt.split("\n").pop());
+              // D9: the dated caveat line; in es (only) the English marker carries its Spanish companion.
+              const dated = `${markerText(s.loc)} \u00b7 ${NOW.slice(0, 10)}`;
+              c.check(txt.split("\n").pop() === dated, `${at}/exports/txt/dated`, input, dated, txt.split("\n").pop());
               exportsChecked += 1;
             }
           }
@@ -300,7 +374,8 @@ export default {
     }
     h.expect("AD4", { precondition: checkpoints > 0, observed: ad4Seen === checkpoints });
     h.expect("AD10", { precondition: ad10Pre > 0, observed: ad10Seen === ad10Pre });
-    c.note(`parity: ${sets} answer sets (seed 0x${(h.seed >>> 0).toString(16)}), ${checkpoints} checkpoints; AD4 on ${ad4Seen}; AD10 es ledes ${ad10Seen}/${ad10Pre}; ${exportsChecked} .txt/.html export pairs byte-checked`);
+    t14.expect(h, c, "/parity/es", { need: ["P", "C", "Q"] });
+    c.note(`parity: ${sets} answer sets (seed 0x${(h.seed >>> 0).toString(16)}), ${checkpoints} checkpoints; AD4 on ${ad4Seen}; AD10 es ledes ${ad10Seen}/${ad10Pre}; AD14 (es) per rule ${t14.note()}; ${exportsChecked} .txt/.html export pairs byte-checked; ${scans} es DOM scans (${scanTexts} text nodes)`);
 
     // ------------------------------------------------------------------ errors (fail closed)
     const thrower = (msg) => () => { throw new Error(msg); };
@@ -312,6 +387,18 @@ export default {
     for (const [kind, logic] of Object.entries(injected)) {
       const m = await bind.bindModule(masque.rubric, logic, { origin: "builtin", classification: "builtin", key: `${masque.key}+${kind}`, sources: masque.sources });
       const v = patient.projectForPatient(m);
+      // D8 (release 0.4.2): in es the card is the Spanish engine card, tagged lang="es".
+      {
+        const ne = mountNew(v, { onModuleError: () => {} });
+        try {
+          const sig = Object.fromEntries(m.contextItems.filter((ci) => ci.signal).map((ci) => [ci.id, ci.signal.value]));
+          walk(ne.container, { a: {}, ctx: sig, rf: {}, loc: "es" }, planFor(v, "es", patient), flagIds);
+          const card = ne.container.querySelector('[data-testid="patient-summary-error"]');
+          c.check(!!card && textOf(card) === ns.SUMMARY_ERROR.es && card.getAttribute("lang") === "es", `/errors/${kind}/es/card`, null, `${ns.SUMMARY_ERROR.es} (lang es)`, card ? `${textOf(card)} (lang ${card.getAttribute("lang")})` : "absent");
+        } finally {
+          ne.unmount();
+        }
+      }
       const errs = [];
       const n = mountNew(v, { onModuleError: (e) => errs.push(e) });
       try {
@@ -322,6 +409,7 @@ export default {
         const at = `/errors/${kind}`;
         const card = n.container.querySelector('[data-testid="patient-summary-error"]');
         c.check(!!card && textOf(card) === "This summary could not be prepared because the module's summary rules failed. Nothing is shown rather than an incomplete summary.", `${at}/card`, null, "the rule-error card", card ? textOf(card) : "absent");
+        c.check(!!card && card.getAttribute("lang") === "en", `${at}/card/@lang`, null, "en", card && card.getAttribute("lang"));
         for (const id of ["patient-print", "patient-download-txt", "patient-download-html"]) {
           const b = n.container.querySelector(`[data-testid="${id}"]`);
           c.check(!!b && b.disabled === true, `${at}/${id}/disabled`, null, true, b ? b.disabled : "absent");
@@ -390,14 +478,19 @@ export default {
           click(nextButton(n.container));
           for (const fe of qa(cardOf(n.container), ".flag")) click(fe);
           regions.push(["safety", textOf(cardOf(n.container))]);
+          const corpus = loc === "es" ? corpusFor(v) : null;
+          if (corpus) scanEs(`${at}/${loc}/safety`, n.container, corpus);
           for (const step of plan) {
             click(nextButton(n.container));
             const qEls = qa(cardOf(n.container), ".q");
             step.qs.forEach((q, i) => { const idx = answerIndex(q, s); if (idx >= 0 && qEls[i]) click(qa(qEls[i], ".opts button")[idx]); });
             regions.push([`step/${step.key}`, textOf(cardOf(n.container))]);
+            if (corpus) scanEs(`${at}/${loc}/step/${step.key}`, n.container, corpus);
           }
           click(nextButton(n.container));
           regions.push(["summary", textOf(cardOf(n.container), ['[data-testid="patient-what-it-isnt"]'])]);
+          if (corpus) scanEs(`${at}/${loc}/summary`, n.container, corpus);
+          clinLang(`${at}/${loc}/summary`, n.container, loc);
           if (banner()) regions.push(["banner", textOf(banner())]);
           if (prov()) regions.push(["provenance", textOf(prov())]);
           const pc = prints[prints.length - 1];
@@ -413,8 +506,19 @@ export default {
           // The print context and header (§5.10).
           const L = v.locales[loc];
           c.diff({ loc, reviewed: L.reviewed, editedLocally: L.editedLocally, stale: L.stale }, pc, { at: `${at}/${loc}/onPrintContext`, input: { loc } });
-          const wantHeader = [CAV.prototype, ...(!L.reviewed && CAV.unreviewed[loc] ? [CAV.unreviewed[loc].title] : []), ...v.provenanceMarkers].join(" · ");
+          // Release 0.4.2: in es the English marker carries its Spanish companion (D9) and the patient
+          // markers are Spanish (D7); English is unchanged. Each part carries its language.
+          const shortIn = (mk) => {
+            const cav = Object.values(CAV.patient).find((x) => x.short === mk);
+            return loc !== "en" && cav && cav[`${loc}Short`] ? cav[`${loc}Short`] : mk;
+          };
+          const unrevTitle = !L.reviewed && CAV.unreviewed[loc] ? [CAV.unreviewed[loc].title] : [];
+          const wantHeader = [markerText(loc), ...unrevTitle, ...v.provenanceMarkers.map(shortIn)].join(" · ");
           c.diff(wantHeader, ns.patientPrintHeader(v, pc), { at: `${at}/${loc}/printHeader`, input: { loc } });
+          const hp = ns.patientPrintHeaderParts(v, pc).filter((x) => x.text !== " \u00b7 " && x.text !== " \u2014 ");
+          const wantParts = loc === "en" ? [[CAV.prototype, null], ...v.provenanceMarkers.map((mk) => [mk, null])]
+            : [[CAV.prototype, "en"], [COMP, loc], ...unrevTitle.map((x) => [x, loc]), ...v.provenanceMarkers.map((mk) => [shortIn(mk), shortIn(mk) === mk ? "en" : loc])];
+          c.diff(wantParts, hp.map((x) => [x.text, x.lang]), { at: `${at}/${loc}/printHeader/parts`, input: { loc } });
           // Banner: printed, with its notices.
           const bn = banner();
           const wantBanner = !L.reviewed && (CAV.unreviewed[loc] || L.editedLocally || L.stale);
@@ -422,12 +526,27 @@ export default {
           if (bn) {
             c.check(!bn.closest(".noprint"), `${at}/${loc}/banner/printed`, { loc }, "no noprint ancestor", "noprint");
             if (CAV.unreviewed[loc]) c.diff(`⚠︎ ${CAV.unreviewed[loc].title}${CAV.unreviewed[loc].body}`, textOf(bn).slice(0, `⚠︎ ${CAV.unreviewed[loc].title}${CAV.unreviewed[loc].body}`.length), { at: `${at}/${loc}/banner/text` });
-            c.check(textOf(bn).includes(CAV.editedWording.en) === !!L.editedLocally, `${at}/${loc}/banner/edited`, { loc }, !!L.editedLocally, textOf(bn));
-            c.check(textOf(bn).includes(CAV.staleTranslation.en) === !!L.stale, `${at}/${loc}/banner/stale`, { loc }, !!L.stale, textOf(bn));
+            // The notices in the locale where the caveat has it (release 0.4.2), each tagged; never the other language's.
+            const inLoc = (cav) => (loc !== "en" && cav[loc] ? cav[loc] : cav.en);
+            for (const [on, cav, name] of [[L.editedLocally, CAV.editedWording, "edited"], [L.stale, CAV.staleTranslation, "stale"]]) {
+              const want = inLoc(cav);
+              c.check(textOf(bn).includes(want) === !!on, `${at}/${loc}/banner/${name}`, { loc }, !!on, textOf(bn));
+              if (want !== cav.en) c.check(!textOf(bn).includes(cav.en), `${at}/${loc}/banner/${name}/notEnglish`, { loc }, `no "${cav.en}"`, textOf(bn));
+              const pn = qa(bn, "p.notice").find((x) => x.textContent === want);
+              if (on) c.check(!!pn && pn.getAttribute("lang") === (want === cav.en ? "en" : loc), `${at}/${loc}/banner/${name}/@lang`, { loc }, want === cav.en ? "en" : loc, pn ? pn.getAttribute("lang") : "absent");
+            }
           }
-          // Provenance: the patient lines for a non-built-in, printed; none for the built-in.
+          // Provenance: the patient lines for a non-built-in, printed; none for the built-in. In es
+          // (release 0.4.2) each line is the Spanish caveat, tagged lang es.
           const pv = prov();
-          c.diff(v.provenanceLines, pv ? qa(pv, "p").map((p) => p.textContent) : [], { at: `${at}/${loc}/provenance` });
+          const lineIn = (en) => {
+            const cav = Object.values(CAV.patient).find((x) => x.en === en);
+            return loc !== "en" && cav && cav[loc] ? cav[loc] : en;
+          };
+          c.diff(v.provenanceLines.map(lineIn), pv ? qa(pv, "p").map((p) => p.textContent) : [], { at: `${at}/${loc}/provenance` });
+          if (pv && loc !== "en") {
+            c.diff(v.provenanceLines.map((en) => (lineIn(en) === en ? "en" : loc)), qa(pv, "p").map((p) => p.getAttribute("lang")), { at: `${at}/${loc}/provenance/@lang` });
+          }
           if (pv) c.check(!pv.closest(".noprint"), `${at}/${loc}/provenance/printed`, null, "printed", "noprint");
           c.check(m.origin === "builtin" ? v.provenanceLines.length === 0 : v.provenanceLines.length > 0, `${at}/provenance/expected`, null, m.origin, v.provenanceLines);
           // Dirty: set by answering; cleared by Start over.

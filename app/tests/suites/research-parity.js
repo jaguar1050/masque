@@ -24,6 +24,7 @@ import React from "react";
 import { flushSync } from "react-dom";
 import { collector, guarded, loadMasque, need, waitError } from "../harness/kit.js";
 import { ORACLE_EXPORTS } from "../harness/oracles.js";
+import { NEW_RELEASE } from "../harness/diff.js";
 
 const E = React.createElement;
 const NOW = "2026-10-01T12:00:00.000Z";
@@ -252,7 +253,8 @@ export default {
         const a = h.mount(E(BasePanel, { project: "MASQUE", ...props, ...(versioned ? { modelVersion: "masque-prototype-0.3.0" } : {}) }));
         const b = h.mount(E(Panel, {
           project: research.projectKey, research, moduleId: masque.id, scoringHash, ...props,
-          ...(versioned ? { modelVersion: "masque-prototype-0.4.0" } : {}),
+          // AD4 rewrites the baseline's 0.3.0 only when this side prints NEW_RELEASE, so derive it.
+          ...(versioned ? { modelVersion: `${masque.id}-prototype-${NEW_RELEASE}` } : {}),
         }));
         try {
           const sets = sname === "scorable-high" ? [["demo", null], ...files] : [["demo", null]];

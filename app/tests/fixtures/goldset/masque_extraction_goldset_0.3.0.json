@@ -1,0 +1,1435 @@
+{
+  "_meta": {
+    "name": "MASQUE extraction development set",
+    "version": "0.3.0",
+    "lexiconVersion": "0.3.2",
+    "basedOn": {
+      "file": "reference/MASQUE_v0.3.1/masque_extraction_goldset.json",
+      "version": "0.2.0",
+      "sha256": "e1d6573695e554e57dd44cfab3de6699dccc6518c42f2b28afa32d9ddcab6cb2",
+      "cases": 44
+    },
+    "provenance": "AUTHORED — written by hand to probe known failure modes. NOT openFDA, NOT FAERS, NOT patient data. Numbers computed on this set are development figures for guiding rule changes; they are NOT validation results and must not be reported as extraction performance on real narratives. Cases added in 0.3.0 were drafted by the screenAIr team to exercise the phrases and behaviours the clinical lead approved on 2026-10-04; the case text itself has not yet been reviewed by the clinical lead. The cases added in round 2 of 0.3.0 (design 05 §12) were drafted by the team in the same way and have not been reviewed by the clinical lead either. The cases added in round 3 of 0.3.0 (rules R9-R11, design 05 §13) were drafted by the team in the same way and have not been reviewed by the clinical lead either. The same holds for the cases added in rounds 3b and 3c (design 05 §13.10, §13.11).",
+    "labelling": "Single author, no adjudication. A real benchmark needs >=2 independent annotators with an inter-annotator agreement statistic; that is a stated gap, not an oversight.",
+    "registers": {
+      "encounter": "patient speech in clinic, first person",
+      "narrative": "third-person clinical prose, approximating a FAERS narrative"
+    },
+    "revisionLog": [
+      "0.2.0 — three labels corrected after the first benchmark run disagreed with them and the extractor turned out to be right. Recorded rather than silently amended: a gold set edited to match its system is not a gold set, so every change is listed with its reason.",
+      "0.3.0 — 156 utterances and 53 dialogues added for lexicon 0.3.2 (F1 heard, F2 carry-over, F3 vocabulary, F4 yield, text normalization); no 0.2.0 case or label changed.",
+      "0.3.0 round 2 (2026-10-04, design 05 §12) — 40 utterances (t001-t040) and 19 dialogues (d054-d072) added for the round-2 rules (R1 carry negation clause-wide, R2 band choice for heard entries, R3a carryExclude, R3b onset guard, R4 digits for durations only, R5 yield after the heard card is answered or skipped), the red-flag and mixed normalize cases, and every trace of the round-1 review, including the disclosed known risks. Six labels changed with the round-2 rules; as for every 0.3.0 label, each is the extractor's output under those rules: u008 and u009 (R4: digits no longer reach the i_days cue \"ten days\" or the v_count phrase \"five episodes\"), d010 (R1), d021, d039 and d041 (R3a). Each changed case says so in its note. No 0.2.0 case or label changed. Totals: 196 utterances and 72 dialogues added to the 44 cases of 0.2.0. (The wording of this entry was corrected in round 3, review F8.)",
+      "0.3.0 round 3 (2026-10-05, design 05 §13) — 16 utterances (w001-w016) and 13 dialogues (d073-d085) added for the round-3 rules (R9 direct extraction for heard entries: a negated band span, a carryRefuse phrase or disagreeing spans withhold the value, and an utterance whose value was withheld while a band span was present opens no carry-over and closes an open slot of that item; R10 carry: carryExclude phrases count for the negation and disagreement tests, and any negated span refuses the whole reply; R11 a carryExclude phrase counts in direct extraction only in the sentence of the cue), every trace of the round-2 review (F1-F4, ENG-R1-1), the R11 boundary rule and its disclosed exception, and the compound-tens known risk. Four labels changed with the round-3 rules; as for every 0.3.0 label, each is the extractor's output under those rules: t003 and t005 (R9: a negated band span withholds the value) and d069 and d070 (R9: no carry-over opens from an utterance whose value was withheld while a band span was present). Each changed case says so in its note. The notes of t001, t009, t011, t012, t013, y014, d010, d021, d039, d041, d050, d059 and d065 were corrected for the round-3 rules; their labels are unchanged. No 0.2.0 case or label changed. Totals: 212 utterances and 85 dialogues added to the 44 cases of 0.2.0.",
+      "0.3.0 round 3b (2026-10-05, design 05 §13.10) — 5 dialogues (d086-d090) added for the yield-only slot: an utterance whose duration is withheld (a negated band span, a carryRefuse phrase or disagreeing spans) arms a slot that keeps the entries yielding to the item yielding but is never carried into, and turns an open slot of the item yield-only with its remaining count instead of closing it; the dialogue format gains the pending form [id, turnsLeft, \"yield-only\"]. Seven dialogue labels changed with the round-3b rule; as for every 0.3.0 label, each is the extractor's output under those rules: d069, d070, d075, d076, d078 and d079 (the withheld line now arms a yield-only slot; round 3 armed none) and d085 (the open slot turns yield-only instead of closing). Only their pending labels and notes changed; no capture, heard or refusal label changed. Each changed dialogue says so in its note. No utterance case and no 0.2.0 case or label changed. The added dialogues were drafted by the team in the same way as the other 0.3.0 cases and have not been reviewed by the clinical lead. Totals: 212 utterances and 90 dialogues added to the 44 cases of 0.2.0.",
+      "0.3.0 round 3c (2026-10-05, design 05 §13.11) — 6 utterances (w017-w022) and 3 dialogues (d091-d093) added for two corrections found by the final pre-deploy review. (1) R11 made removal-only: a carryExclude phrase supplies a value in direct extraction only in a cue sentence (one holding a hit of any of the entry's cue phrases that is not negated and passes the attribution and history gates), and elsewhere it still counts for the negation and disagreement tests and as a stated band, so the entry is withheld and opens only a yield-only slot. Round 3 ignored such a span entirely, which let an overlapping \"days at a time\" score Over 72 h and let carry-over open after a day range (reviews F-R11-OVER72, ENG-R11-1), and took the cue's sentence from the first-listed cue phrase found only (ENG-R11-2). (2) A yield-only slot of a withheld entry is refreshed with the full carry on each withheld line, instead of keeping its remaining count (review F-3B-REMAINING-COUNT). Labels changed with these rules; as for every 0.3.0 label, each is the extractor's output under them: w013 (now heard, no value; round 3 recorded v 1), d077 (the first line opens only a yield-only slot and the reply is not carried; round 3 carried v 2), d085 and d088 (the converted slot is refreshed), d089 (m_dur now yields on the last line; round 3b recorded m_dur = Under 4 h). The notes of w003, w005, w006, w007, w008 and w009 were corrected; their labels are unchanged. No 0.2.0 case or label changed. The added cases were drafted by the team and have not been reviewed by the clinical lead. Totals: 218 utterances and 93 dialogues added to the 44 cases of 0.2.0."
+    ],
+    "labels030": "Each 0.3.0 label is what lexicon 0.3.2 with the screenAIr 0.4.1 extractor (round 2, round 3, round 3b and round 3c rules included) returns: the 0.3.0 labels are the 0.3.2 extractor's own output (regression snapshot); P/R/F1 on them is tautological, not a measurement. Known false positives, false suppressions and misses are labelled as the rule behaves and carry a note, as z02 and z04 do in 0.2.0. Labels are development data, not ground truth for performance claims.",
+    "format": {
+      "cases": "Run with extract(lexicon, text, {includeHeard: true}), unsuppressed. expect: the item, ctx and red-flag [id, value] pairs (a set). expectHeard: the heard ids (a set; [] when absent).",
+      "dialogues": "turns: [speaker, text], speaker pt (patient) or md (physician). Patient turns run through extractInContext(lexicon, text, pending) in order, keeping the returned pending; md turns are passed over and leave pending untouched, as in the Scribe. Also as in the Scribe (round 2, R5): a heard capture of an item already answered is dropped, and while the pending item is answered the slot is still passed, with {carry: false}, and the returned pending is kept. steps[k] labels turn k: null for an md turn, else {captures: [id, value] or [id, value, \"carry\"], in engine order; heard: heard ids; pending: [id, turnsLeft] after the turn, or [id, turnsLeft, \"yield-only\"] for a yield-only slot (round 3b: it counts as pending for yieldTo and is consumed and expires like any slot, but no value is ever carried into it), or null; refused: the carry refusal code or null}. As in the Scribe, the returned pending is kept and passed whole, yieldOnly included.",
+      "idPrefixes": {
+        "h": "F1 heard-only",
+        "y": "F4 yield",
+        "v": "F3 vocabulary, including collisions and the negation and third-party cue additions",
+        "u": "text normalization (lexicon.normalize)",
+        "t": "round 2 (design 05 §12): band choice (R2) and onset guard (R3b) for heard entries, digits for durations only (R4), apostrophe folding in red-flag phrases, and the round-1 review traces, including the disclosed known risks (feature \"risk\")",
+        "w": "round 3 (design 05 §13): direct extraction for heard entries (R9), the sentence scope of carryExclude phrases (R11) with its boundary rule, and the round-2 review traces, including the disclosed known risks (feature \"risk\"); from w017 the round-3c corrections of R11 (§13.11)",
+        "d": "dialogues (F2 carry-over; from d054 the round-2 rules R1, R2, R3a, R3b, R4, R5 and the review traces; from d073 the round-3 rules R9, R10, R11 and the round-2 review traces; from d086 the round-3b yield-only slot; from d091 the round-3c corrections)"
+      }
+    }
+  },
+  "cases": [
+    {"utteranceId": "h001", "register": "encounter", "feature": "F1", "text": "I'm feeling really dizzy", "expect": [], "expectHeard": ["v_vertigo"], "note": "The reported opening line: the cue is heard, no duration is stated, nothing is recorded."},
+    {"utteranceId": "h002", "register": "encounter", "feature": "F1", "text": "I've had vertigo on and off.", "expect": [], "expectHeard": ["v_vertigo"]},
+    {"utteranceId": "h003", "register": "encounter", "feature": "F1", "text": "The spinning comes and goes.", "expect": [], "expectHeard": ["v_vertigo"]},
+    {"utteranceId": "h004", "register": "encounter", "feature": "F1", "text": "It lasts forever.", "expect": [], "note": "m_dur has no heard flag (per-entry opt-in), so a cue without a duration shows nothing."},
+    {"utteranceId": "h005", "register": "encounter", "feature": "F1", "text": "I used to get dizzy.", "expect": [], "note": "Historical cue: not heard."},
+    {"utteranceId": "h006", "register": "encounter", "feature": "F1", "text": "I'm not dizzy.", "expect": [], "note": "Negated cue: not heard."},
+    {"utteranceId": "h007", "register": "encounter", "feature": "F1", "text": "My mom gets dizzy.", "expect": [], "note": "Third-party cue: not heard."},
+    {"utteranceId": "h008", "register": "encounter", "feature": "F1", "text": "I get dizzy when I stand.", "expect": [["n_auto", "yes"]], "expectHeard": ["v_vertigo"], "note": "The cue sits inside the n_auto phrase; the heard tag still shows (it never arms carry-over)."},
+    {"utteranceId": "h009", "register": "encounter", "feature": "F1", "text": "And lately I've been getting really dizzy too — kind of spinning, it comes and goes and lasts a while.", "expect": [], "expectHeard": ["v_vertigo"], "note": "Demo line 7: heard only; m_dur yields to v_vertigo."},
+    {"utteranceId": "h010", "register": "encounter", "feature": "F1", "text": "My headaches come with facial pressure.", "expect": [["m_head", 1]], "note": "m_head has a fallback, so its cue always sets a value and is never heard."},
+    {"utteranceId": "y001", "register": "encounter", "feature": "F4", "text": "I get dizzy and it lasts a couple of hours", "expect": [["v_vertigo", 2]], "note": "Spec 4.4 row 1, the reported false positive: 0.3.1 also captured m_dur=1."},
+    {"utteranceId": "y002", "register": "encounter", "feature": "F4", "text": "When I'm off balance it sticks around all day", "expect": [["v_vertigo", 2]], "note": "Spec 4.4 row 2: 0.3.1 also captured m_dur=2."},
+    {"utteranceId": "y003", "register": "encounter", "feature": "F4", "text": "It's not a headache, the dizziness lasts a couple of hours", "expect": [["v_vertigo", 2]], "note": "Spec 4.4 row 3: a denied headache does not anchor."},
+    {"utteranceId": "y004", "register": "encounter", "feature": "F4", "text": "The room spins and it lasts the rest of the day", "expect": [], "expectHeard": ["v_vertigo"], "note": "Spec 4.4 row 4: 0.3.1 captured m_dur=2. \"rest of the day\" is not a v_vertigo band (draft not approved), so the duration stays unknown."},
+    {"utteranceId": "y005", "register": "encounter", "feature": "F4", "text": "I'm not dizzy but it lasts a couple of hours", "expect": [], "note": "Spec 4.4 row 5 (Q14 accepted): the yield target counts even when negated; m_dur stays unanswered."},
+    {"utteranceId": "y006", "register": "encounter", "feature": "F4", "text": "My headache lasts a couple of hours", "expect": [["m_head", 1], ["m_dur", 1]], "note": "Spec 4.4 row 6: kept."},
+    {"utteranceId": "y007", "register": "encounter", "feature": "F4", "text": "My headaches last for a couple of hours", "expect": [["m_head", 1], ["m_dur", 1]], "note": "Spec 4.4 row 7: kept."},
+    {"utteranceId": "y008", "register": "encounter", "feature": "F4", "text": "My attacks last for two days", "expect": [["m_dur", 2]], "note": "Spec 4.4 row 8: kept (no dizziness cue)."},
+    {"utteranceId": "y009", "register": "encounter", "feature": "F4", "text": "Each attack lasts two days", "expect": [["m_dur", 2]], "note": "Spec 4.4 row 9: kept."},
+    {"utteranceId": "y010", "register": "encounter", "feature": "F4", "text": "I'm dizzy and my headache lasts all day", "expect": [["m_head", 1], ["v_vertigo", 2], ["m_dur", 2]], "note": "Spec 4.4 row 10: the anchor keeps m_dur. v_vertigo=2 from \"all day\" is a pre-existing false positive (R4), labelled because the rule fires."},
+    {"utteranceId": "y011", "register": "encounter", "feature": "F4", "text": "I get dizzy with my headaches and they last for a couple of hours", "expect": [["m_head", 1], ["v_vertigo", 2], ["m_dur", 1]], "note": "Spec 4.4 row 11: anchor. v_vertigo=2 from \"hours\" is R4."},
+    {"utteranceId": "y012", "register": "encounter", "feature": "F4", "text": "I'm not dizzy, but my headache lasts all day", "expect": [["m_head", 1], ["m_dur", 2]], "note": "Spec 4.4 row 12: anchor."},
+    {"utteranceId": "y013", "register": "encounter", "feature": "F4", "text": "I get migraines that last for a couple of hours and I get dizzy", "expect": [["m_fhx", "yes"], ["v_vertigo", 2]], "note": "Spec 4.4 row 13: the approved anchors are \"migraine lasts\" / \"migraines last\", not bare \"migraine\", so m_dur yields (0.3.1 also captured m_dur=1; R3 recall cost)."},
+    {"utteranceId": "y014", "register": "encounter", "feature": "F4", "text": "My migraines last for two days and I get dizzy with them", "expect": [["v_vertigo", 2], ["m_dur", 2]], "note": "Spec 4.4 row 14: anchor \"migraines last\" keeps m_dur. The approved band \"for two days\" also reads v_vertigo=2 from the migraine's duration (the R4 pattern), labelled because the rule fires. Disclosed known risk (review F5): another symptom's duration in the cue's own sentence is read as the vertigo duration; the sentence scope of R11 does not help here, because the cue and the phrase share one sentence."},
+    {"utteranceId": "y015", "register": "encounter", "feature": "F4", "text": "the head pain lasts a couple of hours and I feel dizzy", "expect": [["v_vertigo", 2], ["m_dur", 1]], "note": "Spec 4.4 row 15: anchor \"head pain\" keeps m_dur. v_vertigo=2 is R4."},
+    {"utteranceId": "y016", "register": "encounter", "feature": "F4", "text": "My mom gets dizzy and it lasts a couple of hours", "expect": [], "note": "Spec 4.4 row 16: gated cue; m_dur yields (0.3.1: nothing either)."},
+    {"utteranceId": "y017", "register": "encounter", "feature": "F4", "text": "Vertigo episodes last for hours", "expect": [["v_vertigo", 2]], "note": "Spec 4.4 row 19."},
+    {"utteranceId": "y018", "register": "encounter", "feature": "F4", "text": "It lasts a couple of hours", "expect": [["m_dur", 1]], "note": "Spec 4.4 row 20: unchanged with nothing pending."},
+    {"utteranceId": "y019", "register": "encounter", "feature": "F4", "text": "My headaches last a couple of hours", "expect": [["m_head", 1]], "note": "Spec 4.4 row 22: m_dur missed before and after (bare \"last\" is not a cue; the m_dur cue drafts were not approved)."},
+    {"utteranceId": "y020", "register": "encounter", "feature": "F4", "text": "My attacks last two days", "expect": [], "note": "Spec 4.4 row 23: the same gap; nothing captured before or after."},
+    {"utteranceId": "y021", "register": "encounter", "feature": "F4", "text": "my ear rings and it lasts a couple of hours", "expect": [["v_aural", "yes"], ["m_dur", 1]], "note": "Spec 4.4 row 24: yes/no targets are supported but not configured (Q6)."},
+    {"utteranceId": "y022", "register": "encounter", "feature": "F4", "text": "I get dizzy, and my headache lasts a day or two.", "expect": [["m_head", 1], ["m_dur", 2]], "expectHeard": ["v_vertigo"], "note": "Anchor \"headache\"."},
+    {"utteranceId": "y023", "register": "encounter", "feature": "F4", "text": "The facial pressure lasts two days and I feel dizzy.", "expect": [["m_head", 1], ["m_dur", 2]], "expectHeard": ["v_vertigo"], "note": "Anchor \"facial pressure\"."},
+    {"utteranceId": "y024", "register": "encounter", "feature": "F4", "text": "My facial pain lasts three days, and I get dizzy too.", "expect": [["m_head", 1], ["m_dur", 2]], "expectHeard": ["v_vertigo"], "note": "Anchor \"facial pain\"."},
+    {"utteranceId": "y025", "register": "encounter", "feature": "F4", "text": "The pressure in my face lasts a week and I'm dizzy.", "expect": [["m_head", 1], ["m_dur", 3]], "expectHeard": ["v_vertigo"], "note": "Anchor \"pressure in my face\"."},
+    {"utteranceId": "y026", "register": "encounter", "feature": "F4", "text": "The ache behind my eyes lasts four days, and I feel dizzy.", "expect": [["m_head", 1], ["m_dur", 3]], "expectHeard": ["v_vertigo"], "note": "Anchor \"behind my eyes\"."},
+    {"utteranceId": "y027", "register": "encounter", "feature": "F4", "text": "My migraine lasts two days and I get dizzy with it.", "expect": [["m_dur", 2]], "expectHeard": ["v_vertigo"], "note": "Anchor \"migraine lasts\"."},
+    {"utteranceId": "y028", "register": "encounter", "feature": "F4", "text": "No headache, but the dizziness lasts a couple of hours", "expect": [["v_vertigo", 2]], "note": "Negated anchor: m_dur yields (0.3.1 also captured m_dur=1)."},
+    {"utteranceId": "y029", "register": "encounter", "feature": "F4", "text": "My mom's headaches last for days", "expect": [], "note": "Third-party headache; \"for days\" is no m_dur band. Nothing captured."},
+    {"utteranceId": "y030", "register": "encounter", "feature": "F4", "text": "It isn't facial pain; the spinning lasts two days.", "expect": [], "expectHeard": ["v_vertigo"], "note": "Negated anchor: m_dur yields (0.3.1 captured m_dur=2); \"two days\" is no v_vertigo band, so v_vertigo is heard only."},
+    {"utteranceId": "y031", "register": "encounter", "feature": "F4", "text": "The dizziness lasts for a couple of days.", "expect": [["v_vertigo", 2]], "note": "F3 + F4: 0.3.1 captured only m_dur=2; 0.3.2 reads the approved v_vertigo band and m_dur yields."},
+    {"utteranceId": "y032", "register": "encounter", "feature": "F4", "text": "I've been dizzy for four days, but each spell lasts a few minutes.", "expect": [["v_vertigo", 2]], "note": "\"four days\" was struck as a v_vertigo band; m_dur's \"four days\" yields (0.3.1 also captured m_dur=3)."},
+    {"utteranceId": "v001", "register": "encounter", "feature": "F3", "text": "It feels like the world is moving.", "expect": [], "expectHeard": ["v_vertigo"]},
+    {"utteranceId": "v002", "register": "encounter", "feature": "F3", "text": "It's the world moving around me that scares me.", "expect": [], "expectHeard": ["v_vertigo"]},
+    {"utteranceId": "v003", "register": "encounter", "feature": "F3", "text": "It's like the world's moving under me.", "expect": [], "expectHeard": ["v_vertigo"]},
+    {"utteranceId": "v004", "register": "encounter", "feature": "F3", "text": "I felt like the world was moving for about an hour.", "expect": [["v_vertigo", 2]]},
+    {"utteranceId": "v005", "register": "encounter", "feature": "F3", "text": "Everything spins when I get up.", "expect": [], "expectHeard": ["v_vertigo"]},
+    {"utteranceId": "v006", "register": "encounter", "feature": "F3", "text": "Everything spun for a couple of minutes.", "expect": [["v_vertigo", 1]]},
+    {"utteranceId": "v007", "register": "encounter", "feature": "F3", "text": "The room spun for hours.", "expect": [["v_vertigo", 2]]},
+    {"utteranceId": "v008", "register": "encounter", "feature": "F3", "text": "The room is moving and I have to sit down.", "expect": [], "expectHeard": ["v_vertigo"]},
+    {"utteranceId": "v009", "register": "encounter", "feature": "F3", "text": "Everything is moving even when I'm still.", "expect": [], "expectHeard": ["v_vertigo"]},
+    {"utteranceId": "v010", "register": "encounter", "feature": "F3", "text": "It's like I'm on a boat.", "expect": [], "expectHeard": ["v_vertigo"]},
+    {"utteranceId": "v011", "register": "encounter", "feature": "F3", "text": "It felt like I was on a boat for half a day.", "expect": [["v_vertigo", 2]]},
+    {"utteranceId": "v012", "register": "encounter", "feature": "F3", "text": "I feel like I am on a boat all day.", "expect": [["v_vertigo", 2]]},
+    {"utteranceId": "v013", "register": "encounter", "feature": "F3", "text": "It's like being on a boat, all night long.", "expect": [["v_vertigo", 2]]},
+    {"utteranceId": "v014", "register": "encounter", "feature": "F3", "text": "I get a rocking feeling that lasts a split second.", "expect": [["v_vertigo", 1]], "note": "m_dur's \"lasts\" yields to the v_vertigo cue."},
+    {"utteranceId": "v015", "register": "encounter", "feature": "F3", "text": "There's a rocking sensation overnight.", "expect": [["v_vertigo", 2]]},
+    {"utteranceId": "v016", "register": "encounter", "feature": "F3", "text": "I keep swaying side to side.", "expect": [], "expectHeard": ["v_vertigo"]},
+    {"utteranceId": "v017", "register": "encounter", "feature": "F3", "text": "I feel unsteady.", "expect": [], "expectHeard": ["v_vertigo"], "note": "The problem report wording."},
+    {"utteranceId": "v018", "register": "encounter", "feature": "F3", "text": "I'm unsteady on my feet for a second or two.", "expect": [["v_vertigo", 1]]},
+    {"utteranceId": "v019", "register": "encounter", "feature": "F3", "text": "I keep losing my balance for about a day.", "expect": [["v_vertigo", 2]]},
+    {"utteranceId": "v020", "register": "encounter", "feature": "F3", "text": "I lose my balance for two minutes at a time.", "expect": [["v_vertigo", 1]]},
+    {"utteranceId": "v021", "register": "encounter", "feature": "F3", "text": "My balance is off.", "expect": [], "expectHeard": ["v_vertigo"]},
+    {"utteranceId": "v022", "register": "encounter", "feature": "F3", "text": "It's not like the world is moving.", "expect": []},
+    {"utteranceId": "v023", "register": "encounter", "feature": "F3", "text": "I don't have the world moving around me.", "expect": []},
+    {"utteranceId": "v024", "register": "encounter", "feature": "F3", "text": "My mother feels like the world's moving.", "expect": []},
+    {"utteranceId": "v025", "register": "encounter", "feature": "F3", "text": "It wasn't as if the world was moving.", "expect": []},
+    {"utteranceId": "v026", "register": "encounter", "feature": "F3", "text": "My dad says everything spins when he stands.", "expect": []},
+    {"utteranceId": "v027", "register": "encounter", "feature": "F3", "text": "I've never had everything spun around me.", "expect": []},
+    {"utteranceId": "v028", "register": "encounter", "feature": "F3", "text": "My wife said the room spun for her.", "expect": []},
+    {"utteranceId": "v029", "register": "encounter", "feature": "F3", "text": "My friend says the room is moving when she stands.", "expect": [], "note": "New third-party cue \"my friend\"."},
+    {"utteranceId": "v030", "register": "encounter", "feature": "F3", "text": "It isn't that everything is moving.", "expect": []},
+    {"utteranceId": "v031", "register": "encounter", "feature": "F3", "text": "I don't feel like I'm on a boat.", "expect": []},
+    {"utteranceId": "v032", "register": "encounter", "feature": "F3", "text": "Not like I was on a boat, no.", "expect": []},
+    {"utteranceId": "v033", "register": "encounter", "feature": "F3", "text": "I never feel like I am on a boat.", "expect": []},
+    {"utteranceId": "v034", "register": "encounter", "feature": "F3", "text": "My brother says it's like being on a boat.", "expect": []},
+    {"utteranceId": "v035", "register": "encounter", "feature": "F3", "text": "There's no rocking feeling at all.", "expect": []},
+    {"utteranceId": "v036", "register": "encounter", "feature": "F3", "text": "I don't get a rocking sensation.", "expect": []},
+    {"utteranceId": "v037", "register": "encounter", "feature": "F3", "text": "My daughter keeps swaying side to side.", "expect": []},
+    {"utteranceId": "v038", "register": "encounter", "feature": "F3", "text": "I don't feel unsteady.", "expect": []},
+    {"utteranceId": "v039", "register": "encounter", "feature": "F3", "text": "I'm not unsteady on my feet.", "expect": []},
+    {"utteranceId": "v040", "register": "encounter", "feature": "F3", "text": "I'm not losing my balance.", "expect": []},
+    {"utteranceId": "v041", "register": "encounter", "feature": "F3", "text": "I never lose my balance.", "expect": []},
+    {"utteranceId": "v042", "register": "encounter", "feature": "F3", "text": "I don't think my balance is off.", "expect": []},
+    {"utteranceId": "v043", "register": "encounter", "feature": "F3", "text": "The dizziness lasts a couple minutes.", "expect": [["v_vertigo", 1]]},
+    {"utteranceId": "v044", "register": "encounter", "feature": "F3", "text": "The vertigo is over in under five minutes.", "expect": [["v_vertigo", 1]]},
+    {"utteranceId": "v045", "register": "encounter", "feature": "F3", "text": "My dizzy spells last less than five minutes.", "expect": [["v_vertigo", 1]]},
+    {"utteranceId": "v046", "register": "encounter", "feature": "F3", "text": "The spinning stops after three minutes.", "expect": [["v_vertigo", 1]]},
+    {"utteranceId": "v047", "register": "encounter", "feature": "F3", "text": "Each dizzy spell is about four minutes.", "expect": [["v_vertigo", 1]]},
+    {"utteranceId": "v048", "register": "encounter", "feature": "F3", "text": "The dizziness takes up half the day.", "expect": [["v_vertigo", 2]]},
+    {"utteranceId": "v049", "register": "encounter", "feature": "F3", "text": "The vertigo stays for a day or two.", "expect": [["v_vertigo", 2]]},
+    {"utteranceId": "v050", "register": "encounter", "feature": "F3", "text": "I'm dizzy for a couple of days each time.", "expect": [["v_vertigo", 2]]},
+    {"utteranceId": "v051", "register": "encounter", "feature": "F3", "text": "Last time the dizziness hung around for two days.", "expect": [["v_vertigo", 2]]},
+    {"utteranceId": "v052", "register": "encounter", "feature": "F3", "text": "I was off balance for three days.", "expect": [["v_vertigo", 2]]},
+    {"utteranceId": "v053", "register": "encounter", "feature": "F3", "text": "The vertigo lasts more than three days.", "expect": [["v_vertigo", 3]], "note": "m_dur's \"lasts\" yields (its band order would have read \"three days\" as v 2)."},
+    {"utteranceId": "v054", "register": "encounter", "feature": "F3", "text": "My last bout of vertigo lasted more than three days.", "expect": [["v_vertigo", 3]]},
+    {"utteranceId": "v055", "register": "encounter", "feature": "F3", "text": "I'm off-balance days at a time.", "expect": [["v_vertigo", 3]]},
+    {"utteranceId": "v056", "register": "encounter", "feature": "F3", "text": "It starts when I roll over.", "expect": [["v_head", "yes"]]},
+    {"utteranceId": "v057", "register": "encounter", "feature": "F3", "text": "It started when I rolled over this morning.", "expect": [["v_head", "yes"]]},
+    {"utteranceId": "v058", "register": "encounter", "feature": "F3", "text": "Turning over brings it on.", "expect": [["v_head", "yes"]]},
+    {"utteranceId": "v059", "register": "encounter", "feature": "F3", "text": "It hits me when I flip over in bed.", "expect": [["v_head", "yes"]]},
+    {"utteranceId": "v060", "register": "encounter", "feature": "F3", "text": "It comes on when I turn my head.", "expect": [["v_head", "yes"]]},
+    {"utteranceId": "v061", "register": "encounter", "feature": "F3", "text": "It comes on when I look up.", "expect": [["v_head", "yes"]]},
+    {"utteranceId": "v062", "register": "encounter", "feature": "F3", "text": "It starts when I lie back.", "expect": [["v_head", "yes"]]},
+    {"utteranceId": "v063", "register": "encounter", "feature": "F3", "text": "Lying back in the dentist's chair set it off.", "expect": [["v_head", "yes"]]},
+    {"utteranceId": "v064", "register": "encounter", "feature": "F3", "text": "If I tip my head back it starts.", "expect": [["v_head", "yes"]]},
+    {"utteranceId": "v065", "register": "encounter", "feature": "F3", "text": "Reaching for a high shelf brings it on.", "expect": [["v_head", "yes"]]},
+    {"utteranceId": "v066", "register": "encounter", "feature": "F3", "text": "Bending over to tie my shoes sets it off.", "expect": [["v_head", "yes"]]},
+    {"utteranceId": "v067", "register": "encounter", "feature": "F3", "text": "Driving through a tunnel makes me feel awful.", "expect": [["v_motion", "yes"]]},
+    {"utteranceId": "v068", "register": "encounter", "feature": "F3", "text": "I hate it when I drive through a tunnel.", "expect": [["v_motion", "yes"]]},
+    {"utteranceId": "v069", "register": "encounter", "feature": "F3", "text": "Patterned carpet in hotels sets it off.", "expect": [["v_motion", "yes"]]},
+    {"utteranceId": "v070", "register": "encounter", "feature": "F3", "text": "Busy visual scenes on TV bother me.", "expect": [["v_motion", "yes"]]},
+    {"utteranceId": "v071", "register": "encounter", "feature": "F3", "text": "I get dizzy riding in a car.", "expect": [["v_motion", "yes"]], "expectHeard": ["v_vertigo"], "note": "The v_vertigo cue sits inside the v_motion phrase: heard, never armed."},
+    {"utteranceId": "v072", "register": "encounter", "feature": "F3", "text": "I feel sick riding in a car.", "expect": [["v_motion", "yes"]]},
+    {"utteranceId": "v073", "register": "encounter", "feature": "F3", "text": "Both my ears feel full.", "expect": [["v_aural", "yes"]]},
+    {"utteranceId": "v074", "register": "encounter", "feature": "F3", "text": "My ears ring after it.", "expect": [["v_aural", "yes"]]},
+    {"utteranceId": "v075", "register": "encounter", "feature": "F3", "text": "There's a roaring sound in my ear.", "expect": [["v_aural", "yes"]]},
+    {"utteranceId": "v076", "register": "encounter", "feature": "F3", "text": "I get a headache during the dizzy spells.", "expect": [["v_migfeat", "yes"], ["m_head", 1]], "expectHeard": ["v_vertigo"]},
+    {"utteranceId": "v077", "register": "encounter", "feature": "F3", "text": "I have headaches during the dizziness.", "expect": [["v_migfeat", "yes"], ["m_head", 1]], "expectHeard": ["v_vertigo"]},
+    {"utteranceId": "v078", "register": "encounter", "feature": "F3", "text": "I've had fewer than five episodes.", "expect": [["v_count", "no"]], "note": "New negation cue \"fewer than\": 0.3.1 read v_count=yes."},
+    {"utteranceId": "v079", "register": "encounter", "feature": "F3", "text": "My grandmother's vertigo lasts for hours.", "expect": [], "note": "New third-party cue: 0.3.1 captured v_vertigo=2 (the existing cue \"her \" does not match inside \"grandmother's\")."},
+    {"utteranceId": "v080", "register": "encounter", "feature": "F3", "text": "my grandma gets dizzy for hours", "expect": [], "note": "New third-party cue: 0.3.1 captured v_vertigo=2."},
+    {"utteranceId": "v081", "register": "encounter", "feature": "F3", "text": "My aunt gets bad nausea.", "expect": [], "note": "New third-party cue: 0.3.1 captured m_nausea=yes."},
+    {"utteranceId": "v082", "register": "encounter", "feature": "F3", "text": "My uncle had sinus surgery.", "expect": [], "note": "New third-party cue: 0.3.1 captured r_surg=yes."},
+    {"utteranceId": "v083", "register": "encounter", "feature": "F3", "text": "I sit in my rocking chair every evening.", "expect": [], "note": "Collision: bare \"rocking\" was not approved."},
+    {"utteranceId": "v084", "register": "encounter", "feature": "F3", "text": "I have carpal tunnel in my wrist.", "expect": [], "note": "Collision: only the driving forms of \"tunnel\" were approved."},
+    {"utteranceId": "v085", "register": "encounter", "feature": "F3", "text": "My hands are unsteady when I write.", "expect": [], "note": "Collision: bare \"unsteady\" was not approved."},
+    {"utteranceId": "v086", "register": "encounter", "feature": "F3", "text": "My balance is fine.", "expect": [], "note": "Collision."},
+    {"utteranceId": "v087", "register": "encounter", "feature": "F3", "text": "I always get seasick being on a boat.", "expect": [], "note": "Collision: bare \"on a boat\" was not approved."},
+    {"utteranceId": "v088", "register": "encounter", "feature": "F3", "text": "It sounds like I'm hearing through a tunnel.", "expect": [], "note": "Collision."},
+    {"utteranceId": "v089", "register": "encounter", "feature": "F3", "text": "I was riding in a car that got rear-ended.", "expect": [], "note": "Collision: only \"dizzy/sick riding in a car\" were approved."},
+    {"utteranceId": "v090", "register": "encounter", "feature": "F3", "text": "I started getting dizzy two days ago.", "expect": [], "expectHeard": ["v_vertigo"], "note": "Collision: \"two days\" is no v_vertigo band (only \"for two days\"); heard only."},
+    {"utteranceId": "v091", "register": "encounter", "feature": "F3", "text": "I get dizzy every two days.", "expect": [], "expectHeard": ["v_vertigo"], "note": "Collision: a frequency, not a duration; heard only."},
+    {"utteranceId": "v092", "register": "encounter", "feature": "F3", "text": "I've been getting dizzy spells for a week, they last a few minutes", "expect": [["v_vertigo", 2]], "note": "Must stay v_vertigo=2: \"for a week\" was struck (v 3 is evaluated before v 2 and would override the episode duration)."},
+    {"utteranceId": "v093", "register": "encounter", "feature": "F3", "text": "I can't turn my head because of my neck.", "expect": [], "note": "Collision: bare \"turn my head\" was not approved."},
+    {"utteranceId": "v094", "register": "encounter", "feature": "F3", "text": "I tried lying back down and the dizziness got better.", "expect": [], "expectHeard": ["v_vertigo"], "note": "Collision: bare \"lying back\" was not approved; heard only."},
+    {"utteranceId": "v095", "register": "encounter", "feature": "F3", "text": "I've had antibiotics too many times to count.", "expect": [["r_abx", "yes"]], "note": "Collision: \"too many times to count\" was struck; only r_abx fires."},
+    {"utteranceId": "v096", "register": "encounter", "feature": "F3", "text": "I get nervous with people moving around me.", "expect": [], "note": "Collision: the \"moving around me\" draft was not approved."},
+    {"utteranceId": "v097", "register": "encounter", "feature": "F3", "text": "I'm dizzy constantly.", "expect": [["i_days", 3]], "expectHeard": ["v_vertigo"], "note": "\"constantly\" was struck as a duration; it remains an existing i_days cue (frequency)."},
+    {"utteranceId": "v098", "register": "encounter", "feature": "F3", "text": "I drove with my friend and got dizzy for hours", "expect": [], "note": "Cost of the new third-party cue: the patient's own symptom is suppressed because \"my friend\" sits inside the window. Unanswered, so still asked."},
+    {"utteranceId": "v099", "register": "encounter", "feature": "F3", "text": "I wore a patterned shirt to work.", "expect": [["v_motion", "yes"]], "note": "Labelled as a capture because the rule genuinely fires: the cost of \"patterned\" stays visible."},
+    {"utteranceId": "v100", "register": "encounter", "feature": "F3", "text": "The crowd was roaring at the game.", "expect": [["v_aural", "yes"]], "note": "Labelled as a capture because the rule genuinely fires: the cost of \"roaring\" stays visible."},
+    {"utteranceId": "v101", "register": "encounter", "feature": "F3", "text": "I keep my pills on a high shelf.", "expect": [["v_head", "yes"]], "note": "Labelled as a capture because the rule genuinely fires: the cost of \"high shelf\" stays visible."},
+    {"utteranceId": "u001", "register": "encounter", "feature": "normalize", "text": "I don’t feel unsteady.", "expect": [], "note": "Curly apostrophe (iOS/macOS typing): folded to ', so \"n't\" negates. Without normalize, lexicon 0.3.2 would hear the cue as positive."},
+    {"utteranceId": "u002", "register": "encounter", "feature": "normalize", "text": "It’s like I’m on a boat.", "expect": [], "expectHeard": ["v_vertigo"], "note": "Curly apostrophe: the cue \"like i'm on a boat\" matches only after folding."},
+    {"utteranceId": "u003", "register": "encounter", "feature": "normalize", "text": "I haven’t had any nausea.", "expect": [["m_nausea", "no"]], "note": "Curly apostrophe: \"haven't\" negates; 0.3.1 read m_nausea=yes."},
+    {"utteranceId": "u004", "register": "encounter", "feature": "normalize", "text": "I get a headache when I’m dizzy.", "expect": [["v_migfeat", "yes"], ["m_head", 1]], "expectHeard": ["v_vertigo"], "note": "Curly apostrophe: the existing v_migfeat phrase \"headache when i'm dizzy\" matches only after folding."},
+    {"utteranceId": "u005", "register": "encounter", "feature": "normalize", "text": "The dizziness lasts 2 minutes.", "expect": [["v_vertigo", 1]], "note": "2 → two: the approved band \"two minutes\" (v 1)."},
+    {"utteranceId": "u006", "register": "encounter", "feature": "normalize", "text": "The dizziness lasts 22 minutes.", "expect": [["v_vertigo", 2]], "note": "22 stays digits (21-29 are never converted), so only \"minutes\" (v 2) matches."},
+    {"utteranceId": "u007", "register": "encounter", "feature": "normalize", "text": "I was dizzy for 3 days.", "expect": [["v_vertigo", 2]], "note": "3 → three: the approved band \"for three days\" (v 2)."},
+    {"utteranceId": "u008", "register": "encounter", "feature": "normalize", "text": "I'm affected about 10 days a month.", "expect": [], "note": "Relabelled in round 2 (R4, lead decision L2: digits for durations only): 10 is spelled for band phrases only, so it no longer reaches the i_days cue \"ten days\" (round 1: i_days = 10+). The spelled form still matches (t023)."},
+    {"utteranceId": "u009", "register": "encounter", "feature": "normalize", "text": "I've had fewer than 5 episodes.", "expect": [], "note": "Relabelled in round 2 (R4): 5 no longer reaches the v_count phrase \"five episodes\", so v_count is not set (round 1: no, through the new negation cue). The spelled form is v078."},
+    {"utteranceId": "u010", "register": "encounter", "feature": "normalize", "text": "The vertigo stays for a day or 2.", "expect": [["v_vertigo", 2]], "note": "A trailing sentence period does not block conversion: \"2.\" at the end reads \"two.\"."},
+    {"utteranceId": "u011", "register": "encounter", "feature": "normalize", "text": "The spinning lasts 2.5 minutes.", "expect": [["v_vertigo", 2]], "note": "Decimals stay digits, so only \"minutes\" (v 2) matches. Known limitation, labelled as the rule behaves."},
+    {"utteranceId": "u012", "register": "encounter", "feature": "normalize", "text": "The spinning lasts 3-4 minutes.", "expect": [["v_vertigo", 2]], "note": "Ranges stay digits, so only \"minutes\" (v 2) matches. Known limitation, labelled as the rule behaves."},
+    {"utteranceId": "u013", "register": "encounter", "feature": "normalize", "text": "The dizziness lasts twenty-two minutes.", "expect": [["v_vertigo", 1]], "note": "Accepted known risk (lead decision D3): typed \"twenty-two minutes\" contains the approved band \"two minutes\" (v 1)."},
+    {"utteranceId": "t001", "register": "encounter", "feature": "R2", "text": "It hit me in a split second and the spinning lasted for hours", "expect": [], "expectHeard": ["v_vertigo"], "note": "R2, kept by R9 d: the band spans disagree (\"split second\" v 1, \"hours\" v 2), so no value is taken and the item stays heard. Since round 3 (R9 f) a band span was present, so no carry-over opens from it (d069; in round 2 it armed). Round 1 took v 1 by band order; 0.3.1 read v 2 (review F4)."},
+    {"utteranceId": "t002", "register": "encounter", "feature": "R2", "text": "I get dizzy a couple minutes after standing up and it lasts for hours", "expect": [], "expectHeard": ["v_vertigo"], "note": "R2: \"a couple minutes\" (v 1; the contained \"minutes\" is dropped) and \"hours\" (v 2) disagree: heard, no value. Round 1: v 1 (review F4). m_dur's \"lasts\" yields to the v_vertigo cue."},
+    {"utteranceId": "t003", "register": "encounter", "feature": "R2", "text": "The dizziness is never under five minutes, it lasts hours", "expect": [], "expectHeard": ["v_vertigo"], "note": "Relabelled in round 3 (R9 b): \"under five minutes\" is negated within the window (\"never\"), and any negated band span withholds the value, so the item stays heard; a band span was present, so no carry-over opens (d079) and the clinician asks. Round 2 dropped the negated span and read v 2 from \"hours\"; round 1 read v 1, bands were not negation-checked (review F4)."},
+    {"utteranceId": "t004", "register": "encounter", "feature": "R2", "text": "The dizziness lasts hours, sometimes all day.", "expect": [["v_vertigo", 2]], "note": "R2: two live spans (\"hours\", \"all day\") agree on v 2."},
+    {"utteranceId": "t005", "register": "encounter", "feature": "R2", "text": "I'm dizzy for a few seconds, not hours.", "expect": [], "expectHeard": ["v_vertigo"], "note": "Relabelled in round 3 (R9 b): \"hours\" is negated within the window, so no value is taken and no carry-over opens; the clinician asks. A disclosed recall cost: rounds 1 and 2 read v 1 (\"few seconds\"), round 2 after dropping the negated span."},
+    {"utteranceId": "t006", "register": "encounter", "feature": "R2", "text": "I'm dizzy for three days at a time.", "expect": [], "expectHeard": ["v_vertigo"], "note": "R2: \"for three days\" (v 2) and \"days at a time\" (v 3) overlap without either containing the other, so they disagree: heard, no value. Round 1: v 3 by band order."},
+    {"utteranceId": "t007", "register": "encounter", "feature": "R2", "text": "My headache lasts all day, maybe a week.", "expect": [["m_head", 1], ["m_dur", 2]], "note": "R2 applies only to entries with heard: true. m_dur has no heard flag and keeps the first band in array order: \"all day\" (v 2) before \"a week\" (v 3)."},
+    {"utteranceId": "t008", "register": "encounter", "feature": "R3b", "text": "I felt dizzy a couple minutes ago", "expect": [], "expectHeard": ["v_vertigo"], "note": "R3b onset guard: the carryRefuse phrase \"ago\" withholds every band value of the utterance, so the item stays heard. Round 1: v 1, an onset read as a duration (review F4)."},
+    {"utteranceId": "t009", "register": "encounter", "feature": "R3b", "text": "The dizziness started about a day ago", "expect": [], "expectHeard": ["v_vertigo"], "note": "R3b onset guard (\"started\", \"ago\"; R9 c since round 3): heard, no value. Round 1: v 2 through \"about a day\" (review F7). Since round 3 (R9 f) a band span was present, so no carry-over opens and the reply after it is not carried (d070; in round 2 it was)."},
+    {"utteranceId": "t010", "register": "encounter", "feature": "risk", "text": "I woke up with vertigo, it came on overnight", "expect": [["v_vertigo", 2]], "note": "Disclosed residual of the day-range risk: no carryRefuse phrase occurs, so the approved band \"overnight\" reads v 2 in the cue's own sentence (review F7; no new phrase was added)."},
+    {"utteranceId": "t011", "register": "encounter", "feature": "risk", "text": "I've been dizzy for two days", "expect": [["v_vertigo", 2]], "note": "Disclosed residual of the day-range risk: an illness duration in the cue's own sentence. A carryExclude phrase still counts in direct extraction when it lies in the cue's own sentence (R11), so \"for two days\" still reads v 2 here (review F7)."},
+    {"utteranceId": "t012", "register": "encounter", "feature": "R3b", "text": "I've been dizzy since Monday, and it lasts hours.", "expect": [], "expectHeard": ["v_vertigo"], "note": "R3b recall cost (R9 c since round 3): \"since\" withholds the episode duration too; the item stays heard and unanswered, so it is still asked. Since round 3 (R9 f) a band span was present, so no carry-over opens from it and a later reply cannot supply a value (d076; review F3: in round 2 it armed, and \"All week.\" was carried). m_dur's \"lasts\" yields."},
+    {"utteranceId": "t013", "register": "encounter", "feature": "R3b", "text": "I got dizzy in Chicago for hours.", "expect": [], "expectHeard": ["v_vertigo"], "note": "R3b recall cost (R9 c since round 3): carryRefuse phrases match as substrings, so \"ago\" inside \"Chicago\" withholds the duration. Since round 3 (R9 f) no carry-over opens from it either, so this is the safe direction: heard, still asked, and no later reply can supply a value because of it (in round 2 carry-over armed; review F3)."},
+    {"utteranceId": "t014", "register": "encounter", "feature": "R4", "text": "I've been dizzy for 10 days", "expect": [], "expectHeard": ["v_vertigo"], "note": "R4 (lead decision L2: digits for durations only): 10 no longer reaches the i_days cue \"ten days\" (round 1: i_days = 10+, review F6). \"for ten days\" is no v_vertigo band, so v_vertigo is heard only."},
+    {"utteranceId": "t015", "register": "encounter", "feature": "R4", "text": "It started about 10 days ago.", "expect": [], "note": "R4: no i_days from a typed onset (round 1: i_days = 10+, review ENG-1)."},
+    {"utteranceId": "t016", "register": "encounter", "feature": "R4", "text": "It happens 3 or 4 times a week", "expect": [], "note": "R4: digits no longer reach the c_clin phrase \"three or four\" (round 1: c_clin = 3+, review F6)."},
+    {"utteranceId": "t017", "register": "encounter", "feature": "R4", "text": "It lasts 3 or 4 hours.", "expect": [], "note": "R4: no c_clin (review ENG-1). m_dur's cue \"lasts\" finds no m_dur band and m_dur has no fallback or heard flag, so nothing is recorded."},
+    {"utteranceId": "t018", "register": "encounter", "feature": "R4", "text": "I've had less than 5 episodes.", "expect": [], "note": "R4: digits no longer reach the v_count phrase \"five episodes\" (round 1: v_count = yes, since \"less than\" is no negation cue; review ENG-1)."},
+    {"utteranceId": "t019", "register": "encounter", "feature": "R4", "text": "I've had 5 episodes.", "expect": [], "note": "R4 recall cost: a typed count no longer reaches \"five episodes\" (round 1: yes). The item stays unanswered, so it is still asked."},
+    {"utteranceId": "t020", "register": "encounter", "feature": "R4", "text": "I've had five episodes.", "expect": [["v_count", "yes"]], "note": "The spelled form still matches \"five episodes\"."},
+    {"utteranceId": "t021", "register": "encounter", "feature": "R4", "text": "I’ve seen 3 doctors.", "expect": [], "note": "R4: digits no longer reach the c_clin phrase \"three doctor\" (the curly apostrophe is folded as well). Review F2 (tests) proposed c_clin here; lead decision L2 supersedes it."},
+    {"utteranceId": "t022", "register": "encounter", "feature": "R4", "text": "I've seen three or four doctors.", "expect": [["c_clin", "3+"]], "note": "The spelled form still matches \"three or four\"."},
+    {"utteranceId": "t023", "register": "encounter", "feature": "R4", "text": "I'm affected about ten days a month.", "expect": [["i_days", 3]], "note": "The spelled form still matches the i_days cue \"ten days\" (compare u008)."},
+    {"utteranceId": "t024", "register": "encounter", "feature": "R4", "text": "My sister has had 2 or 3 of these dizzy spells for hours", "expect": [], "note": "R4: every gate window runs on the folded text, so the third-party cue \"my sister\" stays within 34 characters of \"dizzy\" and nothing is recorded or heard. Round 1 measured the window on the spelled text and recorded v_vertigo = 2 as the patient's own (review F5)."},
+    {"utteranceId": "t025", "register": "encounter", "feature": "R4", "text": "My face went numb on 1 side.", "expect": [["rf_focal", true], ["n_burn", "yes"]], "note": "rf_focal is raised by \"face went numb\"; the digit does not reach \"numb on one side\" (L2). n_burn = yes through its phrase \"numb\", labelled because the rule fires."},
+    {"utteranceId": "t026", "register": "encounter", "feature": "risk", "text": "I'm numb on 1 side.", "expect": [["n_burn", "yes"]], "note": "Disclosed known risk (lead decision L2): digits are not read in red-flag phrases, so \"numb on 1 side\" does not match rf_focal \"numb on one side\", as in 0.3.1. n_burn = yes through \"numb\"."},
+    {"utteranceId": "t027", "register": "encounter", "feature": "normalize", "text": "I suddenly couldn’t hear", "expect": [["rf_ssnhl", true]], "note": "Curly apostrophe folded before red-flag matching: rf_ssnhl \"suddenly couldn't hear\" (review F2, tests)."},
+    {"utteranceId": "t028", "register": "encounter", "feature": "normalize", "text": "I can’t move my eye", "expect": [["rf_orbital", true]], "note": "Curly apostrophe folded before red-flag matching: rf_orbital \"can't move my eye\" (review F2, tests)."},
+    {"utteranceId": "t029", "register": "encounter", "feature": "normalize", "text": "I don’t feel unsteady for 2 minutes", "expect": [], "note": "Curly apostrophe and digit together: \"n't\" negates the cue, so no value and no heard tag; the 2 is spelled for band matching only (review F2, tests)."},
+    {"utteranceId": "t030", "register": "encounter", "feature": "risk", "text": "It doesn't happen when I roll over", "expect": [["v_head", "yes"]], "note": "Disclosed known risk: the denial lies beyond the 14-character negation window before \"roll over\", so v_head reads yes (baseline window, not changed in 0.4.1; review F3)."},
+    {"utteranceId": "t031", "register": "encounter", "feature": "risk", "text": "I don't usually get dizzy when I turn my head", "expect": [["v_head", "yes"]], "expectHeard": ["v_vertigo"], "note": "Disclosed known risk: \"don't\" lies beyond the window of both \"when i turn my head\" (v_head yes) and \"dizzy\" (heard) (review F3)."},
+    {"utteranceId": "t032", "register": "encounter", "feature": "risk", "text": "I don't really feel it when I lie back", "expect": [["v_head", "yes"]], "note": "Disclosed known risk: the denial lies beyond the window before \"when i lie back\", so v_head reads yes (review F3)."},
+    {"utteranceId": "t033", "register": "encounter", "feature": "risk", "text": "I haven't noticed any roaring", "expect": [["v_aural", "yes"]], "note": "Disclosed known risk: \"haven't\" lies beyond the window before \"roaring\", so v_aural reads yes (review F3)."},
+    {"utteranceId": "t034", "register": "encounter", "feature": "risk", "text": "My stomach keeps turning over.", "expect": [["v_head", "yes"]], "note": "Disclosed known risk: the idiom matches the approved v_head phrase \"turning over\" (review F3)."},
+    {"utteranceId": "t035", "register": "encounter", "feature": "risk", "text": "I've had no fewer than five episodes.", "expect": [["v_count", "no"]], "note": "Disclosed known risk: the double negation is read as a denial (\"fewer than\" lies in the window before \"five episodes\"; review F11)."},
+    {"utteranceId": "t036", "register": "encounter", "feature": "risk", "text": "Not fewer than five episodes.", "expect": [["v_count", "no"]], "note": "Disclosed known risk: as t035 (review F11)."},
+    {"utteranceId": "t037", "register": "encounter", "feature": "risk", "text": "The dizziness lasts twenty-three minutes.", "expect": [["v_vertigo", 1]], "note": "Accepted known risk (lead, 2026-10-04): typed \"twenty-three minutes\" contains the approved band \"three minutes\" (v 1), as u013 does \"two minutes\" (review F9)."},
+    {"utteranceId": "t038", "register": "encounter", "feature": "risk", "text": "The dizziness lasts twenty-four minutes.", "expect": [["v_vertigo", 1]], "note": "Accepted known risk (lead): contains \"four minutes\" (v 1) (review F9)."},
+    {"utteranceId": "t039", "register": "encounter", "feature": "risk", "text": "The spinning lasts thirty-two minutes.", "expect": [["v_vertigo", 1]], "note": "Accepted known risk (lead): contains \"two minutes\" (v 1) (review F9)."},
+    {"utteranceId": "t040", "register": "encounter", "feature": "risk", "text": "The dizziness lasts fewer than five minutes.", "expect": [["v_vertigo", 2]], "note": "Disclosed known risk: \"fewer than\" lies outside the window before \"minutes\" (v 2), so the item reads 5 min – 72 h. As a carried reply the same words are refused (R1, d058)."},
+    {"utteranceId": "w001", "register": "encounter", "feature": "R9", "text": "I get dizzy, I don't know, seconds or hours.", "expect": [], "expectHeard": ["v_vertigo"], "note": "R9 b, the review trace (F2): \"seconds\" is negated within the window (\"don't\"), so no value is taken; a band span was present, so no carry-over opens (d075) and the clinician asks. Round 2 dropped \"seconds\" and scored v 2 (5 min – 72 h) from \"hours\"."},
+    {"utteranceId": "w002", "register": "encounter", "feature": "R9", "text": "It's not a few seconds, the dizziness lasts hours", "expect": [], "expectHeard": ["v_vertigo"], "note": "R9 b: \"few seconds\" is negated within the window, so no value is taken and no carry-over opens (a disclosed recall cost; the clinician asks). Round 2 dropped the negated span and scored v 2 from \"hours\"."},
+    {"utteranceId": "w003", "register": "encounter", "feature": "R9", "text": "I'm dizzy for two days at a time", "expect": [], "expectHeard": ["v_vertigo"], "note": "R9 d: \"for two days\" (v 2, a carryExclude phrase; it counts for the disagreement test wherever it lies, round 3c) and \"days at a time\" (v 3) overlap without either containing the other, so they disagree: heard, no value, and no carry-over opens (d078). Round 2: heard too, but carry-over armed."},
+    {"utteranceId": "w004", "register": "encounter", "feature": "R9", "text": "The room spins for a few seconds when I roll over.", "expect": [["v_head", "yes"], ["v_vertigo", 1]], "note": "R9 e: one value (\"few seconds\", v 1; the contained \"seconds\" is dropped), unchanged from rounds 1 and 2. v_head = yes through \"roll over\"."},
+    {"utteranceId": "w005", "register": "encounter", "feature": "R11", "text": "I'm dizzy. It's been going on for two days.", "expect": [], "expectHeard": ["v_vertigo"], "note": "R11, the review trace (F4): the carryExclude phrase \"for two days\" lies in a sentence with no cue, so it gives no value; it is still a stated band, so the item is heard, withheld, and only a yield-only slot opens (round 3c, d077, d092; round 3 ignored it and armed carry-over). Round 2 read v 2 from the illness duration (it used the cue's line, not its sentence)."},
+    {"utteranceId": "w006", "register": "encounter", "feature": "R11", "text": "It's been going on for two days. I'm dizzy.", "expect": [], "expectHeard": ["v_vertigo"], "note": "R11: an excluded phrase in the sentence before the cue gives no value either: heard, and only a yield-only slot opens (round 3c; round 3 armed carry-over; round 2: v 2)."},
+    {"utteranceId": "w007", "register": "encounter", "feature": "R11", "text": "I'm dizzy; it's been going on for two days.", "expect": [], "expectHeard": ["v_vertigo"], "note": "R11: \";\" followed by whitespace is a sentence boundary, so the excluded phrase gives no value: heard (round 2: v 2)."},
+    {"utteranceId": "w008", "register": "encounter", "feature": "R11", "text": "I'm so dizzy! It's been going on for two days.", "expect": [], "expectHeard": ["v_vertigo"], "note": "R11: \"!\" followed by whitespace is a sentence boundary, so the excluded phrase gives no value: heard (round 2: v 2)."},
+    {"utteranceId": "w009", "register": "encounter", "feature": "R11", "text": "I'm dizzy, I told Dr. Lee it was for two days.", "expect": [], "expectHeard": ["v_vertigo"], "note": "R11, the documented boundary rule (disclosed): \"Dr. \" ends a sentence because whitespace follows the \".\", so the excluded phrase is treated as being in another sentence and gives no value: heard, and only a yield-only slot opens (round 3c; round 3 armed carry-over; round 2: v 2). The rule can only narrow where an excluded phrase supplies a value."},
+    {"utteranceId": "w010", "register": "encounter", "feature": "R11", "text": "I'm dizzy.It's been going on for two days.", "expect": [["v_vertigo", 2]], "note": "R11: a \".\" is a sentence boundary only when whitespace or the end of the text follows it, so this line is one sentence and \"for two days\" counts: v 2 (the day-range residual, as t011)."},
+    {"utteranceId": "w011", "register": "encounter", "feature": "R11", "text": "I'm dizzy. Each spell lasts about an hour.", "expect": [["v_vertigo", 2]], "note": "R11 applies to carryExclude phrases only: \"an hour\" is not excluded and keeps line scope, so it sets v 2 from the next sentence, as in rounds 1 and 2. m_dur's \"lasts\" yields."},
+    {"utteranceId": "w012", "register": "encounter", "feature": "R11", "text": "I've been dizzy for two days. Each spell lasts about an hour.", "expect": [["v_vertigo", 2]], "note": "R11: \"for two days\" counts (the cue's own sentence) and \"an hour\" counts (line scope); both are v 2, so they agree: v 2, as in rounds 1 and 2."},
+    {"utteranceId": "w013", "register": "encounter", "feature": "R11", "text": "I'm dizzy for a few seconds. It's been going on for two days.", "expect": [], "expectHeard": ["v_vertigo"], "note": "R11, relabelled in round 3c (design 05 §13.11): the excluded \"for two days\" in the next sentence gives no value but still counts for the disagreement test, so \"few seconds\" (v 1) and it disagree: heard, no value, and only a yield-only slot opens. Round 3 ignored the day range and took v 1 (the exception it disclosed, now withdrawn); round 2: heard, no value, and carry-over armed. L1 holds: a day range in another sentence never sets the value."},
+    {"utteranceId": "w014", "register": "encounter", "feature": "risk", "text": "The dizziness lasts forty-two minutes.", "expect": [["v_vertigo", 1]], "note": "Disclosed known risk (compound tens; flagged for the lead): spelled \"forty-two minutes\" contains the approved band \"two minutes\" (v 1), as u013 does for \"twenty-two\" (review F5). Typed \"42 minutes\" stays digits and reads v 2."},
+    {"utteranceId": "w015", "register": "encounter", "feature": "risk", "text": "The dizziness lasts twenty two minutes.", "expect": [["v_vertigo", 1]], "note": "Disclosed known risk (compound tens; flagged for the lead): without the hyphen, \"twenty two minutes\" also contains \"two minutes\" (v 1) (review F5)."},
+    {"utteranceId": "w016", "register": "encounter", "feature": "risk", "text": "The spinning lasts ninety-four minutes.", "expect": [["v_vertigo", 1]], "note": "Disclosed known risk (compound tens; flagged for the lead): \"ninety-four minutes\" contains \"four minutes\" (v 1), the last member of the family (review F5)."},
+    {"utteranceId": "w017", "register": "encounter", "feature": "R11", "text": "I get these dizzy spells. They last for two days at a time.", "expect": [], "expectHeard": ["v_vertigo"], "note": "Round 3c, the review trace (F-R11-OVER72, ENG-R11-1): \"for two days\" (v 2, excluded, in a sentence with no cue) overlaps \"days at a time\" (v 3) without containing it. It gives no value but still disagrees: heard, no value, yield-only slot (d093). Round 3 ignored it and recorded v 3 (Over 72 h), the F1 misread; round 2: heard, no value, and carry-over armed."},
+    {"utteranceId": "w018", "register": "encounter", "feature": "R11", "text": "I get dizzy. It lasts for two days at a time.", "expect": [], "expectHeard": ["v_vertigo"], "note": "Round 3c (F-R11-OVER72): as w017 in a shorter form; round 3 recorded v 3 (Over 72 h)."},
+    {"utteranceId": "w019", "register": "encounter", "feature": "R11", "text": "How long am I dizzy? For two days at a time.", "expect": [], "expectHeard": ["v_vertigo"], "note": "Round 3c (F-R11-OVER72): \"?\" ends the cue's sentence; the overlapping spans in the next one disagree: heard, no value. Round 3 recorded v 3 (Over 72 h)."},
+    {"utteranceId": "w020", "register": "encounter", "feature": "R11", "text": "I had vertigo for two days. Now I'm just dizzy.", "expect": [["v_vertigo", 2]], "note": "Round 3c, the review trace (ENG-R11-2): every sentence with an unnegated, ungated cue hit is a cue sentence. \"for two days\" shares a sentence with the cue \"vertigo\", so it gives v 2, as in round 2. Round 3 used only the sentence of the first-listed cue phrase found (\"dizzy\", the second sentence), ignored the day range and armed carry-over (d091)."},
+    {"utteranceId": "w021", "register": "encounter", "feature": "R11", "text": "The room spins for two days at a time. Then I feel dizzy.", "expect": [], "expectHeard": ["v_vertigo"], "note": "Round 3c (ENG-R11-2): \"room spins\" makes the first sentence a cue sentence, and its overlapping spans disagree: heard, no value. Round 3 took the cue sentence from \"dizzy\" (the second sentence), ignored \"for two days\" and recorded v 3 (Over 72 h)."},
+    {"utteranceId": "w022", "register": "encounter", "feature": "R11", "text": "I get dizzy. My mother was dizzy for two days.", "expect": [], "expectHeard": ["v_vertigo"], "note": "Round 3c: a cue hit under an attribution cue (\"my mother\") makes no cue sentence, so the mother's \"for two days\" gives no value: heard, yield-only slot. Round 3: heard, and carry-over armed; round 2 recorded v 2 (line scope)."}
+  ],
+  "dialogues": [
+    {
+      "dialogueId": "d001", "register": "encounter", "feature": "F2",
+      "note": "The reported case (spec 3.7 row 1). With the approved cues the second line is itself a heard cue, which refreshes the window (own-cue).",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "as if the world is moving around me and I'm sitting still"],
+        ["md", "How long does it last?"],
+        ["pt", "a few hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": "own-cue"},
+        null,
+        {"captures": [["v_vertigo", 2, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d002", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 2.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "about an hour"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["v_vertigo", 2, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d003", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 3 / 4.4 row 21: m_dur yields to the pending item, so the reply carries and no m_dur is captured.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "It lasts a couple of hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["v_vertigo", 2, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d004", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 4: another symptom named.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "my headaches last all day"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["m_head", 1]], "heard": [], "pending": ["v_vertigo", 1], "refused": "other-entry"}
+      ]
+    },
+    {
+      "dialogueId": "d005", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 5: anchor present, so no yield.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "my headache lasts all day"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["m_head", 1], ["m_dur", 2]], "heard": [], "pending": ["v_vertigo", 1], "refused": "other-entry"}
+      ]
+    },
+    {
+      "dialogueId": "d006", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 6: the contained span \"minutes\" is dropped.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "a couple of minutes"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["v_vertigo", 1, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d007", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 7.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "a few seconds or a few minutes"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "ambiguous"}
+      ]
+    },
+    {
+      "dialogueId": "d008", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 8.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "No just a few seconds"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "negated"}
+      ]
+    },
+    {
+      "dialogueId": "d009", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 8.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "not for hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "negated"}
+      ]
+    },
+    {
+      "dialogueId": "d010", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 9, relabelled in round 2 (R1): in a carried reply a negation cue anywhere before a band span negates it, so \"not\" negates \"hours\" as well and the reply is refused (round 1 carried v 2); since round 3 (R10) any negated span refuses the whole reply. A recall cost in the safe direction: the item stays unanswered and is still asked.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "not seconds, more like hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "negated"}
+      ]
+    },
+    {
+      "dialogueId": "d011", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 10.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "My mom gets it for hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "third-party"}
+      ]
+    },
+    {
+      "dialogueId": "d012", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 11.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "I used to have it for hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "historical"}
+      ]
+    },
+    {
+      "dialogueId": "d013", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 12.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "the nausea lasts hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["m_nausea", "yes"]], "heard": [], "pending": ["v_vertigo", 1], "refused": "other-entry"}
+      ]
+    },
+    {
+      "dialogueId": "d014", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 13: N = 2.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "Bright lights bother me"],
+        ["pt", "for hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["m_photo", "yes"]], "heard": [], "pending": ["v_vertigo", 1], "refused": "other-entry"},
+        {"captures": [["v_vertigo", 2, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d015", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 14. \"ears ring\" is now an approved v_aural phrase, so the third line is other-entry; the window expires on it.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "Bright lights bother me"],
+        ["pt", "my ears ring"],
+        ["pt", "for hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["m_photo", "yes"]], "heard": [], "pending": ["v_vertigo", 1], "refused": "other-entry"},
+        {"captures": [["v_aural", "yes"]], "heard": [], "pending": null, "refused": "other-entry"},
+        {"captures": [], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d016", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 15: physician turns do not consume.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["md", "How long?"],
+        ["md", "Minutes or hours?"],
+        ["pt", "hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        null,
+        null,
+        {"captures": [["v_vertigo", 2, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d017", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 16.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "minutes or hours?"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "question"}
+      ]
+    },
+    {
+      "dialogueId": "d018", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 17: cue inside another entry's phrase, not armed.",
+      "turns": [
+        ["pt", "I get dizzy when I stand"],
+        ["pt", "a few seconds"]
+      ],
+      "steps": [
+        {"captures": [["n_auto", "yes"]], "heard": ["v_vertigo"], "pending": null, "refused": null},
+        {"captures": [], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d019", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 18: two unresolved cues.",
+      "turns": [
+        ["pt", "I'm dizzy and my headache lasts forever"],
+        ["pt", "a couple of hours"]
+      ],
+      "steps": [
+        {"captures": [["m_head", 1]], "heard": ["v_vertigo"], "pending": null, "refused": null},
+        {"captures": [], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d020", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 19: refresh.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "I feel dizzy again"],
+        ["pt", "ok"],
+        ["pt", "hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": "own-cue"},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "no-band"},
+        {"captures": [["v_vertigo", 2, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d021", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 20, relabelled in round 2 (R3a): \"for two days\" is in v_vertigo carryExclude (day ranges are same-sentence only, lead decision L1), so it never supplies a carried value; it is the reply's only band phrase, so the reply is refused no-band (round 1 carried v 2; R10 since round 3). m_dur still yields (no anchor).",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "My attacks last for two days"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "no-band"}
+      ]
+    },
+    {
+      "dialogueId": "d022", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 21: gated cue, nothing heard or armed.",
+      "turns": [
+        ["pt", "My mom gets dizzy"],
+        ["pt", "for hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": [], "pending": null, "refused": null},
+        {"captures": [], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d023", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 21: negated cue, nothing heard or armed.",
+      "turns": [
+        ["pt", "I'm not dizzy"],
+        ["pt", "for hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": [], "pending": null, "refused": null},
+        {"captures": [], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d024", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 22.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "for several days"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["v_vertigo", 3, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d025", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 23: a denial never becomes a duration.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "I don't get dizzy for hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "own-cue"}
+      ]
+    },
+    {
+      "dialogueId": "d026", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 23.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "I'm not dizzy right now, but earlier for hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "own-cue"}
+      ]
+    },
+    {
+      "dialogueId": "d027", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 24.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "everything is spinning"],
+        ["pt", "ok"],
+        ["pt", "a few hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": "own-cue"},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "no-band"},
+        {"captures": [["v_vertigo", 2, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d028", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 25: the third patient reply comes after expiry.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "ok"],
+        ["pt", "fine"],
+        ["pt", "a few hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "no-band"},
+        {"captures": [], "heard": [], "pending": null, "refused": "no-band"},
+        {"captures": [], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d029", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 27 with the approved carryRefuse: \"ago\".",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "a few hours ago"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "refuse-phrase"}
+      ]
+    },
+    {
+      "dialogueId": "d030", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 28: m_dur yielded, so it is not a second unresolved cue.",
+      "turns": [
+        ["pt", "I get dizzy and it lasts a while"],
+        ["pt", "a few hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["v_vertigo", 2, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d031", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 29.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "it lasts forever"],
+        ["pt", "a few hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "no-band"},
+        {"captures": [["v_vertigo", 2, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d032", "register": "encounter", "feature": "F2",
+      "note": "Spec 3.7 row 30: nothing pending, per-utterance behaviour unchanged.",
+      "turns": [
+        ["pt", "It lasts a couple of hours"]
+      ],
+      "steps": [
+        {"captures": [["m_dur", 1]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d033", "register": "encounter", "feature": "F2",
+      "note": "carryRefuse \"since\".",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "for hours since Monday"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "refuse-phrase"}
+      ]
+    },
+    {
+      "dialogueId": "d034", "register": "encounter", "feature": "F2",
+      "note": "carryRefuse \"started\".",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "it started a few hours back"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "refuse-phrase"}
+      ]
+    },
+    {
+      "dialogueId": "d035", "register": "encounter", "feature": "F2",
+      "note": "carryRefuse \"began\".",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "it began hours before I called"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "refuse-phrase"}
+      ]
+    },
+    {
+      "dialogueId": "d036", "register": "encounter", "feature": "F2",
+      "note": "carryRefuse \"ago\" inside \"agony\": refused, the safe direction.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "the agony goes on for hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "refuse-phrase"}
+      ]
+    },
+    {
+      "dialogueId": "d037", "register": "encounter", "feature": "F2",
+      "note": "normalize: 20 → twenty; \"twenty minutes\" reads \"minutes\" (v 2).",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "20 minutes"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["v_vertigo", 2, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d038", "register": "encounter", "feature": "F2",
+      "note": "normalize: 2 → two; \"two minutes\" (v 1) contains \"minutes\" (v 2), which is dropped.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "about 2 minutes"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["v_vertigo", 1, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d039", "register": "encounter", "feature": "F2",
+      "note": "normalize: 3 → three gives the approved band \"for three days\". Relabelled in round 2 (R3a): that phrase is in carryExclude, so it never supplies a carried value; it is the reply's only band phrase, so the reply is refused no-band (round 1 carried v 2; R10 since round 3). In the cue's own sentence it still reads v 2 (u007).",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "for 3 days"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "no-band"}
+      ]
+    },
+    {
+      "dialogueId": "d040", "register": "encounter", "feature": "F2",
+      "note": "Armed by an approved cue (problem report wording).",
+      "turns": [
+        ["pt", "I feel unsteady"],
+        ["pt", "about half an hour"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["v_vertigo", 2, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d041", "register": "encounter", "feature": "F2",
+      "note": "Armed by an approved cue; the physician turn does not consume (turnsLeft 2 → 1 on the one patient reply). Relabelled in round 2 (R3a): \"overnight\" is in carryExclude, so it never supplies a carried value; it is the reply's only band phrase, so the reply is refused no-band (round 1 carried v 2; R10 since round 3).",
+      "turns": [
+        ["pt", "It's like the world is moving"],
+        ["md", "How long does it last?"],
+        ["pt", "overnight"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        null,
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "no-band"}
+      ]
+    },
+    {
+      "dialogueId": "d042", "register": "encounter", "feature": "F2",
+      "note": "answered: the reply states the duration with its own cue.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "The dizziness lasts a few seconds"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["v_vertigo", 1]], "heard": [], "pending": null, "refused": "answered"}
+      ]
+    },
+    {
+      "dialogueId": "d043", "register": "encounter", "feature": "F2",
+      "note": "Superseded: m_dur's cue without a value (anchored, so it does not yield) clears the slot.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "my headache lasts forever"],
+        ["pt", "a couple of hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["m_head", 1]], "heard": [], "pending": null, "refused": "other-entry"},
+        {"captures": [], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d044", "register": "encounter", "feature": "F2",
+      "note": "other-entry through an approved v_aural phrase.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "my ears feel full for hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["v_aural", "yes"]], "heard": [], "pending": ["v_vertigo", 1], "refused": "other-entry"}
+      ]
+    },
+    {
+      "dialogueId": "d045", "register": "encounter", "feature": "F2",
+      "note": "third-party through an approved third-party cue.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "my grandma gets it for hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "third-party"}
+      ]
+    },
+    {
+      "dialogueId": "d046", "register": "encounter", "feature": "F2",
+      "note": "\"for a week\" was struck: no band.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "for a week"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "no-band"}
+      ]
+    },
+    {
+      "dialogueId": "d047", "register": "encounter", "feature": "F2",
+      "note": "\"a few minutes\" was struck; \"minutes\" (v 2) still reads it (Q15, existing behaviour).",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "a few minutes"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["v_vertigo", 2, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d048", "register": "encounter", "feature": "F2",
+      "note": "Approved v 3 band.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "days at a time"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["v_vertigo", 3, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d049", "register": "encounter", "feature": "F2",
+      "note": "Approved v 1 band.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "a split second"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["v_vertigo", 1, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d050", "register": "encounter", "feature": "F2",
+      "note": "The onset sentence holds no v_vertigo band phrase (\"two days\" is none), so \"started\" and \"ago\" withhold nothing there and the cue arms carry-over as usual (R9 f since round 3); the reply carries v 2. A carryRefuse phrase refuses a carried reply, and withholds a duration found in the cue's own utterance, after which nothing arms (d070).",
+      "turns": [
+        ["pt", "I started getting dizzy two days ago"],
+        ["pt", "It lasts about an hour"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["v_vertigo", 2, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d051", "register": "encounter", "feature": "F2",
+      "note": "other-entry through the i_days cue \"every day\".",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "every day for hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["i_days", 3]], "heard": [], "pending": ["v_vertigo", 1], "refused": "other-entry"}
+      ]
+    },
+    {
+      "dialogueId": "d052", "register": "encounter", "feature": "F2",
+      "note": "answered with an approved cue.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "I lose my balance for a few seconds"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["v_vertigo", 1]], "heard": [], "pending": null, "refused": "answered"}
+      ]
+    },
+    {
+      "dialogueId": "d053", "register": "encounter", "feature": "F2",
+      "note": "own-cue with an approved cue: a denial never becomes a duration.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "I don't feel unsteady for hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "own-cue"}
+      ]
+    },
+    {
+      "dialogueId": "d054", "register": "encounter", "feature": "R1",
+      "note": "R1: \"n't\" lies outside the 14-character window but before the band span, so the reply is refused. Round 1 carried v 2 (review F2); m_dur's cue \"last for\" is itself negated.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "It doesn't really last for hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "negated"}
+      ]
+    },
+    {
+      "dialogueId": "d055", "register": "encounter", "feature": "R1",
+      "note": "R1: \"no \" and \"n't\" before \"hours\": refused (round 1 carried v 2, review F2).",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "No, I don't think it's hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "negated"}
+      ]
+    },
+    {
+      "dialogueId": "d056", "register": "encounter", "feature": "R1",
+      "note": "R1: the hedge \"not sure\" holds the negation cue \"not \", so the reply is refused (round 1 carried v 2, review F2). A hedge without a negation cue is still carried (d067).",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "I'm not sure it's even hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "negated"}
+      ]
+    },
+    {
+      "dialogueId": "d057", "register": "encounter", "feature": "R1",
+      "note": "R1 and R4: the window is measured on the folded text, where \"not \" stays next to \"minutes\" (round 1 spelled 10 and 15 first, pushed \"not\" out of the window and carried v 2; review F5).",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "No, not 10 or 15 minutes"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "negated"}
+      ]
+    },
+    {
+      "dialogueId": "d058", "register": "encounter", "feature": "R1",
+      "note": "R1: \"fewer than\" before \"minutes\" refuses the carry. In the cue's own sentence the same words read v 2 (known risk, t040).",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "fewer than five minutes"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "negated"}
+      ]
+    },
+    {
+      "dialogueId": "d059", "register": "encounter", "feature": "R3a",
+      "note": "R3a, the review trace (F1): the reply to the module's own r_dur question is an illness duration. \"for two days\" is in carryExclude, so it never supplies a carried value; it is the reply's only band phrase, so the reply is refused no-band and v_vertigo stays heard (round 1 carried v 2; R10 since round 3).",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["md", "How long has this been going on?"],
+        ["pt", "For two days."]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        null,
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "no-band"}
+      ]
+    },
+    {
+      "dialogueId": "d060", "register": "encounter", "feature": "R3a",
+      "note": "R3a: \"for three days\" is in carryExclude (round 1 carried v 2).",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["md", "How long has this been going on?"],
+        ["pt", "For three days."]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        null,
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "no-band"}
+      ]
+    },
+    {
+      "dialogueId": "d061", "register": "encounter", "feature": "R3a",
+      "note": "R3a: \"about a day\" is in carryExclude (round 1 carried v 2).",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "about a day"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "no-band"}
+      ]
+    },
+    {
+      "dialogueId": "d062", "register": "encounter", "feature": "R3a",
+      "note": "R3a: \"for a day or two\" is in carryExclude (round 1 carried v 2).",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "for a day or two"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "no-band"}
+      ]
+    },
+    {
+      "dialogueId": "d063", "register": "encounter", "feature": "R3a",
+      "note": "R3a: \"for a couple of days\" is in carryExclude (round 1 carried v 2).",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "for a couple of days"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "no-band"}
+      ]
+    },
+    {
+      "dialogueId": "d064", "register": "encounter", "feature": "R3a",
+      "note": "R3a: \"half a day\" is not excluded, so it still carries v 2.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "half a day"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["v_vertigo", 2, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d065", "register": "encounter", "feature": "R3a",
+      "note": "R3a with R10 (round 3): the excluded \"for two days\" never supplies the value, but it still counts for the negation and disagreement tests; it agrees with \"an hour\" (both v 2), so \"an hour\" carries v 2 (the same label as round 2, which did not collect it). Compare d073, where the two disagree. m_dur yields to the pending item.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "For two days, and each spell lasts about an hour."]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["v_vertigo", 2, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d066", "register": "encounter", "feature": "risk",
+      "note": "Disclosed known risk: the pre-existing v 3 band \"all week\" is not excluded, so an illness duration given as a reply is still carried.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["md", "How long has this been going on?"],
+        ["pt", "All week."]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        null,
+        {"captures": [["v_vertigo", 3, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d067", "register": "encounter", "feature": "risk",
+      "note": "Disclosed known risk: a hedge without a negation cue is carried as a definite duration.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "maybe a few hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["v_vertigo", 2, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d068", "register": "encounter", "feature": "R4",
+      "note": "R4: 10 no longer reaches the i_days cue \"ten days\", so the reply is no other entry and has no v_vertigo band (round 1: refused other-entry and recorded i_days = 10+; review ENG-1).",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "10 days"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "no-band"}
+      ]
+    },
+    {
+      "dialogueId": "d069", "register": "encounter", "feature": "R2",
+      "note": "R2, relabelled in round 3 (R9 d and f) and in round 3b: the spans disagree, so no value is taken, and because a band span was present no carry-over opens from the utterance: it arms only a yield-only slot, which keeps an entry that yields to v_vertigo yielding but is never carried into, so \"for hours\" is not carried and the clinician asks (round 3 armed no slot; round 2 armed carry-over and carried v 2).",
+      "turns": [
+        ["pt", "It hit me in a split second and the spinning lasted for hours"],
+        ["pt", "for hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2, "yield-only"], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1, "yield-only"], "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d070", "register": "encounter", "feature": "R3b",
+      "note": "R3b, relabelled in round 3 (R9 c and f) and in round 3b: the onset guard withholds the duration of the onset sentence (\"about a day\" with \"started\" and \"ago\"), and because a band span was present no carry-over opens, only a yield-only slot (round 3 armed no slot), so \"It lasts about an hour\" is not carried (round 2 armed carry-over and carried v 2). A disclosed recall cost: the clinician asks. Compare d050, where the onset sentence holds no band phrase and the cue arms as usual.",
+      "turns": [
+        ["pt", "The dizziness started about a day ago"],
+        ["pt", "It lasts about an hour"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2, "yield-only"], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1, "yield-only"], "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d071", "register": "encounter", "feature": "F2",
+      "note": "A physician turn between a used reply and the last allowed reply does not consume it (review F3, tests; the render-scribe transcript of round 2).",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "ok"],
+        ["md", "How long does it last?"],
+        ["pt", "a few hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "no-band"},
+        null,
+        {"captures": [["v_vertigo", 2, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d072", "register": "encounter", "feature": "R5",
+      "note": "R5, run as the Scribe runs it: v_vertigo is answered on the first line; the second line re-arms the slot (its heard tag is dropped because the item is answered); on the third line the slot is passed with {carry: false}, so m_dur still yields and nothing is carried or recorded (round 1 dropped the slot of an answered item and recorded m_dur = Under 4 h; review UI-1).",
+      "turns": [
+        ["pt", "The dizziness lasts a few seconds"],
+        ["pt", "I feel dizzy again"],
+        ["pt", "it lasts a couple of hours"]
+      ],
+      "steps": [
+        {"captures": [["v_vertigo", 1]], "heard": [], "pending": null, "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d073", "register": "encounter", "feature": "R10",
+      "note": "R10, the review trace (F1): the excluded \"for two days\" (v 2) never supplies a value but still counts for the disagreement test, and it disagrees with \"days at a time\" (v 3), so the reply is refused as ambiguous and v_vertigo stays heard. Round 2 did not collect the excluded phrase and carried v 3 (Over 72 h); round 1 refused the reply as ambiguous.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "For two days at a time."]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "ambiguous"}
+      ]
+    },
+    {
+      "dialogueId": "d074", "register": "encounter", "feature": "R10",
+      "note": "R10, the review trace (F2): \"not \" before \"hours\" negates it (R1), and any negated span now refuses the whole reply. Round 2 dropped \"hours\" and carried v 1 from \"few seconds\"; round 1 refused the reply as ambiguous.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "A few seconds, I'm not sure, maybe hours."]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "negated"}
+      ]
+    },
+    {
+      "dialogueId": "d075", "register": "encounter", "feature": "R9",
+      "note": "R9 b and f, the review trace (F2), relabelled in round 3b: \"seconds\" is negated within the window, so no value is taken; a band span was present, so no carry-over opens, only a yield-only slot (round 3 armed no slot), and the next reply is not carried. Round 2 scored v 2 directly.",
+      "turns": [
+        ["pt", "I get dizzy, I don't know, seconds or hours."],
+        ["pt", "a few hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2, "yield-only"], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1, "yield-only"], "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d076", "register": "encounter", "feature": "R9",
+      "note": "R9 c and f, the review trace (F3), relabelled in round 3b: \"since\" withholds the duration \"hours\", and because a band span was present no carry-over opens: the line arms only a yield-only slot (round 3 armed no slot), the physician turn consumes nothing, and \"All week.\" carries nothing, so the clinician asks. Round 2 armed carry-over and carried v 3 (Over 72 h) from \"All week.\"; round 1 recorded v 2 directly.",
+      "turns": [
+        ["pt", "I've been dizzy since Monday, and it lasts hours."],
+        ["md", "How long has this been going on?"],
+        ["pt", "All week."]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2, "yield-only"], "refused": null},
+        null,
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1, "yield-only"], "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d077", "register": "encounter", "feature": "R11",
+      "note": "R11, the review trace (F4), relabelled in round 3c (design 05 §13.11): the excluded phrase in the second sentence gives no value but is a stated band, so the first line is heard, withheld, and opens only a yield-only slot; the physician turn does not consume, and \"About an hour.\" is not carried (a recall cost: the clinician enters it). Round 3 ignored the day range, armed carry-over and carried v 2; round 2 read v 2 directly from the illness duration \"for two days\".",
+      "turns": [
+        ["pt", "I'm dizzy. It's been going on for two days."],
+        ["md", "How long does each spell last?"],
+        ["pt", "About an hour."]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2, "yield-only"], "refused": null},
+        null,
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1, "yield-only"], "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d078", "register": "encounter", "feature": "R9",
+      "note": "R9 d and f, relabelled in round 3b: the spans disagree and a band span was present, so no carry-over opens, only a yield-only slot (round 3 armed no slot), and \"a few hours\" is not carried (round 2 armed carry-over and carried v 2).",
+      "turns": [
+        ["pt", "I'm dizzy for two days at a time"],
+        ["pt", "a few hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2, "yield-only"], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1, "yield-only"], "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d079", "register": "encounter", "feature": "R9",
+      "note": "R9 b and f, relabelled in round 3b: \"under five minutes\" is negated, so the value is withheld and no carry-over opens, only a yield-only slot (round 3 armed no slot); \"a few hours\" is not carried (round 2 scored v 2 directly; round 1 v 1).",
+      "turns": [
+        ["pt", "The dizziness is never under five minutes, it lasts hours"],
+        ["pt", "a few hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2, "yield-only"], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1, "yield-only"], "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d080", "register": "encounter", "feature": "risk",
+      "note": "Disclosed known risk (review ENG-R1-1): an unrelated negation (\"without\", 30 characters before \"hours\") refuses the carried reply (R1, kept by R10). A recall cost: nothing is recorded and v_vertigo stays heard; round 1 carried v 2.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "It comes on without warning and lasts for hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "negated"}
+      ]
+    },
+    {
+      "dialogueId": "d081", "register": "encounter", "feature": "risk",
+      "note": "Disclosed known risk (review ENG-R1-1): the hedge \"can't remember\" holds the negation cue \"n't\", so the reply is refused (round 1 carried v 2).",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "I can't remember exactly, maybe a few hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "negated"}
+      ]
+    },
+    {
+      "dialogueId": "d082", "register": "encounter", "feature": "risk",
+      "note": "Disclosed known risk (review ENG-R1-1): a voice transcript with no comma; \"no \" before the band refuses the reply (round 1 carried v 2).",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "no it usually lasts for hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "negated"}
+      ]
+    },
+    {
+      "dialogueId": "d083", "register": "encounter", "feature": "R10",
+      "note": "R10: the excluded \"for two days\" is negated, and any negated span refuses the whole reply, although \"a few hours\" is not negated. Round 2 did not collect the excluded phrase and carried v 2. A disclosed recall cost of the removal-only rule; nothing is recorded.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "A few hours, not for two days."]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1], "refused": "negated"}
+      ]
+    },
+    {
+      "dialogueId": "d084", "register": "encounter", "feature": "F2",
+      "note": "Unchanged by round 3: a heard cue with no band span arms carry-over, and the reply supplies the duration (v 2 carried).",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "a few hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["v_vertigo", 2, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d085", "register": "encounter", "feature": "R9",
+      "note": "R9 f with a slot already open, relabelled in round 3b and again in round 3c: the second line names the item's own cue (refused own-cue) and states a duration that is withheld (\"since\"), so the slot turns yield-only instead of closing (round 3 closed it) and is refreshed with the full carry (round 3c; round 3b kept its one remaining reply), and \"All week.\" is not carried. Left a normal slot, it would carry \"All week.\" as v 3 (Over 72 h), the F3 path in the other order; round 2 did so.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "I've been dizzy since Monday, and it lasts hours."],
+        ["pt", "All week."]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2, "yield-only"], "refused": "own-cue"},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1, "yield-only"], "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d086", "register": "encounter", "feature": "R9",
+      "note": "Round 3b, the defect (design 05 §13.10): the spans disagree, so v_vertigo is heard with no value and no carry-over opens; the line arms a yield-only slot, so on the next line m_dur still yields to the pending v_vertigo and nothing is carried: no m_dur and no v_vertigo value. Round 3 left no slot and recorded m_dur = Under 4 h, the misattribution the yield exists to stop; round 2 carried v 2; round 1 recorded v 1, then m_dur = Under 4 h.",
+      "turns": [
+        ["pt", "It hit me in a split second and the spinning lasted for hours"],
+        ["pt", "it lasts a couple of hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2, "yield-only"], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1, "yield-only"], "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d087", "register": "encounter", "feature": "R9",
+      "note": "Round 3b (§13.10): \"since\" withholds the duration, so no carry-over opens; the yield-only slot keeps m_dur yielding on the next line and nothing is carried. Round 3 recorded m_dur = Under 4 h; round 2 carried v 2; round 1 recorded v 2, then m_dur = Under 4 h.",
+      "turns": [
+        ["pt", "I've been dizzy since Monday, and it lasts hours."],
+        ["pt", "it lasts a couple of hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2, "yield-only"], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1, "yield-only"], "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d088", "register": "encounter", "feature": "R9",
+      "note": "Round 3b, relabelled in round 3c: the withheld second line turns the open slot yield-only (refused own-cue) and refreshes it with the full carry (round 3b kept its one remaining reply), which keeps m_dur yielding on the third line; nothing is carried. Round 3 closed the slot on the second line and recorded m_dur = Under 4 h on the third.",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "I've been dizzy since Monday, and it lasts hours."],
+        ["pt", "it lasts a couple of hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2, "yield-only"], "refused": "own-cue"},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1, "yield-only"], "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d089", "register": "encounter", "feature": "R9",
+      "note": "Round 3b, relabelled in round 3c (design 05 §13.11, review F-3B-REMAINING-COUNT): the slot turned yield-only on the second line is refreshed with the full carry, so it is still open after \"ok\" and m_dur yields on the last line; nothing is recorded. Round 3b kept only the remaining count, the slot expired on \"ok\" and m_dur = Under 4 h was recorded where round 2 suppressed it (round 2 carried v 2 on the last line).",
+      "turns": [
+        ["pt", "I'm feeling really dizzy"],
+        ["pt", "I've been dizzy since Monday, and it lasts hours."],
+        ["pt", "ok"],
+        ["pt", "it lasts a couple of hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2, "yield-only"], "refused": "own-cue"},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1, "yield-only"], "refused": null},
+        {"captures": [], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d090", "register": "encounter", "feature": "R9",
+      "note": "Round 3b: after a withheld line, the cue heard again with no band re-arms a normal slot over the yield-only one, and the reply carries v 2 (5 min – 72 h).",
+      "turns": [
+        ["pt", "It hit me in a split second and the spinning lasted for hours"],
+        ["pt", "I feel dizzy again"],
+        ["pt", "a few hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2, "yield-only"], "refused": null},
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2], "refused": null},
+        {"captures": [["v_vertigo", 2, "carry"]], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d091", "register": "encounter", "feature": "R11",
+      "note": "Round 3c, the review trace (ENG-R11-2): \"for two days\" shares a sentence with the cue \"vertigo\", so it gives v 2, as in round 2, and no slot opens; \"All week.\" is not carried. Round 3 took the cue sentence from \"dizzy\" alone, ignored the day range, armed carry-over and carried \"All week.\" as v 3 (Over 72 h).",
+      "turns": [
+        ["pt", "I had vertigo for two days. Now I'm just dizzy."],
+        ["pt", "All week."]
+      ],
+      "steps": [
+        {"captures": [["v_vertigo", 2]], "heard": [], "pending": null, "refused": null},
+        {"captures": [], "heard": [], "pending": null, "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d092", "register": "encounter", "feature": "R11",
+      "note": "Round 3c (review F-R11-OVER72; the residual of round 3's R11): the day range in the other sentence opens only a yield-only slot, so \"All week.\" is not carried. Round 3 armed carry-over and carried it as v 3 (Over 72 h); round 2 read v 2 from the first line.",
+      "turns": [
+        ["pt", "I'm dizzy. It's been going on for two days."],
+        ["pt", "All week."]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2, "yield-only"], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1, "yield-only"], "refused": null}
+      ]
+    },
+    {
+      "dialogueId": "d093", "register": "encounter", "feature": "R11",
+      "note": "Round 3c (review F-R11-OVER72): the overlapping \"for two days\" and \"days at a time\" disagree across the sentence boundary, so the first line is heard with no value and opens only a yield-only slot; \"a few hours\" is not carried. Round 3 recorded v 3 (Over 72 h) on the first line.",
+      "turns": [
+        ["pt", "I get these dizzy spells. They last for two days at a time."],
+        ["pt", "a few hours"]
+      ],
+      "steps": [
+        {"captures": [], "heard": ["v_vertigo"], "pending": ["v_vertigo", 2, "yield-only"], "refused": null},
+        {"captures": [], "heard": [], "pending": ["v_vertigo", 1, "yield-only"], "refused": null}
+      ]
+    }
+  ]
+}

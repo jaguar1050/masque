@@ -59,10 +59,10 @@
 
   <div id="masque-status">Loading Patient Companion&hellip;</div>
 
-  <div class="masque-proto">Prototype &middot; not for clinical use</div>
+  <div class="masque-proto" lang="en">Prototype &middot; not for clinical use</div>
 
   <noscript>
-    <p style="padding:24px;font:15px/1.6 -apple-system,sans-serif;color:#6b5744">
+    <p lang="en" style="padding:24px;font:15px/1.6 -apple-system,sans-serif;color:#6b5744">
       The Patient Companion is a React application and needs JavaScript enabled.
       Prototype &middot; not for clinical use.
     </p>
@@ -72,7 +72,7 @@
     // The loader URL carries the release (?v=), so a browser that cached an older loader fetches
     // this one. A loader that cannot be imported, or lacks a function this page needs, is shown
     // as an error instead of an endless "Loading…".
-    const LOADER = './assets/masque-loader.js?v=0.4.0';
+    const LOADER = './assets/masque-loader.js?v=0.4.7';
     const fail = (err) => {
       const status = document.getElementById('masque-status');
       if (status) status.remove();

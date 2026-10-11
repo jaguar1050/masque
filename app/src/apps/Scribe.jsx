@@ -2,21 +2,22 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import {
   Mic, Square, Play, Pause, RotateCcw, ArrowRight, Stethoscope,
   Activity, ShieldCheck, TriangleAlert, HelpCircle, Check, Copy, FileJson,
-  FileText, Sparkles, User, MessageSquare, ChevronDown, Info, Plus, Download
+  FileText, Sparkles, User, MessageSquare, ChevronDown, Info, Plus, Download, ClipboardList
 } from "lucide-react";
 import { createVoiceCapture, isVoiceSupported, isSecureForMicrophone, VOICE_ENGINE, VOICE_LANG, VOICE_ERRORS } from "../MASQUE_Voice.js";
 import { computeScore } from "../engine/scoring.js";
 import { createExtractor } from "../engine/extraction.js";
 import { liveProbes, truncateProbes } from "../engine/probes.js";
-import { ingestCaptures, rankSuggestions, captureLabel, itemShort, buildNote } from "../engine/scribe.js";
+import { ingestCaptures, rankSuggestions, captureLabel, itemShort, buildNote, heardPrompts, askNextSections } from "../engine/scribe.js";
 import { derivePhenotype, activeFlagsOf, buildRoutingState, routingRecs, gapSignals } from "../engine/rules.js";
 import { routingGate, signGate } from "../engine/gates.js";
 import { buildBundle, buildQuestionnaire, buildCdsHooks, buildDataDictionary } from "../engine/fhir.js";
 import { screenToCohortRow, rowsToCsv } from "../engine/cohort.js";
 import { downloadText, downloadJsonFile, fhirHtml } from "../engine/download.js";
+import { EMR_UI, buildEmrTemplate, emrFrameDoc } from "../engine/emr.js";
 import { scopeCss } from "../engine/css.js";
 import { richText } from "../engine/patient.js";
-import { PROBE_KIND, LOWEST_BAND, INDETERMINATE } from "../engine/vocab.js";
+import { PROBE_KIND, LOWEST_BAND, INDETERMINATE, CAPTURE_KIND } from "../engine/vocab.js";
 import { APP_VERSION, SITE } from "../engine/policy.js";
 import { ProvenanceBadge, TabNote, useOptionalSession } from "../ui/common.jsx";
 
@@ -26,13 +27,19 @@ import { ProvenanceBadge, TabNote, useOptionalSession } from "../ui/common.jsx";
     structure, the class names and the CSS are the baseline's; every module-specific value
     comes from the bound `module` prop and every computation from the engine:
 
-      capture       createExtractor(module.lexicon) → ingestCaptures (raise-only red flags,
-                    first-wins items); interim speech is only ever previewed
-      suggestions   rankSuggestions (the pool widens while the screen is not scorable)
+      capture       createExtractor(module.lexicon).extractInContext → ingestCaptures
+                    (raise-only red flags, first-wins items, heard captures ignored); interim
+                    speech is only ever previewed
+      suggestions   rankSuggestions (the pool widens while the screen is not scorable; items
+                    shown as heard prompts are excluded)
       probes        liveProbes / truncateProbes over module.logic.probes.list
+      ask next      askNextSections: Safety probes, then heardPrompts, then the other probes
       routing       routingGate → buildRoutingState → routingRecs; a throwing phenotype or
                     routing rule withholds routing behind the engine rule-error card
       note, bundle  buildNote / buildBundle on the scribe surface; signGate gates signing
+      EMR template  buildEmrTemplate on the scribe surface (release 0.4.3): the "EMR Friendly
+                    Template" button next to Sign to chart toggles a panel (EmrPanel) with the
+                    plain-text consult-note template in a script-free iframe
 
     Microphone. The browser's speech recognition, through the shared voice module, which is
     imported unchanged: a getUserMedia level meter, interim and final results, a speaker
@@ -47,6 +54,19 @@ import { ProvenanceBadge, TabNote, useOptionalSession } from "../ui/common.jsx";
     and Step are hidden; without probes the probe rail is empty.
 
     Skip writes nothing: a skipped item stays unanswered and keeps its headroom.
+
+    Heard and carry-over (design 05 §2, §3). Every patient line, typed, demo or voice, goes
+    through ingest, which calls extractInContext with the one pending slot (pendingRef, a ref,
+    never state). A cue heard without its value records nothing: it shows as a dashed heard tag
+    on its bubble (kept for that line) and as a Heard card in Ask next, after the Safety probes
+    and before the Re-ask probes, until the item is answered or skipped. The entry's next
+    patient replies, up to its carry, may supply the value; that reply's tag says "follow-up
+    to" the cue. Physician lines, blank segments and interim text never consume a reply. An
+    item answered or skipped meanwhile keeps its slot, read with { carry: false }: the slot
+    still counts replies down and still holds yields for the rest of its window, but nothing
+    is carried into it (a skipped item is never carried). A heard capture for an item already
+    answered is dropped before storing.
+    The heard list is derived from the transcript; Reset and a module change clear the slot.
 
     Never names a module id, item, flag, context id, phenotype value or brand (t-ids).
 */
@@ -181,10 +201,11 @@ details.about[open] .chev{transform:rotate(180deg)}.chev{transition:.2s}
 `;
 
 // New chrome only (non-clinical): the panel link card, the lexicon / secure-context
-// notices and the probe evaluation-error tag. Classes carry the sa-scribe- prefix. The grid
-// override lets the two cards shrink below their content's min-content width (minmax(0,1fr),
-// min-width:0), so a long FHIR line scrolls inside its <pre> instead of widening the card past
-// the panel. (The scroll boxes take keyboard focus; the baseline :focus-visible ring covers them.)
+// notices, the probe evaluation-error tag and the heard tag and card (design 05 §2.2).
+// Classes carry the sa-scribe- prefix. The grid override lets the two cards shrink below
+// their content's min-content width (minmax(0,1fr), min-width:0), so a long FHIR line scrolls
+// inside its <pre> instead of widening the card past the panel. (The scroll boxes take
+// keyboard focus; the baseline :focus-visible ring covers them.)
 const SCRIBE_EXTRA_CSS = `
 .sa-scribe-link{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:14px}
 .sa-scribe-link .sa-scribe-linktext{flex:1 1 260px;font-size:12.5px;color:#33474A}
@@ -194,6 +215,12 @@ const SCRIBE_EXTRA_CSS = `
 .grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .grid>*{min-width:0}
 @media (max-width:820px){.grid{grid-template-columns:minmax(0,1fr)}}
+.sa-scribe-heardtag{background:#fff;border:1px dashed var(--amber);border-radius:6px;padding:2px 6px;color:#7A4E12}
+.sa-scribe-heardtag.pending{opacity:.72}
+.prompt.sa-scribe-heard{border-left-style:dashed}
+.sa-scribe-emr{margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:11px;background:#F7FAF9}
+.sa-scribe-emr-hint{margin:0 0 8px;font-size:11.5px;color:var(--muted);line-height:1.45}
+.sa-scribe-emr-frame{display:block;box-sizing:border-box;width:100%;height:380px;border:1px solid var(--line);border-radius:10px;background:#fff}
 `;
 
 const CSS = scopeCss(SCRIBE_CSS, ".sa-scribe") + scopeCss(SCRIBE_EXTRA_CSS, ".sa-scribe");
@@ -202,6 +229,9 @@ const CSS = scopeCss(SCRIBE_CSS, ".sa-scribe") + scopeCss(SCRIBE_EXTRA_CSS, ".sa
 const NO_LEXICON_NOTICE = "This module has no extraction lexicon: speech and typed statements cannot be captured into the screen. Use the prompts.";
 const MIC_OFF_TITLE = "The microphone is off while a patient-facing view is shown.";
 const LIVE_STATES = ["starting", "listening", "restarting"];
+// The Ask next group of items the patient named without a value (design 05 §2.1).
+const HEARD_LABEL = "Heard";
+const HEARD_CAPTION = " · named by the patient, value not stated — nothing is recorded until it is answered";
 
 const BAND_META = {
   low: { c: "var(--green)", bg: "var(--greenbg)", l: "Low" },
@@ -213,6 +243,20 @@ const BAND_META = {
 const RULE_ERROR_CARD_ID = "engine:rule-error";
 
 function plural(n, one, many) { return `${n} ${n === 1 ? one : many}`; }
+
+/**
+ * The transcript tag stored on a line for one engine capture (design 05 §2.2):
+ *   heard  {id, kind: "heard", cueText}
+ *   carry  {id, value, kind: "item", via: "carry", fromCueText}   (the cue text it followed up)
+ *   other  {id, value, kind}, as before
+ */
+function toTag(c) {
+  if (c.kind === CAPTURE_KIND.HEARD) return { id: c.id, kind: CAPTURE_KIND.HEARD, cueText: c.cueText };
+  if (c.via === "carry") {
+    return { id: c.id, value: c.value, kind: CAPTURE_KIND.ITEM, via: "carry", fromCueText: c.carriedFrom ? c.carriedFrom.cueText : undefined };
+  }
+  return { id: c.id, value: c.value, kind: c.kind };
+}
 
 /** `**bold**` (the only markup in module data) as React nodes. */
 function Rich({ text }) {
@@ -239,7 +283,7 @@ export default function Scribe({
   const copy = module.copy || {};
   const scribeCopy = copy.scribe || {};
 
-  const [transcript, setTranscript] = useState([]);   // {id, role, text, src, caps:[{id,value,kind}]}
+  const [transcript, setTranscript] = useState([]);   // {id, role, text, src, caps:[toTag(capture)]}
   const [cursor, setCursor] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [answers, setAnswers] = useState({});
@@ -254,11 +298,19 @@ export default function Scribe({
   const [probeNotes, setProbeNotes] = useState([]);
   const [input, setInput] = useState("");
   const [view, setView] = useState("safety");          // safety | prompts | note | fhir
+  const [showEmr, setShowEmr] = useState(false);       // the EMR Friendly Template panel (0.4.3)
   const [toast, setToast] = useState("");
   const scrollRef = useRef(null);
   // The session store (the shell's SessionProvider), when there is one: captured rows are
   // mirrored there through onCapture, and Reset clears them there too.
   const session = useOptionalSession();
+
+  // Carry-over (design 05 §3.1, §3.4): the one pending slot, a ref because it never renders by
+  // itself, and synchronous mirrors of the answers and skips, so back-to-back voice finals read
+  // and write the slot in order.
+  const pendingRef = useRef(null);
+  const answersRef = useRef(answers); answersRef.current = answers;
+  const skippedRef = useRef(skipped); skippedRef.current = skipped;
 
   // native voice capture — see the shared voice module
   const [voiceState, setVoiceState] = useState("idle"); // idle | starting | listening | restarting | stopped | error
@@ -289,6 +341,8 @@ export default function Scribe({
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(""), 2400); return () => clearTimeout(t); }, [toast]);
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [transcript, interim]);
   useEffect(() => { if (!pulse.at) return; const t = setTimeout(() => setPulse({ domains: [], at: 0 }), 1800); return () => clearTimeout(t); }, [pulse]);
+  // A module change clears the pending slot (the workspace remounts as well; this is defensive).
+  useEffect(() => { pendingRef.current = null; }, [module]);
 
   // Unmount (a module switch remounts the workspace): the capture is destroyed, and the host is
   // told, because this component cannot report its state after it is gone.
@@ -318,12 +372,34 @@ export default function Scribe({
 
   useEffect(() => { if (cb.current.onVoiceState) cb.current.onVoiceState({ state: voiceState }); }, [voiceState]);
 
+  /** The pending slot and the options to read the next patient line with (read-only). An item
+   *  answered or skipped since keeps its slot, which still counts replies down and still counts
+   *  as present for yields, but it is read with { carry: false }: nothing is carried into it
+   *  and no refusal is recorded (design 05 §12.6). */
+  function pendingCall() {
+    const slot = pendingRef.current;
+    const closed = !!slot && (answersRef.current[slot.id] !== undefined || !!skippedRef.current[slot.id]);
+    return { slot, opts: { carry: !closed } };
+  }
+
   // ingest one utterance: run extraction, update state, return captures.
   // src records where the utterance came from — demo | typed | voice — for the transcript only;
-  // capture rules are identical for all three.
+  // capture rules are identical for all three. A patient line is read in the context of the
+  // pending slot; a physician line never reaches the extractor and leaves the slot untouched.
   function ingest(role, text, src = "demo") {
-    const caps = role === "pt" && extractor ? extractor.extract(text) : [];
-    if (caps.length) {
+    let caps = [];
+    if (role === "pt" && extractor) {
+      const { slot, opts } = pendingCall();
+      const r = extractor.extractInContext(text, slot, opts);
+      // A heard capture for an item already answered is dropped: "not stated" beside an answer
+      // on the record would mislead. The returned slot is kept even when its item is answered
+      // or skipped, so a yield it holds lasts the rest of its window; it never carries a value
+      // into a closed item, because the next line is read with { carry: false }.
+      caps = r.captures.filter(c => !(c.kind === CAPTURE_KIND.HEARD && answersRef.current[c.id] !== undefined));
+      pendingRef.current = r.pending;
+    }
+    // Heard captures record nothing, so a line that only heard a cue leaves the state as it is.
+    if (caps.some(c => c.kind !== CAPTURE_KIND.HEARD)) {
       const touched = [...new Set(ingestCaptures({}, caps).touchedDomainItemIds.map(id => module.itemById[id]?.domain).filter(Boolean))];
       if (touched.length) setPulse({ domains: touched, at: Date.now() });
       // Items first-wins; context overwrites; red flags only ever raised and marked as heard —
@@ -331,8 +407,10 @@ export default function Scribe({
       setAnswers(a => ingestCaptures({ answers: a }, caps).answers);
       setCtx(c => ingestCaptures({ ctx: c }, caps).ctx);
       setRf(v => ingestCaptures({ rf: v }, caps).rf);
+      // The synchronous mirror, read by the next ingest before React re-renders.
+      answersRef.current = ingestCaptures({ answers: answersRef.current }, caps).answers;
     }
-    setTranscript(t => [...t, { id: t.length, role, text, src, caps: caps.map(c => ({ id: c.id, value: c.value, kind: c.kind })) }]);
+    setTranscript(t => [...t, { id: t.length, role, text, src, caps: caps.map(toTag) }]);
   }
   ingestRef.current = ingest;
 
@@ -365,10 +443,15 @@ export default function Scribe({
   function stopVoice() { if (voiceRef.current) voiceRef.current.stop(); }
 
   // What the extractor would capture from the words still being recognised. Preview only —
-  // nothing is written until the recogniser commits the segment.
-  const previewCaps = useMemo(
-    () => (interim && speaker === "pt" && extractor) ? extractor.extract(interim).map(c => ({ id: c.id, value: c.value, kind: c.kind })) : [],
-    [interim, speaker, extractor]);
+  // nothing is written until the recogniser commits the segment. The returned slot is
+  // discarded: interim text never arms, consumes or clears the carry-over window. The
+  // transcript dependency re-reads the slot after each committed line.
+  const previewCaps = useMemo(() => {
+    if (!(interim && speaker === "pt" && extractor)) return [];
+    const { slot, opts } = pendingCall();
+    return extractor.extractInContext(interim, slot, opts).captures
+      .filter(c => !(c.kind === CAPTURE_KIND.HEARD && answersRef.current[c.id] !== undefined)).map(toTag);
+  }, [interim, speaker, extractor, answers, skipped, transcript]); // eslint-disable-line
 
   // playback
   useEffect(() => {
@@ -389,7 +472,8 @@ export default function Scribe({
     stopVoice(); setInterim(""); setVoiceErr(null);
     setTranscript([]); setCursor(0); setPlaying(false); setAnswers({}); setCtx({});
     setVmp({}); setAsked({}); setSkipped({}); setRf({}); setSafetyReviewed(false); setView("safety");
-    setProbeAns({}); setProbeNotes([]); setCohort([]);
+    setProbeAns({}); setProbeNotes([]); setCohort([]); setShowEmr(false);
+    pendingRef.current = null; answersRef.current = {}; skippedRef.current = {};
     // The captured rows leave the session as well: Research and the module-switch
     // confirmation must not keep listing rows this tab has cleared.
     if (session && typeof session.clearRows === "function") session.clearRows("scribe");
@@ -404,13 +488,28 @@ export default function Scribe({
   // cohort row only, never a fallback for routing.
   const { value: complaint, error: phenotypeError } = useMemo(() => derivePhenotype(module, answers), [module, answers]);
 
+  // Heard items (design 05 §2.5): derived from the transcript, newest first, one per id. No
+  // new state: the bubble tags stay with their lines, and the prompts are filtered by answers
+  // and skips, so an answered or skipped item leaves Ask next on the next render.
+  const heardItems = useMemo(() => {
+    const seen = new Set(), out = [];
+    for (let k = transcript.length - 1; k >= 0; k--)
+      for (const c of transcript[k].caps)
+        if (c.kind === CAPTURE_KIND.HEARD && !seen.has(c.id)) { seen.add(c.id); out.push({ id: c.id, cueText: c.cueText }); }
+    return out;
+  }, [transcript]);
+  const heardPromptList = useMemo(() => heardPrompts(module, { heard: heardItems, answers, skipped }), [module, heardItems, answers, skipped]);
+  const heardIds = useMemo(() => heardPromptList.map(s => s.id), [heardPromptList]);
+
   // suggested questions: unanswered items, prioritized by active pathway + weight.
   // While the screen is unscorable the pool widens to every unanswered item —
   // otherwise headroom parked in an inactive domain could hold the screen
-  // indeterminate with nothing left on screen to resolve it.
+  // indeterminate with nothing left on screen to resolve it. An item shown as a heard
+  // prompt is left out here, so it appears once.
   const { list: suggestions, error: activationError } = useMemo(
-    () => rankSuggestions(module, { answers, complaint, phenotypeError, vmp, scorable, skipped }),
-    [module, answers, complaint, phenotypeError, vmp, scorable, skipped]);
+    () => rankSuggestions(module, { answers, complaint, phenotypeError, vmp, scorable, skipped, exclude: heardIds }),
+    [module, answers, complaint, phenotypeError, vmp, scorable, skipped, heardIds]);
+  const askNextCount = suggestions.length + heardPromptList.length;
 
   /*  Contextual probes — what to ask or do next, ranked by what the answer could change,
       ordered safety → re-ask → criteria → rule-out → supporting → exam, so a question that
@@ -427,6 +526,8 @@ export default function Scribe({
   }, [module, answers, rf, probeAns]);
   const probeGroups = useMemo(() => truncateProbes(probes), [probes]);
   const probeErrorIds = useMemo(() => new Set(probeErrors.map(e => e.ruleId)), [probeErrors]);
+  // Ask next, most urgent first: Safety probes, then the Heard group, then Re-ask and the rest.
+  const askSections = useMemo(() => askNextSections(probeGroups, heardPromptList), [probeGroups, heardPromptList]);
 
   function answerProbe(p, idx) {
     const o = p.opts[idx];
@@ -475,6 +576,11 @@ export default function Scribe({
   const bundle = useMemo(() => buildBundle(module, {
     patient, answers, score, complaint, activeFlags, emergent, routingCleared, routingError,
   }, { surface: "scribe" }), [module, patient, answers, score, complaint, activeFlags, emergent, routingCleared, routingError]);
+  // EMR Friendly Template (release 0.4.3): the engine's plain text from the same inputs and gates as
+  // the bundle, only while its panel is open; rebuilt when the encounter changes.
+  const emrText = useMemo(() => (showEmr ? buildEmrTemplate(module, {
+    patient, answers, ctx, complaint, phenotypeError, rf, safetyReviewed, probeAns, vmp, appVersion,
+  }, { surface: "scribe" }) : ""), [showEmr, module, patient, answers, ctx, complaint, phenotypeError, rf, safetyReviewed, probeAns, vmp, appVersion]);
 
   const canSign = signGate({ safetyReviewed });
   const filePrefix = module.fhir.filePrefix;
@@ -632,7 +738,11 @@ export default function Scribe({
                       <div className="bub">{m.text}</div>
                       {m.caps.length > 0 && (
                         <div className="cap">
-                          {m.caps.map((c, i) => <span className="captag" key={i}>+ {captureLabel(module, c)}</span>)}
+                          {/* a heard tag is not a captag: nothing was added to the record */}
+                          {m.caps.map((c, i) => c.kind === CAPTURE_KIND.HEARD
+                            ? <span className="sa-scribe-heardtag" key={i} data-heard={c.id}
+                                    title={module.itemById && module.itemById[c.id] ? module.itemById[c.id].text : undefined}>{captureLabel(module, c)}</span>
+                            : <span className="captag" key={i}>+ {captureLabel(module, c)}</span>)}
                         </div>
                       )}
                     </div>
@@ -646,7 +756,9 @@ export default function Scribe({
                     <div className="bub interim">{interim}</div>
                     {previewCaps.length > 0 && (
                       <div className="cap">
-                        {previewCaps.map((c, i) => <span className="captag pending" key={i}>? {captureLabel(module, c)}</span>)}
+                        {previewCaps.map((c, i) => c.kind === CAPTURE_KIND.HEARD
+                          ? <span className="sa-scribe-heardtag pending" key={i}>? {captureLabel(module, c)}</span>
+                          : <span className="captag pending" key={i}>? {captureLabel(module, c)}</span>)}
                       </div>
                     )}
                   </div>
@@ -736,7 +848,7 @@ export default function Scribe({
               <button className={"act" + (view === "safety" ? "" : " ghost")} onClick={() => setView("safety")} data-testid="scribe-view-safety">
                 {override ? <TriangleAlert size={15} /> : <ShieldCheck size={15} />} Safety {override ? `(${activeFlags.length})` : safetyReviewed ? "✓" : "!"}
               </button>
-              <button className={"act" + (view === "prompts" ? "" : " ghost")} onClick={() => setView("prompts")} data-testid="scribe-view-prompts"><HelpCircle size={15} /> Ask next {suggestions.length ? `(${suggestions.length})` : ""}</button>
+              <button className={"act" + (view === "prompts" ? "" : " ghost")} onClick={() => setView("prompts")} data-testid="scribe-view-prompts"><HelpCircle size={15} /> Ask next {askNextCount ? `(${askNextCount})` : ""}</button>
               <button className={"act" + (view === "note" ? "" : " ghost")} onClick={() => setView("note")} data-testid="scribe-view-note"><FileText size={15} /> Note</button>
               <button className={"act" + (view === "fhir" ? "" : " ghost")} onClick={() => setView("fhir")} data-testid="scribe-view-fhir"><FileJson size={15} /> FHIR</button>
             </div>
@@ -770,46 +882,70 @@ export default function Scribe({
 
             {view === "prompts" && (
               <div style={{marginTop:6}} data-testid="scribe-prompts">
-                {suggestions.length === 0 && (
+                {suggestions.length === 0 && heardPromptList.length === 0 && (
                   <div className="empty">{scorable
                     ? "No high-yield questions outstanding for the active pathway. Screen looks well covered."
                     : "Every scored item is answered but the index still spans a cutpoint — review the captured answers before issuing a result."}</div>
                 )}
                 {/* contextual probes first — a question that could surface a red flag
-                    outranks one that could add points */}
-                {probeGroups.length > 0 && (
+                    outranks one that could add points. The Heard group (items the patient
+                    named without a value) sits after the Safety probes and before the rest. */}
+                {(probeGroups.length > 0 || heardPromptList.length > 0) && (
                   <div style={{marginBottom:12}} data-testid="scribe-probes">
-                    {probeGroups.map(({ kind, shown, total: groupTotal }) => (
-                      <div key={kind}>
-                        <div className="qtag" style={{color:PROBE_KIND[kind].c,margin:"10px 0 4px"}}>
-                          {PROBE_KIND[kind].label}
-                          {PROBE_KIND[kind].caption}
-                        </div>
-                        {shown.map(pr => (
-                          <div className="prompt" key={pr.id} data-probe={pr.id}
-                            style={{borderLeft:`3px solid ${PROBE_KIND[pr.kind].c}`}}>
-                            {pr.rescues && answers[pr.rescues] !== undefined && (
-                              <div className="qtag" style={{color:PROBE_KIND.rescue.c}}>
-                                re-asking {module.itemById[pr.rescues] ? itemShort(module.itemById[pr.rescues]) : pr.rescues} — recorded as {String(answers[pr.rescues]) === "no" ? "denied" : `"${String(answers[pr.rescues])}"`}
+                    {askSections.map(sec => {
+                      if (sec.kind === "heard") return (
+                        <div key="heard" data-testid="scribe-heard">
+                          <div className="qtag" style={{color:"var(--amber)",margin:"10px 0 4px"}}>{HEARD_LABEL}{HEARD_CAPTION}</div>
+                          {sec.items.map(s => (
+                            <div className="prompt sa-scribe-heard" key={s.id} data-suggestion={s.id} data-heard={s.id}>
+                              <div className="qtag"><HelpCircle size={11} /> {s.tag} · heard “{s.cueText}”</div>
+                              <div className="qq">{s.ask}</div>
+                              <div className="prow">
+                                {s.scale
+                                  ? s.scale.map((o, i) => <button key={i} className="pbtn" onClick={() => answerPrompt(s, i)}>{o.label}</button>)
+                                  : (<>
+                                      <button className="pbtn y" onClick={() => answerPrompt(s, "yes")}>Yes</button>
+                                      <button className="pbtn n" onClick={() => answerPrompt(s, "no")}>No</button>
+                                    </>)}
+                                <button className="pbtn skip" onClick={() => skipPrompt(s)} data-testid="scribe-skip">Skip</button>
                               </div>
-                            )}
-                            <div className="qq">{pr.say}{probeErrorIds.has(String(pr.id)) && <span className="sa-scribe-evalerr" title="This probe's trigger failed to evaluate; it is shown rather than hidden.">evaluation error</span>}</div>
-                            <div className="qtag" style={{textTransform:"none",letterSpacing:0,marginTop:4}}>{pr.why}</div>
-                            <div className="prow">
-                              {pr.opts.map((o, i) => (
-                                <button key={i} className={"pbtn" + (o.rf ? " n" : "")} onClick={() => answerProbe(pr, i)}>{o.l}</button>
-                              ))}
                             </div>
+                          ))}
+                        </div>
+                      );
+                      const { kind, shown, total: groupTotal } = sec.group;
+                      return (
+                        <div key={kind}>
+                          <div className="qtag" style={{color:PROBE_KIND[kind].c,margin:"10px 0 4px"}}>
+                            {PROBE_KIND[kind].label}
+                            {PROBE_KIND[kind].caption}
                           </div>
-                        ))}
-                        {shown.length < groupTotal && (
-                          <div className="empty" style={{padding:"4px 0"}}>
-                            +{groupTotal - shown.length} more — answer one and the next moves up.
-                            Safety and re-ask probes are never truncated.
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                          {shown.map(pr => (
+                            <div className="prompt" key={pr.id} data-probe={pr.id}
+                              style={{borderLeft:`3px solid ${PROBE_KIND[pr.kind].c}`}}>
+                              {pr.rescues && answers[pr.rescues] !== undefined && (
+                                <div className="qtag" style={{color:PROBE_KIND.rescue.c}}>
+                                  re-asking {module.itemById[pr.rescues] ? itemShort(module.itemById[pr.rescues]) : pr.rescues} — recorded as {String(answers[pr.rescues]) === "no" ? "denied" : `"${String(answers[pr.rescues])}"`}
+                                </div>
+                              )}
+                              <div className="qq">{pr.say}{probeErrorIds.has(String(pr.id)) && <span className="sa-scribe-evalerr" title="This probe's trigger failed to evaluate; it is shown rather than hidden.">evaluation error</span>}</div>
+                              <div className="qtag" style={{textTransform:"none",letterSpacing:0,marginTop:4}}>{pr.why}</div>
+                              <div className="prow">
+                                {pr.opts.map((o, i) => (
+                                  <button key={i} className={"pbtn" + (o.rf ? " n" : "")} onClick={() => answerProbe(pr, i)}>{o.l}</button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                          {shown.length < groupTotal && (
+                            <div className="empty" style={{padding:"4px 0"}}>
+                              +{groupTotal - shown.length} more — answer one and the next moves up.
+                              Safety and re-ask probes are never truncated.
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
                 <div data-testid="scribe-suggestions">
@@ -852,9 +988,12 @@ export default function Scribe({
                   <button className="act" disabled={!canSign} data-testid="scribe-sign"
                     title={!canSign ? "Record the red-flag review first — the note currently states that it is outstanding" : ""}
                     onClick={() => setToast("Signed to chart (simulated)")}><Check size={14} /> Sign to chart</button>
+                  <button className="act ghost" type="button" data-testid="scribe-emr-toggle" aria-expanded={showEmr}
+                    onClick={() => setShowEmr(v => !v)}><ClipboardList size={14} /> {EMR_UI.button}</button>
                   {!canSign &&
                     <span className="empty" style={{padding:"0 4px",alignSelf:"center"}} data-testid="scribe-sign-blocked">Safety review outstanding — the note says so, so signing is blocked.</span>}
                 </div>
+                {showEmr && <EmrPanel text={emrText} filePrefix={filePrefix} setToast={setToast} />}
               </div>
             )}
 
@@ -919,6 +1058,47 @@ function VoiceMeter({ bind }) {
   return (
     <div className="vmeter" role="meter" aria-label="Microphone level" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(level * 100)} data-testid="scribe-meter">
       <div className="vfill" style={{width: Math.round(level * 100) + "%"}} />
+    </div>
+  );
+}
+
+/*  The EMR Friendly Template panel (release 0.4.3): a script-free iframe (sandbox
+    "allow-same-origin", so the parent can read the edited text) holding one textarea prefilled
+    with the engine's plain text, plus Copy and Download. Edits live only in the frame: they are
+    copied and downloaded as shown, never saved, and a change to the encounter rebuilds the text,
+    as does leaving the Note view (the panel unmounts).
+*/
+function EmrPanel({ text, filePrefix, setToast }) {
+  const frameRef = useRef(null);
+  const doc = useMemo(() => emrFrameDoc(text), [text]);
+  const current = () => {
+    try {
+      const d = frameRef.current && frameRef.current.contentDocument;
+      const ta = d && d.querySelector("textarea");
+      if (ta && typeof ta.value === "string") return ta.value;
+    } catch (_) { /* an unreadable frame falls back to the generated text */ }
+    return text;
+  };
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(current());
+      setToast(EMR_UI.copied);
+    } catch (_) {
+      setToast(EMR_UI.copyFailed);
+    }
+  }
+  function download() {
+    downloadText(`${filePrefix}-emr-template-scribe.txt`, current(), "text/plain");
+  }
+  return (
+    <div className="sa-scribe-emr" data-testid="scribe-emr-panel">
+      <p className="sa-scribe-emr-hint">{EMR_UI.instruction} {EMR_UI.regeneratesScribe}</p>
+      <iframe ref={frameRef} className="sa-scribe-emr-frame" data-testid="scribe-emr-frame" title={EMR_UI.frameTitle}
+        sandbox="allow-same-origin" srcDoc={doc} />
+      <div className="btnrow">
+        <button className="act ghost" type="button" data-testid="scribe-emr-copy" onClick={copy}><Copy size={14} /> {EMR_UI.copy}</button>
+        <button className="act ghost" type="button" data-testid="scribe-emr-download" onClick={download}><Download size={14} /> {EMR_UI.download}</button>
+      </div>
     </div>
   );
 }

@@ -804,14 +804,41 @@
     "referral": {
       "byPhenotype": {
         "otologic": {
-          "specialty": "Neuro-otology",
+          "specialty": "Neurology",
           "reason": "vestibular migraine"
+        },
+        "both": {
+          "specialty": "Neurology",
+          "reason": "mid-facial / migrainous cause"
         }
       },
       "default": {
         "specialty": "Headache medicine / Neurology",
         "reason": "mid-facial / migrainous cause"
-      }
+      },
+      "clinicianRules": [
+        {
+          "phenotypes": [
+            "otologic",
+            "both"
+          ],
+          "source": "clinical lead, 2026-10-07; definition amended 2026-10-10",
+          "rule": "dizziness cases should be referred to neurology, and neuro-otology if there is a true vertiginous component or a history of ear or brain surgeries.",
+          "definition": [
+            "• Internal Vertigo: A false sensation of self-motion. The person feels like they are spinning clockwise/counter-clockwise, tilting, or being pulled in a specific direction.",
+            "• External Vertigo: A false sensation that the surrounding environment is moving, spinning, or whirling around them.",
+            "The direction is often predictable (e.g. \"always to the right\")"
+          ],
+          "clarificationSource": "clinical lead, 2026-10-09",
+          "clarification": [
+            "Vertigo episodes that last between 30 min and 12 hours should count as vertigo for purposes of ruling out meniere's disease, transient vertigo (true room spinning for a few seconds can count as vertigo which can be consistent with migrainous vertigo). A rocking or bobbing sensation is not true vertigo but a dizziness morphology that can be consistent with migrainous symptoms. Also some people describe \"the floor falling out from underneath them\"."
+          ],
+          "confirm": [
+            "True vertigo (internal or external)",
+            "Prior ear or brain surgery"
+          ]
+        }
+      ]
     },
     "cdsTerm": {
       "byPhenotype": {
@@ -1243,7 +1270,7 @@
     ]
   },
   "lexicon": {
-    "version": "0.3.1",
+    "version": "0.3.2",
     "lang": "en-US",
     "negation": {
       "window": 14,
@@ -1261,7 +1288,8 @@
         "doesn't",
         "isn't",
         "denies",
-        "negative for"
+        "negative for",
+        "fewer than"
       ]
     },
     "thirdParty": {
@@ -1281,7 +1309,12 @@
         "her ",
         "his ",
         "they get",
-        "runs in"
+        "runs in",
+        "my grandmother",
+        "my grandma",
+        "my aunt",
+        "my uncle",
+        "my friend"
       ]
     },
     "historical": {
@@ -1387,7 +1420,13 @@
           "carsick",
           "motion",
           "visually busy",
-          "crowded"
+          "crowded",
+          "driving through a tunnel",
+          "drive through a tunnel",
+          "patterned",
+          "busy visual",
+          "dizzy riding in a car",
+          "sick riding in a car"
         ]
       },
       {
@@ -1399,7 +1438,10 @@
           "plugged",
           "ringing",
           "tinnitus",
-          "ear ring"
+          "ear ring",
+          "ears feel full",
+          "ears ring",
+          "roaring"
         ]
       },
       {
@@ -1410,7 +1452,18 @@
           "rolling over",
           "looking up",
           "bend over",
-          "positional"
+          "positional",
+          "roll over",
+          "rolled over",
+          "turning over",
+          "over in bed",
+          "when i turn my head",
+          "when i look up",
+          "when i lie back",
+          "lying back in",
+          "tip my head back",
+          "high shelf",
+          "bending over"
         ]
       },
       {
@@ -1538,7 +1591,9 @@
           "headache when i'm dizzy",
           "headache with my spells",
           "spells come with a headache",
-          "light bothers me during the spell"
+          "light bothers me during the spell",
+          "headache during the dizz",
+          "headaches during the dizz"
         ]
       },
       {
@@ -1635,7 +1690,28 @@
           "spinning",
           "off balance",
           "off-balance",
-          "room spins"
+          "room spins",
+          "world is moving",
+          "world moving around",
+          "world's moving",
+          "world was moving",
+          "everything spins",
+          "everything spun",
+          "room spun",
+          "room is moving",
+          "everything is moving",
+          "like i'm on a boat",
+          "like i was on a boat",
+          "like i am on a boat",
+          "like being on a boat",
+          "rocking feeling",
+          "rocking sensation",
+          "swaying side to side",
+          "feel unsteady",
+          "unsteady on my feet",
+          "losing my balance",
+          "lose my balance",
+          "balance is off"
         ],
         "bands": [
           {
@@ -1645,7 +1721,15 @@
               "a minute",
               "couple of minutes",
               "very brief",
-              "momentary"
+              "momentary",
+              "split second",
+              "a second or two",
+              "a couple minutes",
+              "under five minutes",
+              "less than five minutes",
+              "two minutes",
+              "three minutes",
+              "four minutes"
             ],
             "v": 1
           },
@@ -1654,7 +1738,10 @@
               "for days",
               "several days",
               "all week",
-              "constant for"
+              "constant for",
+              "lasts more than three days",
+              "lasted more than three days",
+              "days at a time"
             ],
             "v": 3
           },
@@ -1665,12 +1752,31 @@
               "an hour",
               "hours",
               "all day",
-              "most of the day"
+              "most of the day",
+              "half the day",
+              "half a day",
+              "about a day",
+              "all night",
+              "for a day or two",
+              "for a couple of days",
+              "for two days",
+              "for three days",
+              "overnight"
             ],
             "v": 2
           }
         ],
-        "fallback": null
+        "fallback": null,
+        "heard": true,
+        "carry": 2,
+        "carryExclude": [
+          "about a day",
+          "overnight",
+          "for a day or two",
+          "for a couple of days",
+          "for two days",
+          "for three days"
+        ]
       },
       {
         "id": "m_dur",
@@ -1713,7 +1819,20 @@
             "v": 1
           }
         ],
-        "fallback": null
+        "fallback": null,
+        "yieldTo": [
+          "v_vertigo"
+        ],
+        "anchor": [
+          "headache",
+          "facial pressure",
+          "facial pain",
+          "pressure in my face",
+          "behind my eyes",
+          "migraine lasts",
+          "migraines last",
+          "head pain"
+        ]
       },
       {
         "id": "i_days",
@@ -1879,10 +1998,20 @@
         "had cancer"
       ]
     },
+    "carryRefuse": [
+      "ago",
+      "since",
+      "started",
+      "began"
+    ],
+    "normalize": {
+      "apostrophes": true,
+      "numbers": "en"
+    },
     "goldSet": {
-      "version": "0.2.0",
-      "lexiconVersion": "0.3.1",
-      "file": "masque_extraction_goldset.json"
+      "version": "0.3.0",
+      "lexiconVersion": "0.3.2",
+      "file": "masque_extraction_goldset_0.3.0.json"
     }
   },
   "locales": {
@@ -2162,20 +2291,25 @@
       "reviewed": false,
       "items": {
         "r_dur": {
-          "q": "Esto lleva más de 3 meses, o vuelve una y otra vez."
+          "q": "Esto lleva más de 3 meses, o vuelve una y otra vez.",
+          "clin": "Síntomas persistentes o recurrentes > 3 meses"
         },
         "r_abx": {
-          "q": "He tomado dos o más ciclos de antibióticos o esteroides y no lo resolvieron por mucho tiempo."
+          "q": "He tomado dos o más ciclos de antibióticos o esteroides y no lo resolvieron por mucho tiempo.",
+          "clin": "≥2 ciclos de antibióticos/esteroides sin alivio duradero"
         },
         "r_surg": {
-          "q": "Me operaron de los senos nasales o me hicieron un procedimiento, y los síntomas volvieron."
+          "q": "Me operaron de los senos nasales o me hicieron un procedimiento, y los síntomas volvieron.",
+          "clin": "Procedimiento previo de senos nasales sin resolución"
         },
         "r_lesion": {
-          "q": "Me dan mareos o síntomas del oído, y nadie ha encontrado la causa."
+          "q": "Me dan mareos o síntomas del oído, y nadie ha encontrado la causa.",
+          "clin": "Mareos/síntomas del oído recurrentes, sin lesión estructural identificada"
         },
         "r_normal": {
           "q": "Mis estudios o exámenes salieron normales, o casi normales, aunque me siento mal.",
-          "ask": "¿Qué mostraron exactamente mis estudios y exámenes anteriores?"
+          "ask": "¿Qué mostraron exactamente mis estudios y exámenes anteriores?",
+          "clin": "Examen o estudios de imagen normales frente a la carga de síntomas"
         },
         "m_head": {
           "q": "¿Con qué frecuencia le dan dolores de cabeza, o presión y dolor en la cara y los pómulos?",
@@ -2183,7 +2317,8 @@
             "Nunca",
             "De vez en cuando",
             "Seguido"
-          ]
+          ],
+          "clin": "Episodios recurrentes de dolor de cabeza / presión en el centro de la cara"
         },
         "m_dur": {
           "q": "Si no lo trata, ¿cuánto dura normalmente un episodio?",
@@ -2194,25 +2329,32 @@
             "Entre 4 horas y 3 días",
             "Más de 3 días",
             "Varía mucho"
-          ]
+          ],
+          "clin": "Duración del episodio sin tratamiento 4–72 h (ICHD-3 1.1 B)"
         },
         "m_photo": {
-          "q": "La luz o el ruido me molestan más de lo normal durante un episodio."
+          "q": "La luz o el ruido me molestan más de lo normal durante un episodio.",
+          "clin": "Fotofobia y/o fonofobia durante los episodios"
         },
         "m_nausea": {
-          "q": "Siento náuseas o malestar del estómago durante un episodio."
+          "q": "Siento náuseas o malestar del estómago durante un episodio.",
+          "clin": "Náuseas con los episodios"
         },
         "m_disable": {
-          "q": "Los episodios me impiden hacer cosas que normalmente haría."
+          "q": "Los episodios me impiden hacer cosas que normalmente haría.",
+          "clin": "Los episodios limitan la actividad habitual"
         },
         "m_aura": {
-          "q": "Antes o durante un episodio veo puntos, líneas en zigzag o luces destellantes — o siento entumecimiento u hormigueo."
+          "q": "Antes o durante un episodio veo puntos, líneas en zigzag o luces destellantes — o siento entumecimiento u hormigueo.",
+          "clin": "Aura visual o síntomas neurológicos transitorios"
         },
         "m_trig": {
-          "q": "Ciertas cosas lo provocan — cambios de clima, dormir mal, saltarme comidas, o mi periodo."
+          "q": "Ciertas cosas lo provocan — cambios de clima, dormir mal, saltarme comidas, o mi periodo.",
+          "clin": "Desencadenantes identificables (clima, sueño, comidas, hormonales)"
         },
         "m_fhx": {
-          "q": "Me dan migrañas, o alguien de mi familia las tiene."
+          "q": "Me dan migrañas, o alguien de mi familia las tiene.",
+          "clin": "Antecedentes personales o familiares de migraña"
         },
         "v_vertigo": {
           "q": "Cuando le da un episodio de mareo o de que todo da vueltas, ¿cuánto dura?",
@@ -2221,39 +2363,50 @@
             "Menos de 5 minutos",
             "Entre 5 minutos y 3 días",
             "Más de 3 días"
-          ]
+          ],
+          "clin": "Vértigo episódico 5 min – 72 h (Bárány VM B)"
         },
         "v_count": {
-          "q": "He tenido al menos cinco de estos episodios."
+          "q": "He tenido al menos cinco de estos episodios.",
+          "clin": "≥5 episodios vestibulares hasta la fecha (Bárány VM A)"
         },
         "v_migfeat": {
           "q": "Por lo menos la mitad de mis episodios vienen con dolor de cabeza, o con molestia por la luz y el ruido.",
-          "ask": "¿Debería anotar si mis episodios vienen con dolor de cabeza o molestia por la luz?"
+          "ask": "¿Debería anotar si mis episodios vienen con dolor de cabeza o molestia por la luz?",
+          "clin": "Características migrañosas en ≥50% de los episodios (Bárány VM C)"
         },
         "v_motion": {
-          "q": "Los patrones muy cargados, deslizar la pantalla, o ir en el carro me hacen sentir mal."
+          "q": "Los patrones muy cargados, deslizar la pantalla, o ir en el carro me hacen sentir mal.",
+          "clin": "Sensibilidad al movimiento / al movimiento visual"
         },
         "v_aural": {
-          "q": "Siento los oídos tapados, o me zumban, cuando me dan los episodios."
+          "q": "Siento los oídos tapados, o me zumban, cuando me dan los episodios.",
+          "clin": "Plenitud ótica o tinnitus fluctuantes con los episodios"
         },
         "v_head": {
-          "q": "Mover la cabeza o cambiar de posición me lo provoca."
+          "q": "Mover la cabeza o cambiar de posición me lo provoca.",
+          "clin": "Intolerancia al movimiento de la cabeza o a los cambios de posición"
         },
         "n_burn": {
-          "q": "Siento ardor, hormigueo o punzadas en la cara, la boca o la garganta."
+          "q": "Siento ardor, hormigueo o punzadas en la cara, la boca o la garganta.",
+          "clin": "Sensaciones de ardor / hormigueo / punzadas en la cara, la boca o la garganta"
         },
         "n_otalgia": {
-          "q": "Me duele hondo el oído o la garganta, pero me revisaron el oído y estaba bien."
+          "q": "Me duele hondo el oído o la garganta, pero me revisaron el oído y estaba bien.",
+          "clin": "Dolor profundo de oído o garganta con examen del oído normal"
         },
         "n_auto": {
           "q": "Se me secan los ojos o la boca, me mareo al pararme, sudo distinto, o tengo problemas del estómago.",
-          "ask": "¿La resequedad, el mareo al pararme y los cambios del estómago podrían estar relacionados con esto?"
+          "ask": "¿La resequedad, el mareo al pararme y los cambios del estómago podrían estar relacionados con esto?",
+          "clin": "Síntomas autonómicos (sequedad de ojos/boca, ortostáticos, de sudoración, gastrointestinales)"
         },
         "n_viral": {
-          "q": "Todo esto empezó después de que me enfermé de un virus."
+          "q": "Todo esto empezó después de que me enfermé de un virus.",
+          "clin": "Inicio después de una enfermedad viral"
         },
         "n_allo": {
-          "q": "Un roce suave, o una presión normal, me duele más de lo que debería."
+          "q": "Un roce suave, o una presión normal, me duele más de lo que debería.",
+          "clin": "Sensibilidad desproporcionada en relación con el examen"
         },
         "i_days": {
           "q": "¿Cuántos días al mes le afecta esto?",
@@ -2262,7 +2415,8 @@
             "1 a 3",
             "4 a 9",
             "10 o más"
-          ]
+          ],
+          "clin": "Días afectados al mes"
         },
         "i_role": {
           "q": "¿Qué tanto le estorba en el trabajo, la escuela o la casa?",
@@ -2271,26 +2425,31 @@
             "Un poco",
             "Bastante",
             "Mucho"
-          ]
+          ],
+          "clin": "Impacto en el trabajo o en las actividades diarias"
         },
         "x_purulent": {
           "q": "Durante una crisis he tenido flujo espeso y de color, o un cultivo salió con infección.",
           "ask": "Durante una crisis, ¿alguna vez tuve flujo espeso de color, o un cultivo con infección?",
-          "help": "Esta puede estar en su expediente. \"No estoy seguro\" es una buena respuesta."
+          "help": "Esta puede estar en su expediente. \"No estoy seguro\" es una buena respuesta.",
+          "clin": "Secreción purulenta o cultivo positivo de senos nasales cuando hay síntomas"
         },
         "x_objective": {
           "q": "Un estudio o una cámara mostró inflamación real de los senos nasales mientras yo tenía síntomas.",
           "ask": "¿Alguno de mis estudios mostró inflamación real de los senos nasales cuando tenía síntomas?",
-          "help": "Busque palabras como sinusitis, engrosamiento de la mucosa u opacificación en un reporte de tomografía."
+          "help": "Busque palabras como sinusitis, engrosamiento de la mucosa u opacificación en un reporte de tomografía.",
+          "clin": "Inflamación objetiva de senos nasales en endoscopia/tomografía cuando hay síntomas"
         },
         "x_lowfreq": {
           "q": "Una prueba de audición mostró que mi oído baja durante los episodios y luego regresa.",
           "ask": "¿Mis pruebas de audición muestran cambios entre una visita y otra?",
-          "help": "Esto significa dos pruebas en momentos distintos, no una sola."
+          "help": "Esto significa dos pruebas en momentos distintos, no una sola.",
+          "clin": "Pérdida auditiva neurosensorial fluctuante en frecuencias bajas, por audiometría"
         },
         "x_anosmia": {
           "q": "Mi sentido del olfato está disminuido o perdido, incluso entre crisis.",
-          "ask": "¿Me han hecho una prueba formal del olfato?"
+          "ask": "¿Me han hecho una prueba formal del olfato?",
+          "clin": "Hiposmia persistente entre episodios"
         }
       },
       "redFlags": {
@@ -2343,9 +2502,61 @@
           "say": "He tenido sudores nocturnos y he bajado de peso sin explicación."
         }
       },
+      "contextItems": {
+        "c_clin": {
+          "q": "¿A cuántos médicos diferentes ha visto por esto?",
+          "opts": [
+            [
+              "1",
+              "Solo uno"
+            ],
+            [
+              "2",
+              "Dos"
+            ],
+            [
+              "3+",
+              "Tres o más"
+            ]
+          ]
+        },
+        "c_dur": {
+          "q": "¿Cuánto tiempo lleva con esto?",
+          "opts": [
+            [
+              "<6mo",
+              "Menos de 6 meses"
+            ],
+            [
+              "6-12mo",
+              "6 a 12 meses"
+            ],
+            [
+              ">12mo",
+              "Más de un año"
+            ]
+          ]
+        },
+        "c_dismiss": {
+          "q": "¿Le han dicho que es estrés o ansiedad, o que todo salió normal?",
+          "opts": [
+            [
+              "no",
+              "No"
+            ],
+            [
+              "yes",
+              "Sí"
+            ]
+          ]
+        }
+      },
       "steps": {
         "story": {
-          "title": "Su historia"
+          "title": "Su historia",
+          "heading": "Su historia hasta ahora",
+          "lede": "Esta parte importa más de lo que la gente cree. Cuánto tiempo lleva con esto y cuántas puertas ya ha tocado cambian lo que sería un buen próximo paso.",
+          "intro": "Algunas cosas sobre lo que ya se ha probado."
         },
         "migraine": {
           "title": "Patrón de dolor de cabeza",
@@ -2369,7 +2580,13 @@
         }
       },
       "ui": {
-        "sub": "Una herramienta MASQUE · para personas con problemas continuos de senos nasales, oídos o mareos"
+        "sub": "Una herramienta MASQUE · para personas con problemas continuos de senos nasales, oídos o mareos",
+        "forYouIf": [
+          "Lleva meses con síntomas de senos nasales, presión en la cara, oídos o mareos.",
+          "Los tratamientos no le han dado alivio duradero, o sus estudios salieron normales y todavía se siente mal.",
+          "Ha visto a más de un médico por esto."
+        ],
+        "clinicianLede": "Síntomas reportados por el paciente, instrumento MASQUE v{instrument}. Auto-reportado y no es un resultado de tamizaje — no se calculó ningún índice. Los ítems marcados con **−** apuntan en contra del patrón migrañoso/neuropático."
       }
     }
   },
@@ -2795,6 +3012,721 @@
       }
     }
   },
+  "emrTemplate": {
+    "citations": {
+      "AAN26": {
+        "title": "Pharmacologic Treatment for Migraine Prevention in Adults Practice Guideline Recommendations: Report of the AAN Guidelines Subcommittee and the American Headache Society",
+        "publisher": "American Academy of Neurology / American Headache Society (endorsed by AAFP)",
+        "citation": "Potrebic S, Tanveer S, Becker WJ, et al. Pharmacologic Treatment for Migraine Prevention in Adults Practice Guideline Recommendations: Report of the AAN Guidelines Subcommittee and the American Headache Society. Neurology. 2026;107(7):e214881.",
+        "url": "https://www.aan.com/Guidelines/Home/GuidelineDetail/1158",
+        "accessed": "2026-10-06"
+      },
+      "AFP-PROPH25": {
+        "title": "Migraine Headache Prophylaxis",
+        "publisher": "American Academy of Family Physicians (American Family Physician)",
+        "citation": "Moreland P, Gaffney B, Lanham JS. Migraine Headache Prophylaxis. Am Fam Physician. 2025;111(5):443-450.",
+        "url": "https://www.aafp.org/afp/2025/0500/migraine-headache-prophylaxis",
+        "accessed": "2026-10-06"
+      },
+      "AFP-ACUTE25": {
+        "title": "Acute Migraine Headache: Treatment Strategies",
+        "publisher": "American Academy of Family Physicians (American Family Physician)",
+        "citation": "Wiley AT, Watson JC, Lehmann DN. Acute Migraine Headache: Treatment Strategies. Am Fam Physician. 2025;111(4):317-327 (updated 2026-04-02).",
+        "url": "https://www.aafp.org/afp/2025/0400/acute-migraine-headache",
+        "accessed": "2026-10-06"
+      },
+      "AFP-IHSACUTE26": {
+        "title": "Acute Migraine Treatment: Guidelines From the International Headache Society",
+        "publisher": "American Family Physician (summary of International Headache Society guidance)",
+        "citation": "Arnold MJ. Acute Migraine Treatment: Guidelines From the International Headache Society. Am Fam Physician. 2026;113(2):196-198.",
+        "url": "https://www.aafp.org/afp/2026/0200/practice-guidelines-acute-migraine-treatment",
+        "accessed": "2026-10-06"
+      },
+      "AFP-DIZZ23": {
+        "title": "Dizziness: Evaluation and Management",
+        "publisher": "American Academy of Family Physicians (American Family Physician)",
+        "citation": "Rogers TS, Noel MA, Garcia B. Dizziness: Evaluation and Management. Am Fam Physician. 2023;107(5):514-523.",
+        "url": "https://www.aafp.org/afp/2023/0500/dizziness",
+        "accessed": "2026-10-06"
+      },
+      "COCH-VMPROPH23": {
+        "title": "Pharmacological interventions for prophylaxis of vestibular migraine",
+        "publisher": "Cochrane (Cochrane ENT)",
+        "citation": "Webster K, Dor A, Galbraith K, et al. Pharmacological interventions for prophylaxis of vestibular migraine. Cochrane Database Syst Rev. 2023;4(4):CD015187.",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10093999/",
+        "accessed": "2026-10-06"
+      },
+      "COCH-VMACUTE23": {
+        "title": "Pharmacological interventions for acute attacks of vestibular migraine",
+        "publisher": "Cochrane (Cochrane ENT)",
+        "citation": "Webster KE, Dor A, Galbraith K, et al. Pharmacological interventions for acute attacks of vestibular migraine. Cochrane Database Syst Rev. 2023;4(4):CD015322.",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10097606/",
+        "accessed": "2026-10-06"
+      },
+      "BARANY22": {
+        "title": "Vestibular migraine: Diagnostic criteria (Update). Literature update 2021: consensus document of the Bárány Society and the International Headache Society",
+        "publisher": "Bárány Society / International Headache Society",
+        "citation": "Lempert T, Olesen J, Furman J, et al. Vestibular migraine: Diagnostic criteria (Update). J Vestib Res. 2022;32(1):1-6.",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9249276/",
+        "accessed": "2026-10-06"
+      },
+      "ACR-HA22": {
+        "title": "ACR Appropriateness Criteria: Headache (2022 Update)",
+        "publisher": "American College of Radiology",
+        "citation": "Expert Panel on Neurological Imaging. ACR Appropriateness Criteria: Headache (2022 Update). J Am Coll Radiol. 2023;20(5S):S70-S93.",
+        "url": "https://acsearch.acr.org/docs/69482/Narrative/",
+        "accessed": "2026-10-06"
+      },
+      "AFP-HA22": {
+        "title": "Acute Headache in Adults: A Diagnostic Approach",
+        "publisher": "American Academy of Family Physicians (American Family Physician)",
+        "citation": "Viera AJ, Antono B. Acute Headache in Adults: A Diagnostic Approach. Am Fam Physician. 2022;106(3):260-268.",
+        "url": "https://www.aafp.org/afp/2022/0900/acute-headache-adults",
+        "accessed": "2026-10-06"
+      },
+      "ACR-STROKE23": {
+        "title": "ACR Appropriateness Criteria: Cerebrovascular Diseases-Stroke and Stroke-Related Conditions",
+        "publisher": "American College of Radiology",
+        "citation": "Expert Panel on Neurological Imaging. ACR Appropriateness Criteria: Cerebrovascular Diseases-Stroke and Stroke-Related Conditions. J Am Coll Radiol. 2024;21(6S):S21-S64.",
+        "url": "https://acsearch.acr.org/docs/3149012/Narrative/",
+        "accessed": "2026-10-06"
+      },
+      "AHA26": {
+        "title": "2026 Guideline for the Early Management of Patients With Acute Ischemic Stroke",
+        "publisher": "American Heart Association / American Stroke Association",
+        "citation": "Prabhakaran S, Gonzalez NR, Zachrison KS, et al. 2026 Guideline for the Early Management of Patients With Acute Ischemic Stroke. Stroke. 2026;57(8):e316-e436.",
+        "url": "https://doi.org/10.1161/STR.0000000000000513",
+        "accessed": "2026-10-06"
+      },
+      "GRACE3-23": {
+        "title": "Guidelines for reasonable and appropriate care in the emergency department 3 (GRACE-3): Acute dizziness and vertigo in the emergency department",
+        "publisher": "Society for Academic Emergency Medicine",
+        "citation": "Edlow JA, Carpenter C, Akhter M, et al. Guidelines for reasonable and appropriate care in the emergency department 3 (GRACE-3): Acute dizziness and vertigo in the emergency department. Acad Emerg Med. 2023;30(5):442-486.",
+        "url": "https://doi.org/10.1111/acem.14728",
+        "accessed": "2026-10-06"
+      },
+      "IIH18": {
+        "title": "Idiopathic intracranial hypertension: consensus guidelines on management",
+        "publisher": "UK IIH specialist interest group (with consultation of ABN, SBNS, RCOphth, BASH)",
+        "citation": "Mollan SP, Davies B, Silver NC, et al. Idiopathic intracranial hypertension: consensus guidelines on management. J Neurol Neurosurg Psychiatry. 2018;89(10):1088-1100.",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6166610/",
+        "accessed": "2026-10-06"
+      },
+      "AFP-VISION25": {
+        "title": "Sudden Vision Loss: A Diagnostic Approach",
+        "publisher": "American Academy of Family Physicians (American Family Physician)",
+        "citation": "Fraser JA, Son M, Vinokurtseva A. Sudden Vision Loss: A Diagnostic Approach. Am Fam Physician. 2025;111(1):54-61.",
+        "url": "https://www.aafp.org/afp/2025/0100/sudden-vision-loss",
+        "accessed": "2026-10-06"
+      },
+      "AFP-GCA22": {
+        "title": "Polymyalgia Rheumatica and Giant Cell Arteritis: Rapid Evidence Review",
+        "publisher": "American Academy of Family Physicians (American Family Physician)",
+        "citation": "Raleigh MF, Stoddard J, Darrow HJ. Polymyalgia Rheumatica and Giant Cell Arteritis: Rapid Evidence Review. Am Fam Physician. 2022;106(4):420-426.",
+        "url": "https://www.aafp.org/afp/2022/1000/polymyalgia-rheumatica-giant-cell-arteritis",
+        "accessed": "2026-10-06"
+      },
+      "ACR-GCA21": {
+        "title": "2021 American College of Rheumatology/Vasculitis Foundation Guideline for the Management of Giant Cell Arteritis and Takayasu Arteritis",
+        "publisher": "American College of Rheumatology / Vasculitis Foundation",
+        "citation": "Maz M, Chung SA, Abril A, et al. 2021 American College of Rheumatology/Vasculitis Foundation Guideline for the Management of Giant Cell Arteritis and Takayasu Arteritis. Arthritis Rheumatol. 2021;73(8):1349-1365.",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12344528/",
+        "accessed": "2026-10-06"
+      },
+      "ACR-SINO21": {
+        "title": "ACR Appropriateness Criteria: Sinonasal Disease (2021 Update)",
+        "publisher": "American College of Radiology",
+        "citation": "Expert Panel on Neurological Imaging. ACR Appropriateness Criteria: Sinonasal Disease (2021 Update). J Am Coll Radiol. 2022;19(5S):S175-S193.",
+        "url": "https://acsearch.acr.org/docs/69502/Narrative/",
+        "accessed": "2026-10-06"
+      },
+      "AFP-HL19": {
+        "title": "Hearing Loss in Adults: Differential Diagnosis and Treatment",
+        "publisher": "American Academy of Family Physicians (American Family Physician)",
+        "citation": "Michels TC, Duffy MT, Rogers DJ. Hearing Loss in Adults: Differential Diagnosis and Treatment. Am Fam Physician. 2019;100(2):98-108.",
+        "url": "https://www.aafp.org/afp/2019/0715/p98",
+        "accessed": "2026-10-06"
+      },
+      "ACR-HLV18": {
+        "title": "ACR Appropriateness Criteria: Hearing Loss and/or Vertigo",
+        "publisher": "American College of Radiology",
+        "citation": "Expert Panel on Neurologic Imaging. ACR Appropriateness Criteria: Hearing Loss and/or Vertigo. J Am Coll Radiol. 2018;15(11S):S321-S331.",
+        "url": "https://acsearch.acr.org/docs/69488/Narrative/",
+        "accessed": "2026-10-06"
+      },
+      "ACR-TINN23": {
+        "title": "ACR Appropriateness Criteria: Tinnitus (2023 Update)",
+        "publisher": "American College of Radiology",
+        "citation": "Expert Panel on Neurological Imaging. ACR Appropriateness Criteria: Tinnitus (2023 Update). J Am Coll Radiol. 2023;20(11S):S574-S591.",
+        "url": "https://acsearch.acr.org/docs/3094199/Narrative",
+        "accessed": "2026-10-06"
+      },
+      "AFP-TINN21": {
+        "title": "Tinnitus: Diagnosis and Management",
+        "publisher": "American Academy of Family Physicians (American Family Physician)",
+        "citation": "Dalrymple SN, Lewis SH, Philman S. Tinnitus: Diagnosis and Management. Am Fam Physician. 2021;103(11):663-671.",
+        "url": "https://www.aafp.org/afp/2021/0601/p663",
+        "accessed": "2026-10-06"
+      },
+      "AAO-TINN14": {
+        "title": "Clinical Practice Guideline: Tinnitus",
+        "publisher": "American Academy of Otolaryngology–Head and Neck Surgery Foundation",
+        "citation": "Tunkel DE, Bauer CA, Sun GH, et al. Clinical Practice Guideline: Tinnitus. Otolaryngol Head Neck Surg. 2014;151(2 Suppl):S1-S40.",
+        "url": "https://doi.org/10.1177/0194599814545325",
+        "accessed": "2026-10-06"
+      },
+      "NICE-CG150": {
+        "title": "Headaches in over 12s: diagnosis and management (CG150)",
+        "publisher": "National Institute for Health and Care Excellence (NICE, UK)",
+        "citation": "NICE. Headaches in over 12s: diagnosis and management (CG150). Published 2012-09-19; last updated 2025-06-03.",
+        "url": "https://www.nice.org.uk/guidance/cg150/chapter/Recommendations",
+        "accessed": "2026-10-06"
+      },
+      "SNNOOP10": {
+        "title": "Red and orange flags for secondary headaches in clinical practice: SNNOOP10 list",
+        "publisher": "Neurology (AAN journal); a narrative review, not an AAN guideline or position",
+        "citation": "Do TP, Remmers A, Schytz HW, et al. Red and orange flags for secondary headaches in clinical practice: SNNOOP10 list. Neurology. 2019;92(3):134-144 (narrative review).",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6340385/",
+        "accessed": "2026-10-06"
+      },
+      "ACR-CN22": {
+        "title": "ACR Appropriateness Criteria: Cranial Neuropathy (2022 Update)",
+        "publisher": "American College of Radiology",
+        "citation": "Expert Panel on Neurological Imaging. ACR Appropriateness Criteria: Cranial Neuropathy (2022 Update). J Am Coll Radiol. 2022;19(11S):S266-S303.",
+        "url": "https://acsearch.acr.org/docs/69509/Narrative",
+        "accessed": "2026-10-06"
+      },
+      "AFP-AR23": {
+        "title": "Allergic Rhinitis: Rapid Evidence Review",
+        "publisher": "American Academy of Family Physicians (American Family Physician)",
+        "citation": "Weaver-Agostoni J, Kosak Z, Bartlett S. Allergic Rhinitis: Rapid Evidence Review. Am Fam Physician. 2023;107(5):466-473.",
+        "url": "https://www.aafp.org/afp/2023/0500/allergic-rhinitis",
+        "accessed": "2026-10-06"
+      },
+      "AAO-AR15": {
+        "title": "Clinical Practice Guideline: Allergic Rhinitis",
+        "publisher": "American Academy of Otolaryngology–Head and Neck Surgery Foundation",
+        "citation": "Seidman MD, Gurgel RK, Lin SY, et al. Clinical Practice Guideline: Allergic Rhinitis. Otolaryngol Head Neck Surg. 2015;152(1 Suppl):S1-S43.",
+        "url": "https://doi.org/10.1177/0194599814561600",
+        "accessed": "2026-10-06"
+      },
+      "JTF-RHIN20": {
+        "title": "Rhinitis 2020: A practice parameter update",
+        "publisher": "AAAAI/ACAAI Joint Task Force on Practice Parameters",
+        "citation": "Dykewicz MS, Wallace DV, Amrol DJ, et al. Rhinitis 2020: A practice parameter update. J Allergy Clin Immunol. 2020;146(4):721-767.",
+        "url": "https://doi.org/10.1016/j.jaci.2020.07.007",
+        "accessed": "2026-10-06"
+      },
+      "ICAR-AR23": {
+        "title": "International consensus statement on allergy and rhinology: Allergic rhinitis – 2023",
+        "publisher": "International Forum of Allergy & Rhinology (ARS/AAOA); synopsis in an AAAAI journal",
+        "citation": "Wise SK, et al. International consensus statement on allergy and rhinology: Allergic rhinitis – 2023. Int Forum Allergy Rhinol. 2023;13(4):293-859. Synopsis: J Allergy Clin Immunol Pract. 2023;11(3):773-796.",
+        "url": "https://doi.org/10.1002/alr.23090",
+        "accessed": "2026-10-06"
+      },
+      "AAO-SIN25": {
+        "title": "Clinical Practice Guideline: Adult Sinusitis Update",
+        "publisher": "American Academy of Otolaryngology–Head and Neck Surgery Foundation",
+        "citation": "Payne SC, McKenna M, Buckley J, et al. Clinical Practice Guideline: Adult Sinusitis Update. Otolaryngol Head Neck Surg. 2025;173 Suppl 1:S1-S56.",
+        "url": "https://doi.org/10.1002/ohn.1344",
+        "accessed": "2026-10-06"
+      },
+      "AFP-CRS23": {
+        "title": "Chronic Rhinosinusitis",
+        "publisher": "American Academy of Family Physicians (American Family Physician)",
+        "citation": "Keating MK, Phillips JC, Phillips J. Chronic Rhinosinusitis. Am Fam Physician. 2023;108(4):370-377.",
+        "url": "https://www.aafp.org/afp/2023/1000/chronic-rhinosinusitis",
+        "accessed": "2026-10-06"
+      },
+      "AAO-CRSSURG25": {
+        "title": "Clinical Practice Guideline: Surgical Management of Chronic Rhinosinusitis",
+        "publisher": "American Academy of Otolaryngology–Head and Neck Surgery Foundation",
+        "citation": "Shin JJ, Wilson M, McKenna M, et al. Clinical Practice Guideline: Surgical Management of Chronic Rhinosinusitis. Otolaryngol Head Neck Surg. 2025;172 Suppl 2:S1-S47.",
+        "url": "https://doi.org/10.1002/ohn.1287",
+        "accessed": "2026-10-06"
+      },
+      "AAO-BPPV17": {
+        "title": "Clinical Practice Guideline: Benign Paroxysmal Positional Vertigo (Update)",
+        "publisher": "American Academy of Otolaryngology–Head and Neck Surgery Foundation",
+        "citation": "Bhattacharyya N, Gubbels SP, Schwartz SR, et al. Clinical Practice Guideline: Benign Paroxysmal Positional Vertigo (Update). Otolaryngol Head Neck Surg. 2017;156(3_suppl):S1-S47.",
+        "url": "https://doi.org/10.1177/0194599816689667",
+        "accessed": "2026-10-06"
+      },
+      "AAO-SSNHL19": {
+        "title": "Clinical Practice Guideline: Sudden Hearing Loss (Update)",
+        "publisher": "American Academy of Otolaryngology–Head and Neck Surgery Foundation",
+        "citation": "Chandrasekhar SS, Tsai Do BS, Schwartz SR, et al. Clinical Practice Guideline: Sudden Hearing Loss (Update). Otolaryngol Head Neck Surg. 2019;161(1_suppl):S1-S45.",
+        "url": "https://doi.org/10.1177/0194599819859885",
+        "accessed": "2026-10-06"
+      }
+    },
+    "references": [
+      {
+        "label": "Migraine prevention guideline — AAN/AHS (endorsed by AAFP), 2026",
+        "citations": [
+          "AAN26"
+        ]
+      },
+      {
+        "label": "Migraine prophylaxis — American Family Physician (AAFP journal), 2025; predates AAN/AHS 2026",
+        "citations": [
+          "AFP-PROPH25"
+        ]
+      },
+      {
+        "label": "Acute (abortive) migraine treatment — American Family Physician (AAFP journal), 2025",
+        "citations": [
+          "AFP-ACUTE25"
+        ]
+      },
+      {
+        "label": "Acute treatment (IHS recommendations, summarized in AFP 2026)",
+        "citations": [
+          "AFP-IHSACUTE26"
+        ]
+      },
+      {
+        "label": "Dizziness and vestibular migraine — American Family Physician (AAFP journal), 2023",
+        "citations": [
+          "AFP-DIZZ23"
+        ],
+        "showFor": {
+          "phenotypes": [
+            "otologic",
+            "both"
+          ]
+        }
+      },
+      {
+        "note": "Vestibular migraine: no consensus treatment; drug evidence low or very-low certainty.",
+        "citations": [
+          "AFP-DIZZ23",
+          "COCH-VMPROPH23",
+          "COCH-VMACUTE23",
+          "BARANY22"
+        ],
+        "showFor": {
+          "phenotypes": [
+            "otologic",
+            "both"
+          ]
+        }
+      }
+    ],
+    "instrumentRecs": [
+      "sinus_migraine",
+      "vestibular_migraine",
+      "tinnitus"
+    ],
+    "redFlagRefs": {
+      "rf_thunderclap": [
+        "ACR-HA22",
+        "AFP-HA22"
+      ],
+      "rf_focal": [
+        "ACR-STROKE23",
+        "AHA26",
+        "GRACE3-23"
+      ],
+      "rf_vision": [
+        "ACR-HA22",
+        "IIH18",
+        "ACR-STROKE23",
+        "AFP-VISION25"
+      ],
+      "rf_gca": [
+        "AFP-GCA22",
+        "ACR-GCA21",
+        "AFP-VISION25"
+      ],
+      "rf_orbital": [
+        "ACR-SINO21"
+      ],
+      "rf_ssnhl": [
+        "AFP-HL19",
+        "ACR-HLV18"
+      ],
+      "rf_asym": [
+        "ACR-HLV18",
+        "ACR-TINN23",
+        "AFP-HL19",
+        "AFP-TINN21",
+        "AAO-TINN14"
+      ],
+      "rf_pulsatile": [
+        "ACR-TINN23",
+        "AFP-TINN21",
+        "ACR-HA22"
+      ],
+      "rf_progressive": [
+        "ACR-HA22",
+        "NICE-CG150",
+        "SNNOOP10"
+      ],
+      "rf_new50": [
+        "ACR-HA22",
+        "AFP-HA22",
+        "AFP-GCA22"
+      ],
+      "rf_mass": [
+        "ACR-SINO21",
+        "ACR-CN22"
+      ],
+      "rf_systemic": [
+        "ACR-HA22",
+        "NICE-CG150"
+      ]
+    },
+    "redFlagPlaceholders": {
+      "rf_systemic": "directed workup — specify"
+    },
+    "history": [
+      {
+        "item": "r_abx"
+      },
+      {
+        "item": "r_surg"
+      },
+      {
+        "item": "r_normal",
+        "qualifier": "workup not recorded"
+      },
+      {
+        "item": "r_lesion",
+        "qualifier": "workup not recorded"
+      },
+      {
+        "item": "x_objective",
+        "qualifier": "testing not recorded"
+      },
+      {
+        "item": "x_purulent"
+      },
+      {
+        "item": "x_lowfreq",
+        "qualifier": "testing not recorded"
+      },
+      {
+        "item": "x_anosmia"
+      },
+      {
+        "label": "Antibiotic / steroid courses — agent, route (oral / intranasal), dates, response"
+      },
+      {
+        "label": "Prior imaging — modality, date, result; Lund-Mackay score if CT"
+      },
+      {
+        "label": "Audiograms / vestibular testing — dates, results"
+      },
+      {
+        "label": "Prior migraine abortive or preventive trials — agent, dose, duration, response",
+        "probe": "pr_treatment_trial"
+      },
+      {
+        "label": "Vestibular rehabilitation / repositioning manoeuvres to date"
+      },
+      {
+        "label": "Acute headache medication use — days per month, by class"
+      }
+    ],
+    "checklist": [
+      {
+        "id": "al1_si3",
+        "group": "allergy",
+        "label": "Intranasal corticosteroid trial (allergic rhinitis or sinus indication)",
+        "citations": [
+          "AFP-AR23",
+          "AAO-AR15",
+          "JTF-RHIN20",
+          "ICAR-AR23",
+          "AAO-SIN25",
+          "AFP-CRS23"
+        ],
+        "signals": [
+          {
+            "item": "r_abx",
+            "value": "yes",
+            "render": "note",
+            "qualifier": "agent/route not recorded"
+          }
+        ]
+      },
+      {
+        "id": "al2",
+        "group": "allergy",
+        "label": "Second-generation antihistamine trial (oral or intranasal)",
+        "citations": [
+          "AAO-AR15",
+          "AFP-AR23",
+          "ICAR-AR23"
+        ],
+        "signals": []
+      },
+      {
+        "id": "al3",
+        "group": "allergy",
+        "label": "Specific-IgE allergy testing (skin or serum)",
+        "placeholder": "date / result",
+        "citations": [
+          "AFP-AR23",
+          "AAO-AR15"
+        ],
+        "signals": []
+      },
+      {
+        "id": "si1",
+        "group": "sinusitis",
+        "label": "Objective sinus evaluation (rhinoscopy, endoscopy or CT)",
+        "citations": [
+          "AAO-SIN25",
+          "AFP-CRS23"
+        ],
+        "signals": [
+          {
+            "probe": "pr_scan_detail",
+            "option": 1,
+            "render": "done"
+          },
+          {
+            "item": "x_objective",
+            "value": "yes",
+            "render": "done"
+          },
+          {
+            "item": "x_objective",
+            "value": "no",
+            "render": "answeredNo"
+          },
+          {
+            "item": "r_normal",
+            "value": "yes",
+            "render": "note",
+            "qualifier": "modality not recorded"
+          }
+        ]
+      },
+      {
+        "id": "si2",
+        "group": "sinusitis",
+        "label": "Saline irrigation",
+        "citations": [
+          "AAO-SIN25",
+          "AFP-CRS23",
+          "AFP-AR23"
+        ],
+        "signals": []
+      },
+      {
+        "id": "si4",
+        "group": "sinusitis",
+        "label": "Antibiotic stewardship reviewed",
+        "box": false,
+        "onlyWithSignal": true,
+        "citations": [
+          "AAO-SIN25",
+          "AFP-CRS23",
+          "AAO-CRSSURG25"
+        ],
+        "signals": [
+          {
+            "item": "r_abx",
+            "value": "yes",
+            "render": "note",
+            "qualifier": "agent/route not recorded"
+          }
+        ]
+      },
+      {
+        "id": "dz1",
+        "group": "dizziness",
+        "label": "Canalith repositioning (if positional vertigo)",
+        "citations": [
+          "AAO-BPPV17",
+          "AFP-DIZZ23",
+          "GRACE3-23"
+        ],
+        "signals": [
+          {
+            "probe": "pr_dix_hallpike",
+            "option": 0,
+            "render": "note"
+          },
+          {
+            "probe": "pr_dix_hallpike",
+            "option": 1,
+            "render": "note"
+          },
+          {
+            "item": "v_head",
+            "value": "yes",
+            "render": "note"
+          }
+        ]
+      },
+      {
+        "id": "dz2",
+        "group": "dizziness",
+        "label": "Vestibular rehabilitation (vestibular physical therapy)",
+        "citations": [
+          "AFP-DIZZ23"
+        ],
+        "signals": []
+      },
+      {
+        "id": "dz3",
+        "group": "dizziness",
+        "label": "Migraine-directed trial for suspected vestibular migraine (empiric)",
+        "citations": [
+          "AFP-DIZZ23",
+          "COCH-VMPROPH23",
+          "COCH-VMACUTE23",
+          "BARANY22"
+        ],
+        "signals": [
+          {
+            "probe": "pr_treatment_trial",
+            "option": 0,
+            "render": "done"
+          },
+          {
+            "probe": "pr_treatment_trial",
+            "option": 1,
+            "render": "done"
+          },
+          {
+            "probe": "pr_treatment_trial",
+            "option": 2,
+            "render": "neverTried"
+          }
+        ]
+      },
+      {
+        "id": "dz4",
+        "group": "dizziness",
+        "label": "Audiogram (episodic vertigo with aural symptoms, or unilateral tinnitus)",
+        "citations": [
+          "AFP-DIZZ23",
+          "AFP-TINN21",
+          "AAO-TINN14"
+        ],
+        "signals": [
+          {
+            "item": "x_lowfreq",
+            "value": "yes",
+            "render": "done"
+          }
+        ]
+      }
+    ],
+    "examRows": [
+      {
+        "label": "Orthostatic BP",
+        "citations": [
+          "AFP-DIZZ23"
+        ]
+      },
+      {
+        "label": "Head / neck"
+      },
+      {
+        "label": "Cervical"
+      },
+      {
+        "label": "Temporal arteries — tenderness, thickening, pulse",
+        "probe": "pr_temporal_artery"
+      },
+      {
+        "label": "Ears / otoscopy (right, left)"
+      },
+      {
+        "label": "Weber / Rinne (512 Hz)",
+        "citations": [
+          "AAO-SSNHL19"
+        ],
+        "probe": "pr_tuning_fork"
+      },
+      {
+        "label": "Nose — anterior rhinoscopy",
+        "citations": [
+          "AAO-SIN25"
+        ]
+      },
+      {
+        "label": "Nasal endoscopy (if performed)",
+        "citations": [
+          "AFP-CRS23"
+        ]
+      },
+      {
+        "label": "Unilateral obstruction / bleeding / visible mass / facial numbness"
+      },
+      {
+        "label": "Oral cavity / oropharynx"
+      },
+      {
+        "label": "Eyes — periorbital findings, extraocular movements"
+      },
+      {
+        "label": "Fundoscopy — papilloedema present / absent / not examined",
+        "citations": [
+          "IIH18"
+        ]
+      },
+      {
+        "label": "Nystagmus (spontaneous / gaze-evoked / positional)",
+        "citations": [
+          "AFP-DIZZ23"
+        ]
+      },
+      {
+        "label": "Dix–Hallpike (right, left)",
+        "citations": [
+          "AAO-BPPV17",
+          "AFP-DIZZ23"
+        ],
+        "probe": "pr_dix_hallpike"
+      },
+      {
+        "label": "Head impulse / nystagmus / test of skew (HINTS)",
+        "citations": [
+          "AFP-DIZZ23",
+          "GRACE3-23"
+        ],
+        "probe": "pr_head_impulse",
+        "optionPlaceholders": [
+          {
+            "option": 0,
+            "placeholder": "clinician interpretation of HINTS and any imaging decision"
+          }
+        ]
+      },
+      {
+        "label": "Gait / Romberg",
+        "citations": [
+          "GRACE3-23"
+        ]
+      },
+      {
+        "label": "Neurologic — cranial nerves incl. facial sensation, motor, sensory, coordination, speech"
+      },
+      {
+        "label": "Cardiac",
+        "citations": [
+          "AFP-DIZZ23"
+        ]
+      }
+    ],
+    "pastHistory": [
+      {
+        "label": "Modifying conditions (asthma, cystic fibrosis, immunocompromise, aspirin-exacerbated respiratory disease, ciliary dyskinesia)",
+        "group": "medical"
+      },
+      {
+        "item": "m_fhx",
+        "group": "family"
+      }
+    ]
+  },
   "changelog": [
     {
       "date": "2026-10-02",
@@ -2861,6 +3793,110 @@
       "paths": [
         "/label",
         "/copy/note/supportingFooter"
+      ]
+    },
+    {
+      "date": "2026-10-04",
+      "kind": "lexicon",
+      "note": "Lexicon 0.3.1 → 0.3.2, approved by the clinical lead on 2026-10-04. v_vertigo: heard signal on (heard) and carry-over 2 (carry): when its cue is heard with no duration phrase the item stays unanswered and is shown as heard, and the next two patient replies may supply the duration — same item only; refused when the reply names anything else the lexicon knows, contains the item's own cue, is a question, contains a carryRefuse phrase, or when any duration phrase in it is negated (a negation cue anywhere before it in the reply), its duration phrases disagree, or it is attributed or historical. v_vertigo carry exclusions (carryExclude; clinical-lead decision 2026-10-04, day ranges are same-sentence only): about a day, overnight, for a day or two, for a couple of days, for two days, for three days set the duration only in a sentence where a v_vertigo cue is said, not negated, attributed or historical (a sentence ends at . ! ? or ; followed by whitespace or the end of the text), never from a carried reply; elsewhere in the cue's own utterance, and in a reply, they never supply the duration but still count for the negation and disagreement tests, so an utterance or reply in which one of them disagrees with another duration phrase gives no duration, and one standing alone outside such a sentence is a stated duration that is withheld. In the cue's own utterance a heard entry takes a duration only when the duration phrases found there agree, none of them is negated and no carryRefuse phrase occurs (an onset is not a duration); a phrase inside a longer phrase does not count. A duration that is stated but withheld leaves the item heard, opens only a yield-only slot (it keeps the yieldTo suppression for the next replies and never carries a value), and turns an open slot of that item yield-only with its reply window renewed, so the clinician asks. m_dur yields to v_vertigo (yieldTo) unless an approved anchor phrase is present and not negated, so a dizziness-duration sentence no longer scores the headache-attack duration; the yield holds while the reply window of a heard v_vertigo cue is open, also after its heard card is answered or skipped (an answered or skipped item is never carried); anchors: headache, facial pressure, facial pain, pressure in my face, behind my eyes, migraine lasts, migraines last, head pain. carryRefuse: ago, since, started, began — confirmed by the clinical lead on 2026-10-04 (proposed by the team as a carry-over guard). In a heard entry's own utterance it withholds the duration and no carry-over opens from that utterance; in a carried reply it refuses the carry. It can only prevent a capture, never cause one: withholding a duration no longer arms carry-over, so no later reply can supply a value because of it (an utterance with no duration phrase arms carry-over as before). Text normalization (normalize): before matching, curly apostrophes are read as a straight apostrophe; for duration band phrases only (clinical-lead decision 2026-10-04, digits for durations only), the standalone whole numbers 0–20 and 30, 40 … 90 are read as English words, so typed digits never reach a cue, yes/no, context, multi-item or red-flag phrase or a negation, attribution or history window; every other number stays as digits. Phrases appended: /lexicon/scale/1/cue (v_vertigo cues): world is moving, world moving around, world's moving, world was moving, everything spins, everything spun, room spun, room is moving, everything is moving, like i'm on a boat, like i was on a boat, like i am on a boat, like being on a boat, rocking feeling, rocking sensation, swaying side to side, feel unsteady, unsteady on my feet, losing my balance, lose my balance, balance is off; /lexicon/scale/1/bands/0/ph (v_vertigo, Under 5 min): split second, a second or two, a couple minutes, under five minutes, less than five minutes, two minutes, three minutes, four minutes; /lexicon/scale/1/bands/2/ph (v_vertigo, 5 min – 72 h): half the day, half a day, about a day, all night, for a day or two, for a couple of days, for two days, for three days, overnight; /lexicon/scale/1/bands/1/ph (v_vertigo, Over 72 h): lasts more than three days, lasted more than three days, days at a time; /lexicon/bool/8/ph (v_head): roll over, rolled over, turning over, over in bed, when i turn my head, when i look up, when i lie back, lying back in, tip my head back, high shelf, bending over; /lexicon/bool/6/ph (v_motion): driving through a tunnel, drive through a tunnel, patterned, busy visual, dizzy riding in a car, sick riding in a car; /lexicon/bool/7/ph (v_aural): ears feel full, ears ring, roaring; /lexicon/bool/19/ph (v_migfeat): headache during the dizz, headaches during the dizz; /lexicon/negation/cues: fewer than; /lexicon/thirdParty/cues: my grandmother, my grandma, my aunt, my uncle, my friend. Drafts struck and known risks: listed in CHANGELOG.md. Instrument 0.2 and probe set 1.0.0 unchanged. Gold set 0.2.0 → 0.3.0: 218 utterances and 93 dialogues added; no 0.2.0 case or label changed.",
+      "paths": [
+        "/lexicon/version",
+        "/lexicon/scale/1/heard",
+        "/lexicon/scale/1/carry",
+        "/lexicon/scale/1/carryExclude",
+        "/lexicon/scale/2/yieldTo",
+        "/lexicon/scale/2/anchor",
+        "/lexicon/carryRefuse",
+        "/lexicon/normalize",
+        "/lexicon/goldSet",
+        "/lexicon/scale/1/cue",
+        "/lexicon/scale/1/bands/0/ph",
+        "/lexicon/scale/1/bands/2/ph",
+        "/lexicon/scale/1/bands/1/ph",
+        "/lexicon/bool/8/ph",
+        "/lexicon/bool/6/ph",
+        "/lexicon/bool/7/ph",
+        "/lexicon/bool/19/ph",
+        "/lexicon/negation/cues",
+        "/lexicon/thirdParty/cues"
+      ]
+    },
+    {
+      "date": "2026-10-06",
+      "kind": "translation",
+      "note": "Spanish patient wording completed for release 0.4.2 (user request, 2026-10-06): an unreviewed team translation (two independent drafts, with clinical, language and mechanical review), recorded row by row in tests/harness/locale-delta.js and modules/masque/SOURCES.md. Added to locales.es: contextItems (c_clin, c_dur, c_dismiss: q and opts; the option values are the English ones, in the English order), steps.story heading, lede and intro, ui.forYouIf and ui.clinicianLede, and a Spanish clinician line (clin) for each of the 30 items, which the patient summary's \"Para mi médico\" block shows instead of the English patientClin. No existing Spanish string changed. locales.es.reviewed stays false, so the unreviewed-translation notice stays until a bilingual clinician reviews the Spanish. Instrument 0.2, lexicon 0.3.2, probe set 1.0.0 and gold set 0.3.0 unchanged.",
+      "paths": [
+        "/locales/es/contextItems",
+        "/locales/es/steps/story/heading",
+        "/locales/es/steps/story/lede",
+        "/locales/es/steps/story/intro",
+        "/locales/es/ui/forYouIf",
+        "/locales/es/ui/clinicianLede",
+        "/locales/es/items/r_dur/clin",
+        "/locales/es/items/r_abx/clin",
+        "/locales/es/items/r_surg/clin",
+        "/locales/es/items/r_lesion/clin",
+        "/locales/es/items/r_normal/clin",
+        "/locales/es/items/m_head/clin",
+        "/locales/es/items/m_dur/clin",
+        "/locales/es/items/m_photo/clin",
+        "/locales/es/items/m_nausea/clin",
+        "/locales/es/items/m_disable/clin",
+        "/locales/es/items/m_aura/clin",
+        "/locales/es/items/m_trig/clin",
+        "/locales/es/items/m_fhx/clin",
+        "/locales/es/items/v_vertigo/clin",
+        "/locales/es/items/v_count/clin",
+        "/locales/es/items/v_migfeat/clin",
+        "/locales/es/items/v_motion/clin",
+        "/locales/es/items/v_aural/clin",
+        "/locales/es/items/v_head/clin",
+        "/locales/es/items/n_burn/clin",
+        "/locales/es/items/n_otalgia/clin",
+        "/locales/es/items/n_auto/clin",
+        "/locales/es/items/n_viral/clin",
+        "/locales/es/items/n_allo/clin",
+        "/locales/es/items/i_days/clin",
+        "/locales/es/items/i_role/clin",
+        "/locales/es/items/x_purulent/clin",
+        "/locales/es/items/x_objective/clin",
+        "/locales/es/items/x_lowfreq/clin",
+        "/locales/es/items/x_anosmia/clin"
+      ]
+    },
+    {
+      "date": "2026-10-06",
+      "kind": "emr-template",
+      "note": "EMR Friendly Template data added for release 0.4.3 (user request, 2026-10-06): emrTemplate carries citation metadata and links only (verified or corrected sources, accessed 2026-10-06), the empiric-treatment references, the routing recommendations whose chips are instruments, the red-flag references and workup placeholders, the treatment-and-workup rows, the management checklist and the exam rows. Drafted by AI agents from verified sources and not reviewed by the clinical lead (decisions D1-D16 await the lead); recorded row by row in tests/harness/emr-delta.js. No guideline text is copied and no agent, dose or threshold is stored. Instrument 0.2, lexicon 0.3.2, probe set 1.0.0 and gold set 0.3.0 are unchanged; only contentHash changes.",
+      "paths": [
+        "/emrTemplate"
+      ]
+    },
+    {
+      "date": "2026-10-07",
+      "kind": "sign-off",
+      "note": "Clinical-lead sign-off, recorded in release 0.4.4: on 2026-10-07 the clinical lead signed off, in chat, the EMR Friendly Template content (emrTemplate) and the note it generates, as implemented in release 0.4.3 (decisions D1-D16, review rounds 1-4). The emrTemplate data is unchanged; tests/harness/emr-delta.js records the sign-off (signOff, reviewed: true) and keeps the AI-agent drafting provenance and the preceding emr-template entry as history. Not covered: the Spanish Patient Companion translation (locales.es stays reviewed: false). The recorded follow-ups stay open as known limitations, accepted at sign-off unless the lead asks for changes: a recorded central HINTS pattern with no plan response (D6), the referral destination for the complaint both (D3c), the Scribe phenotype quirk (D14), the upstream Bárány criterion labels, the gapLine copy, the unlabelled item-prompt answers on the Scribe and the round 3d follow-ups F-3D-1 to F-3D-4 (CHANGELOG.md, release 0.4.4). Instrument 0.2, lexicon 0.3.2, probe set 1.0.0 and gold set 0.3.0 are unchanged; only contentHash changes.",
+      "paths": [
+        "/emrTemplate"
+      ]
+    },
+    {
+      "date": "2026-10-10",
+      "kind": "referral",
+      "note": "Clinical-lead referral rule for dizziness cases, recorded in release 0.4.5 from the clinical lead's decisions in chat of 2026-10-07, 2026-10-09 and 2026-10-10. On 2026-10-07 the lead decided that dizziness cases should be referred to neurology, and to neuro-otology if there is a true vertiginous component or a history of ear or brain surgeries, and defined true vertigo (internal and external); on 2026-10-09 the lead decided that both cases follow the dizziness rule and added a clarification of what counts as true vertigo; on 2026-10-10 the lead amended the definition: a rocking or bobbing sensation is dizziness and not true vertigo, and swaying is imbalance too, so the internal-vertigo line no longer lists swaying and bobbing (the definition as given on 2026-10-07 is kept in tests/harness/referral-delta.js). Such a sensation still counts toward the vestibular score as imbalance, through the item Episodic vertigo or imbalance (the probe pr_internal_vertigo and the approved lexicon cues), so the instrument, probes and lexicon are unchanged. The otologic phenotype now refers to Neurology (was Neuro-otology) and the phenotype both to Neurology (was Headache medicine / Neurology through the default), each with its reason unchanged. No captured answer reliably records true vertigo or a prior ear or brain surgery, so nothing escalates automatically: phenotypes.referral.clinicianRules prints in the EMR note, for both phenotypes, the lead's rule and clarification verbatim and the definition as the lead amended it, with a placeholder for each condition, and neuro-otology is the clinician's decision. The FHIR referral and the EMR note agree. The sinonasal phenotype and the default keep Headache medicine / Neurology; the routing recommendation text in masque.logic.js is unchanged. Recorded in tests/harness/referral-delta.js. Instrument 0.2, lexicon 0.3.2, probe set 1.0.0 and gold set 0.3.0 are unchanged; only contentHash changes.",
+      "paths": [
+        "/phenotypes/referral/byPhenotype/otologic/specialty",
+        "/phenotypes/referral/byPhenotype/both",
+        "/phenotypes/referral/clinicianRules"
+      ]
+    },
+    {
+      "date": "2026-10-10",
+      "kind": "emr-decisions",
+      "note": "Clinical-lead answers on the EMR Friendly Template's open items, recorded in release 0.4.6 from the clinical lead's answers in chat of 2026-10-10. Two answers add data under emrTemplate: pastHistory (the modifying-conditions row, \"Modifying conditions (asthma, cystic fibrosis, immunocompromise, aspirin-exacerbated respiratory disease, ciliary dyskinesia)\", after the pregnancy line, and the item Personal or family history of migraine with its recorded state, before the family-history placeholder, which then reads \"Other family history\"), and an option placeholder under the HINTS exam row (\"clinician interpretation of HINTS and any imaging decision\", printed when the Scribe records Normal impulse (points central)). The other answers change the engine only or nothing: under an open red flag the note also prints the screen-based referral and the empiric-treatment references (the FHIR bundle still withholds the referral), the assessment names the headings of the recommendations the plan prints, and the DZ4 label keeps its indication clause. The signed-off emrTemplate block of release 0.4.3 is unchanged under these additions. Recorded in tests/harness/emr-decisions-delta.js. Instrument 0.2, lexicon 0.3.2, probe set 1.0.0 and gold set 0.3.0 are unchanged; only contentHash changes.",
+      "paths": [
+        "/emrTemplate/pastHistory",
+        "/emrTemplate/examRows/14/optionPlaceholders"
       ]
     }
   ]

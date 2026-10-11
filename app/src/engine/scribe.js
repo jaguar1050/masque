@@ -6,7 +6,11 @@
 // engine-owned and moved verbatim from the baseline Scribe (Scb L1337-1393); the module
 // supplies only the copy.note.* slots, the item short labels, the info-prompt tag prefix
 // and the gap-rule note labels. Pure; no React; no import-time side effects.
-import { CAPTURE_KIND, INDETERMINATE } from "./vocab.js";
+//
+// Heard and carry-over (design 05 §1.4, §2.1, §2.4): the engine owns only the words "heard",
+// "not stated" and "follow-up to"; every clinical word comes from the module (item short
+// label, scale option label, ask/text, tag) and the quoted word is the patient's own cue text.
+import { CAPTURE_KIND, INDETERMINATE, PROBE_KIND } from "./vocab.js";
 import { renderTpl } from "./evaluate.js";
 import { activeDomains, copyVars, gapSignals } from "./rules.js";
 import { provenanceLines } from "./lineage.js";
@@ -28,6 +32,8 @@ const obj = (x) => (isObj(x) ? x : {});
  *   ctx      overwrite;
  *   redflag  raise-only, recorded as "nlp"; a flag already set (by the clinician, "md", or a
  *            probe, "probe") is never downgraded and nothing here ever clears one.
+ *   heard    a cue heard without its value — never an answer (absent stays absent); ignored here.
+ * An item capture with via "carry" is an ordinary item capture: first write wins.
  * touchedDomainItemIds: the distinct item-capture ids in capture order; the caller maps them
  * to domains through module.itemById for the "domains touched" pulse.
  * @returns {{answers:Object, ctx:Object, rf:Object, touchedDomainItemIds:string[]}}
@@ -54,6 +60,26 @@ export function itemShort(item) {
   return item.short ?? item.id;
 }
 
+/** domain key → domain record. */
+function domainIndex(module) {
+  const domainByKey = {};
+  for (const d of arr(module.domains)) domainByKey[d.key] = d;
+  return domainByKey;
+}
+
+/**
+ * The one builder behind a scored suggestion and a heard prompt: {id, ask, tag, scale, kind}.
+ * ask = item.ask ?? item.text; tag = item.tag, else the domain's shortTag, else its label
+ * lowercased.
+ */
+function itemSuggestion(it, domainByKey, kind) {
+  const d = domainByKey[it.domain] || {};
+  return {
+    id: it.id, ask: it.ask ?? it.text, tag: it.tag || d.shortTag || String(d.label || "").toLowerCase(),
+    scale: it.scale, kind,
+  };
+}
+
 /**
  * Suggested questions: unanswered items, prioritised by active domain, then tag boost, then
  * weight (Scb L856-879). While the screen is unscorable the pool widens to every unanswered,
@@ -63,15 +89,18 @@ export function itemShort(item) {
  *     activation error);
  *   - items with a `tag` rank first while phenotypes.tagBoostDomain is active;
  *   - the top infoPrompts.maxScored items are shown, then the module's info prompts not yet
- *     covered in `vmp`, while infoPrompts.gateDomain is active, up to infoPrompts.maxTotal.
+ *     covered in `vmp`, while infoPrompts.gateDomain is active, up to infoPrompts.maxTotal;
+ *   - ids in `exclude` (the items already shown as heard prompts) leave the open pool before
+ *     sorting and slicing, so the list still fills to infoPrompts.maxScored; with exclude []
+ *     (the default) the output is unchanged.
  * Suggestion = {id, ask, tag, scale, kind: "scored"} | {id, ask, tag, kind: "info"}.
  * @returns {{list: Object[], error: (null|Object)}}
  */
-export function rankSuggestions(module, { answers = {}, complaint = "", phenotypeError = null, vmp = {}, scorable = false, skipped = {} } = {}) {
+export function rankSuggestions(module, { answers = {}, complaint = "", phenotypeError = null, vmp = {}, scorable = false, skipped = {}, exclude = [] } = {}) {
   const a = obj(answers), sk = obj(skipped), covered = obj(vmp);
+  const ex = new Set(arr(exclude));
   const { domains: active, error } = activeDomains(module, { answers: a, complaint, phenotypeError });
-  const domainByKey = {};
-  for (const d of module.domains) domainByKey[d.key] = d;
+  const domainByKey = domainIndex(module);
   const ph = module.phenotypes || null;
   const boostActive = !!(ph && ph.tagBoostDomain && active.has(ph.tagBoostDomain));
   const info = module.infoPrompts || null;
@@ -79,8 +108,8 @@ export function rankSuggestions(module, { answers = {}, complaint = "", phenotyp
   const maxTotal = info && Number.isInteger(info.maxTotal) ? info.maxTotal : maxScored;
 
   // The pool widens while the screen is NOT scorable (design §4.2, decision F12). The baseline
-  // Scribe tests `scorable ||` (Scb L860), the inverse of its own comment; AD13.
-  const open = module.allItems.filter(it => a[it.id] === undefined && !sk[it.id] && (!scorable || active.has(it.domain)));
+  // Scribe tests `scorable ||` (Scb L860), the inverse of its own comment; AD18.
+  const open = module.allItems.filter(it => a[it.id] === undefined && !sk[it.id] && !ex.has(it.id) && (!scorable || active.has(it.domain)));
   open.sort((x, y) => {
     const xa = active.has(x.domain) ? 1 : 0, ya = active.has(y.domain) ? 1 : 0;
     if (xa !== ya) return ya - xa;
@@ -89,18 +118,54 @@ export function rankSuggestions(module, { answers = {}, complaint = "", phenotyp
     if (xv !== yv) return yv - xv;
     return y.w - x.w;
   });
-  const list = open.slice(0, maxScored).map(it => {
-    const d = domainByKey[it.domain] || {};
-    return {
-      id: it.id, ask: it.ask ?? it.text, tag: it.tag || d.shortTag || String(d.label || "").toLowerCase(),
-      scale: it.scale, kind: "scored",
-    };
-  });
+  const list = open.slice(0, maxScored).map(it => itemSuggestion(it, domainByKey, "scored"));
   if (info && active.has(info.gateDomain)) {
     for (const p of arr(info.prompts)) if (covered[p.id] === undefined && list.length < maxTotal)
       list.push({ id: p.id, ask: p.ask, tag: p.tag, kind: "info" });
   }
   return { list, error };
+}
+
+/**
+ * Heard prompts: one per heard item id that is an item of the module, unanswered and not
+ * skipped, in the order given (most recently heard first), deduplicated by id (the first,
+ * newest, entry wins). ask/tag/scale are built exactly as for a scored suggestion. Domain
+ * activity and scorability are NOT consulted: the patient raised it.
+ * HeardPrompt = {id, ask, tag, scale, kind: "heard", cueText}.
+ * @param heard [{id, cueText}]   newest first
+ * @returns {Object[]}
+ */
+export function heardPrompts(module, { heard = [], answers = {}, skipped = {} } = {}) {
+  const a = obj(answers), sk = obj(skipped);
+  const byId = module.itemById || {};
+  const domainByKey = domainIndex(module);
+  const seen = new Set(), out = [];
+  for (const h of arr(heard)) {
+    if (!isObj(h) || typeof h.id !== "string" || seen.has(h.id)) continue;
+    seen.add(h.id);
+    const it = Object.prototype.hasOwnProperty.call(byId, h.id) ? byId[h.id] : undefined;
+    if (!it || a[h.id] !== undefined || sk[h.id]) continue;
+    out.push({ ...itemSuggestion(it, domainByKey, CAPTURE_KIND.HEARD), cueText: h.cueText });
+  }
+  return out;
+}
+
+/**
+ * Ask-next sections in render order: every probe group whose PROBE_KIND rank is 0 (the safety
+ * tier), then the heard prompts (only when non-empty), then every other probe group in the
+ * order given (truncateProbes order). With no rank-0 group the heard section comes first.
+ * @param probeGroups  the truncateProbes result: [{kind, shown, total}]
+ * @param heard        the heardPrompts result
+ * @returns {Array<{kind: "probes", group: Object} | {kind: "heard", items: Object[]}>}
+ */
+export function askNextSections(probeGroups = [], heard = []) {
+  const groups = arr(probeGroups);
+  const items = arr(heard);
+  const isTop = (g) => isObj(g) && Object.prototype.hasOwnProperty.call(PROBE_KIND, g.kind) && PROBE_KIND[g.kind].rank === 0;
+  const out = groups.filter(isTop).map(group => ({ kind: "probes", group }));
+  if (items.length) out.push({ kind: "heard", items });
+  for (const group of groups) if (!isTop(group)) out.push({ kind: "probes", group });
+  return out;
 }
 
 // ---------------------------------------------------------------------------------------
@@ -116,22 +181,48 @@ function kindOf(module, c) {
   return CAPTURE_KIND.ITEM;
 }
 
+/** An item capture's label: short label, scale option label or "no "; unknown ids show the id. */
+function itemLabel(module, c) {
+  const it = module.itemById && module.itemById[c.id]; if (!it) return c.id;
+  if (it.scale) return `${itemShort(it)}: ${it.scale[c.value]?.label ?? c.value}`;
+  return (c.value === "no" ? "no " : "") + itemShort(it);
+}
+
 /**
- * The capture tag text: redflag → "RED FLAG: " + the flag's points (else the id); ctx → the
- * context item's captureLabel (else the id); item → short label, with the scale option label
- * for a scale item, or "no " before a denied boolean item. Unknown ids show the id.
+ * The heard tag text: "heard “<cueText>” · <itemShort>: not stated"; without a cueText string,
+ * "heard · <itemShort>: not stated". An unknown id shows the id in place of the short label.
+ * The value is never consulted: a heard capture has none.
+ */
+export function heardLabel(module, capture) {
+  const c = obj(capture);
+  const it = module && module.itemById && module.itemById[c.id];
+  const short = it ? itemShort(it) : c.id;
+  const heard = typeof c.cueText === "string" ? "heard “" + c.cueText + "”" : "heard";
+  return heard + " · " + short + ": not stated";
+}
+
+/**
+ * The capture tag text: heard → heardLabel; redflag → "RED FLAG: " + the flag's points (else
+ * the id); ctx → the context item's captureLabel (else the id); item → short label, with the
+ * scale option label for a scale item, or "no " before a denied boolean item. Unknown ids show
+ * the id. A carry-over item capture (via "carry") appends " · follow-up to “<cue text>”", the
+ * cue text being fromCueText (a stored transcript tag) or carriedFrom.cueText (an engine
+ * capture); when that is not a string the suffix is " · follow-up".
  */
 export function captureLabel(module, capture) {
   const c = obj(capture);
+  if (c.kind === CAPTURE_KIND.HEARD) return heardLabel(module, c);
+  if (c.via === "carry") {
+    const from = c.fromCueText ?? (isObj(c.carriedFrom) ? c.carriedFrom.cueText : undefined);
+    return itemLabel(module, c) + (typeof from === "string" ? " · follow-up to “" + from + "”" : " · follow-up");
+  }
   const kind = kindOf(module, c);
   if (kind === CAPTURE_KIND.REDFLAG) return "RED FLAG: " + ((module.flagById && module.flagById[c.id])?.points || c.id);
   if (kind === CAPTURE_KIND.CTX) {
     const ci = arr(module.contextItems).find(x => x.id === c.id);
     return (ci && ci.captureLabel) || c.id;
   }
-  const it = module.itemById && module.itemById[c.id]; if (!it) return c.id;
-  if (it.scale) return `${itemShort(it)}: ${it.scale[c.value]?.label ?? c.value}`;
-  return (c.value === "no" ? "no " : "") + itemShort(it);
+  return itemLabel(module, c);
 }
 
 // ---------------------------------------------------------------------------------------

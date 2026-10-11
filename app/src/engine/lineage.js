@@ -357,37 +357,63 @@ export async function classifyLineage(rubric, { builtins = [], loaded = [], same
 const rootRecordOf = (module) => (isObj(module.provenance) && isObj(module.provenance.root) ? module.provenance.root : null);
 
 /**
- * Provenance wording (§3.11 "Provenance display"). Built-ins have none.
+ * A patient caveat in a locale (release 0.4.2): its own `locale` text when it has one, tagged
+ * with that locale, else its English. Mirrors engine/patient.js (which imports no lineage).
+ */
+function patientCaveat(cav, locale) {
+  if (cav && typeof locale === "string" && locale !== "en" && typeof cav[locale] === "string" && cav[locale]) {
+    return { text: cav[locale], lang: /^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$/.test(locale) ? locale : "en" };
+  }
+  return { text: cav ? cav.en : "", lang: "en" };
+}
+
+/**
+ * Provenance wording (§3.11 "Provenance display") as parts {text, lang}. Built-ins have none.
  *  clinician: CAVEATS.uploaded / CAVEATS.edited (both for a derivation from an upload), plus
- *             CAVEATS.scoringChanged when the scoring differs from the ROOT's;
+ *             CAVEATS.scoringChanged when the scoring differs from the ROOT's; always English;
  *  patient:   CAVEATS.patient.edited / .uploaded, plus — with {locale} — editedWording for an
  *             edited locale and staleTranslation for a stale one. Never CAVEATS.scoringChanged.
- * @returns {string[]}
+ *             Since release 0.4.2 each line is in `locale` where the caveat has it (es), else
+ *             English, tagged with its language. `textLocale` (default: `locale`) picks the
+ *             language of the lines apart from the locale whose edited/stale state is read:
+ *             "en" gives the English lines for that locale (the clinician's Patient tab).
+ * @returns {Array<{text: string, lang: string}>}
  */
-export function provenanceLines(module, audience = "clinician", { locale = null } = {}) {
+export function provenanceLineParts(module, audience = "clinician", { locale = null, textLocale } = {}) {
   if (!module || module.origin === "builtin") return [];
   const kind = module.classification && module.classification.kind;
   const derived = module.origin === "derived";
   const fromUpload = kind === "derived-from-upload";
   const out = [];
   if (audience === "patient") {
-    out.push(derived ? CAVEATS.patient.edited.en : CAVEATS.patient.uploaded.en);
-    if (fromUpload) out.push(CAVEATS.patient.uploaded.en);
+    const tl = textLocale === undefined ? locale : textLocale;
+    out.push(patientCaveat(derived ? CAVEATS.patient.edited : CAVEATS.patient.uploaded, tl));
+    if (fromUpload) out.push(patientCaveat(CAVEATS.patient.uploaded, tl));
     const loc = locale && module.locales && module.locales[locale];
     const data = loc && loc.data;
-    if (data && data.editedLocally === true) out.push(CAVEATS.editedWording.en);
-    if (data && Array.isArray(data.stale) && data.stale.length) out.push(CAVEATS.staleTranslation.en);
+    if (data && data.editedLocally === true) out.push(patientCaveat(CAVEATS.editedWording, tl));
+    if (data && Array.isArray(data.stale) && data.stale.length) out.push(patientCaveat(CAVEATS.staleTranslation, tl));
     return out;
   }
-  if (derived) out.push(CAVEATS.edited.en);
-  if (!derived || fromUpload) out.push(CAVEATS.uploaded.en);
+  const en = (text) => out.push({ text, lang: "en" });
+  if (derived) en(CAVEATS.edited.en);
+  if (!derived || fromUpload) en(CAVEATS.uploaded.en);
   const root = rootRecordOf(module);
   if (derived && root && module.hashes && root.scoringHash !== module.hashes.scoringHash) {
     const rootModule = module.classification && module.classification.root;
     const rootName = (rootModule && rootModule.name) || root.label || root.moduleId;
-    out.push(CAVEATS.scoringChanged.en.replace("{root}", rootName).replace("{rootVersion}", root.instrumentVersion));
+    en(CAVEATS.scoringChanged.en.replace("{root}", rootName).replace("{rootVersion}", root.instrumentVersion));
   }
   return out;
+}
+
+/**
+ * Provenance wording (§3.11 "Provenance display") as strings: provenanceLineParts' texts (for a
+ * patient in es the Spanish caveats, release 0.4.2; English otherwise). Built-ins have none.
+ * @returns {string[]}
+ */
+export function provenanceLines(module, audience = "clinician", opts = {}) {
+  return provenanceLineParts(module, audience, opts).map((p) => p.text);
 }
 
 /**

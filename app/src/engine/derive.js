@@ -261,6 +261,14 @@ const LOCKS = [
   ["/cds", "CDS identity follows the module id; preview wording is under Copy."],
   ["/lexicon/goldSet", "The gold set belongs to the lexicon it was run against."],
   ["/lexicon/lang", "The voice-capture language is fixed."],
+  ["/lexicon/scale/*/heard", "The heard signal is approved lexicon configuration; not editable in the Rubric Editor."],
+  ["/lexicon/scale/*/carry", "Carry-over is approved lexicon configuration; not editable in the Rubric Editor."],
+  ["/lexicon/scale/*/yieldTo", "The yield rule is approved lexicon configuration; not editable in the Rubric Editor."],
+  ["/lexicon/scale/*/anchor", "Yield anchors are approved lexicon configuration; not editable in the Rubric Editor."],
+  ["/lexicon/scale/*/carryExclude", "Carry-over exclusions are approved lexicon configuration; not editable in the Rubric Editor."],
+  ["/lexicon/carryRefuse", "Carry-over refusal phrases are approved lexicon configuration; not editable in the Rubric Editor."],
+  ["/lexicon/normalize", "Text normalization before matching is approved lexicon configuration; not editable in the Rubric Editor."],
+  ["/emrTemplate", "The EMR template data is cited clinical content (the built-in module's was signed off by the clinical lead on 2026-10-07, with the lead's additions of 2026-10-10); not editable in the Rubric Editor."],
   ["/locales/*/reviewed", "Managed by screenAIr: edited wording is marked unreviewed."],
   ["/locales/*/editedLocally", "Managed by screenAIr."],
   ["/locales/*/stale", "Managed by screenAIr."],
@@ -281,7 +289,7 @@ const EDITABLE = [
   "/gapRule/threshold",
   "/locales/en",
   "/locales/*/items", "/locales/*/items/*", "/locales/*/items/*/q", "/locales/*/items/*/opts", "/locales/*/items/*/opts/*",
-  "/locales/*/items/*/ask", "/locales/*/items/*/help",
+  "/locales/*/items/*/ask", "/locales/*/items/*/help", "/locales/*/items/*/clin",
   "/locales/*/redFlags", "/locales/*/redFlags/*", "/locales/*/redFlags/*/q", "/locales/*/redFlags/*/say",
   "/locales/*/contextItems/*/q", "/locales/*/contextItems/*/opts/*/1",
   "/locales/*/steps/*/title", "/locales/*/steps/*/heading", "/locales/*/steps/*/lede", "/locales/*/steps/*/intro",
@@ -422,22 +430,117 @@ export function lockViolations(parent, draftRubric) {
     if (!isObj(c) || !isObj(d)) return;
     if (arr(c.options).length !== arr(d.options).length) add(`/contextItems/${i}/options`, "Context options cannot be added or removed in the editor.");
   });
-  // Every other change must land on an editable field. Removing the entries that depended on
-  // a deleted item or flag (sample answers, multi-answer phrases) goes with the deletion.
-  const gone = new Set([...[...pItems.keys()].filter((id) => !dItems.has(id)), ...pFlags.filter((id) => !dFlags.has(id))]);
+  // Every other change must land on an editable field. Removing the sample answers that named
+  // a deleted item or flag goes with the deletion.
+  const goneItems = new Set([...pItems.keys()].filter((id) => !dItems.has(id)));
+  const gone = new Set([...goneItems, ...pFlags.filter((id) => !dFlags.has(id))]);
   const dependentOfGone = (p) => {
     const segs = ptrParse(p);
-    if (segs[0] === "sampleCases" && (segs[2] === "a" || segs[2] === "rf") && gone.has(segs[3]) && segs.length === 4) return true;
-    return segs[0] === "lexicon" && segs[1] === "multi" && gone.size > 0;
+    return segs[0] === "sampleCases" && (segs[2] === "a" || segs[2] === "rf") && gone.has(segs[3]) && segs.length === 4;
   };
+  // Scale and multi-answer entries are compared with what the item deletions alone produce
+  // (expectedScale, expectedMulti), not with the parent, so only those consequences are exempt.
+  // Scale: a deleted item's own entry goes (its carryExclude with it, and later entries shift
+  // up), and a yield rule naming a deleted item loses that id (its yieldTo and anchor go when it
+  // empties). Multi: a deleted item leaves every ids list, and an entry left with no ids goes.
+  // Both are exactly what deleteItem does. A red-flag deletion touches neither (multi ids name
+  // items and context items only), so it exempts nothing there.
+  const byExpectation = isObj(pr.lexicon) && isObj(dr.lexicon);
+  const isExpectedPath = (p) => {
+    const segs = ptrParse(p);
+    return segs[0] === "lexicon" && (segs[1] === "scale" || segs[1] === "multi");
+  };
+  // The EMR template (release 0.4.3) is locked whole, and compared with what the item and flag
+  // deletions alone leave of it (expectedEmr, the same changes deleteItem and deleteFlag make), so
+  // only those consequences are exempt; adding or removing the block is a locked change too.
+  const byEmr = isObj(pr.emrTemplate) && isObj(dr.emrTemplate);
   for (const ch of diffRubrics(pr, dr)) {
     if (ch.op === "order") continue;
     if (ch.path === "/domains" || ch.path === "/redFlags" || ch.path === "/contextItems") continue;
     if (dependentOfGone(ch.path)) continue;
+    if (byExpectation && isExpectedPath(ch.path)) continue;
+    if (byEmr && ch.path.startsWith("/emrTemplate/")) continue;
     const reason = lockReason(ch.path);
     if (reason) add(ch.path, `Read-only: ${reason}`);
   }
+  if (byEmr) {
+    const goneFlags = new Set(pFlags.filter((id) => !dFlags.has(id)));
+    const expected = { emrTemplate: expectedEmr(pr.emrTemplate, goneItems, goneFlags) };
+    // Every remaining difference, a reorder included, is an edit of locked data.
+    for (const ch of diffRubrics(expected, { emrTemplate: dr.emrTemplate })) add(ch.path, `Read-only: ${lockReason("/emrTemplate")}`);
+  }
+  if (byExpectation) {
+    const expected = { lexicon: { scale: expectedScale(pr.lexicon.scale, goneItems), multi: expectedMulti(pr.lexicon.multi, goneItems) } };
+    const actual = { lexicon: { scale: dr.lexicon.scale, multi: dr.lexicon.multi } };
+    for (const ch of diffRubrics(expected, actual)) {
+      if (ch.op === "order") continue;
+      const reason = lockReason(ch.path);
+      if (reason) add(ch.path, `Read-only: ${reason}`);
+      // A whole entry added or removed (not a deletion's own) must not carry locked fields in
+      // or out with it.
+      const segs = ptrParse(ch.path);
+      const entry = ch.op === "remove" ? ch.from : ch.op === "add" ? ch.to : undefined;
+      if (segs.length === 3 && isObj(entry)) {
+        for (const k of Object.keys(entry)) {
+          if (entry[k] === undefined) continue;
+          const kp = `${ch.path}/${ptrEscape(k)}`;
+          const hit = lockedBy(kp);
+          if (hit) add(kp, `Read-only: ${hit.reason}`);
+        }
+      }
+    }
+  }
   return out;
+}
+
+/**
+ * The parent's scale entries as the deletion of `goneItems` leaves them (the same changes
+ * deleteItem makes): each deleted item's own entry removed, and each deleted id removed from
+ * every yieldTo list, with yieldTo and anchor deleted when that empties it.
+ */
+function expectedScale(parentScale, goneItems) {
+  if (!Array.isArray(parentScale)) return clone(parentScale);
+  const xs = clone(parentScale).filter((e) => !(isObj(e) && goneItems.has(e.id)));
+  for (const e of xs) {
+    if (!isObj(e) || !Array.isArray(e.yieldTo) || !e.yieldTo.some((x) => goneItems.has(x))) continue;
+    e.yieldTo = e.yieldTo.filter((x) => !goneItems.has(x));
+    if (!e.yieldTo.length) { delete e.yieldTo; delete e.anchor; }
+  }
+  return xs;
+}
+
+/**
+ * The parent's multi-answer entries as the deletion of `goneItems` leaves them (the same changes
+ * deleteItem makes): each deleted item removed from every ids list, and every entry whose ids
+ * list is then empty removed. With no item deleted, the parent's entries unchanged.
+ */
+function expectedMulti(parentMulti, goneItems) {
+  if (!goneItems.size) return clone(parentMulti);
+  const isGone = (x) => isObj(x) && x.kind === "item" && goneItems.has(x.id);
+  return arr(clone(parentMulti))
+    .map((e) => (isObj(e) ? { ...e, ids: arr(e.ids).filter((x) => !isGone(x)) } : e))
+    .filter((e) => !isObj(e) || e.ids.length);
+}
+
+/**
+ * The parent's EMR template (release 0.4.3) as the deletion of `goneItems` and `goneFlags` leaves
+ * it (the same changes deleteItem and deleteFlag make): history rows and (release 0.4.6) past-history
+ * rows naming a deleted item removed, checklist signals naming a deleted item removed (the row
+ * stays), and the red-flag references and
+ * the red-flag placeholder of a deleted flag removed. Everything else, citations included, unchanged.
+ */
+function expectedEmr(parentEmr, goneItems, goneFlags) {
+  const t = clone(parentEmr);
+  if (Array.isArray(t.history)) t.history = t.history.filter((row) => !(isObj(row) && goneItems.has(row.item)));
+  if (Array.isArray(t.pastHistory)) t.pastHistory = t.pastHistory.filter((row) => !(isObj(row) && goneItems.has(row.item)));
+  if (Array.isArray(t.checklist)) {
+    for (const row of t.checklist) {
+      if (isObj(row) && Array.isArray(row.signals)) row.signals = row.signals.filter((s) => !(isObj(s) && s.item !== undefined && goneItems.has(s.item)));
+    }
+  }
+  if (isObj(t.redFlagRefs)) for (const id of goneFlags) delete t.redFlagRefs[id];
+  if (isObj(t.redFlagPlaceholders)) for (const id of goneFlags) delete t.redFlagPlaceholders[id];
+  return t;
 }
 
 // ------------------------------------------------------------- acknowledgements (§5.7)
@@ -558,6 +661,28 @@ function localesEdited(parentRubric, draftRubric) {
 }
 
 const isMetaPath = (p) => /^\/locales\/[^/]+\/(reviewed|editedLocally|stale)(\/|$)/.test(p);
+
+/**
+ * The ids of the items, present in both rubrics, whose English clinician line differs between
+ * the parent rubric and the draft (release 0.4.2: patientClin, or the item text it falls back
+ * to, is the source of a translation's `clin`). Compared by item id, so a moved item is not a change.
+ * deriveRubric marks `/locales/<loc>/items/<id>/clin` stale from it, and the Rubric Editor's
+ * "English changed" tag reads it too, so the two always agree.
+ * @param {Object} parentRubric
+ * @param {Object} draftRubric
+ * @returns {string[]}
+ */
+export function changedClinItems(parentRubric, draftRubric) {
+  const before = itemsById(parentRubric);
+  const ids = [];
+  for (const [id, hit] of itemsById(draftRubric)) {
+    const old = before.get(id);
+    if (!old) continue;
+    const line = (it) => (typeof it.patientClin === "string" ? it.patientClin : it.text);
+    if (line(old.item) !== line(hit.item)) ids.push(id);
+  }
+  return ids;
+}
 
 /**
  * Classify the draft's changes against the parent and the root (§4.15).
@@ -842,14 +967,20 @@ export async function deriveRubric(parent, draftRubric, {
     locs[loc].editedLocally = true;
   }
   const enPaths = changed.filter((p) => p.startsWith("/locales/en/") && !isMetaPath(p));
+  // Release 0.4.2: a translated clinician line (locales.<loc>.items.<id>.clin) follows the item's
+  // English patientClin, so an edit of that patientClin makes the translation stale.
+  const clinItems = changedClinItems(pr, r);
   for (const loc of Object.keys(locs)) {
     if (loc === "en" || !isObj(locs[loc])) continue;
     const L = locs[loc];
     let stale = arr(L.stale).filter((p) => typeof p === "string");
     // A translation updated in this edit is no longer stale.
     stale = stale.filter((p) => !changed.some((c) => ptrOverlaps(c, p)));
-    for (const p of enPaths) {
-      const lp = `/locales/${ptrEscape(loc)}/` + p.slice("/locales/en/".length);
+    const translated = [
+      ...enPaths.map((p) => `/locales/${ptrEscape(loc)}/` + p.slice("/locales/en/".length)),
+      ...clinItems.map((id) => `/locales/${ptrEscape(loc)}/items/${ptrEscape(id)}/clin`),
+    ];
+    for (const lp of translated) {
       if (getAt(r, lp) === undefined) continue;                  // falls back to English: not a stale translation
       if (changed.some((c) => ptrOverlaps(c, lp))) continue;     // updated together with the English
       if (!stale.includes(lp)) stale.push(lp);
@@ -1079,13 +1210,20 @@ export function addItem(rubric, spec) {
   return r;
 }
 
-/** Entries that depend on an item (lexicon phrases, sample answers, demo, patient wording). */
+/** Entries that depend on an item (lexicon phrases, sample answers, demo, patient wording, EMR template rows). */
 export function itemDependents(rubric, id) {
   const out = [];
   const lx = rubric.lexicon;
   if (isObj(lx)) {
     arr(lx.bool).forEach((e, i) => { if (isObj(e) && e.id === id) out.push({ path: `/lexicon/bool/${i}`, what: "lexicon phrases" }); });
-    arr(lx.scale).forEach((e, i) => { if (isObj(e) && e.id === id) out.push({ path: `/lexicon/scale/${i}`, what: "lexicon cue and bands" }); });
+    // The entry goes whole, so its carry-over configuration (heard, carry, carryExclude, which
+    // names only this entry's own band phrases) goes with it and leaves nothing dangling.
+    arr(lx.scale).forEach((e, i) => {
+      if (isObj(e) && e.id === id) out.push({ path: `/lexicon/scale/${i}`, what: Array.isArray(e.carryExclude) ? "lexicon cue and bands (with their carry-over exclusions)" : "lexicon cue and bands" });
+    });
+    arr(lx.scale).forEach((e, i) => {
+      if (isObj(e) && Array.isArray(e.yieldTo) && e.yieldTo.includes(id)) out.push({ path: `/lexicon/scale/${i}/yieldTo`, what: "a yield rule naming this item" });
+    });
     arr(lx.multi).forEach((e, i) => {
       if (isObj(e) && arr(e.ids).some((x) => isObj(x) && x.kind === "item" && x.id === id)) out.push({ path: `/lexicon/multi/${i}`, what: "a multi-answer lexicon phrase" });
     });
@@ -1095,6 +1233,16 @@ export function itemDependents(rubric, id) {
   for (const loc of Object.keys(locs)) {
     if (isObj(locs[loc]) && isObj(locs[loc].items) && locs[loc].items[id] !== undefined) out.push({ path: `/locales/${ptrEscape(loc)}/items/${ptrEscape(id)}`, what: `patient wording (${loc})` });
   }
+  // The EMR template (release 0.4.3): a history row and checklist signals naming the item; since
+  // release 0.4.6 a past-history row too.
+  const emr = rubric.emrTemplate;
+  if (isObj(emr)) {
+    arr(emr.history).forEach((row, i) => { if (isObj(row) && row.item === id) out.push({ path: `/emrTemplate/history/${i}`, what: "an EMR template history line" }); });
+    arr(emr.pastHistory).forEach((row, i) => { if (isObj(row) && row.item === id) out.push({ path: `/emrTemplate/pastHistory/${i}`, what: "an EMR template past-history line" }); });
+    arr(emr.checklist).forEach((row, i) => arr(isObj(row) && row.signals).forEach((s, j) => {
+      if (isObj(s) && s.item === id) out.push({ path: `/emrTemplate/checklist/${i}/signals/${j}`, what: `an EMR template checklist signal ("${row.id}")` });
+    }));
+  }
   return out;
 }
 
@@ -1103,14 +1251,37 @@ export function canDeleteItem(module, id) {
   return !Object.prototype.hasOwnProperty.call(readsOf(module).items, id);
 }
 
+/**
+ * Order two JSON pointers segment by segment: segments that are both array indices compare as
+ * numbers, any other pair as strings, and a pointer sorts before the pointers below it.
+ */
+function comparePtrNumeric(a, b) {
+  const xs = ptrParse(a), ys = ptrParse(b);
+  const n = Math.min(xs.length, ys.length);
+  for (let i = 0; i < n; i++) {
+    const x = xs[i], y = ys[i];
+    if (x === y) continue;
+    if (/^\d+$/.test(x) && /^\d+$/.test(y)) return Number(x) - Number(y);
+    return x < y ? -1 : 1;
+  }
+  return xs.length - ys.length;
+}
+
 /** Delete an item and every dependent entry; returns the new rubric. */
 export function deleteItem(rubric, id) {
   const r = clone(rubric);
-  const deps = itemDependents(r, id).filter((d) => !d.path.startsWith("/lexicon/multi/"));
-  // Later paths first, so an earlier index in the same list stays valid.
-  for (const d of deps.sort((a, b) => (a.path < b.path ? 1 : -1))) setAt(r, d.path, undefined);
+  const deps = itemDependents(r, id).filter((d) => !d.path.startsWith("/lexicon/multi/") && !/^\/lexicon\/scale\/\d+\/yieldTo$/.test(d.path));
+  // Later paths first, so an earlier index in the same list stays valid. Indices compare as
+  // numbers (as strings "/x/10" would sort before "/x/2" and splice the wrong element).
+  for (const d of deps.sort((a, b) => comparePtrNumeric(b.path, a.path))) setAt(r, d.path, undefined);
   if (isObj(r.lexicon)) {
     r.lexicon.multi = arr(r.lexicon.multi).map((e) => ({ ...e, ids: arr(e.ids).filter((x) => !(x.kind === "item" && x.id === id)) })).filter((e) => e.ids.length);
+    // A yield rule loses the reference; emptied, the rule goes with its anchors (no V28 left behind).
+    for (const e of arr(r.lexicon.scale)) {
+      if (!isObj(e) || !Array.isArray(e.yieldTo) || !e.yieldTo.includes(id)) continue;
+      e.yieldTo = e.yieldTo.filter((x) => x !== id);
+      if (!e.yieldTo.length) { delete e.yieldTo; delete e.anchor; }
+    }
   }
   for (const d of r.domains) d.items = arr(d.items).filter((it) => !(isObj(it) && it.id === id));
   return r;
@@ -1160,6 +1331,9 @@ export function flagDeletePlan(module, rubric, id) {
   const locs = isObj(rubric.locales) ? rubric.locales : {};
   for (const loc of Object.keys(locs)) if (isObj(locs[loc]) && isObj(locs[loc].redFlags) && locs[loc].redFlags[id] !== undefined) removes.push({ path: `/locales/${ptrEscape(loc)}/redFlags/${ptrEscape(id)}`, what: `patient wording (${loc})` });
   arr(rubric.sampleCases).forEach((s, i) => { if (isObj(s) && isObj(s.rf) && s.rf[id] !== undefined) removes.push({ path: `/sampleCases/${i}/rf/${ptrEscape(id)}`, what: `sample case "${s.id}"` }); });
+  const emr = rubric.emrTemplate;
+  if (isObj(emr) && isObj(emr.redFlagRefs) && emr.redFlagRefs[id] !== undefined) removes.push({ path: `/emrTemplate/redFlagRefs/${ptrEscape(id)}`, what: "its EMR template references" });
+  if (isObj(emr) && isObj(emr.redFlagPlaceholders) && emr.redFlagPlaceholders[id] !== undefined) removes.push({ path: `/emrTemplate/redFlagPlaceholders/${ptrEscape(id)}`, what: "its EMR template workup placeholder" });
   const ex = rubric.cds && rubric.cds.examples && rubric.cds.examples.redFlagPresent;
   if (isObj(ex) && ex.flagId === id) return { allowed: false, reason: "The CDS red-flag example names this flag.", removes: [] };
   return { allowed: true, reason: null, removes };

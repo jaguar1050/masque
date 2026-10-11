@@ -8,13 +8,20 @@
 //   PATIENT_CHROME   the locale-keyed chrome of Pat `UI` (Pat L379-424) minus the module-owned
 //                    keys (sub, sections[2..7]) and the shell caveats (reviewBanner, txtUnreviewed,
 //                    which are policy.js CAVEATS.unreviewed), moved verbatim; plus the English
-//                    JSX literals of Intro, Safety, Summary and the footer (es falls back to en,
-//                    exactly as the baseline showed English there).
+//                    JSX literals of Intro, Safety, Summary and the footer. Until release 0.4.2 es
+//                    fell back to en for those literals, as the baseline showed English there;
+//                    since 0.4.2 es carries them too (an unreviewed team translation, 2026-10-06,
+//                    recorded in the built-in module's SOURCES.md). chromeFor still falls back per key.
 //   TIER_DISPLAY     red-flag tier → patient display key and colours (Pat L263-272).
-//   GRAMMAR          the list joiners and statement-to-question transforms (Pat L981-994).
-//   projectForPatient, localeText, flagCopy, buildPatientSummary, askForm, joinList,
-//   summaryText, summaryHtml, richText (§4.12), plus chromeFor (the en-fallback chrome view)
-//   and localeFallback (whether a locale string is English standing in for a translation).
+//   GRAMMAR          the list joiners and statement-to-question transforms (Pat L981-994), with
+//                    the 0.4.2 Spanish fixes ("¿" opens a question, "e" before an /i/ sound).
+//   projectForPatient, localeText, flagCopy, buildPatientSummary, askForm (and askFormLang, the
+//   lang of an English fallback question), joinList,
+//   summaryText, summaryHtml, richText (§4.12), plus chromeFor (the en-fallback chrome view),
+//   localeFallback (whether a locale string is English standing in for a translation),
+//   patientProvenanceFor (the patient caveats in a locale), prototypeMarker /
+//   prototypeMarkerText (the English marker plus a locale's companion line), patientPrintHeader
+//   and patientPrintHeaderParts (the repeating print header), and langTag (a safe lang value).
 //
 // Plain data and pure functions; nothing runs at import time. Module closures (the summary
 // rules, derived values and sum templates) are only ever called inside try/catch: a throw
@@ -29,7 +36,8 @@ import { APP_VERSION, CAVEATS } from "./policy.js";
 
 /**
  * Patient chrome per locale. `en` carries every key; `es` carries the keys the baseline
- * translated (Pat L402-423), and falls back to `en` for the rest (chromeFor).
+ * translated (Pat L402-423) and, since release 0.4.2, the English JSX literals below them (an
+ * unreviewed team translation). A key a locale lacks falls back to `en` (chromeFor).
  *
  * Key → baseline source (Pat):
  *   title … fileName        UI[loc] L380-423, verbatim, minus sub / sections / reviewBanner / txtUnreviewed
@@ -68,7 +76,7 @@ export const PATIENT_CHROME = deepFreeze({
     txtClinNote: "Self-reported; no screening index was calculated. '-' points away from the pattern.",
     txtFooter: "research prototype, not medical advice. Does not diagnose. Not validated in a clinical study.",
     fileName: "my-visit-summary.txt",
-    // English JSX literals of the baseline (es falls back to these, as it did).
+    // English JSX literals of the baseline (es carries its own since release 0.4.2).
     introHeading: "Before your appointment",
     introLede: "This takes about five minutes. At the end you get a one-page summary you can print or show on your phone — what to say, what to ask, and what you're unsure about.",
     forYouIfTitle: "It's for you if",
@@ -106,6 +114,28 @@ export const PATIENT_CHROME = deepFreeze({
     txtClinNote: "Auto-reportado; no se calculó ningún índice de tamizaje. '-' apunta en contra del patrón.",
     txtFooter: "prototipo de investigación, no es consejo médico. No diagnostica. No ha sido validado en un estudio clínico.",
     fileName: "mi-resumen-para-la-consulta.txt",
+    // Release 0.4.2: the English JSX literals above, in Spanish. An unreviewed team translation
+    // (two independent drafts, clinical / language / mechanical review), 2026-10-06, at the user's
+    // request; recorded in the built-in module's SOURCES.md ("Spanish translation delta") and
+    // tests/harness/locale-delta.js `chrome`. Pending a bilingual clinical reviewer (safety keys first).
+    // carryOn, summaryLede and footer were revised after the rendered-Spanish review (round 3).
+    introHeading: "Antes de su consulta",
+    introLede: "Esto toma unos cinco minutos. Al final recibe un resumen de una página que puede imprimir o mostrar en su teléfono — qué decir, qué preguntar y de qué no está seguro.",
+    forYouIfTitle: "Es para usted si",
+    whatItIsntTitle: "Lo que no es",
+    whatItIsnt: "No diagnostica nada y no le dirá qué tiene. No le da una puntuación ni un número de riesgo. Lo que sí hace es ayudarle a describir el patrón con exactitud, lo cual muchas veces es la parte que ha estado fallando.",
+    privacyNote: "Todo se queda en su navegador. Nada se sube a internet, se guarda en una cuenta ni se comparte — el resumen solo sale de este dispositivo si usted lo imprime o lo descarga.",
+    safetyHeading: "Primero, una revisión de seguridad",
+    safetyLede: "Algunos síntomas necesitan revisarse rápidamente, sin importar qué más esté pasando. Marque todo lo que sea cierto en su caso. Si nada es cierto en su caso, esa es la respuesta habitual.",
+    callNow: "Por favor no espere",
+    callSoon: "Vale la pena atender esto pronto",
+    carryOn: "Puede continuar y terminar el resumen — esto aparecerá en la parte de arriba del resumen.",
+    noneApply: "Ninguno de estos es mi caso",
+    summaryLede: "Imprímalo o déjelo abierto en su teléfono. Entregarlo al principio de la consulta funciona mejor que tratar de recordarlo todo.",
+    seenToday: "Busque atención hoy",
+    seenWeek: "Busque atención esta semana",
+    disclaimer: "Este es un prototipo de investigación, no es consejo médico. No diagnostica. No ha sido validado en un estudio clínico. Si siente que algo no está bien, o si algo está empeorando, comuníquese con un médico, sin importar lo que diga esta página.",
+    footer: "Guía {name} v{appVersion} para el paciente · instrumento v{instrument} · prototipo de investigación · nada de lo que escriba sale de este dispositivo",
   },
 });
 
@@ -115,11 +145,72 @@ export const TIER_DISPLAY = deepFreeze({
   urgent: { key: "soon", color: "var(--amber)", bg: "var(--amberbg)" },
 });
 
-/** List joiners and the statement-to-question transform per locale (Pat L981-994). */
+/**
+ * List joiners and the statement-to-question transform per locale (Pat L981-994).
+ * Release 0.4.2 (Spanish grammar, 2026-10-06): `andBeforeI` replaces `and` before a final
+ * element whose first sound is /i/ ("e inflamación", "e hiperacusia", but "y hielo"); and
+ * `openQuestion` opens a question the transform made ("¿…?"). An element starting "hia", "hie",
+ * "hio" or "hiu" always takes "y": right for the glide ("y hielo", "y hierba"), but a word whose
+ * /i/ is a vowel in hiatus ("hiato") would also get "y" where Spanish uses "e" — a known
+ * limitation; no element of the built-in module's wording starts that way.
+ */
 export const GRAMMAR = deepFreeze({
   en: { and: "and", oxford: true, ask: "en-regex" },
-  es: { and: "y", oxford: false, ask: "period-to-question" },
+  es: { and: "y", andBeforeI: "e", oxford: false, ask: "period-to-question", openQuestion: "¿" },
 });
+
+const LANG_TAG_RE = /^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$/;
+
+/**
+ * A safe value for a lang attribute: the locale key when it looks like a language tag, else "en".
+ * @param {string} loc
+ * @returns {string}
+ */
+export function langTag(loc) {
+  return typeof loc === "string" && LANG_TAG_RE.test(loc) ? loc : "en";
+}
+
+/** The separator between the English prototype marker and a locale's companion line. */
+const MARKER_JOIN = " — ";
+
+/**
+ * The prototype marker of a patient surface, as parts [{text, lang}]: always the English
+ * marker (CAVEATS.prototype, which stays English on every surface); in a locale with a
+ * companion line (CAVEATS.prototypeCompanion[loc], release 0.4.2) followed by " — " and that
+ * line. In English the parts carry lang null (nothing to tag); elsewhere the English part is
+ * lang "en", the companion lang `loc`, and the separator null.
+ * @param {string} loc
+ * @returns {Array<{text: string, lang: (string|null)}>}
+ */
+export function prototypeMarker(loc) {
+  const comp = companionLine(loc);
+  if (!comp) return [{ text: CAVEATS.prototype, lang: loc === "en" || loc === undefined ? null : "en" }];
+  return [{ text: CAVEATS.prototype, lang: "en" }, { text: MARKER_JOIN, lang: null }, { text: comp, lang: langTag(loc) }];
+}
+
+/** prototypeMarker(loc) as one string ("Prototype · not for clinical use — Prototipo · …" in es). */
+export function prototypeMarkerText(loc) {
+  return prototypeMarker(loc).map((p) => p.text).join("");
+}
+
+function companionLine(loc) {
+  if (typeof loc !== "string" || loc === "en") return null;
+  const c = CAVEATS.prototypeCompanion;
+  return c && typeof c[loc] === "string" && c[loc] ? c[loc] : null;
+}
+
+/**
+ * A patient caveat in a locale (release 0.4.2): `{text, lang}` from the caveat's own `loc` field
+ * (`${loc}Short` for a short marker), else its English (`en` / `short`, lang "en").
+ */
+function caveatIn(cav, loc, short = false) {
+  if (typeof loc === "string" && loc !== "en" && cav) {
+    const v = cav[short ? `${loc}Short` : loc];
+    if (typeof v === "string" && v) return { text: v, lang: langTag(loc) };
+  }
+  const e = cav ? cav[short ? "short" : "en"] : undefined;
+  return { text: typeof e === "string" ? e : "", lang: "en" };
+}
 
 const CHROME_CACHE = new Map();
 
@@ -224,7 +315,9 @@ function isoDate(generatedAt) {
 // Projection (design §4.12, D15)
 // ---------------------------------------------------------------------------------------
 
-const ITEM_WORDING_KEYS = ["q", "opts", "ask", "help"];
+// `clin` (release 0.4.2): a translation's own clinician line for the "For my clinician" block;
+// English has none (the item's patientClin is the English source).
+const ITEM_WORDING_KEYS = ["q", "opts", "ask", "help", "clin"];
 const FLAG_WORDING_KEYS = ["q", "say"];
 const CONTEXT_WORDING_KEYS = ["q", "opts"];
 const STEP_WORDING_KEYS = ["title", "heading", "lede", "intro"];
@@ -232,24 +325,43 @@ const UI_WORDING_KEYS = ["sub", "forYouIf", "clinicianLede"];
 
 const VIEW_CACHE = new WeakMap();
 
-/** Patient provenance (design §3.11 "Provenance display"): CAVEATS.patient.* only. */
+/**
+ * Patient provenance (design §3.11 "Provenance display"): CAVEATS.patient.* only. `kinds` names
+ * them in order ("edited", "uploaded"); lines and markers are the English texts.
+ */
 function patientProvenance(module) {
-  const lines = [];
-  const markers = [];
-  if (!module || module.origin === "builtin") return { lines, markers };
-  const kind = module.classification && typeof module.classification === "object" ? module.classification.kind : null;
-  if (module.origin === "derived") {
-    lines.push(CAVEATS.patient.edited.en);
-    markers.push(CAVEATS.patient.edited.short);
-    if (kind === "derived-from-upload") {
-      lines.push(CAVEATS.patient.uploaded.en);
-      markers.push(CAVEATS.patient.uploaded.short);
+  const kinds = [];
+  if (module && module.origin !== "builtin") {
+    const kind = module.classification && typeof module.classification === "object" ? module.classification.kind : null;
+    if (module.origin === "derived") {
+      kinds.push("edited");
+      if (kind === "derived-from-upload") kinds.push("uploaded");
+    } else {
+      kinds.push("uploaded");
     }
-  } else {
-    lines.push(CAVEATS.patient.uploaded.en);
-    markers.push(CAVEATS.patient.uploaded.short);
   }
-  return { lines, markers };
+  return {
+    kinds,
+    lines: kinds.map((k) => CAVEATS.patient[k].en),
+    markers: kinds.map((k) => CAVEATS.patient[k].short),
+  };
+}
+
+/**
+ * The patient provenance of a view in a locale (release 0.4.2): each CAVEATS.patient line and
+ * short marker in `loc` where the caveat has that locale (`es` / `esShort`), else English, each
+ * with its own lang. Nothing for a built-in. view.provenanceLines / provenanceMarkers stay the
+ * English texts.
+ * @param {Object} view   projectForPatient(module)
+ * @param {string} loc
+ * @returns {{lines: Array<{text:string, lang:string}>, markers: Array<{text:string, lang:string}>}}
+ */
+export function patientProvenanceFor(view, loc) {
+  const kinds = arr(view && view.provenanceKinds).filter((k) => isObj(CAVEATS.patient[k]));
+  return {
+    lines: kinds.map((k) => caveatIn(CAVEATS.patient[k], loc)),
+    markers: kinds.map((k) => caveatIn(CAVEATS.patient[k], loc, true)),
+  };
 }
 
 function projectLocale(entry) {
@@ -278,8 +390,9 @@ function projectLocale(entry) {
  * The only object the Patient Companion receives (D15). Frozen, memoised per module.
  *
  * Carries: identity (id, name, label, instrumentVersion, origin), the PATIENT provenance set
- * (CAVEATS.patient.* lines and their short markers — never CAVEATS.scoringChanged or any
- * clinician line), availability, the item structure the summary needs (id, w, scale length,
+ * (which CAVEATS.patient.* apply, as provenanceKinds, and their English lines and short markers
+ * — never CAVEATS.scoringChanged or any clinician line; patientProvenanceFor gives them in a
+ * locale), availability, the item structure the summary needs (id, w, scale length,
  * which scale options are negative answers (f === 0, as booleans only), patientClin), the patient steps, context signal values, the gap rule, flag ids and tiers,
  * the patient wording per locale (whitelisted keys only) with its review state, the logic's
  * SUM templates and its patientSummary rules (or "generic").
@@ -349,6 +462,7 @@ export function projectForPatient(module) {
     label: module.label,
     instrumentVersion: module.instrumentVersion,
     origin: module.origin,
+    provenanceKinds: prov.kinds,
     provenanceLines: prov.lines,
     provenanceMarkers: prov.markers,
     available,
@@ -455,9 +569,29 @@ function itemWording(view, loc, id) {
   return { ...(e || {}), ...(p || {}) };
 }
 
+/** The translation's own clinician line for an item (never in English; release 0.4.2), or null. */
+function ownClin(view, loc, id) {
+  if (typeof loc !== "string" || loc === "en") return null;
+  const L = view && isObj(view.locales) ? view.locales[loc] : null;
+  const e = L && L.data && isObj(L.data.items) ? L.data.items[id] : null;
+  return isObj(e) && typeof e.clin === "string" && e.clin ? e.clin : null;
+}
+
+/**
+ * Whether a list element starts with an /i/ sound for GRAMMAR.andBeforeI (Spanish "e"): its
+ * first word, after leading spaces, quotes and opening marks and with accents ignored, starts
+ * with "i", or with "hi" and a consonant ("hiperacusia"); "hie", "hia", "hio", "hiu" start with
+ * a glide and keep "y" ("y hielo").
+ */
+function startsWithISound(x) {
+  const w = String(x).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/^[\s"'“”‘’«»¿¡([]+/, "");
+  return w.startsWith("i") || /^hi[b-df-hj-np-tv-z]/.test(w);
+}
+
 /**
  * Join a list in the locale's grammar (Pat L988-994): "a and b"; "a, b, and c" (en, Oxford
- * comma); "a, b y c" (es).
+ * comma); "a, b y c" (es), with "e" for "y" before a final element that starts with an /i/
+ * sound ("a e inflamación"; release 0.4.2, GRAMMAR.es.andBeforeI).
  * @param {string} loc
  * @param {string[]} xs
  * @returns {string}
@@ -465,26 +599,61 @@ function itemWording(view, loc, id) {
 export function joinList(loc, xs) {
   const list = Array.from(xs || []);
   const g = GRAMMAR[loc] || GRAMMAR.en;
-  const and = g.and;
   if (list.length === 0) return "";
   if (list.length === 1) return list[0];
-  if (list.length === 2) return `${list[0]} ${and} ${list[1]}`;
+  const last = list[list.length - 1];
+  const and = g.andBeforeI && startsWithISound(last) ? g.andBeforeI : g.and;
+  if (list.length === 2) return `${list[0]} ${and} ${last}`;
   const tail = g.oxford ? `, ${and} ` : ` ${and} `;
-  return `${list.slice(0, -1).join(", ")}${tail}${list[list.length - 1]}`;
+  return `${list.slice(0, -1).join(", ")}${tail}${last}`;
+}
+
+/**
+ * Whether an item's `q` in locale `loc` is English standing in for a translation: the locale has
+ * no wording of its own for it (localeFallback, which also covers an absent locale). Never in
+ * English. askForm then takes the English transform, and askFormLang tags the result "en".
+ */
+function qIsEnglish(view, loc, id) {
+  return loc !== "en" && localeFallback(view, loc, `items.${id}.q`);
+}
+
+/**
+ * The language of askForm(view, loc, id) for a lang attribute, or null when it is in `loc`
+ * itself (release 0.4.2): "en" outside English when the text askForm returns is English standing
+ * in for a translation — the item's `ask` when that is the fallback, else its `q` when that is.
+ * English never needs a tag (null).
+ * @returns {string|null}
+ */
+export function askFormLang(view, loc, id) {
+  if (loc === "en") return null;
+  const p = itemWording(view, loc, id);
+  const usesAsk = !!p && (typeof p.q !== "string" ? typeof p.ask === "string" : !!p.ask);
+  const english = usesAsk ? localeFallback(view, loc, `items.${id}.ask`) : qIsEnglish(view, loc, id);
+  return english ? "en" : null;
 }
 
 /**
  * The question form of an item for the "not sure" list (Pat L981-986): the item's own
  * patient `ask` when it has one; otherwise the locale transform — en: "I've " → "Have I ",
- * "I " → "Do I ", final "." → "?"; es: only the final "." → "?" (ask forms are supplied).
+ * "I " → "Do I ", final "." → "?"; es: the final "." → "?", and (release 0.4.2) the question
+ * so made opens with "¿" unless it already has one (GRAMMAR.es.openQuestion). A `q` that is
+ * English standing in for a translation (qIsEnglish) takes the English transform, never the
+ * locale's grammar (no "¿" on English); askFormLang says when to tag the result lang="en".
  * @returns {string}
  */
 export function askForm(view, loc, id) {
   const p = itemWording(view, loc, id);
   if (!p || typeof p.q !== "string") return p && typeof p.ask === "string" ? p.ask : String(id);
   if (p.ask) return p.ask;
-  const g = GRAMMAR[loc] || GRAMMAR.en;
-  if (g.ask === "period-to-question") return p.q.replace(/\.$/, "?");
+  const g = qIsEnglish(view, loc, id) ? GRAMMAR.en : (GRAMMAR[loc] || GRAMMAR.en);
+  if (g.ask === "period-to-question") {
+    if (!p.q.endsWith(".")) return p.q;
+    const s = p.q.slice(0, -1) + "?";
+    // Only a statement the transform turned into a question gets the opening mark, and only
+    // when it has none anywhere ("Cuando…, ¿cuánto dura?" is already a question and is untouched).
+    const open = typeof g.openQuestion === "string" ? g.openQuestion : "";
+    return open && !s.includes(open) ? open + s : s;
+  }
   return p.q.replace(/^I've /, "Have I ").replace(/^I /, "Do I ").replace(/\.$/, "?");
 }
 
@@ -570,8 +739,10 @@ function runRules(rules, state, list) {
  * from the generic rule (the module's own wording, verbatim; no ask, no gap line). The gap
  * line is S.gap(...) with the marker booleans in gapRule.markers order once at least
  * `threshold` markers carry their signal value. unsureList is every item answered "unsure",
- * in module order; clin is every endorsed item (patientClin plus the scale option in
- * brackets), ordered by |w|. Any throw withholds the summary: {summary: null, error}.
+ * in module order; clin is every endorsed item ({w, neg, t}, plus `lang` outside English: the
+ * locale's own `clin` line, else patientClin, plus the scale option of the active locale in
+ * brackets; lang is the locale for an own line, else "en"), ordered by |w|. Any throw withholds
+ * the summary: {summary: null, error}.
  *
  * @param {Object} view   projectForPatient(module)
  * @param {string} loc
@@ -671,7 +842,13 @@ export function buildPatientSummary(view, loc, { a = {}, ctx = {}, flags = [], u
       const opt = p && Array.isArray(p.opts) ? p.opts[v] : undefined;
       detail = ` [${opt !== undefined ? opt : v}]`;
     }
-    clin.push({ w: Math.abs(it.w), neg: it.w < 0, t: it.patientClin + detail });
+    // Release 0.4.2: a translation's own clinician line (locales.<loc>.items.<id>.clin) when it
+    // has one, tagged with that locale; otherwise the English patientClin, tagged "en". In
+    // English the entry stays {w, neg, t}, exactly as before (nothing to tag).
+    const own = ownClin(view, loc, it.id);
+    const entry = { w: Math.abs(it.w), neg: it.w < 0, t: (own !== null ? own : it.patientClin) + detail };
+    if (loc !== "en") entry.lang = own !== null ? langTag(loc) : "en";
+    clin.push(entry);
   }
   clin.sort((x, y) => y.w - x.w);
 
@@ -683,12 +860,15 @@ export function buildPatientSummary(view, loc, { a = {}, ctx = {}, flags = [], u
 // Exports: .txt and .html (§5.5, AD10)
 // ---------------------------------------------------------------------------------------
 
-/** Lines that close every export of a module/locale: patient provenance, edited wording, stale translation. */
+/**
+ * Lines that close every export of a module/locale: patient provenance, edited wording, stale
+ * translation, each {text, lang} in the locale where the caveat has it (release 0.4.2), else English.
+ */
 function patientNotices(view, loc) {
-  const out = arr(view.provenanceLines).slice();
+  const out = patientProvenanceFor(view, loc).lines;
   const e = localeEntry(view, loc);
-  if (e && e.editedLocally) out.push(CAVEATS.editedWording.en);
-  if (e && e.stale) out.push(CAVEATS.staleTranslation.en);
+  if (e && e.editedLocally) out.push(caveatIn(CAVEATS.editedWording, loc));
+  if (e && e.stale) out.push(caveatIn(CAVEATS.staleTranslation, loc));
   return out;
 }
 
@@ -699,9 +879,50 @@ function unreviewedCaveat(view, loc) {
 }
 
 /**
+ * The repeating print-header of a Patient view as parts [{text, lang}] (§5.5 Print, §5.10):
+ * the prototype marker (with the locale's companion line, prototypeMarker), plus the
+ * unreviewed-translation title when the locale is not reviewed and a caveat exists for it
+ * ("Traducción sin revisar" for es), plus the patient provenance markers of a non-built-in
+ * module in the locale (release 0.4.2), joined by " · " parts. Never a clinician marker. In
+ * English every part carries lang null; elsewhere each text part carries its own language.
+ * @param {Object} view   projectForPatient(module)
+ * @param {{loc: string, reviewed: boolean}} [printContext]   as the companion reports it (onPrintContext)
+ * @returns {Array<{text: string, lang: (string|null)}>}
+ */
+export function patientPrintHeaderParts(view, printContext) {
+  const pc = printContext || { loc: "en", reviewed: true };
+  const loc = typeof pc.loc === "string" ? pc.loc : "en";
+  const groups = [prototypeMarker(loc)];
+  const unrev = CAVEATS.unreviewed && CAVEATS.unreviewed[loc];
+  if (!pc.reviewed && unrev && unrev.title) groups.push([{ text: unrev.title, lang: langTag(loc) }]);
+  for (const m of patientProvenanceFor(view, loc).markers) groups.push([m]);
+  const parts = [];
+  groups.forEach((g, i) => {
+    if (i) parts.push({ text: " · ", lang: null });
+    parts.push(...g);
+  });
+  return loc === "en" ? parts.map((p) => ({ text: p.text, lang: null })) : parts;
+}
+
+/**
+ * patientPrintHeaderParts as one string: "Prototype · not for clinical use[ · <markers>]" in
+ * English; "Prototype · not for clinical use — Prototipo · no apto para uso clínico · Traducción
+ * sin revisar[ · <markers>]" in an unreviewed es.
+ * @returns {string}
+ */
+export function patientPrintHeader(view, printContext) {
+  return patientPrintHeaderParts(view, printContext).map((p) => p.text).join("");
+}
+
+/**
  * The plain-text summary (Pat L1096-1125 verbatim; footer `${name} v${appVersion} — ${txtFooter}`),
- * then (AD10) the patient provenance, edited-wording and stale-translation lines where they
- * apply, and last the dated caveat line `Prototype · not for clinical use · YYYY-MM-DD`.
+ * plus (AD16) what the screen and the .html show and Pat L1096-1125 left out: the thin warning
+ * after the header (Pat L1001-1014) and the not-sure lede under its heading (Pat L1058), in the
+ * locale's own chrome (thinTitle, thin, notSureLede); then (AD10) the patient provenance,
+ * edited-wording and stale-translation lines where they apply (in the locale where the caveat
+ * has it, release 0.4.2), and last the dated caveat line `Prototype · not for clinical use ·
+ * YYYY-MM-DD` (in es: `Prototype · not for clinical use — Prototipo · no apto para uso clínico ·
+ * YYYY-MM-DD`, prototypeMarkerText).
  * @param {Object} view
  * @param {string} loc
  * @param {Object} summary   buildPatientSummary(...).summary
@@ -717,6 +938,8 @@ export function summaryText(view, loc, summary, { appVersion = APP_VERSION, gene
   L.push(up(t.summaryTitle), "=".repeat(40), "");
   const unrev = unreviewedCaveat(view, loc);
   if (unrev && unrev.txt) L.push(unrev.txt, "");
+  // A near-empty summary says so, as on screen and in the .html (Pat L999-1001; AD16).
+  if (!arr(said).length && !arr(clin).length && !arr(flags).length) L.push(up(t.thinTitle), "  " + t.thin, "");
   if (arr(flags).length) {
     L.push(urgent ? t.txtSeenToday : t.txtSeenWeek, urgent ? t.tierNowWhat : t.tierSoonWhat, "");
     flags.forEach(f => L.push(`  ${t.txtSay}: "${f.say}"`));
@@ -726,12 +949,13 @@ export function summaryText(view, loc, summary, { appVersion = APP_VERSION, gene
   if (arr(said).length) { L.push(up(t.describe)); said.forEach(x => L.push("  - " + x)); L.push(""); }
   if (arr(ask).length) { L.push(up(t.askAbout)); ask.forEach(x => L.push("  - " + x)); L.push(""); }
   if (arr(unsureList).length) {
-    L.push(up(t.notSure));
+    L.push(up(t.notSure), "  " + t.notSureLede);
     unsureList.forEach(id => L.push("  - " + askForm(view, loc, id)));
     L.push("");
   }
   if (arr(clin).length) {
-    // The clinician block stays in clinical English regardless of locale (Pat L1112-1114).
+    // The clinician lines are each item's clinical English (Pat L1112-1114) unless the locale
+    // carries its own clinician line (`clin`, release 0.4.2).
     const note = typeof summary.clinNote === "string" ? summary.clinNote : null;
     L.push(up(t.forClinician));
     if (note !== null) L.push("  " + note);
@@ -740,8 +964,8 @@ export function summaryText(view, loc, summary, { appVersion = APP_VERSION, gene
     L.push("");
   }
   L.push("-".repeat(40), `${view.name} v${appVersion} — ${t.txtFooter}`);
-  for (const line of patientNotices(view, loc)) L.push(line);
-  L.push(`${CAVEATS.prototype} · ${isoDate(generatedAt)}`);
+  for (const line of patientNotices(view, loc)) L.push(line.text);
+  L.push(`${prototypeMarkerText(loc)} · ${isoDate(generatedAt)}`);
   return L.join("\n");
 }
 
@@ -773,6 +997,10 @@ function richHtml(str) {
 }
 
 // A subset of the on-screen summary styles (Pat L559-628), plus the repeating caveat header.
+// Release 0.4.7: in print the header cell drops its letter-spacing and steps down to 10.5px, so
+// the 0.4.2 es header ("… · Traducción sin revisar") stays on one line at Letter/A4 width with a
+// wider fallback monospace; at 11.5px/.03em it wrapped and the repeated page header lost
+// "revisar" (print spec /export-es/pageN/header, failing on cb5b834 alone). Presentation only.
 const EXPORT_CSS = `:root{--ink:#12302F;--muted:#5E7573;--line:#DCE5E3;--petrol:#1C6B63;--coral:#C4553A;--coralbg:#FBEDE9;--amber:#B26C1F;--amberbg:#FBF2E2;--mono:ui-monospace,"SF Mono",Menlo,monospace}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#fff;color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.55;padding:16px}
@@ -799,7 +1027,7 @@ h3{font-size:16px;margin-bottom:7px}
 .disc{border:1px dashed var(--line);border-radius:12px;padding:14px 16px;margin-top:16px;font-size:14px;color:var(--muted)}
 .foot{font-family:var(--mono);font-size:11.5px;color:var(--muted);text-align:center;margin-top:28px;letter-spacing:.03em}
 @page{margin:16mm}
-@media print{body{padding:0;font-size:12pt}.sum,.call{break-inside:avoid}}
+@media print{body{padding:0;font-size:12pt}.sum,.call{break-inside:avoid}table.frame th{letter-spacing:0;font-size:10.5px}}
 `;
 
 /**
@@ -818,27 +1046,30 @@ export function summaryHtml(view, loc, summary, { appVersion = APP_VERSION, gene
   const { said, ask, gapLine, unsureList, clin, flags, urgent } = summary;
   const t = chromeFor(loc);
   const fb = new Set(t.fallbackKeys || []);
-  const docLang = typeof loc === "string" && /^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$/.test(loc) ? loc : "en";
+  const docLang = langTag(loc);
   const isEn = docLang === "en";
   // English text inside a non-English document is marked lang="en".
   const en = html => (isEn ? html : `<span lang="en">${html}</span>`);
   const chrome = key => (fb.has(key) ? en(esc(t[key])) : esc(t[key]));
+  // The prototype marker; outside English each part carries its own language (release 0.4.2:
+  // the English marker, then the locale's companion line).
+  const marker = prototypeMarker(docLang).map((p) => (isEn || !p.lang ? esc(p.text) : `<span lang="${esc(p.lang)}">${esc(p.text)}</span>`)).join("");
   const date = isoDate(generatedAt);
   const unrev = unreviewedCaveat(view, loc);
   const notices = patientNotices(view, loc);
-  const markers = arr(view.provenanceMarkers);
+  const markers = patientProvenanceFor(view, loc).markers;
   const flagList = arr(flags);
   const thin = arr(said).length === 0 && arr(clin).length === 0 && flagList.length === 0;
 
-  const header = [en(esc(CAVEATS.prototype))];
+  const header = [marker];
   if (unrev && unrev.title) header.push(`<span lang="${esc(docLang)}">${esc(unrev.title)}</span>`);
-  for (const m of markers) header.push(en(esc(m)));
+  for (const m of markers) header.push(isEn ? esc(m.text) : `<span lang="${esc(m.lang)}">${esc(m.text)}</span>`);
 
   const body = [];
   if (unrev) {
     body.push(`<div class="sum ask" lang="${esc(docLang)}"><h3>${esc("⚠︎ " + (unrev.title || ""))}</h3><p>${esc(unrev.body || "")}</p></div>`);
   }
-  for (const line of notices) body.push(`<p class="notice" lang="en">${esc(line)}</p>`);
+  for (const line of notices) body.push(`<p class="notice" lang="${esc(line.lang)}">${esc(line.text)}</p>`);
   body.push(`<h1>${esc(t.summaryTitle)}</h1>`);
 
   if (thin) {
@@ -859,17 +1090,21 @@ export function summaryHtml(view, loc, summary, { appVersion = APP_VERSION, gene
     body.push(`<div class="sum ask"><h3>${chrome("askAbout")}</h3><ul>${ask.map(s => `<li>${esc(s)}</li>`).join("")}</ul></div>`);
   }
   if (arr(unsureList).length) {
-    body.push(`<div class="sum unsure"><h3>${chrome("notSure")}</h3><p>${chrome("notSureLede")}</p><ul>${unsureList.map(id => `<li>${esc(askForm(view, loc, id))}</li>`).join("")}</ul></div>`);
+    // A question that is English standing in for a translation is tagged lang="en" (release 0.4.2).
+    const askLang = (id) => { const l = askFormLang(view, loc, id); return l ? ` lang="${esc(l)}"` : ""; };
+    body.push(`<div class="sum unsure"><h3>${chrome("notSure")}</h3><p>${chrome("notSureLede")}</p><ul>${unsureList.map(id => `<li${askLang(id)}>${esc(askForm(view, loc, id))}</li>`).join("")}</ul></div>`);
   }
   if (arr(clin).length) {
     const lede = localeText(view, loc, "ui.clinicianLede");
     const ledeIsEn = !isEn && localeFallback(view, loc, "ui.clinicianLede");
     const ledeHtml = typeof lede === "string" && lede ? `<p${ledeIsEn ? ' lang="en"' : ""}>${richHtml(lede)}</p>` : "";
-    // The clinician lines are clinical English in every locale (Pat L1112-1114).
-    body.push(`<div class="sum clin"><h3>${chrome("forClinician")}</h3>${ledeHtml}<ul${isEn ? "" : ' lang="en"'}>${clin.map(c => `<li>${esc((c.neg ? "− " : "+ ") + c.t)}</li>`).join("")}</ul></div>`);
+    // Each clinician line carries its own language: the item's clinical English (Pat L1112-1114)
+    // or, release 0.4.2, the locale's own clinician line.
+    const clinLang = (c) => (isEn ? "" : ` lang="${esc(langTag(c.lang || "en"))}"`);
+    body.push(`<div class="sum clin"><h3>${chrome("forClinician")}</h3>${ledeHtml}<ul>${clin.map(c => `<li${clinLang(c)}>${esc((c.neg ? "− " : "+ ") + c.t)}</li>`).join("")}</ul></div>`);
   }
   body.push(`<div class="disc">${chrome("disclaimer")}</div>`);
-  body.push(`<p class="foot">${esc(`${view.name} v${appVersion} — `)}${chrome("txtFooter")} · ${en(esc(CAVEATS.prototype))} · ${esc(date)}</p>`);
+  body.push(`<p class="foot">${esc(`${view.name} v${appVersion} — `)}${chrome("txtFooter")} · ${marker} · ${esc(date)}</p>`);
 
   return [
     "<!doctype html>",

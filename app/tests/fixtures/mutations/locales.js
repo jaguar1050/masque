@@ -30,6 +30,14 @@ export default [
     build: (ctx) => { const r = ctx.rubric(); delete r.locales.en.items.p_three; return { rubric: r, via: "shape" }; },
   },
   {
+    code: "V32", sev: "E", path: "/locales/en/items/p_one/clin", what: "a clinician line in English (English takes patientClin; release 0.4.2)",
+    build: (ctx) => { const r = ctx.rubric(); r.locales.en.items.p_one.clin = "Example clinician line."; return { rubric: r }; },
+  },
+  {
+    code: "V32", sev: "E", path: "/locales/es/items/p_one/clin", what: "an empty translated clinician line (release 0.4.2)",
+    build: (ctx) => { const r = ctx.rubric(); r.locales.es.items.p_one.clin = " "; return { rubric: r }; },
+  },
+  {
     code: "V33", sev: "E", path: "/locales/es/items/p_one/help", what: "a reviewed locale falling back to English",
     build: (ctx) => { const r = ctx.rubric(); r.locales.es.reviewed = true; return { rubric: r }; },
   },
@@ -115,6 +123,35 @@ export default [
   {
     code: "V38", sev: "E", path: "/logic/routing/0/copy/scribe/p", what: "a caveat string in logic data",
     build: (ctx) => { const l = ctx.logic(); l.routing[0].copy.scribe.p = "Example paragraph. Traducción sin revisar."; return { rubric: ctx.rubric(), logic: l }; },
+  },
+  // Release 0.4.2: the Spanish caveats are engine-owned too (CAVEATS.patient.*.es/esShort,
+  // editedWording.es, staleTranslation.es, prototypeCompanion.es and the bare phrase).
+  {
+    code: "V38", sev: "E", path: "/locales/es/items/p_one/clin", what: "the Spanish companion of the prototype marker in a translated clinician line",
+    build: (ctx) => { const r = ctx.rubric(); r.locales.es.items.p_one.clin = `Línea de ejemplo. ${ctx.CAVEATS.prototypeCompanion.es}`; return { rubric: r }; },
+  },
+  {
+    code: "V38", sev: "E", path: "/locales/es/ui/forYouIf/0", what: "a Spanish patient provenance marker in patient wording",
+    build: (ctx) => { const r = ctx.rubric(); r.locales.es.ui = { forYouIf: [`Ejemplo, ${ctx.CAVEATS.patient.uploaded.esShort}`, "Ejemplo dos", "Ejemplo tres"] }; return { rubric: r }; },
+  },
+  {
+    code: "V38", sev: "E", path: "/locales/es/redFlags/p_rf_a/say", what: "the Spanish stale-translation notice in red-flag advice",
+    build: (ctx) => { const r = ctx.rubric(); r.locales.es.redFlags.p_rf_a.say = `Consejo de ejemplo. ${ctx.CAVEATS.staleTranslation.es}`; return { rubric: r }; },
+  },
+  {
+    code: "V38", sev: "E", path: "/logic/locales/es/sum/twoOften", what: "the bare Spanish phrase of the marker in a logic sum string",
+    build: (ctx) => { const l = ctx.logic(); l.locales.es.sum.twoOften = "Frase de ejemplo, no apto para uso clínico."; return { rubric: ctx.rubric(), logic: l }; },
+  },
+  {
+    // V38 matches after NFD, removing the combining marks and lower-casing both sides.
+    code: "V38", sev: "E", path: "/locales/es/items/p_one/q", what: "a Spanish patient caveat typed without its accents",
+    build: (ctx) => {
+      const r = ctx.rubric();
+      const bare = ctx.CAVEATS.patient.edited.es.normalize("NFD").replace(/\p{M}/gu, "");
+      if (bare === ctx.CAVEATS.patient.edited.es) throw new Error("the caveat has no accent to strip");
+      r.locales.es.items.p_one.q = `Pregunta de ejemplo uno? ${bare}`;
+      return { rubric: r };
+    },
   },
   {
     code: "V39", sev: "E", path: "/copy/screener/title", what: "a placeholder the slot does not allow",

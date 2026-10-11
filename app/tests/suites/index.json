@@ -30,7 +30,7 @@
       "name": "rules",
       "path": "rules.js",
       "owner": "WP13",
-      "what": "routing, phenotype, activation, suggestions, gap, referral, CDS preview, note; fail-closed (WP3/WP5)"
+      "what": "routing, phenotype, activation, suggestions, gap, referral (release 0.4.5: the clinical lead's rule, no escalation, AD17 self-checks), CDS preview, note; fail-closed (WP3/WP5)"
     },
     {
       "name": "patient",
@@ -43,6 +43,12 @@
       "path": "extraction.js",
       "owner": "WP13",
       "what": "extract and faersToUtterances vs baseline (WP5)"
+    },
+    {
+      "name": "capture",
+      "path": "capture.js",
+      "owner": "WP5",
+      "what": "heard / carry-over / yield engine rules, the 0.3.0 gold set and dialogues, Scribe engine helpers"
     },
     {
       "name": "probes",
@@ -60,13 +66,19 @@
       "name": "validate",
       "path": "validate.js",
       "owner": "WP3",
-      "what": "validator: MASQUE, shape fixture and the V1-V60 mutation corpus"
+      "what": "validator: MASQUE, shape fixture and the V1-V61 mutation corpus"
     },
     {
       "name": "shape",
       "path": "shape.js",
       "owner": "WP13",
       "what": "the data-only shape fixture through every engine function, then uploaded through the shell and walked through all five tabs with no console error"
+    },
+    {
+      "name": "emr",
+      "path": "emr.js",
+      "owner": "release 0.4.3",
+      "what": "buildEmrTemplate and emrFrameDoc (the EMR Friendly Template): the gating matrix on both surfaces, red flags, referral = the bundle's (release 0.4.5: the clinical lead's referral rule for dizziness cases; release 0.4.6: under open flags the bundle's referral without them, under its heading), the lead's 0.4.6 answers (Considerations, past history, the HINTS placeholder, V61), absent-vs-negative traps, placeholders and brackets, the marker, determinism, the neutral template, a seeded fuzz"
     },
     {
       "name": "render-screener",

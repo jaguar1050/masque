@@ -143,6 +143,10 @@ export default [
     build: (ctx) => { const l = ctx.logic(); l.locales.es.sum.twoOften = "Frase de ejemplo con puntuación."; return { rubric: ctx.rubric(), logic: l }; },
   },
   {
+    code: "V60", sev: "E", path: "/locales/es/items/p_one/clin", what: "a translated clinician line (release 0.4.2) naming a score",
+    build: (ctx) => { const r = ctx.rubric(); r.locales.es.items.p_one.clin = "Línea clínica de ejemplo, puntuación 12/30"; return { rubric: r }; },
+  },
+  {
     code: "V60", sev: "E", path: "/name", what: "a module name (patient page header, export footer) naming a score",
     build: (ctx) => { const r = ctx.rubric(); r.name = "Example risk score"; return { rubric: r }; },
   },

@@ -20,14 +20,50 @@
 //                 and the rules they feed produce a sentence / a routing heading in the cases;
 //                 the acknowledged pointers reach the change log
 //   lexicon       a phrase added → lexicon -local, instrument locked, gold set "not re-run";
-//                 the last cue phrase of a flag removed → V28
-//   locales       English edit → es stale path and reviewed:false, stale-translation line;
-//                 an English red-flag edit → staleRedFlagPaths; a hand-edited "reviewed": true
-//                 never rises above the parent's
+//                 the last cue phrase of a flag removed → V28; a yes/no phrase, or a cue and a
+//                 band phrase of the heard entry, added → every scale entry's heard, carry,
+//                 yieldTo and anchor, carryRefuse and normalize kept as the root's (0.3.2-local)
+//   capture       (design 05 §5.3, §7.2) heard / carry / carryExclude / yieldTo / anchor /
+//                 carryRefuse / normalize are locked with a reason that says "approved lexicon
+//                 configuration" and never claims any module's clinical-lead approval (round 2
+//                 R6); a child naming a new item in a yield rule deletes it with the yield rule
+//                 restored, no lock violation and no V28; a direct edit of any of those fields is
+//                 a "Read-only" lock violation, also when it rides along with a deletion (round 2
+//                 R7: deleting an unrelated red flag, or an item, exempts nothing else under
+//                 /lexicon/scale). Round 3 (review T8, R13): deleting an item that owns a scale
+//                 entry (carrying heard / carry / carryExclude) with entries after it is no lock
+//                 violation; a whole added scale entry carrying heard or carryExclude is; a
+//                 /lexicon/multi edit riding along with an item or a red-flag deletion is
+//                 (DER-R7-1), while deleting an item named in multi-answer entries is not; and
+//                 deleteItem removes duplicate entries of one id at /lexicon/scale/2 and /10
+//                 without touching /11 (numeric order, DER-R7-2)
+//   locales       English edit → es stale path and reviewed:false, stale-translation line (in
+//                 Spanish for es since release 0.4.2, lang es; English for en);
+//                 an English red-flag edit → staleRedFlagPaths; release 0.4.2 (D3): an es clin
+//                 line survives a derivation, a patientClin edit makes it stale, and a clin in
+//                 English or an empty one is V32; changedClinItems (read by deriveRubric and by
+//                 the editor's "English changed" tag) follows patientClin or, without one, the
+//                 item text, by item id; a hand-edited "reviewed": true never rises above the
+//                 parent's
 //   add-item      the Add item rules (V11, V13, V15, V32) and a valid item round trip;
 //                 domains cannot be added, removed or reordered (lockViolations)
 //   shape         Create lexicon (V28 names every flag) and Create English patient wording
 //                 (V23/V32), then a valid derivation of the upload (row 6)
+//   emr           (release 0.4.3) /emrTemplate and every pointer below it are locked with the
+//                 clinical-lead reason (since release 0.4.4 it names the sign-off); any direct
+//                 edit of the block (a label, a URL, a reorder, an added citation or key, a
+//                 removed row, the whole block) is a Read-only
+//                 lock violation; deleting a red flag removes exactly its redFlagRefs and
+//                 redFlagPlaceholders entries (listed by flagDeletePlan; the placeholder case is
+//                 checked on its own flag) and deleting an item exactly the history rows and checklist
+//                 signals naming it (listed by itemDependents), with no lock violation, while an edit
+//                 riding along is still one; a derivation keeps the block byte for byte before the
+//                 change log, and the flag deletion leaves no V61 error
+//   referral      (release 0.4.5) phenotypes.referral with the clinical lead's clinician rule
+//                 stays locked like /phenotypes: every pointer below it read-only, any edit (a
+//                 destination, the both row, a definition or clarification line, the rule text, a
+//                 placeholder label, removing the rule) a Read-only lock violation, and a derivation
+//                 keeps it byte for byte
 //   identity      a label equal to a built-in's is refused; id and label collisions get -2 / (2)
 //   locks         locked fields are reported; revertChange and Revert all restore the parent;
 //                 setAt refuses __proto__ / constructor / prototype segments
@@ -42,6 +78,14 @@ function sortKeys(x) {
   return x;
 }
 const codes = (v) => (v ? v.errors.map((e) => `${e.code} ${e.path}`) : []);
+const arr = (x) => (Array.isArray(x) ? x : []);
+// The lexicon's capture configuration (design 05 §1-§4, §11.6): read-only in the editor, so a
+// derivation must carry it unchanged.
+const captureConfig = (lx) => ({
+  scale: (lx && Array.isArray(lx.scale) ? lx.scale : []).map((e) => ({ id: e.id, heard: e.heard, carry: e.carry, yieldTo: e.yieldTo, anchor: e.anchor, carryExclude: e.carryExclude })),
+  carryRefuse: lx ? lx.carryRefuse : undefined,
+  normalize: lx ? lx.normalize : undefined,
+});
 
 export default {
   name: "editor",
@@ -202,11 +246,214 @@ export default {
       c.check(r.module.instrumentVersion === M.instrumentVersion, "/lexicon/instrument-locked", null, M.instrumentVersion, r.module.instrumentVersion);
       c.check(r.module.versions.goldSetLexicon && r.module.versions.goldSetLexicon !== r.module.versions.lexicon, "/lexicon/not-re-run", null, "gold set lexicon ≠ lexicon (footer: not re-run)", r.module.versions);
       c.check(canon(r.module.lexicon.goldSet) === canon(M.lexicon.goldSet), "/lexicon/goldSet", null, "the root's gold set", r.module.lexicon.goldSet);
+      // The capture configuration survives the derivation unchanged (design 05 §7.2 editor b).
+      const rootCfg = captureConfig(M.lexicon);
+      c.check(M.lexicon.version === "0.3.2" && rootCfg.scale.some((e) => e.heard === true) && rootCfg.scale.some((e) => Array.isArray(e.yieldTo)) && Array.isArray(rootCfg.carryRefuse) && !!rootCfg.normalize,
+        "/lexicon/capture-config/root", null, "lexicon 0.3.2 with heard, yieldTo, carryRefuse and normalize", [M.lexicon.version, rootCfg]);
+      c.check(/^0\.3\.2-local\.[0-9a-f]{6}$/.test(r.module.lexicon.version), "/lexicon/capture-config/version", null, "0.3.2-local.<hash6>", r.module.lexicon.version);
+      c.check(canon(captureConfig(r.module.lexicon)) === canon(rootCfg), "/lexicon/capture-config/kept", { edit: "yes/no phrase added" }, rootCfg, captureConfig(r.module.lexicon));
+      c.check(canon(captureConfig(r.rubric.lexicon)) === canon(rootCfg), "/lexicon/capture-config/kept-rubric", { edit: "yes/no phrase added" }, rootCfg, captureConfig(r.rubric.lexicon));
+      const hi = M.lexicon.scale.findIndex((e) => e.heard === true);
+      if (hi >= 0) {
+        const b = fresh();
+        b.lexicon.scale[hi].cue.push("a cue phrase added by the editor suite");
+        b.lexicon.scale[hi].bands[0].ph.push("a band phrase added by the editor suite");
+        const rb = await run(M, b);
+        c.check(rb.validation.ok && /^0\.3\.2-local\.[0-9a-f]{6}$/.test(rb.module.lexicon.version), "/lexicon/capture-config/band-edit/ok", null, "no errors, 0.3.2-local.<hash6>", [rb.module.lexicon.version, codes(rb.validation)]);
+        c.check(canon(captureConfig(rb.module.lexicon)) === canon(rootCfg), "/lexicon/capture-config/band-edit/kept", { edit: `cue and band phrase on /lexicon/scale/${hi}` }, rootCfg, captureConfig(rb.module.lexicon));
+        c.check(rb.module.versions.goldSetLexicon && rb.module.versions.goldSetLexicon !== rb.module.versions.lexicon, "/lexicon/capture-config/band-edit/not-re-run", null, "gold set lexicon ≠ lexicon (footer: not re-run)", rb.module.versions);
+      }
       const z = fresh();
       const fid = Object.keys(z.lexicon.redFlags)[0];
       z.lexicon.redFlags[fid] = [];
       const rz = await run(M, z);
       c.check(codes(rz.validation).includes(`V28 /lexicon/redFlags/${fid}`), "/lexicon/last-cue/V28", null, `V28 /lexicon/redFlags/${fid}`, codes(rz.validation));
+    }
+
+    // --------------------------------------------------------------- capture
+    {
+      // (a) Locks, at the indices the approval record names (scale 1 = the heard entry, scale 2
+      // = the yielding entry), checked by id so a reordered lexicon cannot pass by accident.
+      const sc = M.lexicon.scale;
+      c.check(sc[1] && sc[1].id === "v_vertigo" && sc[1].heard === true && Number.isInteger(sc[1].carry) && sc[2] && sc[2].id === "m_dur" && Array.isArray(sc[2].yieldTo) && Array.isArray(sc[2].anchor),
+        "/capture/indices", null, "scale 1 v_vertigo (heard, carry), scale 2 m_dur (yieldTo, anchor)", sc.map((e) => [e.id, Object.keys(e)]));
+      c.check(!!sc[1] && Array.isArray(sc[1].carryExclude) && sc[1].carryExclude.length > 0, "/capture/indices/carryExclude", null, "scale 1 v_vertigo has carryExclude (round 2 R3a)", sc[1] && sc[1].carryExclude);
+      const lockedPaths = ["/lexicon/scale/1/heard", "/lexicon/scale/1/carry", "/lexicon/scale/1/carryExclude", "/lexicon/scale/1/carryExclude/0",
+        "/lexicon/scale/2/yieldTo", "/lexicon/scale/2/anchor", "/lexicon/scale/2/anchor/0",
+        "/lexicon/carryRefuse", "/lexicon/carryRefuse/0", "/lexicon/normalize", "/lexicon/normalize/numbers"];
+      for (const p of lockedPaths) c.check(derive.lockReason(p) !== null, `/capture/lock${p}`, null, "a lock reason", derive.lockReason(p));
+      // The engine is module-agnostic: its lock reasons cannot know who approved a module's
+      // configuration (round 2 R6, review F8).
+      for (const p of lockedPaths) {
+        const why = derive.lockReason(p) || "";
+        c.check(why.includes("approved lexicon configuration") && !/clinical[- ]lead/i.test(why), `/capture/lock-wording${p}`, null,
+          "\"… approved lexicon configuration …\", no clinical-lead claim", why);
+      }
+      for (const p of ["/lexicon/scale/1/cue/0", "/lexicon/scale/1/bands/0/ph/0", "/lexicon/scale/2/cue"]) {
+        c.check(derive.isEditablePath(p), `/capture/editable${p}`, null, "editable", derive.lockReason(p));
+      }
+
+      // (c) Deletion: a child that adds a yes/no item and names it in the yield rule (written
+      // straight into the draft; the editor itself would refuse that edit, see (d)).
+      const r = M.rubric;
+      const yi = r.lexicon.scale.findIndex((e) => Array.isArray(e.yieldTo));
+      if (c.check(yi >= 0, "/capture/delete/yield-entry", null, "a scale entry with yieldTo", null)) {
+        let d = derive.addItem(r, { id: "zz_new", domain: r.domains[posDomain].key, type: "boolean", w: 2, text: "Placeholder item text", q: "Placeholder question?", lexicon: { ph: ["placeholder phrase"] } });
+        d = derive.setMaxToSum(d, posDomain);
+        d.lexicon.scale[yi].yieldTo.push("zz_new");
+        const child = await run(M, d, { note: "a child naming a new item in a yield rule" });
+        c.check(child.validation.ok, "/capture/delete/child-ok", null, "no errors", codes(child.validation));
+        const CM = child.module;
+        c.check(canon(CM.lexicon.scale[yi].yieldTo) === canon([...r.lexicon.scale[yi].yieldTo, "zz_new"]), "/capture/delete/child-yieldTo", null, [...r.lexicon.scale[yi].yieldTo, "zz_new"], CM.lexicon.scale[yi].yieldTo);
+        c.check(derive.canDeleteItem(CM, "zz_new"), "/capture/delete/can-delete", null, true, false);
+        const draft = derive.deleteItem(derive.createDraft(CM).rubric, "zz_new");
+        const ye = draft.lexicon.scale[yi], ry = r.lexicon.scale[yi];
+        c.check(canon(ye.yieldTo) === canon(ry.yieldTo) && canon(ye.anchor) === canon(ry.anchor), "/capture/delete/yieldTo-restored", null, { yieldTo: ry.yieldTo, anchor: ry.anchor }, { yieldTo: ye.yieldTo, anchor: ye.anchor });
+        c.check(!derive.findId(draft, "zz_new") && !draft.lexicon.bool.some((e) => e.id === "zz_new"), "/capture/delete/item-gone", null, "item and its phrases removed", null);
+        const lv = derive.lockViolations(CM, draft);
+        c.check(!lv.length, "/capture/delete/no-lock", null, [], lv);
+        const back = await derive.deriveAndBind(CM, draft, { loaded: [M, CM], now: NOW, note: "delete the new item" });
+        const v28 = codes(back.validation).filter((x) => x.startsWith("V28 "));
+        c.check(!v28.length, "/capture/delete/no-V28", null, "no V28", codes(back.validation));
+        // Round 2 R7: the deletion exempts only what it produces; a locked edit of another scale
+        // entry riding along with it is still a lock violation.
+        const ride = JSON.parse(JSON.stringify(draft));
+        ride.lexicon.scale[1].carry = ride.lexicon.scale[1].carry === 1 ? 2 : 1;
+        const lvRide = derive.lockViolations(CM, ride);
+        c.check(lvRide.some((v) => v.path === "/lexicon/scale/1/carry" && v.msg.startsWith("Read-only")), "/capture/delete/ride-along-carry", { edit: "delete zz_new + change /lexicon/scale/1/carry" },
+          "Read-only at /lexicon/scale/1/carry", lvRide);
+      }
+
+      // (e) Round 2 R7 (review F10 / ENG-2 / UI-2): a red-flag deletion never touches the scale
+      // entries, so it exempts nothing under /lexicon/scale. Delete a flag the logic does not read
+      // (no lock violation on its own), then also set /lexicon/scale/0/heard: a lock violation.
+      {
+        const flag = arr(M.rubric.redFlags).map((f) => f && f.id).find((id) => derive.flagDeletePlan(M, M.rubric, id).allowed) || null;
+        if (c.check(!!flag, "/capture/flag-delete/flag", null, "a red flag the logic does not read", null)) {
+          const base = derive.deleteFlag(M, fresh(), flag);
+          const lv0 = derive.lockViolations(M, base);
+          c.check(!lv0.length, "/capture/flag-delete/no-lock", { flag }, [], lv0);
+          const x = JSON.parse(JSON.stringify(base));
+          x.lexicon.scale[0].heard = x.lexicon.scale[0].heard === true ? false : true;
+          const lv = derive.lockViolations(M, x);
+          const hit = lv.find((v) => v.path === "/lexicon/scale/0/heard");
+          c.check(!!hit && hit.code === "LOCK" && hit.msg.startsWith("Read-only") && hit.msg.includes("approved lexicon configuration"), "/capture/flag-delete/heard-locked",
+            { flag, edit: "/lexicon/scale/0/heard" }, "LOCK at /lexicon/scale/0/heard (Read-only: … approved lexicon configuration …)", lv);
+        }
+      }
+
+      // (f) Round 3 (review T8; R13, DER-R7-1 and DER-R7-2): the other branches of the deletion
+      // exemption. lockViolations reads only the parent's rubric and logic, so the hand-built
+      // parents here are {rubric, logic: the built-in's logic}.
+      {
+        const parentOf = (rubric) => ({ rubric, logic: M.logic });
+        const domain = r.domains[posDomain].key;
+        const scaleSpec = {
+          id: "zz_scale", domain, type: "scale", w: 2, text: "Placeholder scale item text", q: "Placeholder scale question?",
+          options: [{ label: "Placeholder none", f: 0 }, { label: "Placeholder some", f: 1 }], patientOpts: ["Placeholder none", "Placeholder some"],
+          lexicon: { cue: ["placeholder scale cue"], bands: [{ ph: ["placeholder scale band"], v: 1 }] },
+        };
+        const boolSpec = (id) => ({ id, domain, type: "boolean", w: 2, text: "Placeholder item text", q: "Placeholder question?" });
+        const ids = (xs) => arr(xs).map((e) => e && e.id);
+
+        // (f1) Deleting an item that owns a scale entry, with entries after it: the entry goes
+        // (its heard, carry and carryExclude with it), every later entry shifts up, and nothing
+        // is a lock violation. The child's own entry is put first, so all of the built-in's
+        // entries (heard, carry, carryExclude, yieldTo, anchor) sit after it.
+        const p1 = derive.setMaxToSum(derive.addItem(r, scaleSpec), posDomain);
+        const own = p1.lexicon.scale.pop();
+        Object.assign(own, { heard: true, carry: 1, carryExclude: ["placeholder scale band"] });
+        p1.lexicon.scale.unshift(own);
+        c.check(ids(p1.lexicon.scale).join() === ["zz_scale", ...ids(r.lexicon.scale)].join(), "/capture/delete-scale-item/fixture", null,
+          ["zz_scale", ...ids(r.lexicon.scale)], ids(p1.lexicon.scale));
+        const del1 = derive.deleteItem(p1, "zz_scale");
+        c.check(canon(del1.lexicon.scale) === canon(r.lexicon.scale), "/capture/delete-scale-item/entries", null, ids(r.lexicon.scale), ids(del1.lexicon.scale));
+        const lv1 = derive.lockViolations(parentOf(p1), del1);
+        c.check(!lv1.length, "/capture/delete-scale-item/no-lock", { deleted: "zz_scale, its entry at /lexicon/scale/0 with heard, carry and carryExclude" }, [], lv1);
+
+        // (f2) A whole scale entry added by the draft must not bring locked fields in with it.
+        const p2 = derive.setMaxToSum(derive.addItem(r, scaleSpec), posDomain);
+        const n2 = p2.lexicon.scale.length - 1;
+        const lv2plain = derive.lockViolations(M, p2);
+        c.check(!lv2plain.length, "/capture/added-entry/plain", { added: `/lexicon/scale/${n2}` }, [], lv2plain);
+        const p2cfg = JSON.parse(JSON.stringify(p2));
+        Object.assign(p2cfg.lexicon.scale[n2], { heard: true, carryExclude: ["placeholder scale band"] });
+        const lv2 = derive.lockViolations(M, p2cfg);
+        for (const k of ["heard", "carryExclude"]) {
+          const at = `/lexicon/scale/${n2}/${k}`;
+          const hit = lv2.find((v) => v.path === at);
+          c.check(!!hit && hit.code === "LOCK" && hit.msg.startsWith("Read-only"), `/capture/added-entry/${k}`, { added: `/lexicon/scale/${n2}`, with: k }, `LOCK at ${at}`, lv2);
+        }
+
+        // (f3) DER-R7-1: an item or red-flag deletion exempts only what deleteItem does to the
+        // multi-answer entries. A changed answer value riding along is a lock violation.
+        const k3 = arr(r.lexicon && r.lexicon.multi).findIndex((e) => e && typeof e === "object" && arr(e.ids).length > 0);
+        if (c.check(k3 >= 0, "/capture/multi/entry", null, "a multi-answer entry with ids", null)) {
+          const mp = `/lexicon/multi/${k3}/ids/0/value`;
+          const editValue = (rubric) => {
+            const x = JSON.parse(JSON.stringify(rubric));
+            x.lexicon.multi[k3].ids[0].value = `${x.lexicon.multi[k3].ids[0].value} (edited)`;
+            return x;
+          };
+          const lvItem = derive.lockViolations(parentOf(p1), editValue(del1));
+          c.check(lvItem.some((v) => v.path === mp && v.code === "LOCK"), "/capture/multi/item-delete-ride-along", { edit: `delete zz_scale + change ${mp}` }, `LOCK at ${mp}`, lvItem);
+          const flag = arr(M.rubric.redFlags).map((f) => f && f.id).find((id) => derive.flagDeletePlan(M, M.rubric, id).allowed) || null;
+          if (flag) {
+            const lvFlag = derive.lockViolations(M, editValue(derive.deleteFlag(M, fresh(), flag)));
+            c.check(lvFlag.some((v) => v.path === mp && v.code === "LOCK"), "/capture/multi/flag-delete-ride-along", { edit: `delete ${flag} + change ${mp}` }, `LOCK at ${mp}`, lvFlag);
+          }
+          // Deleting an item named in multi-answer entries: it leaves every ids list, and an entry
+          // left with no ids goes. Exactly that is exempt.
+          const p4 = derive.setMaxToSum(derive.addItem(r, { ...boolSpec("zz_multi"), lexicon: { ph: ["placeholder multi item phrase"] } }), posDomain);
+          p4.lexicon.multi[k3].ids.push({ id: "zz_multi", value: "yes", kind: "item" });
+          p4.lexicon.multi.push({ ids: [{ id: "zz_multi", value: "yes", kind: "item" }], ph: ["placeholder multi phrase"] });
+          const del4 = derive.deleteItem(p4, "zz_multi");
+          c.check(canon(del4.lexicon.multi) === canon(r.lexicon.multi), "/capture/multi/delete-item/entries", null, r.lexicon.multi, del4.lexicon.multi);
+          const lv4 = derive.lockViolations(parentOf(p4), del4);
+          c.check(!lv4.length, "/capture/multi/delete-item/no-lock", { deleted: "zz_multi, named in two multi-answer entries" }, [], lv4);
+        }
+
+        // (f4) DER-R7-2: duplicate scale entries of one id at /lexicon/scale/2 and /10. Both go,
+        // and the entry after them survives (a string sort spliced /2 first, then the original
+        // /11 at the shifted index 10).
+        const p5 = derive.addItem(r, boolSpec("zz_dup"));
+        const entry = (id, k) => ({ id, cue: [`placeholder ${id} cue ${k}`], bands: [{ ph: [`placeholder ${id} band ${k}`], v: 1 }], fallback: null });
+        const s5 = [...arr(r.lexicon.scale).slice(0, 2), entry("zz_dup", 1), ...arr(r.lexicon.scale).slice(2)];
+        let kf = 1;
+        while (s5.length < 10) s5.push(entry(`zz_fill_${kf}`, kf++));
+        const survivor = `zz_fill_${kf}`;
+        s5.push(entry("zz_dup", 2), entry(survivor, kf));
+        p5.lexicon.scale = JSON.parse(JSON.stringify(s5));
+        const dupAt = ids(p5.lexicon.scale).map((id, i) => (id === "zz_dup" ? i : -1)).filter((i) => i >= 0);
+        if (c.check(dupAt.join() === "2,10", "/capture/delete-duplicates/fixture", null, [2, 10], dupAt)) {
+          const del5 = derive.deleteItem(p5, "zz_dup");
+          const want = ids(p5.lexicon.scale).filter((id) => id !== "zz_dup");
+          c.check(ids(del5.lexicon.scale).join() === want.join(), "/capture/delete-duplicates/entries", { survivor }, want, ids(del5.lexicon.scale));
+          const lv5 = derive.lockViolations(parentOf(p5), del5);
+          c.check(!lv5.length, "/capture/delete-duplicates/no-lock", null, [], lv5);
+        }
+      }
+
+      // (d) A direct edit of a read-only capture field is a lock violation.
+      const ro2 = (edit, prefix, mutate) => {
+        const x = fresh();
+        mutate(x.lexicon);
+        const lv = derive.lockViolations(M, x);
+        c.check(lv.some((v) => v.path.startsWith(prefix) && v.msg.startsWith("Read-only")), `/capture/direct-edit/${edit}`, null, `Read-only at ${prefix}`, lv);
+      };
+      if (yi >= 0) {
+        ro2("yieldTo", `/lexicon/scale/${yi}/yieldTo`, (lx) => { lx.scale[yi].yieldTo.push(lx.bool[0].id); });
+        ro2("anchor", `/lexicon/scale/${yi}/anchor`, (lx) => { lx.scale[yi].anchor = [...(lx.scale[yi].anchor || []), "an anchor added by the editor suite"]; });
+      }
+      ro2("heard", "/lexicon/scale/1/heard", (lx) => { lx.scale[1].heard = lx.scale[1].heard === true ? false : true; });
+      ro2("carry", "/lexicon/scale/1/carry", (lx) => { lx.scale[1].carry = lx.scale[1].carry === 1 ? 2 : 1; });
+      ro2("carryExclude-remove", "/lexicon/scale/1/carryExclude", (lx) => { lx.scale[1].carryExclude = arr(lx.scale[1].carryExclude).slice(1); });
+      ro2("carryExclude-add", "/lexicon/scale/1/carryExclude", (lx) => {
+        const extra = arr(lx.scale[1].bands).flatMap((b) => arr(b && b.ph)).find((ph) => !arr(lx.scale[1].carryExclude).includes(ph));
+        lx.scale[1].carryExclude = [...arr(lx.scale[1].carryExclude), extra || "a band phrase added by the editor suite"];
+      });
+      ro2("carryRefuse", "/lexicon/carryRefuse", (lx) => { lx.carryRefuse = [...(lx.carryRefuse || []), "a refusal added by the editor suite"]; });
+      ro2("normalize", "/lexicon/normalize", (lx) => { if (lx.normalize === undefined) lx.normalize = { apostrophes: true }; else delete lx.normalize; });
     }
 
     // --------------------------------------------------------------- locales
@@ -218,8 +465,58 @@ export default {
       c.check(Array.isArray(es.stale) && es.stale.includes("/locales/es/items/r_dur/q") && es.reviewed === false, "/locales/es-stale", null, "stale path, reviewed:false", es.stale);
       c.check(en.reviewed === false && en.editedLocally === true, "/locales/en-edited", null, "reviewed:false, editedLocally:true", [en.reviewed, en.editedLocally]);
       c.check(!es.editedLocally, "/locales/es-not-edited", null, "es not edited locally", es.editedLocally);
+      // Release 0.4.2: the patient caveats follow the patient locale, so the es line is the Spanish
+      // stale-translation caveat (and never the English one); the English locale keeps English.
       const plines = lineage.provenanceLines(r.module, "patient", { locale: "es" });
-      c.check(plines.includes(CAV.staleTranslation.en) && !plines.some((l) => policy.OMISSION_PATTERNS.some((re) => re.test(l))), "/locales/stale-line", null, "staleTranslation, no score words", plines);
+      c.check(plines.includes(CAV.staleTranslation.es) && !plines.includes(CAV.staleTranslation.en) && !plines.some((l) => policy.OMISSION_PATTERNS.some((re) => re.test(l))),
+        "/locales/stale-line", null, "staleTranslation (es), no score words", plines);
+      const enLines = lineage.provenanceLines(r.module, "patient", { locale: "en" });
+      c.check(enLines.includes(CAV.editedWording.en) && enLines.includes(CAV.patient.edited.en) && !enLines.some((l) => l === CAV.staleTranslation.en),
+        "/locales/stale-line/en", null, "edited (en) + editedWording (en); en is not stale", enLines);
+      const parts = typeof lineage.provenanceLineParts === "function" ? lineage.provenanceLineParts(r.module, "patient", { locale: "es" }) : [];
+      c.check(parts.length === plines.length && parts.every((x, i) => x.text === plines[i] && x.lang === "es"), "/locales/stale-line/lang", null, "each es line tagged lang es", parts);
+      // Decision D3: an es clinician line (locales.es.items.<id>.clin) survives a derivation, and an
+      // edit of the item's patientClin marks it stale; an English clin, or an empty one, is V32.
+      {
+        const dc = fresh();
+        const clinEdit = "Línea clínica editada por la suite del editor";
+        dc.locales.es.items.r_dur.clin = clinEdit;
+        const rc = await run(M, dc);
+        c.check(rc.validation.ok && rc.rubric.locales.es.items.r_dur.clin === clinEdit, "/locales/clin/derive", null, "the es clin edit kept, no errors", codes(rc.validation));
+        c.check(rc.module.classification && rc.module.classification.kind === "verified", "/locales/clin/classification", null, "verified", rc.module.classification && rc.module.classification.kind);
+        const dp = fresh();
+        const it0 = dp.domains[0].items[0];
+        it0.patientClin += " (edited)";
+        const rp = await run(M, dp);
+        const st = arr(rp.rubric.locales.es.stale);
+        c.check(st.includes(`/locales/es/items/${it0.id}/clin`) && rp.rubric.locales.es.reviewed === false, "/locales/clin/stale", null, `/locales/es/items/${it0.id}/clin stale, reviewed:false`, st);
+        const dn = fresh();
+        dn.locales.en.items.r_dur.clin = "An English clinician line";
+        const rn = await run(M, dn);
+        c.check(codes(rn.validation).includes("V32 /locales/en/items/r_dur/clin"), "/locales/clin/en-V32", null, "V32 /locales/en/items/r_dur/clin", codes(rn.validation));
+        const de = fresh();
+        de.locales.es.items.r_dur.clin = "  ";
+        const re2 = await run(M, de);
+        c.check(codes(re2.validation).includes("V32 /locales/es/items/r_dur/clin"), "/locales/clin/empty-V32", null, "V32 /locales/es/items/r_dur/clin", codes(re2.validation));
+        // deriveRubric's stale marking and the editor's "English changed" tag read one helper,
+        // changedClinItems: the English clinician line is patientClin, or the item text without
+        // one, compared by item id.
+        c.check(typeof derive.changedClinItems === "function", "/locales/clin/changedClinItems", null, "exported by derive.js", typeof derive.changedClinItems);
+        if (typeof derive.changedClinItems === "function") {
+          const pc = fresh();
+          const pit = pc.domains[0].items[0];
+          delete pit.patientClin;
+          const textEdit = JSON.parse(JSON.stringify(pc));
+          textEdit.domains[0].items[0].text += " (edited)";
+          const sameLine = JSON.parse(JSON.stringify(pc));
+          sameLine.domains[0].items[0].patientClin = pit.text;
+          const clinEdit = fresh();
+          clinEdit.domains[0].items[0].patientClin += " (edited)";
+          const ch = [derive.changedClinItems(pc, textEdit), derive.changedClinItems(pc, sameLine), derive.changedClinItems(fresh(), clinEdit), derive.changedClinItems(fresh(), fresh())];
+          c.diff([[pit.id], [], [pit.id], []], ch, { at: "/locales/clin/changedClinItems/cases",
+            input: ["text edit, no patientClin", "patientClin added equal to the old text", "patientClin edit", "no edit"] });
+        }
+      }
       const f = fresh();
       const flagId = Object.keys(f.locales.en.redFlags)[0];
       f.locales.en.redFlags[flagId].q += " (edited)";
@@ -337,6 +634,159 @@ export default {
       const sameAsRoot = derive.identityProblems({ ...solo, instrumentVersion: M.instrumentVersion }, { classification: ch, identity: solo, loaded: [M] });
       c.check(sameAsRoot.some((p) => p.field === "instrumentVersion"), "/identity/root-version-refused", null, "refused", sameAsRoot);
       c.check(derive.proposeIdentity(M, d1draft, ch, [M], { now: NOW }).id === solo.id && solo.id === M1.id, "/identity/deterministic", null, M1.id, solo.id);
+    }
+
+    // ---------------------------------------------------- EMR template (release 0.4.3)
+    {
+      const T = M.rubric.emrTemplate;
+      if (c.check(!!T && typeof T === "object" && !Array.isArray(T), "/emr/present", null, "the built-in carries emrTemplate", T === undefined ? "absent" : typeof T)) {
+        const REASON = "The EMR template data is cited clinical content (the built-in module's was signed off by the clinical lead on 2026-10-07, with the lead's additions of 2026-10-10); not editable in the Rubric Editor.";
+        const firstCite = Object.keys(T.citations || {})[0];
+        const firstRefFlag = Object.keys(T.redFlagRefs || {})[0];
+        const probe = ["/emrTemplate", `/emrTemplate/citations/${firstCite}/url`, "/emrTemplate/references/0/label", `/emrTemplate/redFlagRefs/${firstRefFlag}/0`,
+          "/emrTemplate/history/0", "/emrTemplate/checklist/0/label", "/emrTemplate/checklist/0/signals", "/emrTemplate/examRows/0/label"];
+        for (const p of probe) {
+          c.check(derive.lockReason(p) === REASON && !derive.isEditablePath(p), `/emr/locked${p}`, null, REASON, derive.lockReason(p));
+        }
+        const emrViolations = (lv) => lv.filter((v) => v.path === "/emrTemplate" || v.path.startsWith("/emrTemplate/"));
+        c.check(!emrViolations(derive.lockViolations(M, fresh())).length, "/emr/unchanged", null, "no lock violation", emrViolations(derive.lockViolations(M, fresh())));
+        // Every direct edit of the block, a reorder included, is a Read-only lock violation.
+        const edits = [
+          ["label", (t) => { t.checklist[0].label += " (edited)"; }],
+          ["url", (t) => { t.citations[firstCite].url = "https://example.org/edited"; }],
+          ["reorder", (t) => { t.references.reverse(); }],
+          ["add-citation", (t) => { t.citations["EX-EDITOR"] = { ...t.citations[firstCite] }; }],
+          ["add-key", (t) => { t.extra = []; }],
+          ["remove-row", (t) => { t.examRows.pop(); }],
+        ];
+        for (const [name, fn] of edits) {
+          const x = fresh();
+          fn(x.emrTemplate);
+          const lv = emrViolations(derive.lockViolations(M, x));
+          c.check(lv.length > 0 && lv.every((v) => v.msg === `Read-only: ${REASON}`), `/emr/edit/${name}`, { edit: name }, `Read-only: ${REASON}`, lv);
+        }
+        {
+          const x = fresh();
+          delete x.emrTemplate;
+          c.check(emrViolations(derive.lockViolations(M, x)).length > 0, "/emr/edit/remove-block", null, "a lock violation", "none");
+        }
+        // Deleting a red flag removes its references (the plan lists it); nothing else under /emrTemplate changes.
+        const flag = Object.keys(T.redFlagRefs || {}).find((id) => derive.flagDeletePlan(M, M.rubric, id).allowed) || null;
+        if (c.check(!!flag, "/emr/flag-delete/flag", null, "a deletable flag with EMR references", null)) {
+          const plan = derive.flagDeletePlan(M, M.rubric, flag);
+          c.check(plan.removes.some((r) => r.path === `/emrTemplate/redFlagRefs/${flag}`), "/emr/flag-delete/plan", { flag }, `/emrTemplate/redFlagRefs/${flag}`, plan.removes.map((r) => r.path));
+          const x = derive.deleteFlag(M, fresh(), flag);
+          const want = JSON.parse(JSON.stringify(T));
+          delete want.redFlagRefs[flag];
+          if (want.redFlagPlaceholders) delete want.redFlagPlaceholders[flag];
+          c.check(JSON.stringify(x.emrTemplate) === JSON.stringify(want), "/emr/flag-delete/cascade", { flag }, "the block without that flag's references, byte for byte", derive.diffRubrics({ emrTemplate: want }, { emrTemplate: x.emrTemplate }).slice(0, 3));
+          c.check(!emrViolations(derive.lockViolations(M, x)).length, "/emr/flag-delete/no-lock", { flag }, [], emrViolations(derive.lockViolations(M, x)));
+          const ride = JSON.parse(JSON.stringify(x));
+          ride.emrTemplate.checklist[0].label += " (edited)";
+          const lvRide = emrViolations(derive.lockViolations(M, ride));
+          c.check(lvRide.some((v) => v.path === "/emrTemplate/checklist/0/label"), "/emr/flag-delete/ride-along", { flag, edit: "/emrTemplate/checklist/0/label" }, "Read-only at /emrTemplate/checklist/0/label", lvRide);
+          const back = await run(M, x, { note: "editor suite: delete a flag with EMR references" });
+          const v61 = back.validation.errors.filter((e) => e.code === "V61");
+          c.check(!v61.length, "/emr/flag-delete/no-V61-error", { flag }, "no V61 error", v61.map((e) => `${e.path}: ${e.msg}`));
+        }
+        // Deleting a red flag with a workup placeholder (round 1) removes the placeholder with its references.
+        const holderFlag = Object.keys(T.redFlagPlaceholders || {}).find((id) => derive.flagDeletePlan(M, M.rubric, id).allowed) || null;
+        if (c.check(!!holderFlag, "/emr/flag-delete/placeholder/flag", null, "a deletable flag with an EMR workup placeholder", null)) {
+          const plan = derive.flagDeletePlan(M, M.rubric, holderFlag);
+          c.check(plan.removes.some((r) => r.path === `/emrTemplate/redFlagPlaceholders/${holderFlag}`), "/emr/flag-delete/placeholder/plan", { flag: holderFlag },
+            `/emrTemplate/redFlagPlaceholders/${holderFlag}`, plan.removes.map((r) => r.path));
+          const x = derive.deleteFlag(M, fresh(), holderFlag);
+          const want = JSON.parse(JSON.stringify(T));
+          if (want.redFlagRefs) delete want.redFlagRefs[holderFlag];
+          delete want.redFlagPlaceholders[holderFlag];
+          c.check(JSON.stringify(x.emrTemplate) === JSON.stringify(want), "/emr/flag-delete/placeholder/cascade", { flag: holderFlag }, "the block without that flag's references and placeholder, byte for byte",
+            derive.diffRubrics({ emrTemplate: want }, { emrTemplate: x.emrTemplate }).slice(0, 3));
+          c.check(!emrViolations(derive.lockViolations(M, x)).length, "/emr/flag-delete/placeholder/no-lock", { flag: holderFlag }, [], emrViolations(derive.lockViolations(M, x)));
+          const back = await run(M, x, { note: "editor suite: delete a flag with an EMR workup placeholder" });
+          const v61 = back.validation.errors.filter((e) => e.code === "V61");
+          c.check(!v61.length, "/emr/flag-delete/placeholder/no-V61-error", { flag: holderFlag }, "no V61 error", v61.map((e) => `${e.path}: ${e.msg}`));
+        }
+        // Deleting an item named in history rows or checklist signals removes them (the rows of the checklist stay).
+        const named = new Set([...(T.history || []).map((r) => r.item), ...(T.checklist || []).flatMap((r) => (r.signals || []).map((s) => s.item))].filter(Boolean));
+        const item = [...named].find((id) => (T.history || []).some((r) => r.item === id) && (T.checklist || []).some((r) => (r.signals || []).some((s) => s.item === id))) || [...named][0];
+        if (c.check(!!item, "/emr/item-delete/item", null, "an item the block names", null)) {
+          const deps = derive.itemDependents(M.rubric, item).map((x) => x.path).filter((p) => p.startsWith("/emrTemplate/"));
+          const wantDeps = [];
+          (T.history || []).forEach((r, i) => { if (r.item === item) wantDeps.push(`/emrTemplate/history/${i}`); });
+          (T.pastHistory || []).forEach((r, i) => { if (r.item === item) wantDeps.push(`/emrTemplate/pastHistory/${i}`); });
+          (T.checklist || []).forEach((r, i) => (r.signals || []).forEach((s, j) => { if (s.item === item) wantDeps.push(`/emrTemplate/checklist/${i}/signals/${j}`); }));
+          c.diff(wantDeps, deps, { at: "/emr/item-delete/dependents", input: { item } });
+          const x = derive.deleteItem(fresh(), item);
+          const want = JSON.parse(JSON.stringify(T));
+          if (Array.isArray(want.history)) want.history = want.history.filter((r) => r.item !== item);
+          for (const r of want.checklist || []) if (Array.isArray(r.signals)) r.signals = r.signals.filter((s) => s.item !== item);
+          c.check(JSON.stringify(x.emrTemplate) === JSON.stringify(want), "/emr/item-delete/cascade", { item }, "history rows and signals naming it removed, every row of the checklist kept",
+            derive.diffRubrics({ emrTemplate: want }, { emrTemplate: x.emrTemplate }).slice(0, 3));
+          c.check(!emrViolations(derive.lockViolations(M, x)).length, "/emr/item-delete/no-lock", { item }, [], emrViolations(derive.lockViolations(M, x)));
+        }
+        // Release 0.4.6 (review round 1): deleting an item named by a past-history row removes that row
+        // (dependents, cascade, no lock violation, no V61 error), whatever the logic reads.
+        const pastItem = ((T.pastHistory || []).find((r) => r.item !== undefined) || {}).item;
+        if (c.check(!!pastItem, "/emr/past-delete/item", null, "an item a past-history row names", null)) {
+          const deps = derive.itemDependents(M.rubric, pastItem).map((x) => x.path).filter((p) => p.startsWith("/emrTemplate/"));
+          const wantDeps = [];
+          (T.history || []).forEach((r, i) => { if (r.item === pastItem) wantDeps.push(`/emrTemplate/history/${i}`); });
+          (T.pastHistory || []).forEach((r, i) => { if (r.item === pastItem) wantDeps.push(`/emrTemplate/pastHistory/${i}`); });
+          (T.checklist || []).forEach((r, i) => (r.signals || []).forEach((s, j) => { if (s.item === pastItem) wantDeps.push(`/emrTemplate/checklist/${i}/signals/${j}`); }));
+          c.diff(wantDeps, deps, { at: "/emr/past-delete/dependents", input: { item: pastItem } });
+          c.check(wantDeps.some((p) => p.startsWith("/emrTemplate/pastHistory/")), "/emr/past-delete/dependents/listed", { item: pastItem }, "the past-history row among the dependents", deps);
+          const x = derive.deleteItem(fresh(), pastItem);
+          const want = JSON.parse(JSON.stringify(T));
+          if (Array.isArray(want.history)) want.history = want.history.filter((r) => r.item !== pastItem);
+          if (Array.isArray(want.pastHistory)) want.pastHistory = want.pastHistory.filter((r) => r.item !== pastItem);
+          for (const r of want.checklist || []) if (Array.isArray(r.signals)) r.signals = r.signals.filter((s) => s.item !== pastItem);
+          c.check(JSON.stringify(x.emrTemplate) === JSON.stringify(want), "/emr/past-delete/cascade", { item: pastItem }, "the past-history row naming it removed, the other rows kept",
+            derive.diffRubrics({ emrTemplate: want }, { emrTemplate: x.emrTemplate }).slice(0, 3));
+          c.check(!(x.emrTemplate.pastHistory || []).some((r) => r.item === pastItem), "/emr/past-delete/gone", { item: pastItem }, "no past-history row names it", x.emrTemplate.pastHistory);
+          c.check(!emrViolations(derive.lockViolations(M, x)).length, "/emr/past-delete/no-lock", { item: pastItem }, [], emrViolations(derive.lockViolations(M, x)));
+        }
+        // A derivation keeps the block byte for byte, before the change log.
+        const keys = Object.keys(R1.rubric);
+        c.check(JSON.stringify(R1.rubric.emrTemplate) === JSON.stringify(T) && keys.indexOf("emrTemplate") >= 0 && keys.indexOf("emrTemplate") < keys.indexOf("changelog"),
+          "/emr/derive/preserved", null, "emrTemplate byte for byte, before changelog", keys);
+        c.check(R1.module.emrTemplate !== null && JSON.stringify(R1.module.emrTemplate) === JSON.stringify(T), "/emr/derive/module", null, "module.emrTemplate bound", null);
+      }
+    }
+
+    // ---------------------------------------------------- referral rule (release 0.4.5)
+    // phenotypes.referral, with the clinical lead's clinician rule, stays locked as /phenotypes is:
+    // every pointer below it is read-only, any edit is a lock violation, and a derivation keeps the
+    // table byte for byte.
+    {
+      const ref = M.rubric.phenotypes && M.rubric.phenotypes.referral;
+      if (c.check(!!ref && Array.isArray(ref.clinicianRules) && ref.clinicianRules.length > 0, "/referral/present", null, "the built-in carries phenotypes.referral.clinicianRules", ref)) {
+        const REASON = "Not editable in the Rubric Editor.";
+        for (const p of ["/phenotypes/referral", "/phenotypes/referral/byPhenotype/otologic/specialty", "/phenotypes/referral/byPhenotype/both/specialty", "/phenotypes/referral/clinicianRules",
+          "/phenotypes/referral/clinicianRules/0/rule", "/phenotypes/referral/clinicianRules/0/definition/0", "/phenotypes/referral/clinicianRules/0/clarification/0",
+          "/phenotypes/referral/clinicianRules/0/confirm/0", "/phenotypes/referral/clinicianRules/0/phenotypes/1"]) {
+          c.check(derive.lockReason(p) === REASON && !derive.isEditablePath(p), `/referral/locked${p}`, null, REASON, derive.lockReason(p));
+        }
+        const refViolations = (lv) => lv.filter((v) => v.path === "/phenotypes" || v.path.startsWith("/phenotypes/"));
+        c.check(!refViolations(derive.lockViolations(M, fresh())).length, "/referral/unchanged", null, "no lock violation", refViolations(derive.lockViolations(M, fresh())));
+        const edits = [
+          ["destination", (r) => { r.byPhenotype.otologic.specialty = "Neuro-otology"; }],
+          ["both-row", (r) => { delete r.byPhenotype.both; }],
+          ["rule", (r) => { r.clinicianRules[0].rule += " (edited)"; }],
+          ["definition", (r) => { r.clinicianRules[0].definition[0] += " (edited)"; }],
+          ["clarification", (r) => { r.clinicianRules[0].clarification[0] += " (edited)"; }],
+          ["confirm", (r) => { r.clinicianRules[0].confirm.pop(); }],
+          ["phenotypes", (r) => { r.clinicianRules[0].phenotypes = ["otologic"]; }],
+          ["remove-rule", (r) => { delete r.clinicianRules; }],
+        ];
+        for (const [name, fn] of edits) {
+          const x = fresh();
+          fn(x.phenotypes.referral);
+          const lv = refViolations(derive.lockViolations(M, x));
+          c.check(lv.length > 0 && lv.every((v) => v.msg === `Read-only: ${REASON}`), `/referral/edit/${name}`, { edit: name }, `Read-only: ${REASON}`, lv);
+        }
+        c.check(JSON.stringify(R1.rubric.phenotypes.referral) === JSON.stringify(ref), "/referral/derive/preserved", null, "phenotypes.referral byte for byte", R1.rubric.phenotypes.referral);
+        c.check(JSON.stringify(R1.module.phenotypes.referral) === JSON.stringify(ref), "/referral/derive/module", null, "module.phenotypes.referral bound", null);
+      }
     }
 
     // ----------------------------------------------------------------- locks

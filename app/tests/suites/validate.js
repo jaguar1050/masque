@@ -2,17 +2,27 @@
 // `validate`, §9.4 done-when 3-8). Owner: WP3.
 //
 //  1. mutation corpus: every generator in tests/fixtures/mutations produces its code at its
-//     path, the unmutated base does not, and every code V1-V60 is covered;
+//     path, the unmutated base does not, and every code V1-V61 is covered (V61, release 0.4.3:
+//     the EMR template data; its valid block on the base, with the one exam probe withEmrLogic
+//     adds to the base logic, produces no V61 finding, so each V61 generator proves one rule; since
+//     review round 4 a key the engine never reads, on each of the six row kinds, is a W with its
+//     kind and key in the message and no other V61 finding);
+//     plus negative checks
+//     the corpus cannot express: V60 on bare words, V29 only on band phrases under
+//     normalize.numbers (round 3, review T7), and the V28 carryRefuse warning silenced by a heard
+//     entry without carry (round 3, R12);
 //  2. the mutation base, the shape fixture (and its bound variant) validate with zero errors;
 //  3. MASQUE validates with zero errors; its warnings are only the expected V12 (an item
-//     without a short label) and V33 (es fallbacks); validation stays within 300 ms;
+//     without a short label); since release 0.4.2 (the Spanish completion) es has no fallback
+//     left, so V33 (es fallbacks, 11 before) is asserted to be 0 and the bound es locale records
+//     no fallback pointer; validation stays within 300 ms;
 //  4. bindModule is deterministic: same bytes, same hashes, same frozen structure;
 //  5. classifyLineage on every §3.11 row, including failed verifications and a forged root;
 //  6. fail-closed (§3.3): a throwing routing rule and a throwing derive rule, on both surfaces.
 //
 // The checks live in core(deps) so they run unchanged outside the browser too; run(h) builds
 // deps from the harness. Nothing happens at import time.
-import { CODES, MUTATIONS } from "../fixtures/mutations/index.js";
+import { CODES, MUTATIONS, withClinicianRules, withEmrLogic, withEmrTemplate } from "../fixtures/mutations/index.js";
 
 const BUDGET_MS = 300;
 const isObj = (x) => x !== null && typeof x === "object" && !Array.isArray(x);
@@ -118,6 +128,7 @@ export async function core(deps) {
     derive,
     inspect: deps.inspect,
     LIMITS: policy.LIMITS,
+    CAVEATS: policy.CAVEATS,
   };
 
   async function runCase(out) {
@@ -169,6 +180,58 @@ export async function core(deps) {
   }
   for (const code of CODES) check(covered.has(code), `/coverage/${code}`, { code }, "≥ 1 passing mutation", "none");
 
+  // V61 control (release 0.4.3): the valid EMR template block the V61 generators start from adds no
+  // V61 finding of either severity, on the shape path and on the bound module.
+  {
+    const rep = await runCase({ rubric: withEmrTemplate(ctx), logic: withEmrLogic(ctx), via: "shape" });
+    const v61 = [...rep.errors, ...rep.warnings].filter(f => f.code === "V61");
+    check(rep.ok && !v61.length, "/v61/control", { what: "the base with a valid emrTemplate" }, "0 errors, no V61", { ...summarise(rep), v61: v61.map(f => `${f.code} ${f.path}: ${f.msg}`) });
+  }
+
+  // V27 control (release 0.4.5): the valid clinician rule the clinicianRules generators start from
+  // adds no V27 finding of either severity, on the shape path and on the bound module; the rule
+  // reads no probe, so a logic without the probe the superseded escalation named changes nothing;
+  // and the built-in MASQUE rule is checked under MASQUE below.
+  {
+    const rep = await runCase({ rubric: withClinicianRules(ctx), via: "shape" });
+    const v27 = [...rep.errors, ...rep.warnings].filter(f => f.code === "V27");
+    check(rep.ok && !v27.length, "/v27/clinicianRules/control", { what: "the base with a valid clinician rule" }, "0 errors, no V27", { ...summarise(rep), v27: v27.map(f => `${f.code} ${f.path}: ${f.msg}`) });
+    const l = ctx.logic();
+    l.probes.list = l.probes.list.filter(pr => pr.id !== "pr_rescue");
+    const gone = await runCase({ rubric: withClinicianRules(ctx), logic: l });
+    const v27g = [...gone.errors, ...gone.warnings].filter(f => f.code === "V27");
+    check(!v27g.length, "/v27/clinicianRules/no-probe-read", { what: "the rule on a logic without pr_rescue" }, "no V27 finding (a clinician rule names no probe)", v27g.map(f => `${f.code} ${f.path}: ${f.msg}`));
+  }
+
+  // V61 unknown row fields (review round 4): a key engine/emr.js never reads is a warning on every
+  // row kind, with the kind and the key in its message, and nothing else is reported for it (the
+  // generators above prove the path; these prove the message and that it stays a warning). A
+  // history row's citations keep their own error and are not reported a second time.
+  {
+    const kinds = [
+      ["/emrTemplate/references/0/extra", "reference", "extra"],
+      ["/emrTemplate/history/0/extra", "history", "extra"],
+      ["/emrTemplate/checklist/0/extra", "checklist", "extra"],
+      ["/emrTemplate/checklist/0/signals/0/option", "item signal", "option"],
+      ["/emrTemplate/checklist/0/signals/2/value", "probe signal", "value"],
+      ["/emrTemplate/examRows/0/extra", "exam row", "extra"],
+    ];
+    for (const [path, kind, key] of kinds) {
+      const g = MUTATIONS.find(m => m.code === "V61" && m.sev === "W" && m.path === path);
+      if (!check(!!g, `/v61/unknown-field/${kind}/@generator`, { path }, "a V61 W generator at this path", "none")) continue;
+      const rep = await runCase(await g.build(ctx));
+      const msg = `unknown ${kind} field "${key}" (it is never read)`;
+      const v61 = [...rep.errors, ...rep.warnings].filter(f => f.code === "V61");
+      check(rep.ok && v61.length === 1 && rep.warnings.some(f => f.code === "V61" && f.path === path && f.msg === msg), `/v61/unknown-field/${kind}`, { path },
+        `W V61 ${path}: ${msg} (and no other V61 finding)`, v61.map(f => `${f.code} ${f.path}: ${f.msg}`));
+    }
+    const r = withEmrTemplate(ctx);
+    r.emrTemplate.history[1].citations = ["EX-A"];
+    const rep = await runCase({ rubric: r, logic: withEmrLogic(ctx) });
+    const at = "/emrTemplate/history/1/citations";
+    check(has(rep, "V61", at, "E") && !has(rep, "V61", at, "W"), "/v61/unknown-field/history/citations", { path: at }, "the E only, no second W", summarise(rep));
+  }
+
   // V60's module-phrase half matches only whole module phrases: the bare band words and the
   // bare word "index" (ordinary patient words) and a partial indexName stay clean.
   {
@@ -195,6 +258,56 @@ export async function core(deps) {
     check(!!textErr && /patientClin/.test(textErr.msg), "/v60/patient-surface/hint", {}, "the message suggests patientClin", textErr && textErr.msg);
   }
 
+  // V29 negative (round 3, review T7): numbers are spelled out for band phrase matching only
+  // (round 2 R4), so a phrase holding a standalone small number gets a V29 warning only in a band
+  // list. The same phrase in a yes/no, context, multi-answer, scale-cue or red-flag list matches
+  // typed digits and is clean. A band phrase in the same rubric is the positive control.
+  {
+    const r = ctx.rubric();
+    const phrase = "example 2 items";
+    r.lexicon.normalize = { numbers: "en" };
+    const clean = [];
+    const put = (list, ptr) => { list.push(phrase); clean.push(`${ptr}/${list.length - 1}`); };
+    put(r.lexicon.bool[0].ph, "/lexicon/bool/0/ph");
+    put(r.lexicon.ctx[0].ph, "/lexicon/ctx/0/ph");
+    put(r.lexicon.multi[0].ph, "/lexicon/multi/0/ph");
+    put(r.lexicon.scale[0].cue, "/lexicon/scale/0/cue");
+    const fid = Object.keys(r.lexicon.redFlags)[0];
+    put(r.lexicon.redFlags[fid], `/lexicon/redFlags/${fid}`);
+    r.lexicon.scale[0].bands[0].ph.push("example 2 units");
+    const band = `/lexicon/scale/0/bands/0/ph/${r.lexicon.scale[0].bands[0].ph.length - 1}`;
+    const rep = await runCase({ rubric: r });
+    check(has(rep, "V29", band, "W"), "/v29/band-control", { phrase: "example 2 units", path: band }, `W V29 ${band}`, summarise(rep));
+    for (const p of clean) {
+      const hit = [...rep.errors, ...rep.warnings].filter(f => f.code === "V29" && f.path === p);
+      check(!hit.length, `/v29/not-a-band${p}`, { phrase, path: p, normalize: r.lexicon.normalize }, "no V29", hit.map(f => `${f.code} ${f.path}: ${f.msg}`));
+    }
+  }
+
+  // V28 carryRefuse warning (round 3, R12): it fires only when no scale entry has heard: true or
+  // carry, because a carryRefuse phrase also withholds a heard entry's band in its own utterance.
+  // A heard entry without carry therefore silences it; the same rubric without heard is the
+  // control. Bound and validated directly, so a bind failure fails here instead of passing.
+  {
+    const validated = async (heard) => {
+      const r = ctx.rubric();
+      r.lexicon.carryRefuse = ["example refusal"];
+      if (heard) r.lexicon.scale[0].heard = true;
+      try {
+        const m = await bindWith(r, isObj(r.logicBinding) ? freshLogic() : null);
+        return await validate.validateModule({ module: m, loaded: [] });
+      } catch (err) {
+        check(false, `/v28/carryRefuse/${heard ? "heard" : "control"}/binds`, {}, "binds and validates", String(err && err.message || err));
+        return null;
+      }
+    };
+    const control = await validated(false);
+    if (control) check(has(control, "V28", "/lexicon/carryRefuse", "W"), "/v28/carryRefuse/control", { heard: "none", carry: "none" }, "W V28 /lexicon/carryRefuse", summarise(control));
+    const rep = await validated(true);
+    if (rep) check(!has(rep, "V28", "/lexicon/carryRefuse", "W"), "/v28/carryRefuse/heard-only", { heard: "/lexicon/scale/0/heard", carry: "none" },
+      "no W V28 /lexicon/carryRefuse", summarise(rep));
+  }
+
   // ------------------------------------------------------------- the shape fixture(s)
   try {
     for (const { name, module, validation } of await deps.loadShape()) {
@@ -215,8 +328,13 @@ export async function core(deps) {
   if (masque && masque.module) {
     const v = masque.validation;
     check(v && v.ok, "/masque/errors", {}, "0 errors", v ? summarise(v) : "no validation");
-    const unexpected = v ? v.warnings.filter(w => !(w.code === "V33" || (w.code === "V12" && /\/short$/.test(w.path)))) : [];
-    check(!unexpected.length, "/masque/warnings", {}, "only V12 (short) and V33 (es fallbacks)", unexpected.map(w => `${w.code} ${w.path}: ${w.msg}`));
+    const unexpected = v ? v.warnings.filter(w => !(w.code === "V12" && /\/short$/.test(w.path))) : [];
+    check(!unexpected.length, "/masque/warnings", {}, "only V12 (short)", unexpected.map(w => `${w.code} ${w.path}: ${w.msg}`));
+    // Release 0.4.2: the Spanish completion leaves es without a single English fallback.
+    const v33 = v ? v.warnings.concat(v.errors).filter(w => w.code === "V33") : [];
+    check(v && v33.length === 0, "/masque/V33", {}, "0 (es complete since release 0.4.2)", v33.map(w => `${w.path}: ${w.msg}`));
+    const esFallbacks = masque.module.locales && masque.module.locales.es ? masque.module.locales.es.fallbacks : undefined;
+    check(Array.isArray(esFallbacks) && esFallbacks.length === 0, "/masque/locales/es/fallbacks", {}, [], esFallbacks);
     const v12 = v ? v.warnings.filter(w => w.code === "V12") : [];
     deps.note(`MASQUE: ${v ? v.errors.length : "?"} errors, ${v ? v.warnings.length : "?"} warnings (V12 ×${v12.length}, V33 ×${v ? v.warnings.filter(w => w.code === "V33").length : "?"})`);
     // Budget: the best of three runs (the first warms the JIT).

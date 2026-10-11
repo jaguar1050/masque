@@ -262,7 +262,7 @@ export function buildDataDictionary(module, { appVersion = APP_VERSION } = {}) {
 const SURFACES = ["screener", "scribe"];
 
 /**
- * The QuestionnaireResponse group answer for a domain's points (decision F13, AD14): FHIR
+ * The QuestionnaireResponse group answer for a domain's points (decision F13, AD19): FHIR
  * valueInteger only for an integer; a fractional sum (a scale factor below 1) is valueDecimal.
  */
 function domainPtsAnswer(pts) {

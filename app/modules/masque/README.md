@@ -20,8 +20,82 @@ Where the module's content now lives:
   templates, and the probe set, with a header that maps each block to its source lines.
 - `CHANGELOG.md` — the module's change log.
 
-Version axes: instrument 0.2, lexicon 0.3.1, probe set 1.0.0, gold set 0.2.0 (the release is
+Version axes: instrument 0.2, lexicon 0.3.2, probe set 1.0.0, gold set 0.3.0 (the release is
 screenAIr's own, `app/src/engine/policy.js`).
+
+Since lexicon 0.3.2 (screenAIr 0.4.1) the Ambient Scribe shows a cue heard without its value and,
+when no duration was stated with it, may take the value from the next replies; a heard cue never
+scores. A duration stated with the cue but negated, ambiguous or given as an onset ("ago", "since",
+"started", "began") is withheld: the clinician asks, and no later reply supplies it. A reply whose
+duration is negated or ambiguous is not taken either. Day ranges ("for two days", "overnight" and
+four more) set the dizziness duration only in a sentence that names the dizziness, never from a
+reply; anywhere else they can only withhold a duration. Typed digits are read only in duration
+phrases. Known risks are listed in `CHANGELOG.md`. Edits derived
+from this module before 0.4.1 no longer verify against it: re-derive edits made before 0.4.1 (see
+`CHANGELOG.md`). Edits derived under 0.4.1 still verify after 0.4.2, which changes only the
+Spanish patient wording.
+
+Since screenAIr 0.4.2 the Patient Companion is fully in Spanish when the patient chooses Español:
+the context questions, the story step, the intro and safety text, the clinician paragraph and the
+30 clinician lines of the "Para mi médico" block (new locale key `clin`) and the footer. The marker "Prototype · not for clinical use" stays in English, with the Spanish
+line "Prototipo · no apto para uso clínico" beside it. The Spanish was produced by AI agents (two
+independent drafts, then clinical, language and mechanical review by AI agents), not by a
+qualified human medical translator, so the locale stays `reviewed: false` and the "Traducción sin
+revisar" banner stays until a bilingual clinical reviewer signs it off. No existing Spanish was
+changed. The rows and their basis, and the items awaiting the reviewer, are in `SOURCES.md`
+("Spanish translation delta (unreviewed)"); what changed and what stays English are in
+`CHANGELOG.md` (2026-10-06).
+
+Since screenAIr 0.4.3 the Clinician Screener and the Ambient Scribe have an "EMR Friendly
+Template" button. It opens a plain-text consult-note template with bracketed placeholders, for
+pasting into an EMR. The rubric's new `emrTemplate` block gives it this module's data:
+
+- citation metadata and links to specialty-society and journal sources;
+- the empiric-treatment references shown when the referral gate is open;
+- which routing recommendations' chips are instruments;
+- the references under each red flag's own action, and one workup placeholder;
+- the treatment-and-workup rows;
+- an allergy / sinusitis / dizziness management checklist;
+- the exam rows.
+
+AI agents assembled this content from verified sources. On 2026-10-07 the clinical lead signed
+off the content and the note it generates, as implemented in 0.4.3 (decisions D1-D16, review
+rounds 1-4); screenAIr 0.4.4 records the sign-off and changes nothing else. The sign-off does not
+cover the Spanish translation, and the recorded follow-ups stay known limitations, accepted at
+sign-off (`CHANGELOG.md`, release 0.4.4). It stores no guideline text and no agent, dose or
+threshold.
+The template is a prototype aid. Every row and its basis are in `SOURCES.md` ("EMR template
+data"); the states, the citation register and the known risks are in `CHANGELOG.md` (release
+0.4.3). No version axis but the release moves.
+
+screenAIr 0.4.5 records the clinical lead's referral rule for dizziness cases (decided in chat on
+2026-10-07, 2026-10-09 and 2026-10-10): dizziness cases, the otologic picture and "both", are
+referred to Neurology, and to neuro-otology if there is a true vertiginous component or a history
+of ear or brain surgeries. No question the module asks reliably records true vertigo as the lead
+describes it, or a prior surgery, so nothing escalates automatically: the referral reads Neurology
+in the FHIR referral and the EMR note alike, and the note prints the lead's rule, definition and
+clarification, with a placeholder for each condition, above the recommendations, so that
+neuro-otology stays the clinician's decision. The rule and the clarification print verbatim; the
+definition prints as the lead amended it on 2026-10-10: a rocking or bobbing sensation is
+dizziness, not true vertigo, and swaying is imbalance too, so its internal-vertigo line no longer
+lists swaying and bobbing. All three still count toward the vestibular score as imbalance (the item
+"Episodic vertigo or imbalance"), so the instrument, probes and lexicon are unchanged. The rule is
+module data (`phenotypes.referral.clinicianRules`); `CHANGELOG.md` (release 0.4.5) and
+`SOURCES.md` give the details. The lead also confirmed showing the EMR checklist under an open red
+flag (2026-10-07) and before the Scribe's safety review is recorded (2026-10-09). No version axis
+but the release moves.
+
+screenAIr 0.4.6 records the clinical lead's answers of 2026-10-10 on four items the EMR template
+sign-off had left open. Under an open red flag the note now also prints the screen-based referral
+and the empiric-treatment references, under a heading saying that the FHIR bundle withholds the
+referral (the bundle is unchanged; it never carries the references). The assessment lists the headings of the recommendations the plan
+prints ("Considerations:"). The past history gains a modifying-conditions row and the
+family-history-of-migraine line, with its recorded state. On the Scribe, a recorded central HINTS
+pattern puts a clinician placeholder under the HINTS exam row. The DZ4 audiogram label keeps its
+indication clause. The two data additions (`emrTemplate.pastHistory` and the HINTS row's
+`optionPlaceholders`) sit on top of the signed-off 0.4.3 block, which is unchanged;
+`CHANGELOG.md` (release 0.4.6) and `SOURCES.md` give the details. No version axis but the release
+moves.
 
 ## Clinician Screener — file header
 

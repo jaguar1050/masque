@@ -9,13 +9,22 @@
 //   CSV header      cohortColumnsCsv vs the baseline row header, AD2 only
 // Per screen — the 9 sample cases (4 Screener samples + 5 Simulator scenarios) and the empty
 // screen × rf ∈ {none, rf_asym, rf_thunderclap + rf_asym} × routingCleared ∈ {true, false}:
-//   Bundle (screener surface)   vs the baseline Screener's, AD1, AD14 and AD15 only
-//   Bundle (scribe surface)     vs the baseline Scribe's, AD6 and AD14 only (its complaint is
-//                               always a derived, declared phenotype value, so never AD15)
+//   Bundle (screener surface)   vs the baseline Screener's, AD1 only (release 0.4.5: and AD17, the
+//                               otologic and both referral destinations of the clinical lead's rule,
+//                               expected wherever the baseline refers one of those phenotypes;
+//                               release 0.4.7: and AD19, AD20)
+//   Bundle (scribe surface)     vs the baseline Scribe's, AD6 only (release 0.4.5: and AD17, as above;
+//                               release 0.4.7: and AD19 — its complaint is always a derived, declared
+//                               phenotype value, so never AD20)
 //   Note                        vs the baseline Scribe's, AD6 only (line by line)
 //   Cohort row                  vs the baseline Screener's (AD2, AD4) and Scribe's (AD2 scribe, AD4)
 //   CSV                         rowsToCsv of all rows, AD2 and AD4
-//   summaryText en/es           vs the baseline Patient's, AD4 and AD10
+//   summaryText en/es           vs the baseline Patient's, AD4 and AD10; in es AD14 (release 0.4.2,
+//                               the Spanish completion) between them, each of its rules expected
+//                               wherever its source occurs, and the companion marker on every es export;
+//                               then AD16 (release 0.4.3: the thin warning and the not-sure lede, in the
+//                               baseline's own UI[loc] strings; the empty screen is thin), expected on
+//                               every thin summary or "Not sure" list in both locales
 // Every AD whose precondition occurs must be observed ("expected difference missing" otherwise).
 // Non-built-in modules (a verified derivation with changed scoring; the shape fixture as a
 // plain upload): their own code-system namespace; the provenance marker in the Questionnaire
@@ -24,8 +33,11 @@
 // dictionary's provenance object and score type `number 0–{scaleMax}`; the bundle Observation's
 // provenance note.
 import { collector, guarded, loadMasque, need, validationNote } from "../harness/kit.js";
-import { ALLOWED_DIFFERENCES, ad6Pairs } from "../harness/diff.js";
+import { ALLOWED_DIFFERENCES, ad16Params, ad6Pairs } from "../harness/diff.js";
 import { bumpFirstWeight, derivedFixture } from "../harness/derivation.js";
+import { LOCALE_DELTA } from "../harness/locale-delta.js";
+import { REFERRAL_DELTA } from "../harness/referral-delta.js";
+import { ad14Context, ad14Tally } from "../harness/spanish.js";
 
 const NOW = "2026-10-01T12:00:00.000Z";
 const DATE = NOW.slice(0, 10);
@@ -76,9 +88,15 @@ export default {
     ];
     const probeNotes = prb.ALL_PROBES.flatMap((p) => p.opts.map((o) => o.note).filter(Boolean)).slice(0, 3);
     const rowsB = [], rowsN = [], rowsS = [], rowsSN = [];
+    const pview = patient.projectForPatient(module);
+    const P14 = ad14Context({ delta: LOCALE_DELTA, pat, patient, policy, view: pview, loc: "es" });
+    const t14 = ad14Tally();
     let seed = 1;
-    let ad1Pre = 0, ad1Seen = 0, ad6Pre = 0, ad6Seen = 0, ad10Seen = 0, ad10Pre = 0, ad2Seen = 0, ad2Pre = 0;
-    let ad14Pre = 0, ad14Seen = 0, ad15Pre = 0, ad15Seen = 0;
+    let ad17Pre = 0, ad17Seen = 0;
+    /** The baseline bundle's referral code text, or null. */
+    const referralText = (b) => { const sr = b.entry.map((e) => e.resource).find((r) => r.resourceType === "ServiceRequest" && r.priority === "routine"); return sr ? sr.code.text : null; };
+    let ad1Pre = 0, ad1Seen = 0, ad6Pre = 0, ad6Seen = 0, ad10Seen = 0, ad10Pre = 0, ad2Seen = 0, ad2Pre = 0, ad16Seen = 0, ad16Pre = 0, ad16Thin = 0;
+    let ad19Pre = 0, ad19Seen = 0, ad20Pre = 0, ad20Seen = 0;
     const declared = ((module.phenotypes && module.phenotypes.values) || []).map((v) => v.value);
     const hasReferral = (b) => b.entry.some((e) => e.resource.resourceType === "ServiceRequest" && e.resource.priority === "routine");
     for (const cs of cases) for (const rf of RF_SETS) for (const routingCleared of [true, false]) {
@@ -99,13 +117,15 @@ export default {
       const bN = fhir.buildBundle(module, { patient: module.demo.patient, answers: a, score: sN, complaint: cs.complaint, activeFlags: flagsN,
         emergent, routingCleared, routingError: null }, { surface: "screener", now: NOW });
       const ad1 = { AD1: { total: sB.total, floor: sB.floor } };
-      const rb = c.diff(bB, bN, { at: "/bundle/screener", input, keyOrder: true, allow: ["AD1", "AD14", "AD15"],
-        ctx: { ...ad1, AD14: {}, AD15: { complaint: cs.complaint, declared, indexSrc: "CDS Hooks card · order-select" } } });
-      const ad14Here = AD.AD14.detector({ domains: sB.domains });
-      if (ad14Here) { ad14Pre++; if (rb.observed.has("AD14")) ad14Seen++; }
-      if (AD.AD15.detector({ complaint: cs.complaint, declared, baselineIssued: hasReferral(bB) })) {
-        ad15Pre++;
-        if (rb.observed.has("AD15") && !hasReferral(bN)) ad15Seen++;
+      const ad17 = { AD17: { delta: REFERRAL_DELTA, complaint: cs.complaint || "" } };
+      const r1 = c.diff(bB, bN, { at: "/bundle/screener", input, keyOrder: true, allow: ["AD1", "AD17", "AD19", "AD20"],
+        ctx: { ...ad1, ...ad17, AD19: {}, AD20: { complaint: cs.complaint, declared, indexSrc: "CDS Hooks card · order-select" } } });
+      if (AD.AD17.detector({ p: ad17.AD17, baseline: referralText(bB) })) { ad17Pre++; if (r1.observed.has("AD17")) ad17Seen++; }
+      const ad19Here = AD.AD19.detector({ domains: sB.domains });
+      if (ad19Here) { ad19Pre++; if (r1.observed.has("AD19")) ad19Seen++; }
+      if (AD.AD20.detector({ complaint: cs.complaint, declared, baselineIssued: hasReferral(bB) })) {
+        ad20Pre++;
+        if (r1.observed.has("AD20") && !hasReferral(bN)) ad20Seen++;
       }
       if (AD.AD1.detector({ surface: "screener", score: sB })) {
         // AD1 has two sites (the attainable-range low value and the Observation note); each
@@ -133,8 +153,10 @@ export default {
       const bSN = fhir.buildBundle(module, { patient: module.demo.patient, answers: a, score: sN, complaint: complaintS, activeFlags: flagsN,
         emergent, routingCleared: cleared, routingError: null }, { surface: "scribe", now: NOW });
       c.check(declared.includes(complaintS), "/bundle/scribe/complaint", input, `a declared phenotype value (${declared.join(", ")})`, complaintS);
-      const r2 = c.diff(bS, bSN, { at: "/bundle/scribe", input, keyOrder: true, allow: ["AD6", "AD14"], ctx: { AD6: pairs, AD14: {} } });
-      if (ad14Here) { ad14Pre++; if (r2.observed.has("AD14")) ad14Seen++; }
+      const ad17S = { AD17: { delta: REFERRAL_DELTA, complaint: complaintS || "" } };
+      const r2 = c.diff(bS, bSN, { at: "/bundle/scribe", input, keyOrder: true, allow: ["AD6", "AD17", "AD19"], ctx: { AD6: pairs, ...ad17S, AD19: {} } });
+      if (AD.AD17.detector({ p: ad17S.AD17, baseline: referralText(bS) })) { ad17Pre++; if (r2.observed.has("AD17")) ad17Seen++; }
+      if (ad19Here) { ad19Pre++; if (r2.observed.has("AD19")) ad19Seen++; }
       const ad6Strings = flagsScb.flatMap((f) => [f.text, f.points, f.action]);
       const ad6Here = AD.AD6.detector({ strings: ad6Strings, pairs });
       if (ad6Here) { ad6Pre++; if (r2.observed.has("AD6")) ad6Seen++; }
@@ -170,7 +192,7 @@ export default {
       ad2Pre++; if (r5.observed.has("AD2")) ad2Seen++;
       rowsB.push(rowB); rowsN.push(rowN); rowsS.push(rowS); rowsSN.push(rowSN);
 
-      // summaryText en/es (AD4, AD10), once per case and flag set.
+      // summaryText en/es (AD4, AD14 in es, AD10, AD16), once per case and flag set.
       if (routingCleared) {
         const view = patient.projectForPatient(module);
         for (const loc of ["en", "es"]) {
@@ -180,8 +202,14 @@ export default {
           const { summary } = patient.buildPatientSummary(view, loc, { a, ctx: cs.ctx, flags: rf, urgent });
           const tB = pat.summaryText(sumB, pat.UI[loc]);
           const tN = summary ? patient.summaryText(view, loc, summary, { appVersion: policy.APP_VERSION, generatedAt: NOW }) : "[summary withheld]";
-          const r6 = c.diff(tB, tN, { at: `/summaryText/${loc}`, input: { ...input, loc }, allow: ["AD4", "AD10"], ctx: { AD10: { notices: [], date: DATE } } });
+          const es = loc === "es";
+          const p16 = ad16Params(sumB, pat.UI[loc]);
+          const r6 = c.diff(tB, tN, { at: `/summaryText/${loc}`, input: { ...input, loc }, allow: es ? ["AD4", "AD14", "AD10", "AD16"] : ["AD4", "AD10", "AD16"],
+            ctx: { AD10: { notices: [], date: DATE }, ...(es ? { AD14: P14 } : {}), ...(p16 ? { AD16: p16 } : {}), loc } });
           ad10Pre++; if (r6.observed.has("AD10")) ad10Seen++;
+          if (es && summary) t14.add(P14, AD.AD4.normalise(tB, tN)[0], tN, { marker: true });
+          if (AD.AD16.detector(sumB)) { ad16Pre++; if (r6.observed.has("AD16")) ad16Seen++; }
+          if (p16 && p16.thin) ad16Thin++;
         }
       }
       seed++;
@@ -190,9 +218,13 @@ export default {
     h.expect("AD6", { precondition: ad6Pre > 0, observed: ad6Seen === ad6Pre });
     h.expect("AD2", { precondition: ad2Pre > 0, observed: ad2Seen === ad2Pre });
     h.expect("AD10", { precondition: ad10Pre > 0, observed: ad10Seen === ad10Pre });
-    h.expect("AD14", { precondition: ad14Pre > 0, observed: ad14Seen === ad14Pre });
-    h.expect("AD15", { precondition: ad15Pre > 0, observed: ad15Seen === ad15Pre });
-    c.note(`screens: ${cases.length} cases × ${RF_SETS.length} flag sets × routingCleared {true, false}; AD1 seen ${ad1Seen}/${ad1Pre}, AD6 ${ad6Seen}/${ad6Pre}, AD2 ${ad2Seen}/${ad2Pre}, AD10 ${ad10Seen}/${ad10Pre}, AD14 ${ad14Seen}/${ad14Pre}, AD15 ${ad15Seen}/${ad15Pre}`);
+    t14.expect(h, c, "/summaryText/es", { need: ["M"] });
+    h.expect("AD16", { precondition: ad16Pre > 0, observed: ad16Seen === ad16Pre && ad16Thin > 0 });
+    h.expect("AD17", { precondition: ad17Pre > 0, observed: ad17Seen === ad17Pre });
+    c.check(ad17Pre > 0, "/bundle/@AD17", null, "at least one referral of a dizziness case (otologic or both) compared", ad17Pre);
+    h.expect("AD19", { precondition: ad19Pre > 0, observed: ad19Seen === ad19Pre });
+    h.expect("AD20", { precondition: ad20Pre > 0, observed: ad20Seen === ad20Pre });
+    c.note(`screens: ${cases.length} cases × ${RF_SETS.length} flag sets × routingCleared {true, false}; AD1 seen ${ad1Seen}/${ad1Pre}, AD6 ${ad6Seen}/${ad6Pre}, AD2 ${ad2Seen}/${ad2Pre}, AD10 ${ad10Seen}/${ad10Pre}, AD16 ${ad16Seen}/${ad16Pre} (${ad16Thin} thin), AD17 ${ad17Seen}/${ad17Pre}, AD19 ${ad19Seen}/${ad19Pre}, AD20 ${ad20Seen}/${ad20Pre}; AD14 (es summaryText) per rule ${t14.note()}`);
 
     // CSV (AD2, AD4) and the header-only CSV.
     c.diff(scr.rowsToCsv(rowsB), cohort.rowsToCsv(rowsN), { at: "/csv/screener", allow: ["AD2", "AD4"], ctx: { AD2: { moduleId: module.id } } });

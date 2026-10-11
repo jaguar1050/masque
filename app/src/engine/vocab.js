@@ -18,8 +18,11 @@ export const TIER_RANK = { emergent: 0, urgent: 1 };
 /** Boolean-item answer values. "unsure" exists only in the Patient Companion. */
 export const ANSWER = { YES: "yes", NO: "no", UNSURE: "unsure" };
 
-/** Kinds of a Scribe capture. */
-export const CAPTURE_KIND = { ITEM: "item", CTX: "ctx", REDFLAG: "redflag" };
+/**
+ * Kinds of a Scribe capture. HEARD is a cue heard without its value: it carries no value and
+ * never sets an answer (absent stays absent).
+ */
+export const CAPTURE_KIND = { ITEM: "item", CTX: "ctx", REDFLAG: "redflag", HEARD: "heard" };
 
 /**
  * Probe kinds. rank/label/c/bg are moved verbatim from Prb L47-54; caption is the Scribe's

@@ -337,7 +337,7 @@ export function gapSignals(module, ctx) {
 /**
  * The referral a settled screen proposes (§4.5): null when routingError is set, the module
  * has no referral table, or the complaint is not a declared phenotype value ("" included,
- * decision F11, AD15); otherwise the own entry byPhenotype[complaint] ?? default. Callers still
+ * decision F11, AD20); otherwise the own entry byPhenotype[complaint] ?? default. Callers still
  * apply referralGate.
  */
 export function referralFor(module, complaint, { routingError = null } = {}) {
@@ -377,7 +377,7 @@ export function cdsPreview(module, state, { routingError = null, bandLabel = nul
   const err = routingError || state.phenotypeError || null;
   if (err || !state.scorable || state.band === LOWEST_BAND || !BANDS.includes(state.band)) return { safety: null, index: null };
   if (typeof preview.indexTitle !== "string" || typeof preview.indexBody !== "string") return { safety: null, index: null };
-  // No index card for a complaint nobody entered or the module does not declare (F11, AD15):
+  // No index card for a complaint nobody entered or the module does not declare (F11, AD20):
   // the default term would name a phenotype the clinician never chose.
   if (!isDeclaredPhenotype(module, state.complaint)) return { safety: null, index: null };
   const term = module.phenotypes && module.phenotypes.cdsTerm;

@@ -1,6 +1,7 @@
 // The validator mutation corpus (design 03 §4.14, §8.3 `validate`). Owner: WP3.
 //
-// Every validator code V1-V60 has at least one generator. A generator mutates the base module
+// Every validator code V1-V61 has at least one generator (V61, the EMR template data: emr.js,
+// release 0.4.3). A generator mutates the base module
 // (base.rubric.json + base.logic.js, placeholder text only, which validates with zero errors)
 // and states the code, severity and JSON pointer the validator must report for it. The
 // `validate` suite (tests/suites/validate.js) runs them; nothing happens at import time.
@@ -14,6 +15,8 @@
 //                          → Promise<rubric> with the §3.11 derived-module rules applied
 //   ctx.inspect(path)     → Promise<inspectSource result | null> for a fixture text file
 //   ctx.LIMITS            engine/policy.js LIMITS
+//   ctx.CAVEATS           engine/policy.js CAVEATS (the V38 generators put the engine's own caveat
+//                          strings into module data, so they follow the engine's wording)
 // and it returns {rubric, logic?, logicSha256?, origin?, classification?, loaded?, root?, upload?, via?}.
 // `via: "shape"` asks the suite to run validateRubricShape (the editor's synchronous path)
 // as well as validateModule; either may report the finding.
@@ -23,9 +26,12 @@ import safety from "./safety.js";
 import locales from "./locales.js";
 import logic from "./logic.js";
 import provenance from "./provenance.js";
+import emr from "./emr.js";
+export { withEmrLogic, withEmrTemplate } from "./emr.js";
+export { withClinicianRules } from "./safety.js";
 
 /** Every validator code. */
-export const CODES = Array.from({ length: 60 }, (_, i) => `V${i + 1}`);
+export const CODES = Array.from({ length: 61 }, (_, i) => `V${i + 1}`);
 
 /** Every generator, in code order. */
-export const MUTATIONS = [...shape, ...instrument, ...safety, ...locales, ...logic, ...provenance];
+export const MUTATIONS = [...shape, ...instrument, ...safety, ...locales, ...logic, ...provenance, ...emr];

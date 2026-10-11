@@ -5,7 +5,13 @@
 //          screens): page health; locked fields read-only; Apply disabled without changes, with
 //          an error (V15) and with an unacknowledged edit the logic reads; "set max = Σw";
 //          Revert and Revert all; the current-screen impact rows; the last cue phrase of a flag
-//          cannot be removed; a built-in label refused in the Apply dialog; Create module keeps
+//          cannot be removed; the lexicon's capture configuration is shown read-only (heard /
+//          carry-over and yield rows, anchor chips, carry-refusal list, normalization line, and
+//          (round 2) the carry-over exclusion chips with their lock reason), worded "approved
+//          lexicon configuration" with no clinical-lead claim anywhere in the lexicon section
+//          (round 3: /clinical[- ]lead/i, as the unit check), and the carry-refusal label naming
+//          both roles (round 3, R12);
+//          a built-in label refused in the Apply dialog; Create module keeps
 //          the active module and the screens; editing a non-active module; Create and switch
 //          goes through the switch confirmation; Download all twice with a fixed clock gives
 //          byte-equal zips that pass `unzip -t`; no horizontal scroll at 375 px.
@@ -171,6 +177,73 @@ export default async function editor(page, ctx) {
       check((await page.locator("[data-testid=editor-status]").innerText()).startsWith("0 changes") && await sel.inputValue() === tier0, "/dev/confirm/escape-cancels", `0 changes, tier ${tier0}`, [await page.locator("[data-testid=editor-status]").innerText(), await sel.inputValue()]);
     }
   }
+
+  // Capture configuration (design 05 §5.4, §7.2): heard / carry-over and yield rows, read-only
+  // anchor chips, the read-only carry-refusal list and the normalization line.
+  await page.click("[data-section-nav=lexicon]");
+  const capture = await page.evaluate(() => {
+    const ro = (el) => {
+      const btns = [...el.querySelectorAll("[data-remove-phrase]")];
+      return { path: el.dataset.path, chips: btns.length, allDisabled: btns.every((b) => b.disabled), addInput: !!el.querySelector("[data-add-phrase]") };
+    };
+    const text = (sel) => [...document.querySelectorAll(sel)].map((x) => x.textContent);
+    return {
+      heard: text("[data-heard-config]"),
+      heardIds: [...document.querySelectorAll("[data-heard-config]")].map((x) => x.dataset.heardConfig),
+      yieldRows: text("[data-yield]"),
+      anchors: [...document.querySelectorAll("[data-path]")].filter((x) => /^\/lexicon\/scale\/\d+\/anchor$/.test(x.dataset.path)).map(ro),
+      refuse: [...document.querySelectorAll('[data-path="/lexicon/carryRefuse"]')].map((el) => ({ ...ro(el), label: (el.querySelector(".re-flabel") || {}).textContent || "" })),
+      normalize: text("[data-normalize-config]"),
+      editableList: [...document.querySelectorAll('[data-path="/lexicon/negation/cues"]')].map(ro),
+      // Round 2 R3a: the carry-over exclusions, a read-only phrase list per scale entry that has them.
+      exclusions: [...document.querySelectorAll("[data-path]")].filter((x) => /^\/lexicon\/scale\/\d+\/carryExclude$/.test(x.dataset.path)).map((el) => ({
+        ...ro(el),
+        phrases: [...el.querySelectorAll(".re-chip")].map((c) => c.textContent),
+        label: (el.querySelector(".re-flabel") || {}).textContent || "",
+        hint: [...el.querySelectorAll(".re-hint")].map((h) => h.textContent).join(" "),
+      })),
+      // Round 2 R6: the engine cannot know who approved a module, so no editor text claims it.
+      lexiconText: [...document.querySelectorAll('[data-section="lexicon"]')].map((x) => x.textContent).join(" "),
+      shipped: (() => {
+        const e = window.__editorDev.entries().find((x) => x.key === window.__editorDev.activeKey);
+        const sc = e && e.module && e.module.rubric && e.module.rubric.lexicon ? e.module.rubric.lexicon.scale : [];
+        return sc.map((s, i) => ({ path: `/lexicon/scale/${i}/carryExclude`, id: s.id, carryExclude: s.carryExclude })).filter((s) => Array.isArray(s.carryExclude));
+      })(),
+    };
+  });
+  check(capture.heard.length >= 1 && capture.heardIds.includes("v_vertigo") && capture.heard.every((t) => /Heard signal on/.test(t) && /read-only/.test(t)),
+    "/dev/lexicon/heard-config", "a [data-heard-config] row for v_vertigo, read-only", capture.heard);
+  check(capture.heard.some((t) => /carry-over: the next 2 patient replies may supply the value/.test(t)), "/dev/lexicon/heard-carry", "carry-over: the next 2 patient replies …", capture.heard);
+  check(capture.yieldRows.length >= 1 && capture.yieldRows.every((t) => /^Yields to /.test(t.trim()) && /read-only/.test(t)), "/dev/lexicon/yield", "a [data-yield] row, read-only", capture.yieldRows);
+  check(capture.anchors.length >= 1 && capture.anchors.every((a) => a.chips > 0 && a.allDisabled && !a.addInput), "/dev/lexicon/anchors-read-only", "anchor chips with disabled remove buttons and no add input", capture.anchors);
+  check(capture.refuse.length === 1 && capture.refuse[0].chips > 0 && capture.refuse[0].allDisabled && !capture.refuse[0].addInput, "/dev/lexicon/carry-refuse-read-only", "the carry-refusal list, read-only", capture.refuse);
+  check(capture.normalize.length === 1 && /read-only/.test(capture.normalize[0]), "/dev/lexicon/normalize", "the normalization line, read-only", capture.normalize);
+  check(capture.editableList.length === 1 && capture.editableList[0].addInput, "/dev/lexicon/editable-list", "an ordinary cue list keeps its add input", capture.editableList);
+  // Carry-over exclusions (round 2 R3a): v_vertigo's list shown read-only, chip for chip the
+  // shipped carryExclude, with the lock reason.
+  check(capture.shipped.length === 1 && capture.shipped[0].id === "v_vertigo", "/dev/lexicon/carry-exclude/shipped", "v_vertigo alone has carryExclude", capture.shipped);
+  check(capture.exclusions.length === capture.shipped.length && capture.exclusions.every((x, i) => capture.shipped[i] && x.path === capture.shipped[i].path),
+    "/dev/lexicon/carry-exclude/shown", capture.shipped.map((s) => s.path), capture.exclusions.map((x) => x.path));
+  for (const x of capture.exclusions) {
+    const want = (capture.shipped.find((s) => s.path === x.path) || {}).carryExclude || [];
+    check(JSON.stringify(x.phrases) === JSON.stringify(want), `/dev/lexicon/carry-exclude${x.path}/phrases`, want, x.phrases);
+    check(x.chips === want.length && x.allDisabled && !x.addInput, `/dev/lexicon/carry-exclude${x.path}/read-only`, "disabled remove buttons, no add input", x);
+    check(/read-only/.test(x.label) && /never supply a carried value/.test(x.label), `/dev/lexicon/carry-exclude${x.path}/label`, "a read-only label saying they never supply a carried value", x.label);
+    check(x.hint.includes("approved lexicon configuration"), `/dev/lexicon/carry-exclude${x.path}/reason`, "the lock reason (approved lexicon configuration)", x.hint);
+  }
+  // Wording (round 2 R6): "approved lexicon configuration", never a clinical-lead claim.
+  check(capture.heard.every((t) => t.includes("approved lexicon configuration")), "/dev/lexicon/heard-wording", "approved lexicon configuration", capture.heard);
+  check(capture.normalize.every((t) => t.includes("approved lexicon configuration")), "/dev/lexicon/normalize-wording", "approved lexicon configuration", capture.normalize);
+  // Round 3 (review T10): the same pattern as the unit check of the lock reasons, so "approved by
+  // the clinical lead" or "clinical-lead approval" fails as well.
+  check(!/clinical[- ]lead/i.test(capture.lexiconText), "/dev/lexicon/no-clinical-lead-claim", "no \"clinical lead\" / \"clinical-lead\" in the lexicon section",
+    (capture.lexiconText.match(/.{0,60}clinical[- ]lead.{0,60}/i) || [null])[0]);
+  // Round 3 (R12, review F6): the carry-refusal label names both roles.
+  check(capture.refuse.length === 1 && /read-only/.test(capture.refuse[0].label) && /never supplies a carried value/.test(capture.refuse[0].label)
+    && /withholds the value/.test(capture.refuse[0].label) && /opens no carry-over/.test(capture.refuse[0].label),
+  "/dev/lexicon/carry-refuse-label", "read-only; a reply … never supplies a carried value; in a heard entry's own utterance … withholds the value and opens no carry-over",
+  capture.refuse.map((x) => x.label));
+  check((await page.locator("[data-testid=editor-status]").innerText()).startsWith("0 changes"), "/dev/lexicon/no-changes", "viewing the capture rows changes nothing", await page.locator("[data-testid=editor-status]").innerText());
 
   // Apply: a built-in label is refused; Create module keeps the active module and the screens.
   await page.click("[data-section-nav=domains]");
