@@ -10,14 +10,20 @@
 // The module is the default built-in, or ?module=<built-in id> when that names one; any other
 // value shows "This questionnaire is not available." and never falls back to another module.
 // It loads through registry.loadBuiltins, the same verified path as the shell.
+//
+// Release 0.4.2: the page follows the companion's locale — <html lang>, document.title, the
+// header title and the region's label; the caveat strip, the print header and the footer show
+// the English prototype marker with the locale's companion line and the patient caveats in the
+// locale, each part tagged with its language. The pre-locale messages (NOT_AVAILABLE,
+// LOAD_FAILED, "Technical detail") stay English.
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { HeartHandshake } from "lucide-react";
 import { APP_VERSION, CAVEATS } from "../engine/policy.js";
-import { PATIENT_CHROME, projectForPatient } from "../engine/patient.js";
-import PatientCompanion, { patientPrintHeader } from "../apps/PatientCompanion.jsx";
+import { PATIENT_CHROME, langTag, patientProvenanceFor, projectForPatient } from "../engine/patient.js";
+import PatientCompanion, { patientPrintHeaderParts } from "../apps/PatientCompanion.jsx";
 import { loadBuiltins } from "./registry.js";
-import { CaveatStrip, PatientFooter, PrintFrame } from "./chrome.jsx";
+import { CaveatStrip, PatientFooter, PrintFrame, useDocumentLang } from "./chrome.jsx";
 import { SHELL_CSS } from "./shell.css.js";
 
 export const NOT_AVAILABLE = "This questionnaire is not available.";
@@ -58,11 +64,15 @@ export default function PatientPage({ env }) {
   const view = useMemo(() => (state.status === "ready" ? projectForPatient(state.module) : null), [state]);
   const onPrintContext = useCallback((pc) => setPrintCtx(pc || null), []);
   const loc = printCtx && printCtx.loc ? printCtx.loc : "en";
-  const title = (PATIENT_CHROME[loc] && PATIENT_CHROME[loc].title) || PATIENT_CHROME.en.title;
+  const ownTitle = PATIENT_CHROME[loc] && PATIENT_CHROME[loc].title;
+  const title = ownTitle || PATIENT_CHROME.en.title;
+  // The language of the title, and (release 0.4.2) of the page: the companion's locale.
+  const titleLang = ownTitle ? langTag(loc) : "en";
+  useDocumentLang(view ? langTag(loc) : "en");
 
   useEffect(() => {
-    document.title = view ? `${view.name} · ${PATIENT_CHROME.en.title}` : PATIENT_CHROME.en.title;
-  }, [view]);
+    document.title = view ? `${view.name} · ${title}` : PATIENT_CHROME.en.title;
+  }, [view, title]);
 
   let content;
   if (state.status === "loading") content = <p className="sa-patient-msg" role="status">…</p>;
@@ -77,7 +87,7 @@ export default function PatientPage({ env }) {
   } else {
     content = (
       <main className="sa-main sa-patient-page-main" data-module={view.id}>
-        <div role="region" aria-label={title} className="sa-panel sa-panel-patient" data-panel="patient">
+        <div role="region" aria-label={title} lang={loc === "en" ? undefined : titleLang} className="sa-panel sa-panel-patient" data-panel="patient">
           <PatientCompanion view={view} appVersion={APP_VERSION} onPrintContext={onPrintContext} />
         </div>
       </main>
@@ -91,15 +101,15 @@ export default function PatientPage({ env }) {
         <div className="sa-top-in">
           <div className="sa-brand" data-testid="patient-page-header">
             <span className="sa-mark" aria-hidden="true"><HeartHandshake size={16} /></span>
-            <span>{view ? `${view.name} · ` : ""}{title}</span>
+            <span lang={loc === "en" ? undefined : titleLang}>{view ? `${view.name} · ` : ""}{title}</span>
           </div>
         </div>
-        <CaveatStrip lines={view ? view.provenanceLines : []} />
+        <CaveatStrip lines={!view ? [] : loc === "en" ? view.provenanceLines : patientProvenanceFor(view, loc).lines} loc={view ? loc : "en"} />
       </header>
-      <PrintFrame header={view ? patientPrintHeader(view, printCtx) : CAVEATS.prototype}>
+      <PrintFrame header={view ? patientPrintHeaderParts(view, printCtx) : CAVEATS.prototype}>
         {content}
       </PrintFrame>
-      <PatientFooter view={view} appVersion={APP_VERSION} />
+      <PatientFooter view={view} appVersion={APP_VERSION} loc={view ? loc : "en"} />
     </div>
   );
 }

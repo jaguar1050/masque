@@ -24,10 +24,11 @@ import * as patient from "../../src/engine/patient.js";
 import * as derive from "../../src/engine/derive.js";
 import * as zip from "../../src/engine/zip.js";
 import * as exportAll from "../../src/engine/exportAll.js";
+import * as emr from "../../src/engine/emr.js";
 import * as common from "../../src/ui/common.jsx";
 
 export const modules = {
   contract, vocab, policy, hash, css, download, prng, scoring, evaluate, rules, gates, bind, lineage,
-  generic, validate, fhir, cohort, extraction, probes, scribe, patient, derive, zip, exportAll,
+  generic, validate, fhir, cohort, extraction, probes, scribe, patient, derive, zip, exportAll, emr,
 };
 export { common };

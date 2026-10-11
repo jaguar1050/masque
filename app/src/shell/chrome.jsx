@@ -6,11 +6,19 @@
 // live in shell.css.js and apply under .sa-shell. Imports react, lucide-react and engine files
 // only, so the standalone patient page can use the strip and the frame without pulling in any
 // clinician tab. No module literal: every module-specific value arrives as a prop.
+//
+// Release 0.4.2 (Spanish patient companion): on a patient surface in a locale other than
+// English, the strip, the print frame and the patient footer show the English prototype marker
+// with the locale's companion line next to it (engine/patient.js prototypeMarker), the patient
+// caveats and the footer's version line in that locale, and tag every part with its language;
+// useDocumentLang lets a patient page follow the companion's locale on <html lang>. English
+// output is unchanged.
 
 import React, { useEffect, useRef, useState } from "react";
 import { Copy, Download, Info, RotateCcw, Save, Trash2, TriangleAlert, X } from "lucide-react";
 import { APP_VERSION, CAVEATS } from "../engine/policy.js";
 import { availability } from "../engine/lineage.js";
+import { langTag, patientProvenanceFor, prototypeMarker } from "../engine/patient.js";
 
 const DASH = "—";
 const arr = (x) => (Array.isArray(x) ? x : []);
@@ -61,6 +69,37 @@ export function originWord(module) {
   return module.origin === "derived" ? "edited" : "uploaded";
 }
 
+/**
+ * Text parts [{text, lang}] as React children: a part with a lang is a <span lang>, a part
+ * without one (lang null) plain text (release 0.4.2).
+ */
+export function LangParts({ parts }) {
+  return (
+    <>
+      {arr(parts).map((p, i) => (p && p.lang ? <span lang={p.lang} key={i}>{p.text}</span> : <React.Fragment key={i}>{p ? p.text : ""}</React.Fragment>))}
+    </>
+  );
+}
+
+/**
+ * Sets <html lang> while mounted and restores the previous value afterwards (release 0.4.2): a
+ * patient page follows the companion's locale, and leaving it restores the page's own.
+ * @param {string} lang
+ */
+export function useDocumentLang(lang) {
+  const value = langTag(lang);
+  useEffect(() => {
+    if (typeof document === "undefined" || !document.documentElement) return undefined;
+    const el = document.documentElement;
+    const before = el.getAttribute("lang");
+    if (before !== value) el.setAttribute("lang", value);
+    return () => {
+      if (before === null) el.removeAttribute("lang");
+      else if (el.getAttribute("lang") !== before) el.setAttribute("lang", before);
+    };
+  }, [value]);
+}
+
 /** The "Module logic error — …" caveat line (§5.1 item 2). */
 export function moduleErrorLine(err) {
   if (!err) return null;
@@ -71,16 +110,22 @@ export function moduleErrorLine(err) {
 
 /**
  * The caveat strip (§5.1 item 2), always rendered.
- * @param {{lines?: string[], errorLine?: (string|null), lang?: string}} props
- *   lines: provenance lines for a non-built-in module (none for a built-in);
- *   errorLine: the "Module logic error — …" line while a closure error is recorded.
+ * @param {{lines?: Array<(string|{text: string, lang: string})>, errorLine?: (string|null), loc?: string}} props
+ *   lines: provenance lines for a non-built-in module (none for a built-in): English strings,
+ *          or {text, lang} in the patient locale (lineage.provenanceLineParts, release 0.4.2);
+ *   errorLine: the "Module logic error — …" line while a closure error is recorded;
+ *   loc: the patient locale on a patient surface (release 0.4.2): outside English the marker
+ *        carries the locale's companion line, each part tagged with its language.
  */
-export function CaveatStrip({ lines = [], errorLine = null }) {
+export function CaveatStrip({ lines = [], errorLine = null, loc = "en" }) {
+  const marker = prototypeMarker(loc);
   return (
     <div className="sa-caveat" id="sa-caveat" role="note" data-testid="caveat-strip">
       <div className="sa-caveat-in">
-        <b>{CAVEATS.prototype}</b>
-        {lines.map((l, i) => <span className="sa-caveat-line" lang="en" key={i}>{l}</span>)}
+        <b>{marker.some((p) => p.lang) ? <LangParts parts={marker} /> : CAVEATS.prototype}</b>
+        {lines.map((l, i) => (typeof l === "string"
+          ? <span className="sa-caveat-line" lang="en" key={i}>{l}</span>
+          : <span className="sa-caveat-line" lang={l.lang || "en"} key={i}>{l.text}</span>))}
         {errorLine ? <span className="sa-caveat-line sa-caveat-error" role="alert">{errorLine}</span> : null}
       </div>
     </div>
@@ -90,12 +135,14 @@ export function CaveatStrip({ lines = [], errorLine = null }) {
 /**
  * Print frame (§5.10): a table whose thead repeats at the top of every printed page and
  * reserves its own space there. On screen the table is plain blocks and the thead is hidden.
- * @param {{header: string, children: React.ReactNode}} props
+ * @param {{header: (string|Array<{text: string, lang: (string|null)}>), children: React.ReactNode}} props
+ *   header: the header text, or (release 0.4.2) its parts, each tagged with its language
+ *           (patientPrintHeaderParts); parts without a lang render as plain text.
  */
 export function PrintFrame({ header, children }) {
   return (
     <table className="sa-print-frame" role="presentation">
-      <thead className="sa-print-head"><tr><td>{header}</td></tr></thead>
+      <thead className="sa-print-head"><tr><td>{Array.isArray(header) ? <LangParts parts={header} /> : header}</td></tr></thead>
       <tbody><tr><td>{children}</td></tr></tbody>
     </table>
   );
@@ -144,18 +191,51 @@ function VersionAxes({ appVersion, moduleId, versions, block = false }) {
 }
 
 /**
- * The patient footer (§5.1 patient mode, §5.11): `{name} · release {APP_VERSION} · instrument
- * {instrumentVersion}`, the patient provenance marker of a non-built-in, and the caveat.
- * Reads only the patient projection (never a score, band or clinician text).
- * @param {{view: Object, appVersion?: string}} props
+ * The patient footer's version line per locale (release 0.4.2; es an unreviewed team
+ * translation, 2026-10-06). Release and instrument stay two separate axes (D9).
  */
-export function PatientFooter({ view, appVersion = APP_VERSION }) {
-  const markers = arr(view && view.provenanceMarkers);
+export const PATIENT_FOOTER_TEXT = {
+  en: { versionLine: "{name} · release {appVersion} · instrument {instrumentVersion}", noView: "release {appVersion}" },
+  es: { versionLine: "{name} · versión {appVersion} · instrumento {instrumentVersion}", noView: "versión {appVersion}" },
+};
+
+function fillFooter(tpl, vars) {
+  return String(tpl).replace(/\{(name|appVersion|instrumentVersion)\}/g, (m, k) => (vars[k] === undefined || vars[k] === null ? m : String(vars[k])));
+}
+
+/**
+ * The patient footer (§5.1 patient mode, §5.11): `{name} · release {APP_VERSION} · instrument
+ * {instrumentVersion}`, the patient provenance marker of a non-built-in, and the caveat. With
+ * `loc` (release 0.4.2) the version line and the markers follow the patient locale where a
+ * translation exists, and the caveat carries the locale's companion line, each tagged with its
+ * language. Reads only the patient projection (never a score, band or clinician text).
+ * @param {{view: Object, appVersion?: string, loc?: string}} props
+ */
+export function PatientFooter({ view, appVersion = APP_VERSION, loc = "en" }) {
+  const own = loc !== "en" && PATIENT_FOOTER_TEXT[loc] ? PATIENT_FOOTER_TEXT[loc] : null;
+  const vars = { name: view ? view.name : undefined, appVersion, instrumentVersion: view ? view.instrumentVersion : undefined };
+  if (!own) {
+    // English (and a locale without its own footer text, tagged "en").
+    const en = PATIENT_FOOTER_TEXT.en;
+    const markers = arr(view && view.provenanceMarkers);
+    const marker = prototypeMarker(loc);
+    return (
+      <footer className="sa-footer sa-patient-footer" id="sa-footer" data-testid="patient-page-footer">
+        <p lang={loc === "en" ? undefined : "en"}>{fillFooter(view ? en.versionLine : en.noView, vars)}</p>
+        {markers.length ? <p lang="en">{markers.join(" · ")}</p> : null}
+        <p>{marker.some((p) => p.lang) ? <LangParts parts={marker} /> : CAVEATS.prototype}</p>
+      </footer>
+    );
+  }
+  const lang = langTag(loc);
+  const markers = view ? patientProvenanceFor(view, loc).markers : [];
+  const markerParts = [];
+  markers.forEach((m, i) => { if (i) markerParts.push({ text: " · ", lang: null }); markerParts.push(m); });
   return (
     <footer className="sa-footer sa-patient-footer" id="sa-footer" data-testid="patient-page-footer">
-      <p>{view ? `${view.name} · release ${appVersion} · instrument ${view.instrumentVersion}` : `release ${appVersion}`}</p>
-      {markers.length ? <p lang="en">{markers.join(" · ")}</p> : null}
-      <p>{CAVEATS.prototype}</p>
+      <p lang={lang}>{fillFooter(view ? own.versionLine : own.noView, vars)}</p>
+      {markers.length ? <p><LangParts parts={markerParts} /></p> : null}
+      <p><LangParts parts={prototypeMarker(loc)} /></p>
     </footer>
   );
 }
@@ -318,8 +398,10 @@ export function ConfirmDialog({ open, title, body = null, lines = [], notes = []
 }
 
 /**
- * A transient message. `message` changes restart the timer; null hides it.
- * @param {{message: (string|null), onDone: function(): void, ms?: number}} props
+ * A transient message. `message` changes restart the timer; null hides it. A string message is
+ * English shell text and the dismiss label is English, so both carry lang="en" (release 0.4.2:
+ * on a patient page <html lang> may follow the companion); a node message tags its own parts.
+ * @param {{message: (string|React.ReactNode|null), onDone: function(): void, ms?: number}} props
  */
 export function Toast({ message, onDone, ms = 5000 }) {
   useEffect(() => {
@@ -330,8 +412,8 @@ export function Toast({ message, onDone, ms = 5000 }) {
   if (!message) return null;
   return (
     <div className="sa-toast" role="status" aria-live="polite" data-testid="toast" data-sa-live="">
-      <span>{message}</span>
-      <button type="button" className="sa-toast-x" onClick={onDone} aria-label="Dismiss"><X size={14} aria-hidden="true" /></button>
+      <span lang={typeof message === "string" ? "en" : undefined}>{message}</span>
+      <button type="button" className="sa-toast-x" onClick={onDone} aria-label="Dismiss" lang="en"><X size={14} aria-hidden="true" /></button>
     </div>
   );
 }

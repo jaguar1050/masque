@@ -11,23 +11,31 @@
 // switch goes through switchModule(), which first lists what the switch clears. The
 // microphone stops whenever a patient-facing view is shown, and on every module switch.
 // No side effects at import time; no module literal.
+//
+// Release 0.4.2 (Spanish patient companion): on a patient-facing view the caveat strip and the
+// print header follow the companion's locale (the English prototype marker with the locale's
+// companion line, the patient caveats in the locale, each tagged with its language). In patient
+// mode <html lang> follows it too (restored on leaving), the patient footer's version line, the
+// document title and the patient panel's label are in the locale, and the return button, the
+// return dialog and the microphone toast keep their English and add the locale's line
+// (PATIENT_MODE_TEXT). English output is unchanged. NO_LONGER_LOADED, the loading text and the
+// rest of the clinician shell stay English.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlaskConical, HeartHandshake, Info, Mic, PencilRuler, Stethoscope } from "lucide-react";
 import { APP_VERSION, CAVEATS, SITE } from "../engine/policy.js";
-import { provenanceLines } from "../engine/lineage.js";
-import { projectForPatient } from "../engine/patient.js";
+import { provenanceLineParts, provenanceLines } from "../engine/lineage.js";
+import { PATIENT_CHROME, langTag, patientPrintHeaderParts, projectForPatient } from "../engine/patient.js";
 import { downloadBytes } from "../engine/download.js";
 import { buildExportFiles } from "../engine/exportAll.js";
 import { zipStore } from "../engine/zip.js";
 import { ProvenanceBadge } from "../ui/common.jsx";
-import { patientPrintHeader } from "../apps/PatientCompanion.jsx";
 import {
   forgetSaved, listSaved, loadBuiltins, markEntry, prepareRubric, register, registered, restoreSaved, saveModule, unregister,
 } from "./registry.js";
 import {
   CaveatStrip, ConfirmDialog, InvalidModule, LIVE_VOICE, MicIndicator, ModuleInfo, PatientFooter, PrintFrame, TAB_LABELS,
-  Toast, VersionFooter, clinicianMarkers, moduleErrorLine, originWord,
+  Toast, VersionFooter, clinicianMarkers, moduleErrorLine, originWord, useDocumentLang,
 } from "./chrome.jsx";
 import ModulePicker from "./ModulePicker.jsx";
 import ModuleWorkspace, { TAB_KEYS } from "./ModuleWorkspace.jsx";
@@ -51,6 +59,34 @@ export const MIC_TOAST = "Microphone stopped — the Patient Companion never run
 export const RETURN_TEXT = "The clinician view shows scores, research data and module tools. Hand the device back to the clinician before continuing.";
 export const HAND_TEXT = "The Patient Companion still holds the answers entered in this session. Start a new session so the next patient does not see them, or continue this one.";
 export const NO_LONGER_LOADED = "This questionnaire is no longer loaded on this device. Please hand the device back to your clinician.";
+
+/**
+ * The patient-mode controls' lines in the companion's locale (release 0.4.2; es an unreviewed
+ * team translation, 2026-10-06). Shown UNDER the English (which stays), never instead of it.
+ */
+export const PATIENT_MODE_TEXT = {
+  es: {
+    returnButton: "Regresar a la vista del médico",
+    returnDialog: {
+      title: "¿Regresar a la vista del médico?",
+      body: "La vista del médico muestra resultados de tamizaje, datos de investigación y herramientas del módulo. Devuelva el dispositivo al médico antes de continuar.",
+      stay: "Seguir en modo paciente",
+      confirm: "Regresar a la vista del médico",
+    },
+    micToast: "Micrófono apagado — la Guía para el paciente nunca funciona con el micrófono encendido.",
+  },
+};
+
+/** English shell text with the locale's line under it (release 0.4.2); the English alone otherwise. */
+function withLocaleLine(en, own, loc) {
+  if (typeof own !== "string" || !own || loc === "en") return en;
+  return (
+    <span className="sa-locale-pair">
+      <span lang="en">{en}</span>
+      <span className="sa-locale-line" lang={langTag(loc)}>{own}</span>
+    </span>
+  );
+}
 
 // ----------------------------------------------------------------------------- routing
 
@@ -134,6 +170,10 @@ export default function ScreenAIr({ env }) {
   const patientView = useMemo(() => (module ? projectForPatient(module) : null), [module]);
   const patientFacing = mode === "patient" || tab === "patient";
   const micAllowed = mode !== "patient" && tab !== "patient";
+  // The companion's locale (onPrintContext), and its patient-mode lines (release 0.4.2).
+  const patientLoc = printCtx && typeof printCtx.loc === "string" ? printCtx.loc : "en";
+  const modeText = patientLoc !== "en" && PATIENT_MODE_TEXT[patientLoc] ? PATIENT_MODE_TEXT[patientLoc] : null;
+  useDocumentLang(mode === "patient" && !patientMissing && module ? patientLoc : "en");
 
   const refreshSaved = useCallback((list) => {
     const loadedIds = new Set(list.filter((e) => e.module).map((e) => e.module.id));
@@ -201,13 +241,14 @@ export default function ScreenAIr({ env }) {
   }, []);
 
   // ------------------------------------------------------------------ title
+  const patientTitle = patientLoc !== "en" && PATIENT_CHROME[patientLoc] && PATIENT_CHROME[patientLoc].title ? PATIENT_CHROME[patientLoc].title : null;
   useEffect(() => {
-    if (mode === "patient") { document.title = "screenAIr · Patient Companion"; return; }
+    if (mode === "patient") { document.title = `screenAIr · ${patientTitle || "Patient Companion"}`; return; }
     if (!entry) { document.title = "screenAIr"; return; }
     const label = entry.module ? entry.module.label : entry.label;
     const word = entry.module ? originWord(entry.module) : "";
     document.title = `screenAIr · ${label}${word ? ` (${word})` : ""}`;
-  }, [mode, entry]);
+  }, [mode, entry, patientTitle]);
 
   // ------------------------------------------------------------------ microphone (D16)
   const stopped = useRef(false);
@@ -393,6 +434,10 @@ export default function ScreenAIr({ env }) {
       onConfirm: () => {
         setConfirm(null);
         setDirty((d) => ({ ...d, patient: null }));
+        // A new session is a fresh companion in its default locale: forget the last session's
+        // print context (its locale), as a module switch does, so the title, <html lang>, the
+        // strip and the print header never show the previous patient's language (release 0.4.2).
+        setPrintCtx(null);
         setPatientSession((n) => n + 1);
         setMode("patient");
       },
@@ -431,12 +476,26 @@ export default function ScreenAIr({ env }) {
 
   // ------------------------------------------------------------------ chrome text
   const lastError = moduleErrors.length ? moduleErrors[moduleErrors.length - 1] : null;
+  // The patient caveats follow the companion's locale (release 0.4.2): in patient mode only the
+  // locale's lines; on the clinician's Patient tab the English lines exactly as before, then the
+  // locale's own lines after them, each tagged with its language.
   const caveatLines = module
-    ? (patientFacing ? provenanceLines(module, "patient", { locale: printCtx ? printCtx.loc : "en" }) : provenanceLines(module, "clinician"))
+    ? (patientFacing
+      ? (patientLoc === "en"
+        ? provenanceLines(module, "patient", { locale: printCtx ? printCtx.loc : "en" })
+        : mode === "patient"
+          ? provenanceLineParts(module, "patient", { locale: patientLoc })
+          : [...provenanceLines(module, "patient", { locale: patientLoc, textLocale: "en" }),
+            ...provenanceLineParts(module, "patient", { locale: patientLoc }).filter((p) => p.lang !== "en")])
+      : provenanceLines(module, "clinician"))
     : [];
+  const caveatLoc = module && patientFacing ? patientLoc : "en";
   const printHeader = module && patientFacing && patientView
-    ? patientPrintHeader(patientView, printCtx)
+    ? patientPrintHeaderParts(patientView, printCtx)
     : [CAVEATS.prototype, ...clinicianMarkers(module)].join(" · ");
+  const micToast = useMemo(() => withLocaleLine(MIC_TOAST, modeText ? modeText.micToast : null, patientLoc), [modeText, patientLoc]);
+  const toastMessage = toast === MIC_TOAST ? micToast : toast;
+  const returnDialog = confirm && confirm.kind === "return" && modeText ? modeText.returnDialog : null;
 
   // ------------------------------------------------------------------ render
   const clinician = mode === "clinician";
@@ -467,7 +526,7 @@ export default function ScreenAIr({ env }) {
           tab={tab} mode={mode} micAllowed={micAllowed} stopSignal={stopSignal}
           onDirty={onDirty} onModuleError={onModuleError} onVoiceState={onVoiceState} onOpenTab={onOpenTab}
           onPrintContext={onPrintContext} onApply={onApply} onDownloadAll={onDownloadAll} onDownloaded={onDownloaded}
-          onHandToPatient={handToPatient} patientSession={patientSession}
+          onHandToPatient={handToPatient} patientSession={patientSession} patientLoc={patientLoc}
         />
       </main>
     );
@@ -499,7 +558,7 @@ export default function ScreenAIr({ env }) {
             <div className="sa-patient-title" data-testid="patient-mode-title">{patientView ? patientView.name : ""}</div>
           )}
         </div>
-        <CaveatStrip lines={caveatLines} errorLine={clinician || !patientFacing ? moduleErrorLine(lastError) : null} />
+        <CaveatStrip lines={caveatLines} errorLine={clinician || !patientFacing ? moduleErrorLine(lastError) : null} loc={caveatLoc} />
       </header>
 
       {clinician ? (
@@ -546,11 +605,11 @@ export default function ScreenAIr({ env }) {
 
       {clinician
         ? (module ? <VersionFooter appVersion={APP_VERSION} moduleId={module.id} versions={module.versions} /> : <footer className="sa-footer" id="sa-footer"><p>{CAVEATS.prototype}</p></footer>)
-        : <PatientFooter view={patientMissing ? null : patientView} appVersion={APP_VERSION} />}
+        : <PatientFooter view={patientMissing ? null : patientView} appVersion={APP_VERSION} loc={patientMissing ? "en" : patientLoc} />}
 
       {!clinician ? (
         <div className="sa-return">
-          <button type="button" className="sa-btn sa-btn-small" onClick={askReturn} data-testid="return-to-clinician">Return to clinician view</button>
+          <button type="button" className="sa-btn sa-btn-small" onClick={askReturn} data-testid="return-to-clinician">{withLocaleLine("Return to clinician view", modeText && !patientMissing ? modeText.returnButton : null, patientLoc)}</button>
         </div>
       ) : null}
 
@@ -560,13 +619,16 @@ export default function ScreenAIr({ env }) {
         onRemember={entry && entry.origin !== "builtin" ? (e) => rememberEntries([e]) : null}
         onDownload={entry && entry.module ? downloadOne : null}
         onRemove={entry && entry.origin !== "builtin" ? removeEntry : null} />
-      <ConfirmDialog open={!!confirm} title={confirm ? confirm.title : ""} body={confirm ? confirm.body : null}
+      <ConfirmDialog open={!!confirm}
+        title={confirm ? (returnDialog ? withLocaleLine(confirm.title, returnDialog.title, patientLoc) : confirm.title) : ""}
+        body={confirm ? (returnDialog ? withLocaleLine(confirm.body, returnDialog.body, patientLoc) : confirm.body) : null}
         lines={confirm ? confirm.lines : []} notes={confirm ? confirm.notes : []}
-        confirmLabel={confirm ? confirm.confirmLabel : "OK"} cancelLabel={confirm && confirm.cancelLabel ? confirm.cancelLabel : "Cancel"}
+        confirmLabel={confirm ? (returnDialog ? withLocaleLine(confirm.confirmLabel, returnDialog.confirm, patientLoc) : confirm.confirmLabel) : "OK"}
+        cancelLabel={confirm && confirm.cancelLabel ? (returnDialog ? withLocaleLine(confirm.cancelLabel, returnDialog.stay, patientLoc) : confirm.cancelLabel) : "Cancel"}
         onConfirm={confirm ? confirm.onConfirm : () => {}} onCancel={closeConfirm}
         initialFocus={confirm && confirm.initialFocus ? confirm.initialFocus : "confirm"} extra={confirm && confirm.extra ? confirm.extra : null}
         testId={confirm ? ({ return: "return-dialog", hand: "hand-dialog" }[confirm.kind] || "switch-dialog") : "switch-dialog"} />
-      <Toast message={toast} onDone={closeToast} />
+      <Toast message={toastMessage} onDone={closeToast} />
     </div>
   );
 }

@@ -421,6 +421,7 @@ const CHECKLIST = [
   "(d) Download all, reload the page (do not click Restore), then Upload the zip: “already loaded” for MASQUE, and the derived module loads as a verified derivation with the “Edited” badge and the population banner.",
   "(e) Open app/patient.html: no tabs, no module menu, no link to the clinician program. Finish the summary, download the .html, open it with the network off: the caveat and the date are there.",
   "(f) Download the MASQUE rubric, change one weight in a text editor, upload it: the dialog offers “Load as a module derived from Dizziness and Sinusitis (MASQUE v1)”, and the result's instrument version carries a -local suffix.",
+  "(g) Ambient Scribe → Listen → say 'I'm feeling really dizzy' → a dashed 'heard “dizzy” · episode duration: not stated' tag and a Heard card at the top of Ask next (below any Safety probes) → say 'a few hours' → 'episode duration: 5 min – 72 h · follow-up to “dizzy”', coverage rises, the Heard card disappears.",
 ];
 
 function el(tag, attrs = {}, ...children) {

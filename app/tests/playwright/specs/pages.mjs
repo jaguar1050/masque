@@ -19,9 +19,12 @@
 //              screenair.html or index.html, no omission-pattern match in the visible text, no
 //              score or band (done-when 8); patient.html's module graph excludes the §5.11
 //              list; leaving patient mode needs the confirmation; a reload with
-//              #mode=patient&module=<unknown> shows the "no longer loaded" message.
+//              #mode=patient&module=<unknown> shows the "no longer loaded" message; with Español
+//              chosen (release 0.4.2) <html lang> is es on patient.html and in #mode=patient while
+//              the corner badge outside #root (and the hidden clinician panels) stay lang="en".
 //   narrow     no horizontal page scroll at 375 px on any tab, in patient mode and on
-//              patient.html (done-when 5).
+//              patient.html (done-when 5); release 0.4.3: nor with the EMR Friendly Template panel
+//              open on the Screener and the Scribe, whose frames hold the template.
 
 const PROTO = "Prototype · not for clinical use";
 const RETURN_TEXT = "The clinician view shows scores, research data and module tools. Hand the device back to the clinician before continuing.";
@@ -380,6 +383,17 @@ export default async function pages(page, ctx) {
     await shellReady(page);
     await page.waitForTimeout(300);
     await patientOnly(page, "patient-mode-reload");
+    // Release 0.4.2: with Español chosen the page is es; the corner badge outside #root and the
+    // hidden clinician panels stay English (lang="en").
+    await page.click(".sa-shell [data-testid=patient-locale-es]").catch(() => {});
+    await page.waitForTimeout(200);
+    const modeLang = await page.evaluate(() => ({
+      html: document.documentElement.getAttribute("lang"),
+      badge: ((document.querySelector(".masque-proto") || document.body).closest("[lang]") || document.documentElement).getAttribute("lang"),
+      panels: [...document.querySelectorAll("[role=tabpanel]")].filter((p) => p.dataset.panel !== "patient").map((p) => p.getAttribute("lang")),
+    }));
+    check(modeLang.html === "es" && modeLang.badge === "en" && modeLang.panels.length > 0 && modeLang.panels.every((l) => l === "en"),
+      "/patient-mode/es/lang", { html: "es", badge: "en", panels: "en" }, modeLang);
     // An id that is not a built-in is never substituted.
     await open(page, "screenair.html#tab=patient&module=local-unknown-1&mode=patient");
     await shellReady(page);
@@ -397,6 +411,12 @@ export default async function pages(page, ctx) {
     await patientOnly(page, "patient-page");
     const head = await page.textContent(".sa-print-head td").catch(() => "");
     check(head === PROTO, "/patient-page/print-head", PROTO, head);
+    // Release 0.4.2: with Español chosen the page is es; the corner badge outside #root stays English.
+    await page.click("[data-testid=patient-locale-es]").catch(() => {});
+    await page.waitForTimeout(200);
+    const pageLang = await page.evaluate(() => [document.documentElement.getAttribute("lang"),
+      ((document.querySelector(".masque-proto") || document.body).closest("[lang]") || document.documentElement).getAttribute("lang")]);
+    check(pageLang[0] === "es" && pageLang[1] === "en", "/patient-page/es/badge-lang", ["es", "en"], pageLang);
     check(ctx.consoleErrors.slice(mark).length === 0, "/patient-page/console", "clean", ctx.consoleErrors.slice(mark, mark + 5));
     await open(page, "patient.html?module=not-a-module");
     await waitFor(page, () => !!document.querySelector("[data-testid=patient-page-missing]"), null, 30000);
@@ -425,6 +445,34 @@ export default async function pages(page, ctx) {
       await p.waitForTimeout(400);
       const o = await overflow();
       check(o <= 0, `/narrow/${t}`, "no horizontal page scroll at 375 px", `${o}px wider`);
+    }
+    // Release 0.4.3: the EMR Friendly Template panel at 375 px, on the Screener (a sample's result)
+    // and the Scribe (the Note view): it opens, the frame's textarea holds the template (the marker
+    // first and last), and the page still does not scroll sideways. Not yet run (no Node here).
+    try {
+      await p.click('nav.sa-tabs [data-tab="screener"]');
+      await p.waitForTimeout(300);
+      await p.locator("[data-testid=sample-rail] button").first().click();
+      await p.click("[data-testid=scr-emr-toggle]");
+      await p.waitForSelector("[data-testid=scr-emr-frame]", { timeout: 10000 });
+      const scrText = await p.frameLocator("[data-testid=scr-emr-frame]").locator("textarea").inputValue();
+      check(scrText.startsWith(PROTO) && scrText.endsWith(PROTO), "/narrow/emr/screener/text", "the template, the marker first and last", scrText.slice(0, 80));
+      check(await overflow() <= 0, "/narrow/emr/screener", "no horizontal scroll with the panel open", `${await overflow()}px`);
+      await p.click('nav.sa-tabs [data-tab="scribe"]');
+      await p.waitForTimeout(300);
+      await p.locator("[data-testid=scribe-views] button", { hasText: /^Note$/ }).first().click();
+      await p.click("[data-testid=scribe-emr-toggle]");
+      await p.waitForSelector("[data-testid=scribe-emr-frame]", { timeout: 10000 });
+      const scbText = await p.frameLocator("[data-testid=scribe-emr-frame]").locator("textarea").inputValue();
+      check(scbText.startsWith(PROTO) && scbText.endsWith(PROTO), "/narrow/emr/scribe/text", "the template, the marker first and last", scbText.slice(0, 80));
+      check(await overflow() <= 0, "/narrow/emr/scribe", "no horizontal scroll with the panel open", `${await overflow()}px`);
+    } catch (err) {
+      check(false, "/narrow/emr", "the EMR Friendly Template panels open at 375 px", String(err && err.message || err).split("\n")[0]);
+    } finally {
+      // Leave no answers behind: "Hand to patient" below expects an untouched screen.
+      await p.click('nav.sa-tabs [data-tab="screener"]').catch(() => {});
+      await p.click("[data-testid=scr-clear]").catch(() => {});
+      await p.waitForTimeout(300);
     }
     await p.click('nav.sa-tabs [data-tab="patient"]');
     await p.click("[data-testid=hand-to-patient]");

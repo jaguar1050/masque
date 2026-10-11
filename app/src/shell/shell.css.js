@@ -127,6 +127,9 @@ export const SHELL_CSS = `
 .sa-shell .sa-patient-link a{color:var(--petrol)}
 .sa-shell .sa-return{max-width:1080px;margin:0 auto;padding:0 16px 64px;display:flex;justify-content:center}
 .sa-shell .sa-patient-footer p{white-space:normal}
+/* release 0.4.2: shell English with the patient locale's line under it (patient mode, es) */
+.sa-shell .sa-locale-pair{display:inline-flex;flex-direction:column;gap:2px}
+.sa-shell .sa-locale-line{font-weight:400}
 .sa-shell .sa-patient-msg{max-width:720px;margin:32px auto;padding:0 16px;font-size:15px}
 
 /* invalid module */

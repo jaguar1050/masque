@@ -11,7 +11,10 @@
 //                 comes back with a deep-equal rubric, identical logic bytes and SHA-256,
 //                 identical hashes and classification, and identical computeScore, routingRecs
 //                 (both surfaces), buildPatientSummary (every locale) and buildBundle outputs
-//                 over the sweep (5k; 1k with ?quick=1)
+//                 over the sweep (5k; 1k with ?quick=1); release 0.4.3: the emrTemplate block comes
+//                 back byte for byte (key order included) and buildEmrTemplate (both surfaces) is
+//                 identical on every tenth sweep state; a derivation of the built-in (both
+//                 generations) carries the built-in's emrTemplate byte for byte
 //   derived       a re-uploaded derivation is verified (row 3): origin derived, "edited" badge,
 //                 population estimates under the banner; its <id>.logic.js is the built-in's
 //                 bytes and binds by SHA-256 without running, with ALLOW_JS_UPLOAD false too
@@ -132,12 +135,19 @@ function outputs(eng, module, s) {
   return JSON.stringify([score, recs, summaries, bundle]);
 }
 
+/** buildEmrTemplate on both surfaces (release 0.4.3), as one string. */
+function emrOutputs(eng, module, s) {
+  return JSON.stringify(["screener", "scribe"].map((surface) => eng.emr.buildEmrTemplate(module, {
+    patient: module.demo.patient, answers: s.a, ctx: s.ctx, complaint: s.complaint, rf: s.rf, safetyReviewed: s.safetyReviewed,
+  }, { surface })));
+}
+
 export default {
   name: "roundtrip",
   owner: "WP11",
   run: guarded("roundtrip", async (h) => {
     const c = collector(h);
-    const names = ["derive.js", "exportAll.js", "zip.js", "hash.js", "lineage.js", "bind.js", "validate.js", "contract.js", "scoring.js", "rules.js", "patient.js", "fhir.js", "policy.js"];
+    const names = ["derive.js", "exportAll.js", "zip.js", "hash.js", "lineage.js", "bind.js", "validate.js", "contract.js", "scoring.js", "rules.js", "patient.js", "fhir.js", "policy.js", "emr.js"];
     const mods = await Promise.all(names.map((n) => h.engine(n)));
     const eng = Object.fromEntries(names.map((n, i) => [n.replace(".js", ""), mods[i]]));
     const { derive, exportAll, zip, lineage } = eng;
@@ -175,6 +185,10 @@ export default {
     const D3 = await derive.deriveAndBind(S, d, { loaded: [M, S, D1.module, D2.module], now: NOW, note: "roundtrip: derived from an upload" });
     for (const [n, r] of [["D1", D1], ["D2", D2], ["D3", D3]]) c.check(r.validation.ok, `/setup/${n}`, null, "valid", r.validation.errors.slice(0, 3));
     c.check(D1.classification.kind === "verified" && D2.classification.kind === "verified" && D3.classification.kind === "derived-from-upload", "/setup/kinds", null, "verified, verified, derived-from-upload", [D1, D2, D3].map((r) => r.classification.kind));
+    // Release 0.4.3: the EMR template block rides along with a derivation, byte for byte.
+    const emrJson = JSON.stringify(M.rubric.emrTemplate);
+    c.check(!!M.rubric.emrTemplate, "/setup/emrTemplate", null, "the built-in carries emrTemplate", "absent");
+    for (const [n, r] of [["D1", D1], ["D2", D2]]) c.check(JSON.stringify(r.rubric.emrTemplate) === emrJson, `/setup/${n}/emrTemplate`, null, "the built-in's emrTemplate, byte for byte", r.rubric.emrTemplate === undefined ? "absent" : "differs");
     const failed = { key: "upload:broken", label: "Broken upload", origin: "uploaded", module: null, validation: { ok: false, errors: [{ code: "V1", path: "/format", msg: "Not a screenAIr file" }], warnings: [] }, files: { rubric: { name: "broken.rubric.json", text: "{}", sha256: "0".repeat(64) }, logic: null } };
     const entries = [rootEntry, shapeEntry, D1.entry, D2.entry, D3.entry, failed];
     const originals = new Map([[M.id, rootEntry], [S.id, shapeEntry], [D1.module.id, D1.entry], [D2.module.id, D2.entry], [D3.module.id, D3.entry]]);
@@ -232,6 +246,7 @@ export default {
       const a = orig.module, b = r.module;
       c.check(r.validation && r.validation.ok, `/reload/${id}/valid`, null, "0 errors", r.validation && r.validation.errors.slice(0, 3));
       c.check(canon(a.rubric) === canon(b.rubric), `/reload/${id}/rubric`, null, "deep-equal", eng.derive.diffRubrics(a.rubric, b.rubric).slice(0, 3));
+      c.check(JSON.stringify(a.rubric.emrTemplate) === JSON.stringify(b.rubric.emrTemplate), `/reload/${id}/emrTemplate`, null, "byte for byte (key order)", a.rubric.emrTemplate === undefined ? "absent before" : "differs");
       for (const k of ["rubricSha256", "logicSha256", "instrumentHash", "scoringHash", "lexiconHash", "contentHash"]) {
         c.check(a.hashes[k] === b.hashes[k], `/reload/${id}/hashes/${k}`, null, a.hashes[k], b.hashes[k]);
       }
@@ -243,15 +258,20 @@ export default {
         c.check(lf && sameBytes(lf.bytes, new TextEncoder().encode(origText)) && (await h.sha256(lf.bytes)) === a.hashes.logicSha256, `/reload/${id}/logic-bytes`, null, "the bytes as loaded", null);
         c.check(lf && (await h.sha256(lf.bytes)) === M.hashes.logicSha256, `/reload/${id}/logic-is-builtin`, null, "the built-in logic's SHA-256", null);
       }
-      let mism = 0, first = null;
+      let mism = 0, first = null, emrMism = 0, emrFirst = null, emrN = 0;
       for (let i = 0; i < N; i++) {
         const s = drawState(rng, a);
         const oa = outputs(eng, a, s), ob = outputs(eng, b, s);
         if (oa !== ob) { mism += 1; if (!first) first = s; }
+        if (i % 10 === 0) {
+          emrN += 1;
+          if (emrOutputs(eng, a, s) !== emrOutputs(eng, b, s)) { emrMism += 1; if (!emrFirst) emrFirst = s; }
+        }
         if (i % 500 === 499) await new Promise((res) => setTimeout(res, 0));
       }
       sweeps += N;
       c.check(mism === 0, `/reload/${id}/outputs`, first, "identical computeScore, routingRecs, buildPatientSummary, buildBundle", `${mism}/${N} differ`);
+      c.check(emrMism === 0, `/reload/${id}/emr`, emrFirst, "identical buildEmrTemplate on both surfaces", `${emrMism}/${emrN} differ`);
     }
     // The re-uploaded derivation: verified, badge, population banner.
     const d1b = byId.get(D1.module.id);

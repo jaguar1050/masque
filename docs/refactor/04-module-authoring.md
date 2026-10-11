@@ -5,7 +5,23 @@ How to write, check, upload, edit and download a screenAIr module. The binding d
 checks) and `docs/refactor/03-design.md` §3-§5 (the design). This file explains them; where it and
 the code disagree, the code and the design win, and this file is the one to fix.
 
-Dated 2 October 2026, for release 0.4.0 and contract version 1.
+Dated 2 October 2026, for release 0.4.0 and contract version 1. Updated 4 October 2026 for release
+0.4.1 (optional lexicon fields `heard`, `carry`, `yieldTo`, `anchor`, `carryRefuse` and
+`normalize`; contract version still 1), and again the same day for release 0.4.1 round 2 (the
+optional scale field `carryExclude`; `normalize.numbers` applies to band phrases only;
+`05-scribe-capture-fixes.md` §12). Updated 5 October 2026 for release 0.4.1 round 3 (removal-only
+band choice for `heard` entries, `carryExclude` sentence scope, the two roles of `carryRefuse`;
+`05-scribe-capture-fixes.md` §13), and again the same day for round 3b (a withheld value keeps
+the yield without opening carry-over; `05-scribe-capture-fixes.md` §13.10). Updated 6 October
+2026 for release 0.4.3: the optional top-level block `emrTemplate` (the clinician EMR template's
+data, §2.13) and validator rule V61; contract version still 1. Updated 7 October 2026 for release
+0.4.4: the clinical lead signed off the built-in module's `emrTemplate` content (no format change;
+the Rubric Editor's lock reason names the sign-off). Updated 10 October 2026 for release 0.4.5:
+the optional clinician rules of the referral table, `phenotypes.referral.clinicianRules` (§2.6,
+V27), printed for the clinician in the EMR template and never acted on; contract version still 1.
+Updated 10 October 2026 for release 0.4.6: two optional `emrTemplate` fields, `pastHistory` and an
+exam row's `optionPlaceholders` (§2.13, V61), and the engine's reading of an open red flag (the
+references row below); contract version still 1.
 
 **Prototype · not for clinical use.** Nothing in this guide makes a module clinically valid.
 screenAIr checks that a module is well formed and that it cannot impersonate another one; it
@@ -41,13 +57,25 @@ machine can check.
   patient copy and translations come from a clinical author and are moved into the module
   verbatim. The built-in MASQUE module was *extracted* from the frozen source
   (`app/tests/tools/extract-rubric.html`), not retyped; its `SOURCES.md` maps every field to a
-  source line.
+  source line. One recorded exception: the Spanish that release 0.4.2 added to it at the user's
+  request is a translation by AI agents, not by a clinical author or a qualified medical
+  translator; it is added row by row with its basis (`SOURCES.md`, "Spanish translation delta
+  (unreviewed)") and the locale stays `reviewed: false` until a bilingual clinician reviews it.
+  A second recorded exception: the EMR template data that release 0.4.3 added to it
+  (`emrTemplate`, §2.13). AI agents assembled it from verified specialty-society and journal
+  sources. It is citation metadata and links, and short labels each carrying the citation keys
+  they rest on. It is recorded row by row with its basis (`SOURCES.md`, "EMR template data"). The
+  clinical lead signed it off on 7 October 2026, as implemented in release 0.4.3 (recorded in
+  release 0.4.4); the sign-off does not cover the Spanish exception above.
 - **Licensed instruments are not embedded** (VM-PATHI, SNOT-22, DHI, HIT-6, MIDAS, ID Migraine,
   THI/TFI, SFN-SIQ, COMPASS-31 and the like). Name them as the confirmatory step; do not paste
   their items. screenAIr cannot detect a pasted licensed item (open question Q25).
 - **Caveats are not module data.** "Prototype · not for clinical use", the unreviewed-translation
   banner and the illustrative-calibration label live in `engine/policy.js CAVEATS` and are drawn
-  by the shell on every surface. Putting one in a module is error V38.
+  by the shell on every surface. So do, since release 0.4.2, the Spanish patient caveats and the
+  Spanish line "Prototipo · no apto para uso clínico" that a Spanish patient surface shows next to
+  the English marker (never instead of it). Putting any of them, or the phrase "no apto para uso
+  clínico", in a module is error V38, which ignores case and accents ("uso clinico" is caught too).
 - **The Patient Companion shows no score, band, probability or research capture.** Patient
   wording may not contain "score", "likelihood", "probability", "puntuación"/"puntaje" or a
   "number / number" pattern (V60, `OMISSION_PATTERNS`), may not name the module's own
@@ -139,8 +167,9 @@ configuration; the Rubric Editor can edit it and create a lexicon or more patien
 | `research` | O | The Research tab's configuration (§2.10). |
 | `fhir`, `cds` | O | Identity templates and Questionnaire/CDS strings (§2.11). |
 | `copy` | O | Copy slots (§2.12). |
+| `emrTemplate` | O | Data of the clinician EMR template: citations, references, instrument recommendations, red-flag references and workup placeholders, treatment history rows, checklist, exam rows (§2.13; V61). Clinician surfaces only. |
 | `provenance` | O | Written only by screenAIr when it derives a module; verified on every load, never trusted (§5.3). |
-| `changelog` | R | A list, may be empty: `{date, kind: "reconciliation"\|"extraction"\|"derived"\|"note", note, author?, paths?, axes?, acknowledged?}`. |
+| `changelog` | R | A list, may be empty: `{date, kind: "reconciliation"\|"extraction"\|"derived"\|"note"\|"lexicon"\|"translation"\|"emr-template", note, author?, paths?, axes?, acknowledged?}`. |
 
 ### 2.2 Domains and items
 
@@ -160,7 +189,7 @@ configuration; the Rubric Editor can edit it and create a lexicon or more patien
 | `item.ask` | O | Physician phrasing for Scribe suggestions (default: `text`). |
 | `item.tag` | O | Full tag string shown on Scribe suggestions. |
 | `item.ref` | O | Criterion code, emitted to `fhir.criteriaSystem`. |
-| `item.patientClin` | O | The clinical line in the patient summary's "For my clinician" block (default: `text`). |
+| `item.patientClin` | O | The clinical line in the patient summary's "For my clinician" block (default: `text`). It is the English line; a translation may give its own as `locales.<loc>.items.<id>.clin` (§2.9). |
 
 **Scoring.** An item scores `w` for "yes", `w × scale[i].f` for option `i`, and nothing when
 unanswered. `scaleMax` is the sum of the positive domains' `max`; the negative domains together
@@ -214,9 +243,71 @@ once (V26). Patient step titles, headings and ledes are locale data (`locales.<l
 `phenotypes = {values: [{value, h, d}], scribeDefault, alwaysActive?, tagBoostDomain?, referral?,
 cdsTerm?}`. `values` is the complaint picker (heading `h`, description `d`); `scribeDefault` is the
 Scribe's complaint when no derive rule fires; `alwaysActive` lists the domains always in the
-Scribe's suggestion pool; `referral = {byPhenotype: {value: {specialty, reason}}, default}` feeds the
-bundle's referral; `cdsTerm = {byPhenotype, default}` feeds the CDS index card (V27). Without
-`referral` there is no referral ServiceRequest; without `cdsTerm` there is no CDS index card.
+Scribe's suggestion pool; `referral = {byPhenotype: {value: {specialty, reason}}, default,
+clinicianRules?}` feeds the bundle's referral and the EMR template's; `cdsTerm = {byPhenotype, default}`
+feeds the CDS index card (V27). Without `referral` there is no referral ServiceRequest; without
+`cdsTerm` there is no CDS index card.
+
+**Clinician rules (release 0.4.5).** `referral.clinicianRules` is an optional list of rules that
+the EMR template prints for the clinician, for the phenotype values each names. They are text a
+clinician applies: the engine never acts on them, and the referral stays `byPhenotype[complaint]`
+or `default` whatever the encounter records. The engine names no phenotype or condition: the rule
+is data.
+
+```json
+"clinicianRules": [{
+  "phenotypes": ["otologic", "both"],
+  "source": "clinical lead, 2026-10-07",
+  "rule": "…the rule, verbatim…",
+  "definition": ["…definition line, verbatim…", "…"],
+  "clarificationSource": "clinical lead, 2026-10-09",
+  "clarification": ["…clarification line, verbatim…"],
+  "confirm": ["True vertigo (internal or external)", "Prior ear or brain surgery"]
+}]
+```
+
+| Field | Required | What it does |
+|---|---|---|
+| `phenotypes` | yes | The phenotype values the rule is printed for (non-empty, distinct, each a `values[].value`). |
+| `source` | with a rule or a definition | Who stated the rule and the definition, and when. Printed in parentheses after "Referral rule" and "Definition". |
+| `rule` | no | The rule as its author stated it; printed "Referral rule (<source>): <rule>". |
+| `definition` | no | Definition lines, printed verbatim under "Definition (<source>):". |
+| `clarificationSource` | with a clarification | Who stated the clarification, and when. Printed in parentheses after "Clarification". |
+| `clarification` | no | Clarification lines, printed verbatim under "Clarification (<clarificationSource>):", right after the definition. |
+| `confirm` | no | The conditions a clinician confirms; each printed "<label>: [ ]", never pre-filled. |
+
+A rule needs at least one of `rule`, `definition`, `clarification` or `confirm`.
+
+How the engine reads it (`engine/emr.js`):
+
+- The EMR template prints each rule naming the complaint (rule, definition, clarification, then
+  the `confirm` placeholders) right above the routing recommendations, whenever its plan prints a
+  referral line or the "Referral: [clinician decision]" placeholder; never on an unrecorded Scribe
+  safety review, an unscorable screen or a rule error (gate, don't warn). Under an open red flag it
+  prints since release 0.4.6 with the screen-based referral block, under the heading "Screen-based
+  referral and references (the FHIR bundle withholds the referral while a red flag is open):",
+  wherever the plan would print it with no flag open.
+- Nothing else reads it. The FHIR referral ServiceRequest and the EMR template's referral line
+  both come from `rules.js` `referralFor` (`byPhenotype` or `default`), so they agree, except
+  that under an open red flag the bundle carries no referral while the note prints the
+  screen-based one under that heading (release 0.4.6); no
+  probe answer, item answer or heard capture changes the destination. A module that wants a
+  different destination for a picture changes `byPhenotype`.
+- The rules sit outside `instrumentHash` and `scoringHash`; they change `contentHash` only.
+- V27 checks the shape; no string may carry `[ ] { }`, and a field the engine never reads (an
+  escalation destination `to` or `evidence` among them: the engine escalates nothing) is a
+  warning, as is a `clarificationSource` without a `clarification`.
+- The Rubric Editor keeps `/phenotypes` (the rules included) read-only, and a derivation carries
+  it unchanged.
+
+The built-in module's rule is the clinical lead's (decided in chat on 7, 9 and 10 October 2026:
+dizziness cases, the otologic picture and "both", to neurology, and to neuro-otology with a true
+vertiginous component or a prior ear or brain surgery, with the lead's definition of true vertigo,
+as the lead amended it on 10 October, and the lead's clarification; recorded in
+`app/tests/harness/referral-delta.js` and the module's `CHANGELOG.md`, release 0.4.5). Because no question of the module reliably records either
+condition, the referral stays "Neurology" and the rule is printed for the clinician. A rule in your
+own module is your clinical content: write down who decided it and when (`source`,
+`clarificationSource`).
 
 ### 2.7 Sample cases and demo
 
@@ -237,12 +328,56 @@ true}` with no date of birth (V50); `demo.transcript` is `[["md"|"pt", text], �
 | `negation`, `thirdParty`, `historical` | R | `{window, cues}`: integer window > 0 (characters before the phrase) and a non-empty cue list (V30). |
 | `bool` | R | `[{id, ph, thirdPartyExempt?}]`: phrases that answer a yes/no item "yes" (or "no" when negated). |
 | `ctx` | R | `[{id, val, ph}]`: phrases that set a context item to a clinician option value. |
-| `scale` | R | `[{id, cue, bands: [{ph, v}], fallback}]`: a cue opens a scale item and a band phrase picks option `v`; `fallback` (or `null`) applies when the cue has no band. |
+| `scale` | R | `[{id, cue, bands: [{ph, v}], fallback}]`: a cue opens a scale item and a band phrase picks option `v`; `fallback` (or `null`) applies when the cue has no band. Optional keys `heard`, `carry`, `yieldTo`, `anchor`, `carryExclude` (rows below); any other key is warned as a likely misspelling and ignored (V28). |
 | `multi` | R | `[{ids: [{id, value, kind: "item"|"ctx"}], ph}]`: one phrase that sets several answers. |
 | `redFlags` | R | flag id → phrases. Keys equal the flag ids both ways, and every list is non-empty (V28). |
 | `goldSet` | R for built-ins | `{version, lexiconVersion, file?}` of the benchmark the lexicon was measured on, or `null`. |
+| `scale[i].heard` | O | `true` turns on the **heard** signal for that entry: when its cue is heard (not negated, not attributed to someone else, not historical) but no band phrase matches and the entry has no `fallback`, the Ambient Scribe shows the cue on the transcript bubble and as a Heard card in Ask next. The item stays unanswered; a heard cue never scores. `heard: true` also changes the **scored** output: band choice follows the stricter rule below the table (every band match counts, and a negated match, a `carryRefuse` phrase or a disagreement withholds the value). Only `true` means anything (V28). |
+| `scale[i].carry` | O | Integer 1-3 (`LEXICON_CARRY_MAX`): how many following **patient** replies may supply the value of a heard cue. Requires `heard: true`. Physician lines and blank segments do not count. Not allowed when any band of the entry records an option with `f = 0`, because a bare follow-up reply must never record a negative answer (V28). |
+| `scale[i].yieldTo` | O | Non-empty list of ids of other scale or yes/no entries of this lexicon. In an utterance where one of them is present (any of its cue or phrase list occurs, negated or not, or it is the item of an open reply window, including a yield-only window that follows a withheld value), this entry captures nothing, shows nothing as heard and arms nothing, unless one of its own `anchor` phrases occurs **unnegated**. Not itself, no duplicates, no cycle among scale entries (V28). |
+| `scale[i].anchor` | O | Non-empty phrase list; only meaningful with `yieldTo` (V28). An unnegated anchor in the utterance stops the yield. |
+| `scale[i].carryExclude` | O | Non-empty list of band phrases of this entry, each written exactly as in one of its bands' `ph` lists. A carried reply never takes its value from them, but they still count there: a reply holding one that is negated, or whose band differs from another match in the reply, is refused, and a reply holding only these phrases is refused. In direct extraction they set a value only in the **same sentence** as the cue; a sentence ends at `.` `!` `?` or `;` followed by a space or the end of the text, so "2.5" does not end one and "e.g. " does. In any other sentence of the same line they are ignored. Use it for phrases that a bare reply could mean differently, such as a day range that may describe how long the illness has lasted rather than one episode. Requires `carry` on the same entry. Lowercase, no duplicates (V28). |
+| `carryRefuse` | O | Non-empty phrase list with two roles. In a **carried reply**, one of these phrases refuses the carry (for example an onset, "a few hours ago", rather than a duration). In the **own utterance** of an entry with `heard: true`, one of these phrases withholds the band value, the entry is shown as heard, and no carry-over opens from that utterance (the clinician asks). So it can only prevent a capture, never cause one. Warned when no scale entry has `heard: true` or `carry` (V28). |
+| `normalize` | O | `{apostrophes?, numbers?}`, applied to the text before matching. `apostrophes: true` folds the typographic apostrophes U+2018, U+2019, U+02BC and U+2032 to `'`, so "don’t" typed on a phone meets the same cues as "don't". `numbers: "en"` spells standalone whole numbers 0-20 and the round tens 30-90 as English words **for band phrase matching only** ("2 minutes" matches the band phrase "two minutes") and leaves every other number as digits: 21-29 and the other non-round numbers, 100 and above, decimals, times (`10:30`), fractions (`1/2`), ranges (`3-4`), percentages and digits next to letters (`B12`, `2nd`, `x2`); a period that ends a sentence is not part of the number. `numbers` requires an English `lang`. Unknown keys are refused (V28). Number spelling never reaches cue, yes/no, context, multi-item or red-flag phrases, `anchor`, `carryRefuse` or any negation, third-party or historical window: these run on the apostrophe-folded text, so a typed "10 days" does not meet a cue "ten days" and "numb on 1 side" does not meet "numb on one side". A band match is mapped back to the original text before any window is checked. Reported positions refer to the original text, and the evidence shown is the original text. |
 
-Every phrase and cue is lowercase and non-empty (V29). Without a lexicon the Scribe hides its
+The optional fields above have no effect when absent: a lexicon without them behaves exactly as it
+did before release 0.4.1, and every scale entry is a separate decision (there is no engine
+default). The Rubric Editor shows `heard`, `carry`, `yieldTo`, `anchor` and `carryRefuse` read-only
+and keeps every one of these fields byte for byte (§6.3). Band order stays significant for an entry
+without `heard`: the first band in list order with any match wins, so an appended band phrase can
+change a value where an earlier band now wins. Append phrases at the end of their list and add a
+collision case to the gold set. For an entry with `heard: true`, every band match counts, and a
+match contained in a longer match is dropped. If any remaining match is negated, a `carryRefuse`
+phrase occurs, or the remaining matches name two or more different options, no value is taken and
+the entry is shown as heard. A `carryExclude` match counts in all of these tests wherever it lies,
+but it supplies the option only in a sentence where one of the entry's cues is said (not negated,
+attributed or historical); when every remaining match is an excluded one outside such a sentence,
+no value is taken either (release 0.4.1 round 3c). When that
+happens with a band match present, no carry-over opens from the utterance, so a later reply cannot
+supply the withheld value; an utterance with no band match at all still opens carry-over as
+before. Exactly one option → that option.
+
+If the entry has `carry`, a withheld value opens a **yield-only** reply window instead (release
+0.4.1 round 3b). For the next `carry` patient replies the entry still counts as present for the
+entries that list it in `yieldTo`, so they keep yielding, but no reply supplies its value. If a
+reply window of the entry is already open and its item is still unanswered and not skipped, a
+withheld value turns it yield-only and renews it for `carry` replies (round 3c); it does not close it. A later utterance that names the entry's cue with no band match
+at all opens a normal window again. A withheld value of an entry with `carry` also ends an open
+normal window of another entry, unless that line withholds the other entry's value too (round 3d,
+release 0.4.3). The withheld entry's yield-only window replaces it; when two or more such entries
+are withheld on one line, no window stays open. A cue heard on that same line with no band match
+at all is decided first, as on any line: if the only such cue is the other entry's own, the other
+entry's normal window opens afresh and the next reply may still be carried into it (design 05
+§13.12, follow-up F-3D-1); any other such cue opens its own entry's window or closes the window.
+Otherwise no reply after that line is carried into the other entry until its cue is heard again
+with no band match. From the next line, while the window would otherwise still be open, an entry
+that yields to the other entry, and not to the withheld one, stops yielding: its value may be recorded, and its cue heard with no band match may close the
+window, keep a third entry's window from opening, or, if it has `carry`, open its own. An entry
+that yields to such a third entry may then record the value that window would have carried (design
+05 §13.12, follow-up F-3D-4). This needs no module data: it follows from `heard`, `carry` and
+`yieldTo`, and it needs two entries with `carry`.
+
+Every phrase and cue, `anchor` and `carryRefuse` phrases included, is lowercase and non-empty (V29). Without a lexicon the Scribe hides its
 transport (Listen, Play, Step, typed input) and says why; nothing is captured from speech that
 could have no structured use.
 
@@ -250,14 +385,32 @@ could have no structured use.
 
 `locales.<loc> = {reviewed, editedLocally?, stale?, items, redFlags, contextItems?, steps?, ui?}`.
 
-- `items`: item id → `{q, opts?, ask?, help?}`; every item covered and `opts.length ===
+- `items`: item id → `{q, opts?, ask?, help?, clin?}`; every item covered and `opts.length ===
   scale.length` when `en.items` exists (V32). `redFlags`: flag id → `{q, say}` (V23).
+- `clin` (optional, release 0.4.2) is for translations only: the item's clinician line in that
+  language, shown in the summary's "For my clinician" block instead of the English
+  `item.patientClin`, followed by the locale's option label in brackets. Each line carries its own
+  `lang`. Without it the block uses `patientClin`, tagged as English. A `clin` in `en` and an
+  empty `clin` are V32 errors (English takes its line from `patientClin`); V60 checks it like
+  every patient string. It is not a fallback leaf, so its absence raises no V33. In the Rubric
+  Editor it is the optional field "Clinician line (patient summary)" of a non-English locale; it
+  is marked stale when the item's `patientClin` changes.
 - `contextItems`: id → `{q, opts: [[value, label]]}` in the *patient's* own vocabulary.
 - `steps`: patient step key → `{title?, heading?, lede?, intro?}`; `ui`: `{sub?, forYouIf?,
   clinicianLede?}`.
 - `reviewed` is `true` only for wording a qualified reviewer has checked. A non-English string that
   falls back to English is a warning, and an error when the locale claims `reviewed: true` (V33).
+  Such a fallback is shown as English. Most fallback surfaces are tagged `lang="en"`: chrome, step
+  titles, item questions, help and options, and, since release 0.4.2, a "not sure" question whose
+  `q` falls back, which also takes the English question form ("Do I …?"), never the locale's
+  grammar. Red-flag text and the summary-template fallback are not yet tagged (see the built-in
+  module's CHANGELOG, Known limits).
   An unreviewed locale shows the unreviewed-translation banner on screen, in print and in exports.
+  A complete translation is not a reviewed one: the built-in MASQUE `es` has no fallback since
+  release 0.4.2, but its added Spanish was produced by AI agents (two independent drafts, then
+  clinical, language and mechanical review by AI agents), not by a qualified human medical
+  translator, so it stays `reviewed: false` until a bilingual clinical reviewer signs it off
+  (`app/modules/masque/SOURCES.md`).
 - No locale entry has a `points`, `action` or `differential` key (V34).
 
 Without `locales.en.items` the Patient Companion is disabled for the module, and says so.
@@ -301,6 +454,98 @@ Placeholders allowed everywhere: `{name}`, `{id}`, `{instrument}`, `{scaleMax}`,
 `{scaleMax}`, `{bandLabel}`. Any other placeholder, or unbalanced `**bold**` markers, is V39.
 The only markup in data is `**bold**`; there is no HTML anywhere in module data.
 
+### 2.13 EMR template (`emrTemplate`)
+
+Since release 0.4.3 the Clinician Screener and the Ambient Scribe have an **EMR Friendly
+Template** button. It opens a script-free iframe with a plain-text consult note for pasting into
+an EMR (`engine/emr.js`, `buildEmrTemplate`). The engine writes the note's structure, its gates
+and every placeholder. The module supplies its own text (items, red flags, phenotypes, copy,
+routing recommendations, probes) and, optionally, this block. The block holds everything
+module-specific the engine may not name:
+
+- which citation goes under which red flag, and which flag needs a workup placeholder;
+- which items and probes signal which checklist row;
+- which references show for which complaint;
+- which routing recommendations' chips are instruments;
+- which exam rows a probe can fill.
+
+The engine itself names no id, phenotype value or condition.
+
+Without the block a module gets the **neutral template**: the same sections and gates, the
+screen result, the red-flag module actions and the routing recommendations, generic placeholders,
+and no references, checklist or exam rows. That is the right default for a new module: add the
+block only with sources a clinical author has checked.
+
+```json
+"emrTemplate": {
+  "citations": {
+    "SRC-A": { "title": "Example guideline title", "publisher": "Example society",
+               "citation": "Author A, et al. Example guideline title. Journal. 2026;1(1):1-2.",
+               "url": "https://example.org/guideline", "accessed": "2026-10-06" }
+  },
+  "references":  [ { "label": "Example treatment reference", "citations": ["SRC-A"],
+                     "showFor": { "phenotypes": ["<a phenotype value>"] } },
+                   { "note": "Example short note", "citations": ["SRC-A"] } ],
+  "instrumentRecs": [ "<a routing rule id>" ],
+  "redFlagRefs": { "ex_rf1": ["SRC-A"] },
+  "redFlagPlaceholders": { "ex_rf1": "example workup - specify" },
+  "history":     [ { "item": "ex_a1", "qualifier": "testing not recorded" },
+                   { "label": "Prior treatment - agent, dates, response" },
+                   { "label": "Prior trial - agent, dates, response", "probe": "<a probe id>" } ],
+  "checklist":   [ { "id": "step1", "group": "example group", "label": "Example management step",
+                     "placeholder": "date / result", "citations": ["SRC-A"],
+                     "signals": [ { "item": "ex_b1", "value": "yes", "render": "done" },
+                                  { "item": "ex_b2", "value": "yes", "render": "note",
+                                    "qualifier": "detail not recorded" } ] },
+                   { "id": "step2", "group": "example group", "label": "Example status line",
+                     "box": false, "onlyWithSignal": true, "citations": ["SRC-A"],
+                     "signals": [ { "item": "ex_b3", "value": "yes", "render": "note" } ] } ],
+  "examRows":    [ { "label": "Example examination", "citations": ["SRC-A"], "probe": "<an exam probe id>",
+                     "optionPlaceholders": [ { "option": 0, "placeholder": "example interpretation - specify" } ] } ],
+  "pastHistory": [ { "label": "Example past-history heading", "group": "medical" },
+                   { "item": "ex_a2", "group": "family" } ]
+}
+```
+
+| Key | Shape | What the engine does with it |
+|---|---|---|
+| `citations` | `{KEY: {title, publisher, citation, url, accessed}}`. Key `/^[A-Z0-9][A-Za-z0-9-]*$/`; `url` https; `accessed` `YYYY-MM-DD` | Printed as `<citation> <url>`, metadata and a link only. The footer adds `Reference links accessed: <dates>` when any citation was printed. Every key must be used. |
+| `references` | `[{label \| note, citations, showFor?: {phenotypes: [...]}}]` | Printed under "Empiric treatment references (for use before specialist review):" **where the referral gate opens** (safety reviewed, scorable, band above the lowest, no rule error) **or, under an open red flag, where it would open with the flags removed** (release 0.4.6): the plan then prints, after the red-flag actions, the workup placeholder and the routing-withheld line, the heading "Screen-based referral and references (the FHIR bundle withholds the referral while a red flag is open):" and under it the referral block and these references exactly as it would with no flag open (the gate re-run without the flags only). The FHIR bundle withholds the referral under the flag; it never carries the references. `showFor` limits a row to those complaints. A `label` row prints `- <label>: <citation>`; a `note` row prints `- <note>` and one `Ref:` line per key. |
+| `instrumentRecs` | `[routing rule id]`, distinct, each a rule of the module's logic whose chips are a fixed list of strings on every surface it has copy for (V61 error otherwise) | The chips of these recommendations print as `  Instruments: a; b`. Other fixed chips print as `  Named on screen: a; b`, and chips a rule computes from the answers are never repeated (the engine checks that first, whatever the list says). List a rule only when every chip of it, on both surfaces, is an instrument. |
+| `redFlagRefs` | `{flagId: [KEY]}` | Under each open flag's own `action (points)` line, one `Ref:` line per key. The flag's action is never restated here. Above the actions the engine prints once that Ref lines are background reading, not the source of an action or its timing. Cite under an action only a source that does not contradict it. |
+| `redFlagPlaceholders` | `{flagId: text}` | After the flag's `Ref:` lines, `  [<text>]`. Use it where no verified source gives the workup (the engine adds the brackets). |
+| `history` | `[{item, qualifier?} \| {label, probe?}]`; no `citations` (V61 error: they would never print) | "TREATMENT AND WORKUP TO DATE": an item prints its own wording (`patientClin`, or `short` for a scale item) and its recorded state: "yes", "answered no", the option label, or "not recorded", never "no" for an unanswered item; when a Scribe probe wrote the answer, `(recorded by clinician via probe: <option>)` follows, otherwise a negative answer is followed by `(<qualifier>)` when the row has one (use it where "no" does not prove a test was done, or could read as a positive finding: MASQUE qualifies `x_lowfreq` and `x_objective` "testing not recorded" and `r_normal` and `r_lesion` "workup not recorded"). A label prints `<label>: [ ]`, and with `probe` the Scribe adds that probe's recorded answer the same way. A label row is also the place for a placeholder heading that names a condition (the engine names none), such as MASQUE's "Acute headache medication use — days per month, by class". Items listed here are left out of the review of systems. |
+| `checklist` | `[{id, group, label, placeholder?, box?, onlyWithSignal?, citations, signals?}]`; a signal is `{item, value, render, qualifier?}` or `{probe, option, render, qualifier?}`; `render` is one of `done`, `answeredNo`, `note`, `neverTried`. An item signal's render must match its answer's polarity: `done` and `note` a positive answer, `answeredNo` a negative one ("no", or a scale option with `f` 0); `neverTried` only on a probe signal (V61 errors) | One line per printed row under `Medical management not yet offered — checklist (<groups>):` and a key line ("ticked = recorded as done; unticked = not recorded (not confirmed as not offered)"), in every state. `[x] <label> (sources 1, 3) - recorded on screen: <text>` only when a `done` signal matches (a probe: `recorded by clinician via probe: <note>`; an item answer a Scribe probe wrote: `recorded by clinician via probe: <item wording> (<probe answer>)`). Otherwise `[ ] <label> … - patient reports never tried` (a `neverTried` signal) or `- not recorded`. Then "; screen answered no: …" for `answeredNo` and "; screen records (context only): …" for `note` (a probe, or an item a probe wrote: "; recorded by clinician via probe, answered no: …" and "; recorded by clinician via probe (context only): …"). A `qualifier` is added to the signal's source in parentheses; `placeholder` follows the line as `[<placeholder>]`; `box: false` makes a status line `<label> …: <status>` with no box; `onlyWithSignal: true` prints the row only when one of its signals holds (W when the row has no signals). A row with no matching signal is never ticked, and a signal whose render contradicts its answer is skipped. Each row names its sources by number after its label; the numbers continue the exam rows' numbering, and one list after the plan, "REFERENCES (cited by number in the exam rows and checklist)", holds each cited key once. Keep labels to the class or test name: an indication clause that restates a guideline recommendation is paraphrase, and a label that a tick would turn into a diagnosis (for example "confirmation of <condition>") overclaims. |
+| `examRows` | `[{label, citations?, probe?, optionPlaceholders?}]`; `probe` names an exam-kind probe; `optionPlaceholders` (release 0.4.6) is `[{option, placeholder}]` on a row with a probe, one per option, each an option the probe has | `<label> (sources 1, 3): [ ]` (the mark only when the row has citations), after the engine's vitals and general rows. When `probe` names a probe the clinician answered on the Scribe, it adds `(recorded by clinician via probe: <option>; <note>)` and keeps the placeholder; when the recorded option has an `optionPlaceholders` entry, `  [<placeholder>]` follows the row (MASQUE: under the HINTS row for "Normal impulse (points central)"). The rows' citations are numbered first in the one list after the plan, which the checklist continues. |
+| `pastHistory` (release 0.4.6) | `[{item, group} \| {label, group}]`; `group` is `medical` or `family`; an item may not also be a `history` row or repeat | "PAST HISTORY / MEDICATIONS / ALLERGIES": a `medical` row after the engine's pregnancy line, a `family` row before its family-history placeholder, which then reads "Other family history: [ ]". An item prints its own wording and its recorded state (as `history` rows do, a probe that wrote it labelled as recorded) and leaves the review of systems; a label prints `<label>: [ ]`. No citations. |
+
+Rules for authors (V61 checks the mechanical ones, §7):
+
+- **Cite and link only.** Store a citation's metadata and URL, never its text. Do not paste or
+  paraphrase guideline wording: many societies' terms forbid it, and some (AAO-HNSF) explicitly
+  forbid AI-based reuse. Do not store agents, doses, thresholds or durations: the clinician
+  writes what was offered into the engine's "offered today" placeholders.
+- **Labels are short names** (a therapy class, an exam, a section heading), each with the
+  citation keys it rests on. A label is not a recommendation sentence.
+- **No `[`, `]`, `{` or `}` in any string** (V61 error). Square brackets are the engine's
+  placeholders, and curly braces are template syntax. Keep square brackets out of the module
+  strings the template prints too, including probe questions, options and notes and routing copy
+  in the logic (V61 warning): use parentheses.
+- **Absent is not negative.** Tick a row (`done`) only from an answer that proves the step was
+  done. An answer that merely suggests it (a course of "antibiotic/steroid" for an intranasal
+  steroid trial) is a `note`, never `done`. A "no" that may mean "never tested" is neither: it
+  ticks nothing, and on the history row it gets a `qualifier`. V61 checks the polarity mechanically
+  (a negative answer as `done` or `note`, a positive one as `answeredNo`, or `neverTried` on an
+  item is an error); whether an answer proves a step is the author's judgement.
+- **No caveats** (V38): the engine adds "Prototype · not for clinical use" as the first and last
+  line, and the illustrative label after the index.
+- **Record the basis.** For a built-in module the block is generated from a delta file with one
+  basis entry per row (MASQUE: `app/tests/harness/emr-delta.js`, `SOURCES.md` "EMR template
+  data"), and its review status is stated there.
+
+The block is never patient-facing: `projectForPatient` does not carry it, and V60 does not apply
+to it. In the Rubric Editor it is read-only (§6.3).
+
 ---
 
 ## 3. What the engine does when a field is absent
@@ -317,11 +562,13 @@ The only markup in data is `**bold**`; there is no HTML anywhere in module data.
 | `infoPrompts`, `sampleCases`, `demo.transcript` | Not shown. |
 | `demo.patient` | A synthetic "Synthetic Patient", MRN `SANDBOX-0000`, with no sex, gender or age. |
 | `lexicon` | No voice, playback or typed capture in the Scribe; a notice explains why. |
+| lexicon `heard`, `carry`, `yieldTo`, `anchor`, `carryExclude`, `carryRefuse`, `normalize` | Extraction exactly as before release 0.4.1: nothing is shown as heard, nothing is carried from one reply to the next, no entry yields, and the text is matched as typed. |
 | `locales` / `locales.en.items` | The Patient Companion is unavailable for the module, with a notice. |
 | `research` | Research shows the population state and "This module declares no research configuration". |
 | `research.population` | "No population estimates for this module." |
 | `fhir` / `cds` | `DEFAULT_FHIR`; no CDS settled example. |
 | `copy.*` | `ENGINE_COPY_DEFAULTS` (lead question Q10). |
+| `emrTemplate` | The neutral EMR template: placeholders, the screen result, the red-flag actions and the routing recommendations; no reference lines, no checklist, no exam rows beyond vitals and general (§2.13). |
 
 The upload and Apply result cards and the ⓘ module information drawer state the per-tab
 availability before the module is used, for example "Ambient Scribe: no voice capture (no lexicon)".
@@ -434,9 +681,9 @@ the footer, the ⓘ drawer, the export manifest, the model card and cohort rows.
 
 | Axis | Owner | Moves when |
 |---|---|---|
-| Release | `engine/policy.js APP_VERSION` (0.4.0) | Any app-level change ships. |
+| Release | `engine/policy.js APP_VERSION` (0.4.2) | Any app-level change ships. |
 | Instrument | `rubric.instrumentVersion` | Anything in the instrument hash changes (§5.2). |
-| Lexicon | `rubric.lexicon.version` | A phrase, cue or window changes. |
+| Lexicon | `rubric.lexicon.version` | A phrase, cue or window changes, or any of `heard`, `carry`, `yieldTo`, `anchor`, `carryExclude`, `carryRefuse` or `normalize` changes (all are inside `lexiconHash`). |
 | Probe set | `logic.probes.version` | A probe is added, removed or reworded. |
 | Gold set | `rubric.lexicon.goldSet.version` | The benchmark utterances change. |
 
@@ -452,7 +699,7 @@ axis.
 |---|---|---|
 | `instrumentHash` | domains (key, label, max, negative; items id, w, text, ref, scale labels and f), band cuts, red flags (id, tier, group, text, points), the Questionnaire strings | "Same published instrument?" |
 | `scoringHash` | domains (key, max, negative; items id, w, scale f), band cuts | Whether the illustrative calibration applies; "scores not comparable" |
-| `lexiconHash` | the lexicon without `version`, `lang`, `goldSet` | The lexicon axis |
+| `lexiconHash` | the lexicon without `version`, `lang`, `goldSet` (so `heard`, `carry`, `yieldTo`, `anchor`, `carryExclude`, `carryRefuse` and `normalize` are covered) | The lexicon axis |
 | `contentHash` | the whole rubric without `provenance` | Detects a derived rubric edited after it was created |
 | `rubricSha256`, `logicSha256` | source bytes | Dedupe, ancestor records, recognising built-in logic |
 
@@ -548,6 +795,18 @@ labels and the gap threshold, lexicon phrases (the last phrase of a flag cannot 
 slots, and new items through the **Add item** form. Locked: ids, domain structure (add, remove and
 reorder domains in a rubric JSON instead), item types and option counts the logic reads, `negative`,
 the version fields (set in the Apply dialog) and the logic (edit the `.js` and upload it).
+The lexicon's `heard`, `carry`, `yieldTo`, `anchor` and `carryRefuse` are shown read-only
+(approved lexicon configuration) and kept byte for byte in every derived lexicon; to change
+them, edit the rubric JSON and upload it. `carryExclude` and `normalize` have no editor control and
+are likewise kept byte for byte. Deleting an added item
+that a `yieldTo` names removes it from that list (and removes `yieldTo` and `anchor` when the list
+empties), so a deletion never leaves a V28 error behind.
+The `emrTemplate` block (release 0.4.3) is locked whole ("cited clinical content"; since release
+0.4.4 the reason names the built-in module's sign-off of 7 October 2026). Deleting an item
+removes the history rows and checklist signals that name it, and deleting a red flag removes its
+`redFlagRefs` and `redFlagPlaceholders` entries, so neither leaves a V61 error. Any
+other change to the block in a draft, a reorder included, is a lock violation. To change it, edit
+the rubric JSON and upload it.
 
 Live validation runs the full validator on the draft, and **Apply** stays disabled while any error
 exists or any acknowledgement is outstanding. The impact preview shows, for each sample case (and
@@ -627,18 +886,18 @@ feedback. Each code is exercised by at least one mutated fixture in `app/tests/f
 | V24 | E | Patient wording repeats a flag's `points` or `action`, or equals its clinician `text`. |
 | V25 | E | Screener steps malformed (safety first, result last, each domain once, extras allowed). |
 | V26 | E | Patient steps malformed. |
-| V27 | E | Phenotype values, default, always-active, tag-boost, referral or CDS-term keys inconsistent. |
-| V28 | E | Lexicon references a missing item, option or flag, or a flag has no cue phrase. |
-| V29 | E/W | A phrase is empty or not lowercase (E); shorter than 3 characters (W). |
+| V27 | E/W | Phenotype values, default, always-active, tag-boost, referral or CDS-term keys inconsistent. Release 0.4.5, `referral.clinicianRules` (§2.6): not a list, a rule that is not an object, an unknown or repeated phenotype, an empty `source`, `rule` or `clarificationSource`, an empty or non-list `definition`, `clarification` or `confirm` or an empty line in one, a rule that prints nothing, a rule or definition without `source`, a clarification without `clarificationSource`, or a string with `[ ] { }` (E); a field the engine never reads, an escalation `to` or `evidence` among them, or a `clarificationSource` without a clarification (W). |
+| V28 | E/W | Lexicon references a missing item, option or flag, or a flag has no cue phrase (E). From release 0.4.1 also the optional lexicon fields `heard`, `carry`, `yieldTo`, `anchor`, `carryExclude`, `carryRefuse` and `normalize` (E/W; messages below). |
+| V29 | E/W | A phrase is empty or not lowercase (E); shorter than 3 characters (W). Covers `anchor` and `carryRefuse` phrases too. With `normalize`: a phrase holding a typographic apostrophe when `apostrophes: true` (W, any list), and a **band** phrase holding a number that `numbers: "en"` spells (W). Both can never match. |
 | V30 | E | Negation/third-party/historical window or cues invalid, gold-set fields missing, bad `lang`. |
 | V31 | E | Unsupported locale key, non-boolean `reviewed`, or `defaultLocale` not `"en"`. |
-| V32 | E | English patient wording misses an item, or `opts` do not match the scale. |
+| V32 | E | English patient wording misses an item, or `opts` do not match the scale; an item `clin` in `en`, or an empty `clin` (release 0.4.2). |
 | V33 | W/E | A non-English string falls back to English (W); E when that locale claims `reviewed: true`. |
 | V34 | E | A locale entry has a `points`, `action` or `differential` key. |
 | V35 | E | FHIR systems not absolute URLs, templates do not render, or Questionnaire strings empty. |
 | V36 | E | CDS examples name a missing flag, or the settled example's score and band disagree. |
 | V37 | E | Research configuration invalid, or `population` on a module that may not carry it. |
-| V38 | E | Module data contains a caveat string. |
+| V38 | E | Module data contains a caveat string (English or, since release 0.4.2, Spanish, including "no apto para uso clínico"), compared with case and accents ignored. |
 | V39 | E/W | Unknown placeholder or unbalanced `**` (E); a key that is not a copy slot (W). |
 | V40 | E | A function outside `LOGIC_PATHS`, or non-JSON data elsewhere in the logic. |
 | V41 | E | `reads` names something the rubric lacks, or with the wrong type or option count; `gapMarkers` ≠ `gapRule.markers`. |
@@ -661,9 +920,55 @@ feedback. Each code is exercised by at least one mutated fixture in `app/tests/f
 | V58 | E | A file exceeds `LIMITS` or is not valid UTF-8. |
 | V59 | W | The logic source mentions page or network APIs (`window`, `document`, `fetch`, `localStorage`, `eval`, …); listed in the consent dialog. A signal for the reviewer, not a sandbox. |
 | V60 | E | A patient-facing module string (or a summary sentence produced during the smoke run) matches an omission pattern, or names the module's own `copy.indexName`, a full band label ("<band> likelihood <bandSuffix>"), a multi-word `copy.screener.bandSuffix` or `copy.note.likelihoodOf` (whole phrase, case-insensitive). |
+| V61 | E/W | The EMR template data (release 0.4.3): a `[ ] { }` in an `emrTemplate` string, a malformed citation (key pattern, missing title/publisher/citation, non-https `url`, `accessed` not `YYYY-MM-DD`), a citation key, red flag, item, answer value, phenotype, probe, probe option or routing rule (`instrumentRecs`) that does not exist, an `instrumentRecs` rule with computed chips, an exam row naming a probe that is not exam-kind, a reference without exactly one of `label`/`note`, a history row without exactly one of `item`/`label` (or a `probe` or `citations` on it where not allowed, or a `qualifier` on a label row), a blank label, placeholder or qualifier, a `box` or `onlyWithSignal` that is not a boolean, a duplicate checklist id or `instrumentRecs` id, an unknown `render`, or an item signal whose `render` contradicts its answer's polarity (or `neverTried` on an item) (E); an unused citation, an unknown key or citation field, a row field the engine never reads (since round 4, per row kind: references `label`, `note`, `citations`, `showFor`; history `item`, `qualifier`, `label`, `probe`; checklist `id`, `group`, `label`, `citations`, `placeholder`, `box`, `onlyWithSignal`, `signals`; signals `item`, `value`, `render`, `qualifier` or `probe`, `option`, `render`, `qualifier`; exam rows `label`, `citations`, `probe`, `optionPlaceholders`; option placeholders `option`, `placeholder`; past-history rows `item`, `label`, `group`), an `onlyWithSignal` row without signals, or square brackets in a module or logic string the template prints (W). Release 0.4.6 (E): a `pastHistory` row without exactly one of `item`/`label`, with a `group` other than `medical` or `family`, or naming an item that does not exist or is already a history or past-history row; an `optionPlaceholders` list on a row without a probe, an entry that is not `{option, placeholder}`, an option index the probe does not have or that repeats, or a blank placeholder. |
 
-The built-in MASQUE module validates with zero errors and the expected warnings (V12 for
-`n_allo`, which has no short label; V33 for the Spanish strings that fall back to English).
+The built-in MASQUE module validates with zero errors and the expected warning V12 for `n_allo`,
+which has no short label. Since release 0.4.2 it raises no V33: no Spanish string falls back to
+English (until 0.4.1 there were 11 such warnings). Its `es` stays `reviewed: false`, because the
+added Spanish is an unreviewed translation. Since release 0.4.3 its `emrTemplate` raises no V61
+finding.
+
+**V28 rules for the release 0.4.1 lexicon fields.** `p` is `/lexicon/scale/<i>` and `<id>` the
+entry's id. They reuse V28 (and V29 for phrases), so no new code was added.
+
+| Sev | Path | Rule | Message |
+|---|---|---|---|
+| E | `p/heard` | not `true` or `false` | `heard must be true or false` |
+| W | `p/heard` | `heard: true` with a `fallback` | `"<id>" has a fallback, so its cue always sets a value and is never heard without one` |
+| E | `p/carry` | not an integer from 1 to 3 | `carry must be an integer from 1 to 3: how many following patient replies may supply the value` |
+| E | `p/carry` | without `heard: true` | `carry needs heard: true (carry-over starts from a cue heard without its value)` |
+| E | `p/carry` | a band `j` records an option with `f = 0` | `band <j> of "<id>" records option <v> ("<label>", f = 0): a follow-up reply must never record a negative answer, so carry cannot be used on this entry` |
+| E | `p/yieldTo` | not a non-empty array | `yieldTo must be a non-empty list of lexicon entry ids` |
+| E | `p/yieldTo/<k>` | the entry's own id | `an entry cannot yield to itself` |
+| E | `p/yieldTo/<k>` | not the id of a scale or yes/no entry of this lexicon | `"<x>" is not the id of another scale or yes/no entry of this lexicon` |
+| E | `p/yieldTo/<k>` | listed twice (second and later) | `"<x>" is listed twice` |
+| E | `p/yieldTo` | a cycle among scale entries (reported once, at the lowest-index entry) | `yield cycle <a> → <b> → <a>: an utterance that names all of them captures none of them` |
+| E | `p/anchor` | without `yieldTo` | `anchor has no effect without yieldTo` |
+| E | `p/anchor` | not a non-empty array | `anchor must be a non-empty phrase list` |
+| E | `p/carryExclude` | without `carry` | `carryExclude has no effect without carry` |
+| E | `p/carryExclude` | not a non-empty array | `carryExclude must be a non-empty list of this entry's band phrases` |
+| E | `p/carryExclude/<k>` | not a non-empty string | `a carryExclude phrase must be a non-empty string` |
+| E | `p/carryExclude/<k>` | not lowercase | `carryExclude phrases name band phrases, which are matched against lowercased text, so they must be lowercase` |
+| E | `p/carryExclude/<k>` | not in any `ph` list of the entry's bands | `"<x>" is not a band phrase of "<id>" (carryExclude must name this entry's band phrases verbatim, so a band phrase it names cannot be removed)` |
+| E | `p/carryExclude/<k>` | listed twice (second and later) | `"<x>" is listed twice` |
+| W | `p/<key>` | a key that is not a lexicon scale field | `"<key>" is not a lexicon scale field and is ignored (a misspelt heard, carry, yieldTo, anchor or carryExclude?)` |
+| E | `/lexicon/carryRefuse` | not a non-empty array | `carryRefuse must be a non-empty phrase list` |
+| W | `/lexicon/carryRefuse` | no scale entry has `heard: true` or `carry` | `carryRefuse has no effect: no scale entry has heard: true or carry` |
+| E | `/lexicon/normalize` | not an object | `normalize` must be an object |
+| E | `/lexicon/normalize/<key>` | a key other than `apostrophes` or `numbers` | the key is not a normalisation option |
+| E | `/lexicon/normalize/apostrophes` | not `true` or `false` | `apostrophes` must be true or false |
+| E | `/lexicon/normalize/numbers` | not the string `"en"` | `numbers` must be `"en"` |
+| E | `/lexicon/normalize/numbers` | `lexicon.lang` does not start with `en` | number spelling is English, so it needs an English `lang` |
+
+The `normalize` rows give the meaning of each rule; the
+exact message text is in `engine/validate.js`. Mutation fixtures for the `heard`, `carry`,
+`yieldTo`, `anchor`, `carryExclude` and `carryRefuse` rules are in
+`app/tests/fixtures/mutations/safety.js`.
+
+**V29 and `normalize.numbers` (release 0.4.1 round 2).** Numbers are spelled out only for band
+matching, so only a band phrase holding a standalone 0-20 or round ten (for example "2 minutes")
+is warned: it can never match, so spell the number out. A cue, yes/no, context, multi-item or
+red-flag phrase with digits is not warned. It matches typed digits as digits, as in 0.3.1.
 
 ---
 

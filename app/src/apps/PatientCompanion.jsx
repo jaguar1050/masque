@@ -21,7 +21,12 @@
 //   - the summary offers Download (.txt) and Download (.html); both are dated and caveated,
 //     and Print and both downloads are disabled when the summary rules fail (§5.5);
 //   - the locale's review state is reported to the host for the print header (onPrintContext);
-//   - the release is the host's (AD4).
+//   - the release is the host's (AD4);
+//   - release 0.4.2 (Spanish completion): the engine cards, the provenance lines and the
+//     banner notices follow the locale where a translation exists, each tagged with its own
+//     language; a clinician line uses the locale's own `clin` line when it has one (tagged per
+//     line); the progress line tags an English fallback title; context option buttons take
+//     the language of their options.
 //
 // No side effects at import time.
 
@@ -32,7 +37,8 @@ import {
 } from "lucide-react";
 import {
   TIER_DISPLAY, chromeFor, localeText, localeFallback, flagCopy, buildPatientSummary,
-  askForm, summaryText, summaryHtml, richText,
+  askForm, askFormLang, summaryText, summaryHtml, richText, patientProvenanceFor, langTag,
+  patientPrintHeader, patientPrintHeaderParts,
 } from "../engine/patient.js";
 import { ANSWER } from "../engine/vocab.js";
 import { safetyGate } from "../engine/gates.js";
@@ -150,11 +156,26 @@ const PATIENT_CSS = `
 
 // ----------------------------------------------------------------------------- engine chrome
 
-/** §3.5 notice for a module without patient wording (engine chrome, English only, §7.5). */
-const UNAVAILABLE_NOTICE = "This module carries no patient wording, so the Patient Companion is not available for it.";
+/**
+ * §3.5 notice for a module without patient wording (engine chrome, §7.5), per locale; es since
+ * release 0.4.2 (unreviewed team translation, 2026-10-06). A locale without one shows English.
+ */
+export const UNAVAILABLE_NOTICE = {
+  en: "This module carries no patient wording, so the Patient Companion is not available for it.",
+  es: "Este módulo no incluye texto para pacientes, por lo que la Guía para el paciente no está disponible para este módulo.",
+};
 
-/** §5.5 rule-error card (engine chrome, English only, §7.5). */
-const SUMMARY_ERROR = "This summary could not be prepared because the module's summary rules failed. Nothing is shown rather than an incomplete summary.";
+/** §5.5 rule-error card (engine chrome, §7.5), per locale as UNAVAILABLE_NOTICE. */
+export const SUMMARY_ERROR = {
+  en: "This summary could not be prepared because the module's summary rules failed. Nothing is shown rather than an incomplete summary.",
+  es: "No se pudo preparar este resumen porque fallaron las reglas de resumen del módulo. Para evitar un resumen incompleto, no se muestra nada.",
+};
+
+/** An engine card in a locale: {text, lang}, English when the locale has none. */
+function engineCard(card, loc) {
+  if (typeof loc === "string" && typeof card[loc] === "string" && card[loc]) return { text: card[loc], lang: langTag(loc) };
+  return { text: card.en, lang: "en" };
+}
 
 /** The warning prefix of the unreviewed banner heading (Pat L685). */
 const WARN = "⚠︎ ";
@@ -204,22 +225,15 @@ export function printContextOf(view, loc) {
 }
 
 /**
- * The repeating print-header text for a Patient view (§5.5 Print, §5.10): the prototype
- * caveat, plus the unreviewed-translation title when the locale is not reviewed and a caveat
- * exists for it (" · Traducción sin revisar" for es), plus the patient provenance marker of a
- * non-built-in module. Never a clinician marker.
- * @param {Object} view   projectForPatient(module)
- * @param {{loc: string, reviewed: boolean}} printContext   as reported by onPrintContext
- * @returns {string}
+ * The repeating print-header for a Patient view (§5.5 Print, §5.10), as text
+ * (patientPrintHeader) or as parts with their languages (patientPrintHeaderParts, which the
+ * shell's PrintFrame renders): the prototype caveat (in es with its Spanish companion line),
+ * plus the unreviewed-translation title when the locale is not reviewed and a caveat exists
+ * for it (" · Traducción sin revisar" for es), plus the patient provenance marker of a
+ * non-built-in module in the locale. Never a clinician marker. Both live in engine/patient.js
+ * since release 0.4.2 and are re-exported here for the shell.
  */
-export function patientPrintHeader(view, printContext) {
-  const parts = [CAVEATS.prototype];
-  const pc = printContext || { loc: "en", reviewed: true };
-  const unrev = CAVEATS.unreviewed && CAVEATS.unreviewed[pc.loc];
-  if (!pc.reviewed && unrev && unrev.title) parts.push(unrev.title);
-  for (const m of arr(view && view.provenanceMarkers)) parts.push(m);
-  return parts.join(" · ");
-}
+export { patientPrintHeader, patientPrintHeaderParts };
 
 // ----------------------------------------------------------------------------- component
 
@@ -259,6 +273,15 @@ export default function PatientCompanion({ view, appVersion = APP_VERSION, onDir
   const sectionTitle = (s) => {
     if (s.kind === "intro" || s.kind === "safety" || s.kind === "summary") return t.sections[s.key];
     return localeText(view, loc, `steps.${s.key}.title`) || s.key;
+  };
+  // "en" when a section title is English standing in for the locale's (release 0.4.2): a chrome
+  // fallback, the binder's fallback, or (no title in any locale) the domain label or the key.
+  const titleLang = (s) => {
+    if (loc === "en") return undefined;
+    if (s.kind === "intro" || s.kind === "safety" || s.kind === "summary") return fbLang(`sections.${s.key}`);
+    const data = entry && entry.data && entry.data.steps ? entry.data.steps[s.key] : undefined;
+    if (!data || typeof data.title !== "string") return "en";
+    return txLang(`steps.${s.key}.title`);
   };
 
   const allFlags = available ? flagCopy(view, loc) : [];
@@ -326,17 +349,17 @@ export default function PatientCompanion({ view, appVersion = APP_VERSION, onDir
           </div>
 
           {!available ? (
-            <div className="card" data-testid="patient-unavailable" lang="en">
-              <p className="lede">{UNAVAILABLE_NOTICE}</p>
+            <div className="card" data-testid="patient-unavailable" lang={engineCard(UNAVAILABLE_NOTICE, loc).lang}>
+              <p className="lede">{engineCard(UNAVAILABLE_NOTICE, loc).text}</p>
             </div>
           ) : (
             <>
               <Banner entry={entry} loc={loc} />
-              <Provenance lines={view.provenanceLines} />
+              <Provenance lines={loc === "en" ? view.provenanceLines : patientProvenanceFor(view, loc).lines} />
 
               {sec > 0 && (
                 <div className="noprint" data-testid="patient-progress">
-                  <div className="stepof">{t.step} {sec} {t.of} {LAST} · {String(sectionTitle(current)).toUpperCase()}</div>
+                  <div className="stepof">{t.step} {sec} {t.of} {LAST} · <TitleText lang={titleLang(current)}>{String(sectionTitle(current)).toUpperCase()}</TitleText></div>
                   <div className="prog"><i style={{ width: `${(sec / LAST) * 100}%` }} /></div>
                 </div>
               )}
@@ -349,7 +372,7 @@ export default function PatientCompanion({ view, appVersion = APP_VERSION, onDir
               )}
 
               {current.kind !== "intro" && current.kind !== "safety" && current.kind !== "summary" && (
-                <StepCard view={view} step={current} title={sectionTitle(current)} a={a} set={set} ctx={ctx} setCtx={setCtx}
+                <StepCard view={view} step={current} title={sectionTitle(current)} titleLang={titleLang(current)} a={a} set={set} ctx={ctx} setCtx={setCtx}
                   t={t} loc={loc} txLang={txLang} />
               )}
 
@@ -385,36 +408,58 @@ export default function PatientCompanion({ view, appVersion = APP_VERSION, onDir
 
 // ----------------------------------------------------------------------------- banner & provenance
 
+/** A caveat's line in a locale (release 0.4.2): {text, lang}, English when it has none. */
+function caveatLine(cav, loc) {
+  if (cav && typeof loc === "string" && loc !== "en" && typeof cav[loc] === "string" && cav[loc]) return { text: cav[loc], lang: langTag(loc) };
+  return { text: cav ? cav.en : "", lang: "en" };
+}
+
 /**
  * The unreviewed banner (Pat L683-688), printed (AD10): the locale's CAVEATS.unreviewed title
- * and body when it has one, plus the edited-wording and stale-translation notices (English,
- * lang="en"). Nothing when the locale is reviewed.
+ * and body when it has one, plus the edited-wording and stale-translation notices, each in the
+ * locale where the caveat has it (release 0.4.2) and tagged with its own language. Nothing when
+ * the locale is reviewed.
  */
 function Banner({ entry, loc }) {
   if (!entry || entry.reviewed) return null;
   const unrev = CAVEATS.unreviewed && CAVEATS.unreviewed[loc] ? CAVEATS.unreviewed[loc] : null;
   const notices = [];
-  if (entry.editedLocally) notices.push(CAVEATS.editedWording.en);
-  if (entry.stale) notices.push(CAVEATS.staleTranslation.en);
+  if (entry.editedLocally) notices.push(caveatLine(CAVEATS.editedWording, loc));
+  if (entry.stale) notices.push(caveatLine(CAVEATS.staleTranslation, loc));
   if (!unrev && !notices.length) return null;
   return (
     <div className="sum ask" style={{ marginTop: 10 }} lang={loc} data-testid="patient-banner">
       {unrev ? <h3>{WARN}{unrev.title}</h3> : null}
       {unrev ? <p>{unrev.body}</p> : null}
-      {notices.map((n, i) => <p className="notice" lang="en" key={i}>{n}</p>)}
+      {notices.map((n, i) => <p className="notice" lang={n.lang} key={i}>{n.text}</p>)}
     </div>
   );
 }
 
-/** The patient provenance lines of a non-built-in module (§3.11), printed. */
+/**
+ * The patient provenance lines of a non-built-in module (§3.11), printed. `lines` are English
+ * strings (in English) or {text, lang} (patientProvenanceFor in another locale, release 0.4.2).
+ */
 function Provenance({ lines }) {
   const xs = arr(lines);
   if (!xs.length) return null;
+  if (xs.every((l) => typeof l === "string")) {
+    return (
+      <div className="sum prov" lang="en" data-testid="patient-provenance">
+        {xs.map((l, i) => <p key={i}>{l}</p>)}
+      </div>
+    );
+  }
   return (
-    <div className="sum prov" lang="en" data-testid="patient-provenance">
-      {xs.map((l, i) => <p key={i}>{l}</p>)}
+    <div className="sum prov" data-testid="patient-provenance">
+      {xs.map((l, i) => <p key={i} lang={l.lang}>{l.text}</p>)}
     </div>
   );
+}
+
+/** A section title inside the progress line, tagged only when its language differs (release 0.4.2). */
+function TitleText({ lang, children }) {
+  return lang ? <span lang={lang}>{children}</span> : <>{children}</>;
 }
 
 // ----------------------------------------------------------------------------- sections
@@ -498,11 +543,11 @@ function Safety({ allFlags, flags, rf, setRf, safetyDone, setSafetyDone, urgent,
 }
 
 /** A story or domain step (Pat L703-734): heading, lede, the context questions, the items. */
-function StepCard({ view, step, title, a, set, ctx, setCtx, t, loc, txLang }) {
+function StepCard({ view, step, title, titleLang, a, set, ctx, setCtx, t, loc, txLang }) {
   const p = `steps.${step.key}`;
   const story = step.kind === "story";
   const heading = story ? (localeText(view, loc, `${p}.heading`) || title) : title;
-  const headingLang = story && localeText(view, loc, `${p}.heading`) ? txLang(`${p}.heading`) : txLang(`${p}.title`);
+  const headingLang = story && localeText(view, loc, `${p}.heading`) ? txLang(`${p}.heading`) : titleLang;
   const lede = localeText(view, loc, `${p}.lede`);
   const intro = story ? localeText(view, loc, `${p}.intro`) : null;
   const withContext = arr(step.extras).includes("context");
@@ -516,12 +561,13 @@ function StepCard({ view, step, title, a, set, ctx, setCtx, t, loc, txLang }) {
           const w = wording(view, loc, "contextItems", ci.id);
           if (!w || typeof w.q !== "string") return null;
           const lang = txLang(`contextItems.${ci.id}.q`);
+          const optsLang = txLang(`contextItems.${ci.id}.opts`);
           return (
             <div className="q" key={ci.id} data-item={ci.id}>
               <div className="qt" lang={lang}>{w.q}</div>
               <div className="opts">
                 {arr(w.opts).map(([v, lab]) => (
-                  <button key={v} className={"o" + (ctx[ci.id] === v ? " sel" : "")} lang={lang}
+                  <button key={v} className={"o" + (ctx[ci.id] === v ? " sel" : "")} lang={optsLang}
                     onClick={() => setCtx((c) => ({ ...c, [ci.id]: c[ci.id] === v ? undefined : v }))}>{lab}</button>
                 ))}
               </div>
@@ -626,8 +672,8 @@ function Summary({ view, built, onReset, t, loc, appVersion, fbLang, txLang }) {
     return (
       <div className="card" data-testid="patient-section" data-section="summary">
         <h2>{t.summaryTitle}</h2>
-        <div className="sum err" role="alert" lang="en" data-testid="patient-summary-error">
-          <p>{SUMMARY_ERROR}</p>
+        <div className="sum err" role="alert" lang={engineCard(SUMMARY_ERROR, loc).lang} data-testid="patient-summary-error">
+          <p>{engineCard(SUMMARY_ERROR, loc).text}</p>
         </div>
         {nav}
         {disclaimer}
@@ -690,7 +736,7 @@ function Summary({ view, built, onReset, t, loc, appVersion, fbLang, txLang }) {
         <div className="sum unsure">
           <h3>{t.notSure}</h3>
           <p style={{ marginBottom: 4 }}>{t.notSureLede}</p>
-          <ul>{unsureList.map((id) => <li key={id}>{askForm(view, loc, id)}</li>)}</ul>
+          <ul>{unsureList.map((id) => <li key={id} lang={askFormLang(view, loc, id) || undefined}>{askForm(view, loc, id)}</li>)}</ul>
         </div>
       )}
 
@@ -702,7 +748,7 @@ function Summary({ view, built, onReset, t, loc, appVersion, fbLang, txLang }) {
               <RichText str={clinicianLede} />
             </p>
           ) : null}
-          <ul lang={loc !== "en" ? "en" : undefined}>{clin.map((c, i) => <li key={i}>{c.neg ? "− " : "+ "}{c.t}</li>)}</ul>
+          <ul>{clin.map((c, i) => <li key={i} lang={loc !== "en" ? c.lang || "en" : undefined}>{c.neg ? "− " : "+ "}{c.t}</li>)}</ul>
         </div>
       )}
 

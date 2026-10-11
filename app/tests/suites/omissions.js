@@ -3,14 +3,14 @@
 //
 //   graph     the transitive import graph (sources fetched, specifiers collected; nothing
 //             executed) of src/engine/patient.js and src/apps/PatientCompanion.jsx excludes
-//             scoring.js, fhir.js, rules.js, cohort.js, probes.js, extraction.js, scribe.js and
-//             ResearchReadinessPanel.jsx (§5.5); patient.html boots src/shell/PatientPage.jsx, whose
-//             graph excludes the §5.11 list (the clinician shell, the picker, the upload dialog,
-//             the four clinician apps, the readiness panel, the population page) and
-//             MASQUE_Voice.js. §5.11 lets PatientPage import registry.js, whose validation path
+//             scoring.js, fhir.js, rules.js, cohort.js, probes.js, extraction.js, scribe.js,
+//             emr.js (release 0.4.3, the clinician EMR template) and ResearchReadinessPanel.jsx
+//             (§5.5); patient.html boots src/shell/PatientPage.jsx, whose graph excludes the §5.11
+//             list (the clinician shell, the picker, the upload dialog, the four clinician apps,
+//             the readiness panel, the population page), engine/emr.js and MASQUE_Voice.js. §5.11 lets PatientPage import registry.js, whose validation path
 //             reaches scoring.js; the graph notes list what it holds;
 //   view      projectForPatient(module) carries no flag text, points or action, no clinician
-//             provenance line and no CAVEATS.scoringChanged;
+//             provenance line, no CAVEATS.scoringChanged and (release 0.4.3) no emrTemplate data;
 //   exports   summaryText (.txt) and summaryHtml (.html, text content) with all flags on and
 //             every item answered, every locale: no flag text/points/action, no OMISSION_PATTERNS
 //             match; the patient provenance, edited-wording and stale-translation lines appear
@@ -33,22 +33,60 @@
 //             scoring, an edited English locale and a stale es locale. In the shell the upload
 //             goes through registry.classifyFiles/prepareUpload and the derivation through
 //             registry.prepareRubric, the paths the upload dialog and the editor's Apply use.
+//   es        release 0.4.2 (the Spanish completion): the patient caveats (provenance, edited
+//             wording, stale translation) appear in the export's locale — Spanish in es, never the
+//             English line there; the .txt / .html carry the Spanish companion of the prototype
+//             marker in es only (the English marker always), and the es .html tags each clinician
+//             line, notice and marker part with its language. Rendered: <html lang> follows the
+//             companion in patient mode (by Hand to patient and by address) and on patient.html,
+//             stays English in the clinician shell's Patient tab, and is restored on leaving patient
+//             mode and on unmounting the page; the caveat strip, the print header and the patient
+//             footer show the companion line (and the es version line) in es only; the strip's
+//             patient caveats are the locale's own lines alone in patient mode and on patient.html,
+//             while the clinician shell's Patient tab keeps the English lines (lang="en") and adds
+//             the locale's lines after them (lang="es"); in patient mode the Patient panel carries no
+//             aria-labelledby (no tab bar is rendered), its aria-label naming it; patient mode's
+//             title, the Patient panel's label, the return button and the return dialog add the
+//             Spanish, and the hidden clinician panels are tagged lang="en" in es (untagged in en);
+//             a string toast and its dismiss button are tagged lang="en"; and a DOM scan of the
+//             mounted shell or page root (.sa-shell) in es finds no element tagged lang="en"
+//             inside the Companion but the "English" locale button, and no English text anywhere
+//             outside an element tagged lang="en". That root does not hold the deployed pages'
+//             static chrome outside #root, so each deployed page (patient.html and
+//             screenair.html#mode=patient) is also booted as served in a hidden 1024 px frame,
+//             switched to Español, and its WHOLE body scanned the same way: the corner badge
+//             ("Prototype · not for clinical use", outside #root) must be tagged lang="en".
+//   settle    (release 0.4.3, review round 3) a walk clicks synchronously, but the host reports
+//             the Companion makes from its effects (its locale for the strip, the print header,
+//             <html lang> and the title; its dirty state for "Hand to patient") reach the shell in
+//             a later task, which a hidden (background) tab delays by about a second. After each
+//             walk, and before each state check that follows one, the suite drains the scheduler's
+//             posted-message queue and then waits for the state the checks expect (up to 10 s, never
+//             throwing: a state that never comes is still reported by the checks), instead of a
+//             fixed sleep(0). Reproduced before the change: ?suite=omissions alone in a background
+//             tab failed with 24 diffs under the derived module's Spanish walk.
 import React from "react";
 import { collector, guarded, loadMasque, need, validationNote } from "../harness/kit.js";
 import { bumpFirstWeight, derivedFixture } from "../harness/derivation.js";
 import {
   byTestId, captureDownloads, click, fullAnswers, importApp, mountApp, openShell, qa, sandbox, selectModule, sleep, visibleText, waitFor, walkPatient,
 } from "../harness/shell.js";
+import { englishCorpus, englishScan, stringLeaves } from "../harness/spanish.js";
 
 const NOW = "2026-10-01T12:00:00.000Z";
-const FORBIDDEN_FILES = ["scoring.js", "fhir.js", "rules.js", "cohort.js", "probes.js", "extraction.js", "scribe.js", "ResearchReadinessPanel.jsx"];
+const FORBIDDEN_FILES = ["scoring.js", "fhir.js", "rules.js", "cohort.js", "probes.js", "extraction.js", "scribe.js", "emr.js", "ResearchReadinessPanel.jsx"];
 // §5.11: the patient page's graph contains none of these (paths under app/src/), nor the voice module.
 const PAGE_FORBIDDEN = ["shell/ScreenAIr.jsx", "shell/ModuleWorkspace.jsx", "shell/ModulePicker.jsx", "shell/UploadDialog.jsx", "apps/Screener.jsx",
-  "apps/Scribe.jsx", "apps/ResearchTab.jsx", "apps/RubricEditor.jsx", "ResearchReadinessPanel.jsx", "MASQUE_Population.jsx", "MASQUE_Voice.js"];
+  "apps/Scribe.jsx", "apps/ResearchTab.jsx", "apps/RubricEditor.jsx", "ResearchReadinessPanel.jsx", "MASQUE_Population.jsx", "MASQUE_Voice.js",
+  "engine/emr.js"];
 const WHAT_IT_ISNT = '[data-testid="patient-what-it-isnt"]';
 const NO_LONGER_LOADED = "This questionnaire is no longer loaded on this device. Please hand the device back to your clinician.";
 const NOT_AVAILABLE = "This questionnaire is not available.";
 const IMPORT_RE = /(?:^|[\s;}])(?:import|export)\s*(?:[\w*{}\s,$]*?\sfrom\s*)?["']([^"']+)["']|import\(\s*["']([^"']+)["']\s*\)/g;
+/** D11: the patient footer's version line in Spanish (shell.PatientFooter.versionLine, release 0.4.2). */
+const ES_FOOTER_LINE = (name, appVersion, instrument) => `${name} \u00b7 versi\u00f3n ${appVersion} \u00b7 instrumento ${instrument}`;
+/** A patient caveat in a locale: its `loc` text where it has one (release 0.4.2), else its English. */
+const inLoc = (cav, loc) => (loc !== "en" && cav && typeof cav[loc] === "string" && cav[loc] ? cav[loc] : cav.en);
 
 /** Transitive relative-import graph from `entry` (an app-relative path). Returns the file URLs. */
 async function moduleGraph(h, entry) {
@@ -144,6 +182,10 @@ export default {
       const flagStrings = (m.redFlags || []).flatMap((f) => [f.text, f.points, f.action]).filter(Boolean);
       for (const str of flagStrings) c.check(!viewText.includes(str), `${at}/view/@flagText`, { text: str }, "absent", "present");
       for (const line of clinicianLines) c.check(!viewText.includes(line), `${at}/view/@clinicianProvenance`, { line }, "absent", "present");
+      // Release 0.4.3: the clinician EMR template data never reaches the patient view (projectForPatient is a whitelist).
+      const emrUrls = m.emrTemplate && m.emrTemplate.citations ? Object.values(m.emrTemplate.citations).map((x) => x && x.url).filter(Boolean) : [];
+      c.check(!Object.prototype.hasOwnProperty.call(view, "emrTemplate") && !viewText.includes("emrTemplate") && !emrUrls.some((u) => viewText.includes(u)),
+        `${at}/view/@emrTemplate`, { citations: emrUrls.length }, "absent", "present");
       const a = {};
       for (const d of m.domains) for (const it of d.items) a[it.id] = Array.isArray(it.scale) ? it.scale.length - 1 : "yes";
       const rf = Object.fromEntries((m.redFlags || []).map((f) => [f.id, true]));
@@ -155,6 +197,7 @@ export default {
         const txt = patient.summaryText(view, loc, summary, { generatedAt: NOW });
         const html = patient.summaryHtml(view, loc, summary, { generatedAt: NOW });
         const htmlBody = htmlText(html);
+        const comp = (policy.CAVEATS.prototypeCompanion || {}).es;
         for (const [kind, text] of [["txt", txt], ["html", htmlBody]]) {
           for (const str of flagStrings) c.check(!text.includes(str), `${at}/${loc}/${kind}/@flagText`, { text: str }, "absent", "present");
           for (const re of policy.OMISSION_PATTERNS) {
@@ -163,15 +206,39 @@ export default {
           }
           for (const line of clinicianLines) c.check(!text.includes(line), `${at}/${loc}/${kind}/@clinicianProvenance`, { line }, "absent", "present");
           c.check(text.includes(policy.CAVEATS.prototype), `${at}/${loc}/${kind}/@caveat`, null, policy.CAVEATS.prototype, "absent");
+          // Release 0.4.2: the patient caveats in the export's locale (Spanish in es, never the English there).
           if (m.origin !== "builtin") {
-            const want = m.origin === "derived" ? policy.CAVEATS.patient.edited.en : policy.CAVEATS.patient.uploaded.en;
+            const cav = m.origin === "derived" ? policy.CAVEATS.patient.edited : policy.CAVEATS.patient.uploaded;
+            const want = inLoc(cav, loc);
             c.check(text.includes(want), `${at}/${loc}/${kind}/@patientProvenance`, null, want, "absent");
+            if (want !== cav.en) c.check(!text.includes(cav.en), `${at}/${loc}/${kind}/@patientProvenance/notEnglish`, null, `no "${cav.en}"`, "present");
           }
           const L = (m.locales || {})[loc] && m.locales[loc].data;
           if (L && L.editedLocally) noticeChecks++;
           if (L && Array.isArray(L.stale) && L.stale.length) noticeChecks++;
-          if (L && L.editedLocally) c.check(text.includes(policy.CAVEATS.editedWording.en), `${at}/${loc}/${kind}/@editedWording`, null, policy.CAVEATS.editedWording.en, "absent");
-          if (L && Array.isArray(L.stale) && L.stale.length) c.check(text.includes(policy.CAVEATS.staleTranslation.en), `${at}/${loc}/${kind}/@stale`, null, policy.CAVEATS.staleTranslation.en, "absent");
+          for (const [on, cav, name] of [[L && L.editedLocally, policy.CAVEATS.editedWording, "editedWording"], [L && Array.isArray(L.stale) && L.stale.length, policy.CAVEATS.staleTranslation, "stale"]]) {
+            if (!on) continue;
+            c.check(text.includes(inLoc(cav, loc)), `${at}/${loc}/${kind}/@${name}`, null, inLoc(cav, loc), "absent");
+            if (inLoc(cav, loc) !== cav.en) c.check(!text.includes(cav.en), `${at}/${loc}/${kind}/@${name}/notEnglish`, null, `no "${cav.en}"`, "present");
+          }
+          // D9: the Spanish companion of the marker, next to the English marker, in es only.
+          if (loc === "es") c.check(text.includes(`${policy.CAVEATS.prototype} \u2014 ${comp}`), `${at}/${loc}/${kind}/@companion`, null, `${policy.CAVEATS.prototype} — ${comp}`, "absent");
+          else c.check(!text.includes(comp), `${at}/${loc}/${kind}/@companion`, null, "no Spanish companion outside es", "present");
+        }
+        if (loc === "es") {
+          // The es .html tags each part with its language (D3, D7, D9): clinician lines, notices, the marker.
+          const doc = new DOMParser().parseFromString(html, "text/html");
+          const lis = qa(doc, ".clin li");
+          const esItems = (view.locales.es && view.locales.es.data && view.locales.es.data.items) || {};
+          const wantLi = (id) => (esItems[id] && esItems[id].clin ? "es" : "en");
+          c.check(lis.length > 0 && lis.every((li) => li.getAttribute("lang") === "es" || li.getAttribute("lang") === "en") && !qa(doc, ".clin ul[lang]").length,
+            `${at}/${loc}/html/clin/@lang`, null, "every clinician line tagged (es for an own clin line), the list untagged", lis.map((li) => li.getAttribute("lang")));
+          const items = m.domains.flatMap((d) => d.items).filter((it) => esItems[it.id]);
+          if (items.length && items.every((it) => wantLi(it.id) === "es")) c.check(lis.every((li) => li.getAttribute("lang") === "es"), `${at}/${loc}/html/clin/@es`, null, "lang es on every line", lis.map((li) => li.getAttribute("lang")));
+          for (const pn of qa(doc, "p.notice")) c.check(pn.getAttribute("lang") === "es", `${at}/${loc}/html/notice/@lang`, { text: pn.textContent }, "es", pn.getAttribute("lang"));
+          const spans = qa(doc, "span[lang]");
+          c.check(spans.some((x) => x.getAttribute("lang") === "en" && x.textContent === policy.CAVEATS.prototype) && spans.some((x) => x.getAttribute("lang") === "es" && x.textContent === comp),
+            `${at}/${loc}/html/marker/@lang`, null, "the English marker lang en, its companion lang es", spans.map((x) => `${x.getAttribute("lang")}:${x.textContent}`).slice(0, 6));
         }
         c.check(!/<script|javascript:|https?:\/\//i.test(html), `${at}/${loc}/html/@inert`, null, "no script and no URL", "found");
       }
@@ -195,6 +262,26 @@ function textChecks(c, policy, at, text, { flagStrings, clinicianLines }) {
     c.check(!hit, `${at}/@pattern`, { pattern: String(re) }, "no match", hit && text.slice(Math.max(0, hit.index - 40), hit.index + 40));
   }
   for (const line of clinicianLines) c.check(!text.includes(line), `${at}/@clinicianProvenance`, { line }, "absent", "present");
+}
+
+/**
+ * Let the app settle after a synchronous walk or click (review round 3): drain the scheduler's
+ * posted-message queue once (React posts its deferred work the same way, so ours runs after it),
+ * then poll `pred` until it holds or `timeout` ms pass. Never throws: the checks that follow report
+ * a state that never came. Returns whether `pred` held.
+ */
+async function settle(pred = () => true, timeout = 10000) {
+  await new Promise((resolve) => {
+    const ch = new MessageChannel();
+    ch.port1.onmessage = () => { ch.port1.close(); resolve(); };
+    ch.port2.postMessage(0);
+  });
+  try {
+    await waitFor(() => { try { return !!pred(); } catch (_) { return false; } }, { timeout, what: "the app to settle" });
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 /**
@@ -260,6 +347,91 @@ async function renderedHalf(h, c, { patient, policy, masque, subjects }) {
     flagStrings: [],
     patientLines: (m, loc) => lineage.provenanceLines(m, "patient", { locale: loc }),
   };
+  // A patient caveat in any locale → its English (the clinician's Patient tab shows both, release 0.4.2).
+  const enCaveat = (text) => {
+    for (const cav of [CAV.patient.edited, CAV.patient.uploaded, CAV.editedWording, CAV.staleTranslation]) {
+      if (Object.entries(cav).some(([k, v]) => k !== "short" && k !== "esShort" && v === text)) return cav.en;
+    }
+    return `[no English caveat for ${JSON.stringify(text)}]`;
+  };
+  const saNs = await importApp(h, "src/shell/ScreenAIr.jsx");
+  const MODE_ES = (saNs.PATIENT_MODE_TEXT || {}).es || {};
+  // D10: the patient-mode Spanish lines (return button, return dialog, microphone toast) are
+  // patient-facing text too: present, and clean of every OMISSION_PATTERNS match.
+  for (const t of [MODE_ES.returnButton, MODE_ES.micToast, ...Object.values(MODE_ES.returnDialog || {})]) {
+    c.check(typeof t === "string" && t.trim() !== "", "/rendered/PATIENT_MODE_TEXT/es", null, "a Spanish line", t);
+    for (const re of policy.OMISSION_PATTERNS) c.check(typeof t !== "string" || !re.test(t), "/rendered/PATIENT_MODE_TEXT/es/@pattern", { pattern: String(re), text: t }, "no match", "match");
+  }
+  // A string toast is English shell text, and its dismiss label is English: both tagged lang="en",
+  // so a toast still showing when <html lang> follows the companion is not read as Spanish. A node
+  // message (the patient-mode microphone toast with its Spanish line) tags its own parts.
+  {
+    const chromeNs = await importApp(h, "src/shell/chrome.jsx");
+    const t1 = mountApp(React.createElement(chromeNs.Toast, { message: saNs.MIC_TOAST, onDone: () => {} }));
+    const t2 = mountApp(React.createElement(chromeNs.Toast, { message: React.createElement("span", { lang: "es" }, "Ejemplo"), onDone: () => {} }));
+    try {
+      const x1 = t1.container.querySelector(".sa-toast-x");
+      const s1 = t1.container.querySelector(".sa-toast > span");
+      c.check(!!x1 && x1.getAttribute("lang") === "en" && x1.getAttribute("aria-label") === "Dismiss" && !!s1 && s1.getAttribute("lang") === "en" && s1.textContent === saNs.MIC_TOAST,
+        "/rendered/toast/@lang", null, 'string message and "Dismiss" tagged lang="en"', [x1 && x1.outerHTML.slice(0, 120), s1 && s1.getAttribute("lang")]);
+      const s2 = t2.container.querySelector(".sa-toast > span");
+      c.check(!!s2 && !s2.hasAttribute("lang") && !!s2.querySelector('span[lang="es"]'), "/rendered/toast/node", null, "a node message keeps its own tags, its wrapper untagged", s2 && s2.outerHTML.slice(0, 120));
+    } finally {
+      t1.unmount();
+      t2.unmount();
+    }
+  }
+  const htmlLang = () => document.documentElement.getAttribute("lang");
+  const COMP = (CAV.prototypeCompanion || {}).es;
+  const markerWant = (loc) => (loc === "es" ? `${CAV.prototype} \u2014 ${COMP}` : CAV.prototype);
+  /** The English and Spanish sources the es DOM scan looks for (release 0.4.2). */
+  const corpusFor = (view) => englishCorpus({
+    english: [...stringLeaves(patient.PATIENT_CHROME.en), ...stringLeaves(view.locales.en ? view.locales.en.data : {}),
+      ...view.domains.flatMap((d) => d.items).map((it) => it.patientClin),
+      CAV.patient.edited.en, CAV.patient.uploaded.en, CAV.patient.edited.short, CAV.patient.uploaded.short, CAV.editedWording.en, CAV.staleTranslation.en],
+    spanish: [...stringLeaves(patient.PATIENT_CHROME.es), ...stringLeaves(view.locales.es ? view.locales.es.data : {}),
+      CAV.patient.edited.es, CAV.patient.uploaded.es, CAV.editedWording.es, CAV.staleTranslation.es],
+  });
+  const tally = { surfaces: 0, scans: 0, scanTexts: 0, returns: 0 };
+  /**
+   * The checks of a patient surface (release 0.4.2) in `root` (the visible shell or page) after a
+   * walk in `loc`: the strip's marker, the print header, the footer, and in es the DOM scan.
+   */
+  const surfaceChecks = (at, root, view, loc, module = null) => {
+    tally.surfaces += 1;
+    const strip = byTestId(root, "caveat-strip");
+    const b = strip ? strip.querySelector("b") : null;
+    if (module && strip) {
+      // A patient surface shows the patient caveats in its locale only, each tagged with its language.
+      const want = lineage.provenanceLineParts(module, "patient", { locale: loc }).map((p) => [p.text, p.lang]);
+      c.diff(want, qa(strip, ".sa-caveat-line").map((x) => [x.textContent, x.getAttribute("lang")]), { at: `${at}/caveatStrip/lines` });
+    }
+    c.check(!!b && b.textContent === markerWant(loc), `${at}/caveatStrip/marker`, { loc }, markerWant(loc), b ? b.textContent : "absent");
+    if (loc === "es" && b) {
+      c.check(qa(b, 'span[lang="en"]').some((x) => x.textContent === CAV.prototype) && qa(b, 'span[lang="es"]').some((x) => x.textContent === COMP),
+        `${at}/caveatStrip/marker/@lang`, null, "English marker lang en, companion lang es", b.innerHTML.slice(0, 200));
+    }
+    const head = root.querySelector("thead.sa-print-head");
+    if (head) c.check(head.textContent.startsWith(markerWant(loc)), `${at}/printHeader/marker`, { loc }, markerWant(loc), head.textContent);
+    const foot = byTestId(root, "patient-page-footer");
+    if (foot) {
+      const ps = qa(foot, "p");
+      const wantLine = loc === "es" ? ES_FOOTER_LINE(view.name, policy.APP_VERSION, view.instrumentVersion) : `${view.name} \u00b7 release ${policy.APP_VERSION} \u00b7 instrument ${view.instrumentVersion}`;
+      c.check(ps.length >= 2 && ps[0].textContent === wantLine && (loc === "es" ? ps[0].getAttribute("lang") === "es" : !ps[0].hasAttribute("lang")),
+        `${at}/footer/versionLine`, { loc }, wantLine, ps.length ? `${ps[0].textContent} (lang ${ps[0].getAttribute("lang")})` : "absent");
+      c.check(ps.length >= 2 && ps[ps.length - 1].textContent === markerWant(loc), `${at}/footer/marker`, { loc }, markerWant(loc), ps.length ? ps[ps.length - 1].textContent : "absent");
+    }
+    if (loc !== "es") return;
+    const scan = englishScan(root, {
+      corpus: corpusFor(view),
+      docLang: htmlLang() || "en",
+      allowEn: (el) => !el.closest('[data-testid="patient-app"]') || el.matches('[data-testid="patient-locale-en"]'),
+    });
+    c.check(!scan.langEn.length, `${at}/@scan/langEn`, { loc }, "no lang=\"en\" inside the Companion but the English button", scan.langEn.slice(0, 5));
+    c.check(!scan.english.length, `${at}/@scan/english`, { loc }, "no English outside lang=\"en\"", scan.english.slice(0, 5));
+    c.check(scan.texts > 20, `${at}/@scan/texts`, null, "a scanned page", scan.texts);
+    tally.scans += 1; tally.scanTexts += scan.texts;
+  };
 
   // Register the subjects the way the shell would: the built-ins, the upload, the derivation.
   for (const e of await registry.loadBuiltins({ env: h.env })) registry.register(e);
@@ -304,17 +476,33 @@ async function renderedHalf(h, c, { patient, policy, masque, subjects }) {
           const panel = await waitFor(() => { const p = C.querySelector("#sa-panel-patient"); return p && !p.hidden && byTestId(p, "patient-app") ? p : null; }, { what: "the Patient tab" });
           const strip = () => byTestId(C, "caveat-strip");
           const headText = () => (C.querySelector("thead.sa-print-head") || {}).textContent || "";
+          const langBefore = htmlLang();
           for (const loc of locs) {
             const at = `${base}/tab/${loc}`;
             walks += await walkAndCheck(c, ctx, { root: panel, view, module: m, loc, at,
               chrome: () => [["caveat-strip", strip().textContent], ["print-header", headText()]] });
-            const lines = qa(strip(), ".sa-caveat-line").map((x) => x.textContent);
-            c.diff(ctx.patientLines(m, loc), lines, { at: `${at}/caveatStrip/lines` });
+            // The clinician's Patient tab: the English patient caveats exactly as before release
+            // 0.4.2 (lang "en"); outside English the locale's own lines follow them (lang loc).
+            const own = lineage.provenanceLineParts(m, "patient", { locale: loc });
+            const wantLines = loc === "en"
+              ? ctx.patientLines(m, loc).map((t) => [t, "en"])
+              : [...own.map((p) => [enCaveat(p.text), "en"]), ...own.filter((p) => p.lang !== "en").map((p) => [p.text, p.lang])];
+            const stripLines = () => qa(strip(), ".sa-caveat-line").map((x) => [x.textContent, x.getAttribute("lang")]);
+            await settle(() => headText().startsWith(markerWant(loc)) && JSON.stringify(stripLines()) === JSON.stringify(wantLines));
+            c.diff(wantLines, stripLines(), { at: `${at}/caveatStrip/lines` });
+            if (loc !== "en" && !builtin) c.check(own.length > 0 && own.every((p) => p.lang === loc), `${at}/caveatStrip/lines/@both`, { loc }, "English lines, then the locale's", wantLines);
+            c.check(panel.getAttribute("aria-labelledby") === "sa-tab-patient" && !!C.querySelector("#sa-tab-patient"), `${at}/panel/labelledby`, null,
+              "sa-tab-patient (the tab is rendered)", [panel.getAttribute("aria-labelledby"), !!C.querySelector("#sa-tab-patient")]);
             c.check(headText().startsWith(CAV.prototype), `${at}/printHeader`, null, CAV.prototype, headText());
+            // The clinician shell's Patient tab: the strip and print header follow the companion, <html lang> does not.
+            c.check(headText().startsWith(markerWant(loc)), `${at}/printHeader/marker`, { loc }, markerWant(loc), headText());
+            c.check(htmlLang() === langBefore, `${at}/htmlLang`, { loc }, `${langBefore} (clinician mode)`, htmlLang());
           }
           // Patient mode, entered from the Patient tab. The walk above left answers in the
           // companion, so the shell must ask before handing on (D26): assert the dialog, then
-          // start a new patient session so the mode walk begins from a fresh companion.
+          // start a new patient session so the mode walk begins from a fresh companion. The
+          // Companion's dirty report reaches the shell in a later task: let it settle first.
+          await settle();
           click(byTestId(C, "hand-to-patient"));
           await waitFor(() => byTestId(C, "hand-dialog") || C.querySelector('.sa-shell[data-mode="patient"]'), { what: "the hand-to-patient dialog or patient mode" });
           const handDialog = byTestId(C, "hand-dialog");
@@ -337,9 +525,54 @@ async function renderedHalf(h, c, { patient, policy, masque, subjects }) {
           for (const loc of locs) {
             walks += await walkAndCheck(c, ctx, { root: modePanel, view, module: m, loc, at: `${base}/mode/${loc}`,
               chrome: () => [["visible-page", visibleText(shellEl, [WHAT_IT_ISNT])]] });
+            // Release 0.4.2: patient mode follows the companion's locale (D6, D10).
+            const at = `${base}/mode/${loc}`;
+            const wantTitle = loc === "es" ? `screenAIr \u00b7 ${patient.PATIENT_CHROME.es.title}` : "screenAIr \u00b7 Patient Companion";
+            const modeLines = lineage.provenanceLineParts(m, "patient", { locale: loc }).map((p) => [p.text, p.lang]);
+            const printHead = () => (C.querySelector("thead.sa-print-head") || {}).textContent || markerWant(loc);
+            await settle(() => htmlLang() === loc && document.title === wantTitle && printHead().startsWith(markerWant(loc))
+              && JSON.stringify(qa(byTestId(shellEl, "caveat-strip"), ".sa-caveat-line").map((x) => [x.textContent, x.getAttribute("lang")])) === JSON.stringify(modeLines));
+            c.check(htmlLang() === loc, `${at}/htmlLang`, { loc }, loc, htmlLang());
+            c.check(document.title === wantTitle, `${at}/title`, { loc }, wantTitle, document.title);
+            const rb = byTestId(C, "return-to-clinician");
+            // The hidden clinician panels keep English labels (and, once visited, English content):
+            // tagged lang="en" while <html lang> follows a non-English companion, untagged in English.
+            const others = ["screener", "scribe", "research", "editor"].map((k) => C.querySelector(`#sa-panel-${k}`)).filter(Boolean);
+            c.check(others.length > 0 && others.every((p) => (loc === "en" ? !p.hasAttribute("lang") : p.getAttribute("lang") === "en")), `${at}/panels/@lang`, { loc },
+              loc === "en" ? "every clinician panel untagged" : 'every clinician panel lang="en"', others.map((p) => `${p.dataset.panel}:${p.getAttribute("lang")}`));
+            if (loc === "es") {
+              c.check(modePanel.getAttribute("aria-label") === patient.PATIENT_CHROME.es.title && modePanel.getAttribute("lang") === "es", `${at}/panel/label`, null,
+                `${patient.PATIENT_CHROME.es.title} (lang es)`, [modePanel.getAttribute("aria-label"), modePanel.getAttribute("lang")]);
+              c.check(!!rb && qa(rb, 'span[lang="en"]').some((x) => x.textContent === "Return to clinician view") && qa(rb, 'span[lang="es"]').some((x) => x.textContent === MODE_ES.returnButton && !!MODE_ES.returnButton),
+                `${at}/returnButton`, null, `Return to clinician view (en) + ${MODE_ES.returnButton} (es)`, rb ? rb.innerHTML.slice(0, 200) : "absent");
+            } else {
+              c.check(!!rb && rb.textContent === "Return to clinician view" && !qa(rb, "[lang]").length, `${at}/returnButton`, null, "Return to clinician view (English only)", rb ? rb.innerHTML : "absent");
+              c.check(!modePanel.hasAttribute("lang") && modePanel.getAttribute("aria-label") !== patient.PATIENT_CHROME.es.title, `${at}/panel/label`, null,
+                "the English panel label, untagged", [modePanel.getAttribute("aria-label"), modePanel.getAttribute("lang")]);
+            }
+            c.check(!modePanel.hasAttribute("aria-labelledby") && !C.querySelector("#sa-tab-patient") && !!modePanel.getAttribute("aria-label"), `${at}/panel/labelledby`, { loc },
+              "no aria-labelledby (no tab is rendered); named by aria-label", [modePanel.getAttribute("aria-labelledby"), modePanel.getAttribute("aria-label")]);
+            surfaceChecks(at, shellEl, view, loc, m);
           }
           const page = visibleText(shellEl, [WHAT_IT_ISNT]);
           c.check(page.includes(CAV.prototype), `${base}/mode/@caveat`, null, CAV.prototype, "absent");
+          // Leaving patient mode from es: the return dialog adds the Spanish (D10), and <html lang> is restored.
+          if (locs[locs.length - 1] === "es") {
+            click(byTestId(C, "return-to-clinician"));
+            const dlg = await waitFor(() => byTestId(C, "return-dialog"), { what: "the return dialog" });
+            const pair = (el, en, es) => !!el && qa(el, 'span[lang="en"]').some((x) => x.textContent === en) && qa(el, 'span[lang="es"]').some((x) => x.textContent === es && !!es);
+            const rd = MODE_ES.returnDialog || {};
+            c.check(pair(dlg.querySelector("h2"), "Return to clinician view?", rd.title), `${base}/mode/es/returnDialog/title`, null, rd.title, dlg.querySelector("h2") && dlg.querySelector("h2").innerHTML.slice(0, 200));
+            c.check(pair(dlg.querySelector(".sa-confirm-body"), saNs.RETURN_TEXT, rd.body), `${base}/mode/es/returnDialog/body`, null, rd.body, (dlg.querySelector(".sa-confirm-body") || {}).textContent);
+            c.check(pair(byTestId(dlg, "confirm-cancel"), "Stay in patient mode", rd.stay), `${base}/mode/es/returnDialog/stay`, null, rd.stay, (byTestId(dlg, "confirm-cancel") || {}).textContent);
+            c.check(pair(byTestId(dlg, "confirm-ok"), "Return to clinician view", rd.confirm), `${base}/mode/es/returnDialog/confirm`, null, rd.confirm, (byTestId(dlg, "confirm-ok") || {}).textContent);
+            click(byTestId(dlg, "confirm-ok"));
+            await waitFor(() => C.querySelector('.sa-shell[data-mode="clinician"]'), { what: "clinician mode" });
+            await settle(() => htmlLang() === langBefore && !/Preparándose|Patient Companion/.test(document.title));
+            c.check(htmlLang() === langBefore, `${base}/mode/es/return/htmlLang`, null, `${langBefore} (restored)`, htmlLang());
+            c.check(!/Preparándose|Patient Companion/.test(document.title), `${base}/mode/es/return/title`, null, "the clinician title", document.title);
+            tally.returns += 1;
+          }
         } finally {
           shell.unmount();
           c.check(errors.length === 0, `${base}/tab+mode/console`, null, [], errors.slice(0, 10));
@@ -359,6 +592,9 @@ async function renderedHalf(h, c, { patient, policy, masque, subjects }) {
             for (const loc of locs) {
               walks += await walkAndCheck(c, ctx, { root: panel, view, module: m, loc, at: `${base}/address/${loc}`,
                 chrome: () => [["visible-page", visibleText(shellEl, [WHAT_IT_ISNT])]] });
+              await settle(() => htmlLang() === loc && ((C.querySelector("thead.sa-print-head") || {}).textContent || markerWant(loc)).startsWith(markerWant(loc)));
+              c.check(htmlLang() === loc, `${base}/address/${loc}/htmlLang`, { loc }, loc, htmlLang());
+              surfaceChecks(`${base}/address/${loc}`, shellEl, view, loc, m);
             }
           } else {
             const miss = byTestId(C, "patient-missing");
@@ -374,6 +610,7 @@ async function renderedHalf(h, c, { patient, policy, masque, subjects }) {
 
       // ---------------------------------------------------------------- patient.html
       await sandbox({ search: `?module=${encodeURIComponent(m.id)}`, hash: "" }, async ({ errors }) => {
+        const pageLangBefore = htmlLang();
         const pg = mountApp(React.createElement(PatientPage, { env: h.env }));
         try {
           const C = pg.container;
@@ -387,6 +624,17 @@ async function renderedHalf(h, c, { patient, policy, masque, subjects }) {
               for (const loc of locs) {
                 walks += await walkAndCheck(c, ctx, { root: C, view, module: m, loc, at: `${base}/page/${loc}`,
                   chrome: () => [["visible-page", visibleText(shellEl, [WHAT_IT_ISNT])]] });
+                // Release 0.4.2 (D6): the page follows the companion's locale.
+                const at = `${base}/page/${loc}`;
+                const title = (patient.PATIENT_CHROME[loc] || patient.PATIENT_CHROME.en).title;
+                await settle(() => htmlLang() === loc && document.title === `${view.name} \u00b7 ${title}`);
+                c.check(htmlLang() === loc, `${at}/htmlLang`, { loc }, loc, htmlLang());
+                c.check(document.title === `${view.name} \u00b7 ${title}`, `${at}/title`, { loc }, `${view.name} · ${title}`, document.title);
+                const hs = byTestId(C, "patient-page-header");
+                const span = hs ? qa(hs, "span").pop() : null;
+                c.check(!!span && span.textContent === `${view.name} \u00b7 ${title}` && (loc === "en" ? !span.hasAttribute("lang") : span.getAttribute("lang") === loc),
+                  `${at}/header`, { loc }, `${view.name} · ${title}${loc === "en" ? "" : ` (lang ${loc})`}`, span ? `${span.textContent} (lang ${span.getAttribute("lang")})` : "absent");
+                surfaceChecks(at, shellEl, view, loc, m);
               }
             }
           } else {
@@ -397,7 +645,8 @@ async function renderedHalf(h, c, { patient, policy, masque, subjects }) {
           c.check(visibleText(C).includes(CAV.prototype), `${base}/page/@caveat`, null, CAV.prototype, "absent");
         } finally {
           pg.unmount();
-          await sleep(0);
+          await settle(() => htmlLang() === pageLangBefore);
+          c.check(htmlLang() === pageLangBefore, `${base}/page/htmlLang/restored`, null, pageLangBefore, htmlLang());
           c.check(errors.length === 0, `${base}/page/console`, null, [], errors.slice(0, 10));
         }
       });
@@ -405,5 +654,73 @@ async function renderedHalf(h, c, { patient, policy, masque, subjects }) {
   } finally {
     for (const k of ours) { try { registry.unregister(k); } catch (_) { /* gone */ } }
   }
+
+  // ---------------------------------------------------------------- the deployed pages, as served
+  // The scans above see the mounted shell or page root only. The deployed pages also carry static
+  // chrome outside #root (the corner badge "Prototype · not for clinical use"; noscript), which
+  // stays English while <html lang> follows the companion. Each page is booted by its own loader
+  // in a hidden same-origin frame at 1024 px (the badge shows above 640 px), switched to Español,
+  // and its whole body scanned; then switched back to English.
+  const mv = patient.projectForPatient(masque);
+  const frames = [];
+  if (Object.keys(mv.locales || {}).includes("es")) {
+    const id = encodeURIComponent(mv.id);
+    // A fresh query on each page, so the frame loads the page as served now, never a cached copy
+    // (the loader fetches modules with no-cache; the page itself goes through the HTTP cache).
+    const fresh = `fresh=${Date.now().toString(36)}`;
+    for (const [name, path] of [["patient.html", `patient.html?module=${id}&${fresh}`], ["screenair.html#mode=patient", `screenair.html?${fresh}#tab=patient&mode=patient&module=${id}`]]) {
+      const at = `/rendered/frame/${name}`;
+      const frame = document.createElement("iframe");
+      frame.style.cssText = "position:absolute;left:-10000px;top:0;width:1024px;height:800px;border:0";
+      frame.setAttribute("aria-hidden", "true");
+      frame.tabIndex = -1;
+      try {
+        frame.src = h.appUrl(path);
+        document.body.appendChild(frame);
+        const doc = await waitFor(() => {
+          const d = frame.contentDocument;
+          if (!d || !d.documentElement) return null;
+          return d.querySelector("[role=alert]") || (d.documentElement.dataset.masqueReady === "true" && d.querySelector('[data-testid="patient-locale-es"]')) ? d : null;
+        }, { timeout: 45000, every: 50, what: `${name} to boot in a frame` });
+        const win = frame.contentWindow;
+        const alert = doc.querySelector("[role=alert]");
+        if (!c.check(!alert && doc.documentElement.dataset.masqueReady === "true", `${at}/boot`, null, "masqueReady, no loader error", alert ? alert.textContent.slice(0, 300) : "not ready")) continue;
+        const badge = doc.querySelector(".masque-proto");
+        const near = (el) => { const x = el && el.closest("[lang]"); return x ? x.getAttribute("lang") : null; };
+        c.check(!!badge && badge.textContent === CAV.prototype && win.getComputedStyle(badge).display !== "none", `${at}/badge`, null, `${CAV.prototype}, shown at 1024 px`,
+          badge ? `${badge.textContent} (display ${win.getComputedStyle(badge).display})` : "absent");
+        c.check(doc.documentElement.getAttribute("lang") === "en" && near(badge) === "en", `${at}/en/@lang`, null, "<html lang> en, the badge en", [doc.documentElement.getAttribute("lang"), near(badge)]);
+        doc.querySelector('[data-testid="patient-locale-es"]').click();
+        await waitFor(() => doc.documentElement.getAttribute("lang") === "es", { what: `${name}: <html lang> es after Español` });
+        await sleep(50);
+        c.check(near(badge) === "en", `${at}/es/badge/@lang`, null, 'the corner badge lang="en" on an es page', badge ? `${near(badge)} (${badge.outerHTML.slice(0, 120)})` : "absent");
+        const scan = englishScan(doc.body, {
+          corpus: corpusFor(mv),
+          docLang: "es",
+          allowEn: (el) => !el.closest('[data-testid="patient-app"]') || el.matches('[data-testid="patient-locale-en"]'),
+        });
+        c.check(!scan.langEn.length, `${at}/es/@scan/langEn`, null, "no lang=\"en\" inside the Companion but the English button", scan.langEn.slice(0, 5));
+        c.check(!scan.english.length, `${at}/es/@scan/english`, null, "no English outside lang=\"en\" anywhere in the body", scan.english.slice(0, 5));
+        c.check(scan.texts > 20, `${at}/es/@scan/texts`, null, "a scanned page", scan.texts);
+        if (name.startsWith("screenair")) {
+          const others = [...doc.querySelectorAll('[role="tabpanel"]')].filter((p) => p.dataset.panel !== "patient");
+          c.check(others.length > 0 && others.every((p) => p.getAttribute("lang") === "en"), `${at}/es/panels/@lang`, null, 'every clinician panel lang="en"', others.map((p) => `${p.dataset.panel}:${p.getAttribute("lang")}`));
+        }
+        doc.querySelector('[data-testid="patient-locale-en"]').click();
+        await waitFor(() => doc.documentElement.getAttribute("lang") === "en", { what: `${name}: <html lang> en after English` });
+        c.check(near(badge) === "en", `${at}/en-again/badge/@lang`, null, "en", near(badge));
+        frames.push({ name, texts: scan.texts });
+      } catch (err) {
+        c.check(false, `${at}/drive`, null, "booted and driven", String((err && err.message) || err).split("\n")[0]);
+      } finally {
+        frame.remove();
+      }
+    }
+    c.check(frames.length === 2, "/rendered/frame/@coverage", null, "both deployed pages scanned in es", frames.map((f) => f.name));
+  }
+  c.note(`deployed pages in a frame (whole body, es): ${frames.map((f) => `${f.name} (${f.texts} text nodes)`).join("; ") || "none"}`);
   c.note(`rendered: ${live.map((s) => s.name).join("; ")} in the Patient tab, patient mode (Hand to patient and by address) and patient.html; ${walks} sections walked`);
+  c.note(`release 0.4.2: ${tally.surfaces} patient surfaces checked (strip, print header, footer, <html lang>), ${tally.scans} es DOM scans (${tally.scanTexts} text nodes), ${tally.returns} returns to the clinician view from es`);
+  const esLive = live.filter((s) => Object.keys(patient.projectForPatient(s.module).locales || {}).includes("es"));
+  c.check(tally.scans >= esLive.length * 2 && tally.returns === esLive.length, "/rendered/@es-coverage", null, `≥ ${esLive.length * 2} es scans, ${esLive.length} returns`, tally);
 }

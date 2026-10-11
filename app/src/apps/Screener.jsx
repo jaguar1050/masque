@@ -15,7 +15,9 @@
 //   - the sample rail carries the module's samples and scenarios (AD11, SampleRail.jsx);
 //   - meter zones are derived from the cut-points (AD7); the release is the shell's (AD4);
 //   - the tab note, and the provenance badge above the index for a non-built-in (§5.3);
-//   - the screen is published to the session store and captured rows are reported (§5.3).
+//   - the screen is published to the session store and captured rows are reported (§5.3);
+//   - release 0.4.3: an "EMR Friendly Template" button in the write-back row toggles a panel
+//     (EmrPanel) with the engine's plain-text consult-note template (engine/emr.js).
 // It never computes or shows a probability, and never shows a band while the index is
 // unsettled (coverageGate).
 //
@@ -24,7 +26,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   ArrowRight, ArrowLeft, RotateCcw, ShieldCheck, TriangleAlert, ChevronDown, Copy, Check, Send, User, FileJson,
-  Info, Plus, Download, Activity, FlaskConical,
+  Info, Plus, Download, Activity, FlaskConical, ClipboardList,
 } from "lucide-react";
 import { computeScore, meterTicks, meterZones } from "../engine/scoring.js";
 import { TIER_RANK } from "../engine/vocab.js";
@@ -33,6 +35,7 @@ import { activeFlagsOf, buildRoutingState, cdsPreview, gapSignals, routingRecs }
 import { buildBundle, buildCdsHooks, buildDataDictionary, buildQuestionnaire } from "../engine/fhir.js";
 import { rowsToCsv, screenToCohortRow } from "../engine/cohort.js";
 import { downloadJsonFile, downloadText, fhirHtml } from "../engine/download.js";
+import { EMR_UI, buildEmrTemplate, emrFrameDoc } from "../engine/emr.js";
 import { scopeCss } from "../engine/css.js";
 import { APP_VERSION, SITE } from "../engine/policy.js";
 import { richText } from "../engine/patient.js";
@@ -225,12 +228,17 @@ const SCREENER_CSS = `
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 `;
 
-// New chrome of this app only (the link card that replaces the panel, AD8). Engine chrome.
+// New chrome of this app only (the link card that replaces the panel, AD8; the EMR Friendly
+// Template panel, release 0.4.3). Engine chrome.
 const LINK_CSS = `
 .sa-scr-link{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:22px;padding:14px 15px;
   border:1px solid var(--line);border-radius:12px;background:var(--panel)}
 .sa-scr-link .sa-scr-link-t{flex:1 1 280px;font-size:13px;color:#33474A;line-height:1.45}
 .sa-scr-link svg{flex:0 0 auto}
+.sa-scr-emr{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.sa-scr-emr-hint{margin:0 0 8px;font-size:12.5px;color:var(--muted);line-height:1.45}
+.sa-scr-emr-frame{display:block;box-sizing:border-box;width:100%;height:420px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.sa-scr-emr-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
 `;
 
 const ROOT = ".sa-screener";
@@ -293,6 +301,7 @@ export default function Screener({
   const [answers, setAnswers] = useState({});
   const [ctx, setCtx] = useState({});                    // context items (unscored)
   const [showJson, setShowJson] = useState(false);
+  const [showEmr, setShowEmr] = useState(false);         // the EMR Friendly Template panel (0.4.3)
   const [toast, setToast] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -319,7 +328,7 @@ export default function Screener({
     setToast("Sample case loaded");
   }
   function reset() {
-    setAnswers({}); setCtx({}); setComplaint(""); setStep(0); setShowJson(false);
+    setAnswers({}); setCtx({}); setComplaint(""); setStep(0); setShowJson(false); setShowEmr(false);
     setRf({}); setSafetyReviewed(false);
     setToast("Screen cleared");
   }
@@ -357,6 +366,13 @@ export default function Screener({
   const bundle = useMemo(
     () => buildBundle(module, { patient, answers, score, complaint, activeFlags, emergent, routingError }, { surface: "screener" }),
     [module, patient, answers, score, complaint, activeFlags, emergent, routingError],
+  );
+
+  // EMR Friendly Template (release 0.4.3): plain text built by the engine from the same inputs and
+  // gates as the bundle, only while its panel is open. It is rebuilt when the screen changes.
+  const emrText = useMemo(
+    () => (showEmr ? buildEmrTemplate(module, { patient, answers, ctx, complaint, rf, appVersion }, { surface: "screener" }) : ""),
+    [showEmr, module, patient, answers, ctx, complaint, rf, appVersion],
   );
 
   // The host's callbacks, read through a ref: the effects below run on data changes only, so a
@@ -489,6 +505,7 @@ export default function Screener({
             recs={recs} gapAlert={gapAlert} gapFlags={gapFlags} preview={preview}
             bundle={bundle} showJson={showJson} setShowJson={setShowJson}
             copyBundle={copyBundle} copied={copied} setToast={setToast} appVersion={appVersion} site={site}
+            showEmr={showEmr} setShowEmr={setShowEmr} emrText={emrText}
           />
         )}
 
@@ -667,7 +684,8 @@ function ResultView(props) {
   const { module, stepDef, total, floor, ceiling, coverage, scorable, open, band, bandMeta, domains, recs, gapAlert, gapFlags,
           activeFlags = [], override, emergent, preview,
           cohort = [], captureScreen, downloadCohort,
-          bundle, showJson, setShowJson, copyBundle, copied, setToast, appVersion, site } = props;
+          bundle, showJson, setShowJson, copyBundle, copied, setToast, appVersion, site,
+          showEmr = false, setShowEmr, emrText = "" } = props;
   const copy = module.copy;
   const scaleMax = module.scaleMax;
   const indexName = copy.indexName;
@@ -815,6 +833,10 @@ function ResultView(props) {
           <button className="btn" onClick={() => setToast(scorable ? "Written to chart (simulated)" : "Partial screen written as in-progress (simulated)")}>
             <Send size={16}/> {scorable ? "Write result to chart" : "Write partial screen to chart"}
           </button>
+          <button className="btn ghost" type="button" data-testid="scr-emr-toggle" aria-expanded={showEmr}
+            onClick={() => setShowEmr && setShowEmr(v => !v)}>
+            <ClipboardList size={16}/> {EMR_UI.button}
+          </button>
           <button className="btn ghost" onClick={() => setShowJson(v => !v)}>
             <FileJson size={16}/> {showJson ? "Hide" : "View"} FHIR bundle
           </button>
@@ -824,6 +846,9 @@ function ResultView(props) {
             </button>
           )}
         </div>
+
+        {/* EMR Friendly Template (release 0.4.3): mounted only while open */}
+        {showEmr && <EmrPanel text={emrText} filePrefix={fhir.filePrefix} setToast={setToast} />}
 
         {/* pilot capture — the clinician-in-the-loop loop, closed */}
         <div className="capture">
@@ -889,6 +914,48 @@ function ResultView(props) {
           {(copy.screener.emrDetails || []).map((d, i) => <div key={i}><Rich text={d} /></div>)}
         </div>
       </details>
+    </div>
+  );
+}
+
+/**
+ * The EMR Friendly Template panel (release 0.4.3): a script-free iframe (sandbox="allow-same-origin",
+ * so the parent can read the edited text) holding one textarea prefilled with the engine's plain
+ * text, plus Copy and Download. Edits live only in the frame: they are copied and downloaded as
+ * shown, never saved, and a change to the screen rebuilds the text, as does leaving the result
+ * view (the panel unmounts).
+ */
+function EmrPanel({ text, filePrefix, setToast }) {
+  const frameRef = useRef(null);
+  const doc = useMemo(() => emrFrameDoc(text), [text]);
+  const current = () => {
+    try {
+      const d = frameRef.current && frameRef.current.contentDocument;
+      const ta = d && d.querySelector("textarea");
+      if (ta && typeof ta.value === "string") return ta.value;
+    } catch (_) { /* an unreadable frame falls back to the generated text */ }
+    return text;
+  };
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(current());
+      setToast(EMR_UI.copied);
+    } catch (_) {
+      setToast(EMR_UI.copyFailed);
+    }
+  }
+  function download() {
+    downloadText(`${filePrefix}-emr-template-screener.txt`, current(), "text/plain");
+  }
+  return (
+    <div className="sa-scr-emr" data-testid="scr-emr-panel">
+      <p className="sa-scr-emr-hint">{EMR_UI.instruction} {EMR_UI.regenerates}</p>
+      <iframe ref={frameRef} className="sa-scr-emr-frame" data-testid="scr-emr-frame" title={EMR_UI.frameTitle}
+        sandbox="allow-same-origin" srcDoc={doc} />
+      <div className="sa-scr-emr-actions">
+        <button className="btn ghost" type="button" data-testid="scr-emr-copy" onClick={copy}><Copy size={16}/> {EMR_UI.copy}</button>
+        <button className="btn ghost" type="button" data-testid="scr-emr-download" onClick={download}><Download size={16}/> {EMR_UI.download}</button>
+      </div>
     </div>
   );
 }

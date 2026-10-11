@@ -69,7 +69,7 @@ export const RUBRIC_KEYS = {
   ],
   optional: [
     "icon", "contextItems", "gapRule", "steps", "phenotypes", "infoPrompts", "sampleCases", "demo",
-    "lexicon", "defaultLocale", "locales", "research", "fhir", "cds", "copy", "provenance",
+    "lexicon", "defaultLocale", "locales", "research", "fhir", "cds", "copy", "emrTemplate", "provenance",
   ],
 };
 
@@ -115,6 +115,35 @@ export const COPY_SLOTS = {
   "locales.en.ui.clinicianLede": [],
 };
 
+/** Upper bound of lexicon.scale[i].carry (following patient replies that may supply a value). */
+export const LEXICON_CARRY_MAX = 3;
+/**
+ * The pending slot of extractInContext (engine/extraction.js, which declares the same shape): at
+ * most one, for a scale entry with heard: true and carry. A normal slot lets the next turnsLeft
+ * patient replies supply the entry's value. yieldOnly: true (design 05, round 3b) marks a yield-only
+ * slot: armed by an utterance that states the entry's band but whose value is withheld, or turned
+ * from a normal slot by such an utterance; each such utterance renews its window to the entry's
+ * full carry (round 3c). It still counts as pending for yieldTo and is validated, consumed and
+ * expired like any slot, but no value is ever carried into it. A line that withholds its entry's
+ * value also ends a normal slot of another entry, unless that entry is withheld on the same line too
+ * (round 3d, design 05 §13.12), so no later reply is carried into that entry. That holds when no cue
+ * on the line awaits a value: rules 1 and 2 of the "Slots" header decide first, so that entry's cue
+ * heard again with no band re-opens its normal slot (follow-up F-3D-1). Absent or false: the
+ * slot may carry. A yieldOnly that is present and not a boolean makes the slot invalid (dropped).
+ * The arming precedence is the "Slots" section of engine/extraction.js.
+ * @typedef {{id:string, cue:string, cueText:string, evidence:string, cueIndex:number, turnsLeft:number, yieldOnly?:boolean}} PendingCue
+ */
+/** Keys a lexicon scale entry may carry (validator V28 warns on any other). */
+export const LEXICON_SCALE_KEYS = ["id", "cue", "bands", "fallback", "heard", "carry", "yieldTo", "anchor", "carryExclude"];
+/**
+ * Keys of lexicon.normalize and the values each accepts (validator V28 rejects any other key or
+ * value). apostrophes: true folds typographic apostrophes to "'" before matching; numbers: "en"
+ * spells standalone small integers as English words before band phrase matching only (scale bands,
+ * direct and carried; needs an English lang). Every other phrase family and every gate window runs
+ * on the apostrophe-folded text, so digits typed there are matched as digits.
+ */
+export const LEXICON_NORMALIZE_KEYS = ["apostrophes", "numbers"];
+
 // ---------------------------------------------------------------------------------------
 // Rubric (JSON layer, design §3.2). R = required, O = optional; §3.5 gives the engine
 // behaviour for an absent optional field.
@@ -153,8 +182,63 @@ export const COPY_SLOTS = {
  * @property {FhirData} [fhir]                   O
  * @property {CdsData} [cds]                     O
  * @property {Copy} [copy]                       O
+ * @property {EmrTemplate} [emrTemplate]         O clinician-only consult-note data (release 0.4.3, V61); never patient-facing
  * @property {Provenance} [provenance]           O (required when the module is derived)
  * @property {ChangelogEntry[]} changelog        R (may be [])
+ */
+
+/**
+ * The EMR friendly consult-note data of a module (release 0.4.3, validator V61). Read only by
+ * engine/emr.js on the clinician surfaces; locked in the Rubric Editor. Every id-bearing rule of
+ * the template lives here, never in the engine. No string may carry "[", "]", "{" or "}": square
+ * brackets are the engine's placeholders. A module without it gets the engine's neutral template
+ * (placeholders, screen result, red-flag actions and routing recs; no references, no checklist).
+ * @typedef {Object} EmrTemplate
+ * @property {Object<string, EmrCitation>} [citations]   key /^[A-Z0-9][A-Za-z0-9-]*$/ → citation metadata; every key is used
+ * @property {EmrReference[]} [references]       printed where the referral gate opens and, under an open red flag (release
+ *                                                 0.4.6), where it would open with the flags removed, under the screen-based
+ *                                                 heading (the FHIR bundle withholds the referral; it never carries references)
+ * @property {string[]} [instrumentRecs]         routing rule ids whose fixed chips are all instruments ("Instruments: a; b");
+ *                                                 a listed rule may not compute its chips on any surface (V61); other fixed
+ *                                                 chips print as "Named on screen: a; b", computed chips never
+ * @property {Object<string, string[]>} [redFlagRefs]  red-flag id → citation keys ("Ref:" lines under its action)
+ * @property {Object<string, string>} [redFlagPlaceholders]  red-flag id → a placeholder the engine brackets under its action
+ * @property {Array<{item:string, qualifier?:string}|{label:string, probe?:string}>} [history]  treatment and workup
+ *                                                 to date: an item's own wording and its recorded state (qualifier follows
+ *                                                 a negative answer no probe wrote), or a placeholder heading (a probe's
+ *                                                 recorded answer follows it, labelled as recorded); no citations (V61)
+ * @property {EmrChecklistRow[]} [checklist]     management not yet offered; never ticked from missing data
+ * @property {Array<{label:string, citations?:string[], probe?:string, optionPlaceholders?:Array<{option:number, placeholder:string}>}>} [examRows]
+ *                                                 placeholders; a probe's recorded answer is shown as recorded by the
+ *                                                 clinician (an exam-kind probe only); optionPlaceholders (release 0.4.6):
+ *                                                 a placeholder the engine brackets under the row when the probe was
+ *                                                 answered with that option (one per option, a row with a probe only)
+ * @property {Array<{item:string, group:("medical"|"family")}|{label:string, group:("medical"|"family")}>} [pastHistory]
+ *                                                 release 0.4.6: past-history rows, an item's own wording and its
+ *                                                 recorded state or a placeholder heading; "medical" after the pregnancy
+ *                                                 line, "family" before the family-history placeholder (which then reads
+ *                                                 "Other family history"); an item listed here leaves the review of
+ *                                                 systems and may not also be a history row (V61)
+ */
+/** @typedef {{title:string, publisher:string, citation:string, url:string, accessed:string}} EmrCitation  url https, accessed YYYY-MM-DD */
+/**
+ * Either a reference line (label + its citations) or a note line (note + "Ref:" citations).
+ * showFor.phenotypes limits it to those complaints (phenotype values).
+ * @typedef {{label?:string, note?:string, citations:string[], showFor?:{phenotypes:string[]}}} EmrReference
+ */
+/**
+ * render: "done" ticks the row ([x], recorded on screen; a probe, or an item answer a Scribe probe
+ * wrote: recorded by clinician via probe), "answeredNo" adds "screen answered no" (probe: "recorded
+ * by clinician via probe, answered no"), "note" adds context only, "neverTried" (a probe signal
+ * only) reads "patient reports never tried". An item signal's render matches its answer's polarity:
+ * done and note a positive answer, answeredNo a negative one (V61). qualifier is added to the
+ * signal's source in parentheses; placeholder is printed in square brackets after the row; box
+ * false prints a status line without a box; onlyWithSignal true prints the row only when one of
+ * its signals holds. Each printed row names its own sources by number; the exam rows and the
+ * checklist share one numbered list, printed once after the plan (review round 3).
+ * @typedef {{id:string, group:string, label:string, citations:string[], placeholder?:string, box?:boolean, onlyWithSignal?:boolean,
+ *            signals?:Array<{item:string, value:(string|number), render:string, qualifier?:string}|
+ *                           {probe:string, option:number, render:string, qualifier?:string}>}} EmrChecklistRow
  */
 
 /**
@@ -231,8 +315,27 @@ export const COPY_SLOTS = {
  * @property {string} scribeDefault              R value when no derive rule fires
  * @property {string[]} [alwaysActive]           O domains always in the Scribe pool; default all domains
  * @property {string} [tagBoostDomain]           O items with a tag rank first while this domain is active
- * @property {{byPhenotype:Object<string,{specialty:string, reason:string}>, default:{specialty:string, reason:string}}} [referral]  O
+ * @property {{byPhenotype:Object<string,{specialty:string, reason:string}>, default:{specialty:string, reason:string},
+ *            clinicianRules?:ClinicianRule[]}} [referral]  O  clinicianRules: release 0.4.5 (V27)
  * @property {{byPhenotype:Object<string,string>, default:string}} [cdsTerm]  O
+ */
+
+/**
+ * A clinician rule of the referral table (release 0.4.5; engine/emr.js, V27): text a clinician
+ * applies, printed in the EMR template's plan right above the recommendations whenever it prints a
+ * referral line or the clinician placeholder for a phenotype value the rule names: "Referral rule
+ * (<source>): <rule>", "Definition (<source>):" and the definition lines, "Clarification
+ * (<clarificationSource>):" and the clarification lines, and "<confirm>: [ ]" for each condition
+ * the clinician confirms. The engine never acts on it: the referral stays byPhenotype / default.
+ * No string carries [ ] { }. A rule or definition needs its source, a clarification its own.
+ * @typedef {Object} ClinicianRule
+ * @property {string[]} phenotypes               R non-empty, distinct phenotype values
+ * @property {string} [source]                   O who stated the rule and definition, and when; R with rule or definition
+ * @property {string} [rule]                     O the rule, verbatim
+ * @property {string[]} [definition]             O definition lines, verbatim
+ * @property {string} [clarificationSource]      O who stated the clarification, and when; R with clarification
+ * @property {string[]} [clarification]          O clarification lines, verbatim
+ * @property {string[]} [confirm]                O the conditions a clinician confirms (each a [ ] placeholder)
  */
 
 /**
@@ -265,9 +368,71 @@ export const COPY_SLOTS = {
  * @property {{window:number, cues:string[]}} historical  R
  * @property {Array<{id:string, ph:string[], thirdPartyExempt?:true}>} bool  R
  * @property {Array<{id:string, val:string, ph:string[]}>} ctx  R
- * @property {Array<{id:string, cue:string[], bands:Array<{ph:string[], v:number}>, fallback:(number|null)}>} scale  R
+ * @property {Array<{id:string, cue:string[], bands:Array<{ph:string[], v:number}>, fallback:(number|null),
+ *             heard?:true, carry?:number, yieldTo?:string[], anchor?:string[], carryExclude?:string[]}>} scale  R
+ *                                                 keys ⊆ LEXICON_SCALE_KEYS (V28 warns on any other). All five
+ *                                                 additions are optional, per entry, and inert when absent:
+ *                                                 heard   F1: true shows the cue when it is heard without a value
+ *                                                         (no band matched, no fallback); a heard cue never sets an
+ *                                                         answer. Needs fallback null (V28 warns otherwise).
+ *                                                         heard: true also changes the scored value of this entry
+ *                                                         in the cue's own utterance (design 05, round 3, R9):
+ *                                                         every band phrase hit is collected (on the number-
+ *                                                         normalised view; carryExclude phrases only in the cue's
+ *                                                         sentence) and hits contained in a longer hit are
+ *                                                         dropped. Then any hit negated within the negation
+ *                                                         window, any carryRefuse phrase in the utterance, or two
+ *                                                         or more distinct band values → no value: the cue is shown
+ *                                                         heard but does NOT arm carry-over. Exactly one value →
+ *                                                         that value. No hit at all → heard, and carry-over may
+ *                                                         arm. Without heard the first band, in array order, with
+ *                                                         any hit wins (unchanged).
+ *                                                 carry   F2: integer 1..LEXICON_CARRY_MAX, needs heard: true; that
+ *                                                         many following patient replies may supply the value from
+ *                                                         a band of this entry. Never on an entry with a band that
+ *                                                         records an f = 0 option (V28).
+ *                                                 yieldTo F4: ids of other scale or bool entries; the entry captures
+ *                                                         nothing (no value, no heard) in an utterance where one of
+ *                                                         them is present (any of its phrases, negated or not) or
+ *                                                         pending, unless an anchor phrase occurs unnegated. No
+ *                                                         self-reference, duplicate or cycle (V28).
+ *                                                 anchor  F4: phrases that keep the entry capturing despite yieldTo;
+ *                                                         only meaningful with yieldTo (V28); lowercase (V29).
+ *                                                 carryExclude F2: band phrases of this entry that never supply a
+ *                                                         carried value. In the cue's own utterance one supplies
+ *                                                         a value only in a cue sentence, one holding a cue hit
+ *                                                         that is not negated and passes the attribution and
+ *                                                         history gates (sentences end at . ! ? or ; followed by
+ *                                                         whitespace or the end of the text); elsewhere it still
+ *                                                         counts for the negation and disagreement tests and as
+ *                                                         a stated band. In a carried reply it is still
+ *                                                         collected, so it can make the
+ *                                                         reply negated or ambiguous, and a reply whose only hits
+ *                                                         are excluded phrases is refused. Needs carry on the
+ *                                                         entry; each a non-empty lowercase string found verbatim
+ *                                                         in one of the entry's band phrase lists; no duplicates
+ *                                                         (V28).
  * @property {Array<{ids:Array<{id:string, value:(string|number), kind:("item"|"ctx")}>, ph:string[]}>} multi  R
  * @property {Object<string,string[]>} redFlags  R keys === flag ids, both ways, and every list non-empty (V28)
+ * @property {string[]} [carryRefuse]            O phrases that withhold a band value (F2). In a carried reply one refuses
+ *                                                 the carry. In the own utterance of a scale entry with heard:
+ *                                                 true it withholds that entry's band value, and no carry-over
+ *                                                 opens from that utterance. It can only prevent a capture,
+ *                                                 never cause one: where it withholds a value nothing is armed,
+ *                                                 where no band phrase matched it changes nothing, and it never
+ *                                                 opens a carry-over window itself (a refused reply only uses
+ *                                                 up one reply of a window an earlier utterance opened, like any
+ *                                                 other refused reply). Non-empty when present; warned when no
+ *                                                 scale entry has heard: true or carry (V28).
+ * @property {{apostrophes?:boolean, numbers?:"en"}} [normalize]  O text normalization before matching; absent = none
+ *                                                 (keys ⊆ LEXICON_NORMALIZE_KEYS, V28). apostrophes: true folds
+ *                                                 U+2018, U+2019, U+02BC and U+2032 to "'" (same length). numbers:
+ *                                                 "en" rewrites standalone integers 0–20 and the round tens 30–90 as
+ *                                                 English words for band phrase matching only (scale bands, direct
+ *                                                 and carried); cues, bool, ctx, multi, red flags, anchors,
+ *                                                 carryRefuse and every gate window run on the apostrophe-folded
+ *                                                 text. Needs lang "en" or "en-…" (absent lang = "en-US").
+ *                                                 Reported indices stay in original-text coordinates.
  * @property {({version:string, lexiconVersion:string, file?:string}|null)} goldSet  R for built-ins; O otherwise (a lexicon
  *                                                 created in the editor has none: footer "gold set — (not benchmarked)")
  */
@@ -277,7 +442,10 @@ export const COPY_SLOTS = {
  * @property {boolean} reviewed                  R en true, es false; forced false on edit and while `stale` is non-empty (V55)
  * @property {boolean} [editedLocally]           O set by derive (§3.11)
  * @property {string[]} [stale]                  O JSON paths whose English source changed after this translation (§3.11)
- * @property {Object<string,{q:string, opts?:string[], ask?:string, help?:string}>} items  R when the Patient tab is wanted
+ * @property {Object<string,{q:string, opts?:string[], ask?:string, help?:string, clin?:string}>} items  R when the Patient tab is wanted;
+ *                                                 clin (release 0.4.2) O, translations only: the item's clinician line
+ *                                                 in this language for the patient summary ("For my clinician"); absent →
+ *                                                 the item's patientClin (English). Never in en (V32); V60 applies
  * @property {Object<string,{q:string, say:string}>} redFlags  R when items is present
  * @property {Object<string,{q:string, opts:Array<[string,string]>}>} [contextItems]  O the Patient's own value vocabulary
  * @property {Object<string,{title?:string, heading?:string, lede?:string, intro?:string}>} [steps]  O keyed by patient step key
@@ -383,7 +551,7 @@ export const COPY_SLOTS = {
 
 /**
  * `acknowledged` = JSON pointers confirmed in the Apply dialog (§5.7).
- * @typedef {{date:string, kind:("reconciliation"|"extraction"|"derived"|"note"), note:string,
+ * @typedef {{date:string, kind:("reconciliation"|"extraction"|"derived"|"note"|"lexicon"|"translation"|"emr-template"|"sign-off"|"referral"|"emr-decisions"), note:string,
  *            author?:string, paths?:string[], axes?:Object<string,[string,string]>,
  *            acknowledged?:string[]}} ChangelogEntry
  */
@@ -550,7 +718,8 @@ export const COPY_SLOTS = {
  * @property {FhirData} fhir                      rendered identity
  * @property {CdsData} cds                        rendered identity
  * @property {Copy} copy                          ENGINE_COPY_DEFAULTS merged under rubric.copy
- * @property {Logic} logic                        the frozen logic object or GENERIC_LOGIC
+ * @property {(EmrTemplate|null)} emrTemplate     rubric.emrTemplate as is, or null (release 0.4.3)
+ * @property {Logic} logic                       the frozen logic object or GENERIC_LOGIC
  * @property {{rubricSha256:string, logicSha256:(string|null), instrumentHash:string, scoringHash:string,
  *             lexiconHash:(string|null), contentHash:string}} hashes
  * @property {{instrument:string, lexicon:(string|null), probeSet:(string|null), goldSet:(string|null),

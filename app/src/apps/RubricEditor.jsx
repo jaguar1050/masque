@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { scopeCss } from "../engine/css.js";
 import {
-  acknowledgePaths, addFlag, addItem, bindDerived, canDeleteItem, caseFromSnapshot, classifyChanges, closureLabel,
+  acknowledgePaths, addFlag, addItem, bindDerived, canDeleteItem, caseFromSnapshot, changedClinItems, classifyChanges, closureLabel,
   closureOutput, createEnglishPatientWording, createLexicon, deleteFlag, deleteItem, deriveAndBind, deriveRubric,
   diffRubrics, domainSum, flagDeletePlan, getAt, identityProblems, impactCases, impactRow, itemDependents, lockReason,
   lockViolations, newFlagProblems, newItemProblems, proposeIdentity, ptrOverlaps, ptrParse, revertChange, setAt,
@@ -106,6 +106,7 @@ export const EDITOR_COPY = {
   genericLogic: "Data-only module: no logic file (generic logic).",
   stale: "English changed",
   english: "English:",
+  clinLine: "Clinician line (patient summary)",
   created: "Created {label}. Choose it from the Module menu when you want to use it.",
   createdSwitch: "Created {label}.",
   addItemRules: "The new item must satisfy: V11 (an id matching /^[a-z][a-z0-9_]*$/, unused by any item, context item, flag or info prompt); V13–V15 (a scale needs ≥ 2 labelled options with f from 0 to 1 and at least one f of 0; w ≠ 0 with the domain's sign; Σw must still equal the domain max — adjust another weight or use “set max = Σw”, which changes the scale and therefore the instrument); V32 (English patient wording when the module has it); V28 (lexicon phrases are lowercase and name existing items).",
@@ -298,8 +299,11 @@ function useNumberText(value) {
   return [text, (t) => { setText(t); }];
 }
 
-/** One editable (or locked) field at a JSON pointer. */
-function Field({ path, label, kind = "text", hint = null, lower = false, placeholder = "" }) {
+/**
+ * One editable (or locked) field at a JSON pointer. `optional`: clearing the text removes the key
+ * (an optional wording field such as a translation's clinician line), rather than leaving "".
+ */
+function Field({ path, label, kind = "text", hint = null, lower = false, placeholder = "", optional = false }) {
   const ed = useEd();
   const value = getAt(ed.rubric, path);
   const parentValue = getAt(ed.parent.rubric, path);
@@ -312,7 +316,7 @@ function Field({ path, label, kind = "text", hint = null, lower = false, placeho
   const onText = (e) => {
     let v = e.target.value;
     if (lower) v = v.toLowerCase();
-    ed.update(path, v);
+    ed.update(path, optional && v === "" ? undefined : v);
   };
   const onNum = (e) => {
     const t = e.target.value;
@@ -389,7 +393,11 @@ function PhraseList({ path, label, minOne = false }) {
   };
   return (
     <div className="re-field" data-path={path}>
-      <div className="re-flabel"><span>{label}</span>{ed.changedUnder(path) && <span className="re-tag re-edit">edited</span>}</div>
+      <div className="re-flabel" title={reason || undefined}>
+        <span>{label}</span>
+        {reason && <span className="re-tag re-lock" title={reason}><Lock size={11} aria-hidden="true" />{EDITOR_COPY.locked}</span>}
+        {ed.changedUnder(path) && <span className="re-tag re-edit">edited</span>}
+      </div>
       <div className="re-chips">
         {list.map((p, i) => {
           const last = minOne && list.length <= 1;
@@ -397,7 +405,7 @@ function PhraseList({ path, label, minOne = false }) {
             <span className="re-chip" key={i + ":" + p}>
               {p}
               <button type="button" aria-label={`Remove ${p}`} data-remove-phrase={`${path}/${i}`} disabled={!!reason || last}
-                title={last ? EDITOR_COPY.lastPhrase : undefined}
+                title={reason || (last ? EDITOR_COPY.lastPhrase : undefined)}
                 onClick={() => ed.update(path, list.filter((_, j) => j !== i))}>
                 <X size={12} aria-hidden="true" />
               </button>
@@ -406,6 +414,7 @@ function PhraseList({ path, label, minOne = false }) {
         })}
         {!list.length && <span className="re-sub">(none)</span>}
       </div>
+      {reason && <div className="re-hint">{reason}</div>}
       {minOne && list.length <= 1 && <div className="re-hint">{EDITOR_COPY.lastPhrase} (V28).</div>}
       {!reason && (
         <div className="re-chip-add">
@@ -852,6 +861,12 @@ function PatientSection() {
             {(getAt(r, P(`/items/${it.id}/help`)) !== undefined || getAt(r, `/locales/en/items/${it.id}/help`) !== undefined) && (
               <Field path={P(`/items/${it.id}/help`)} label="Help" kind="textarea" hint={hintEn(`/items/${it.id}/help`)} />
             )}
+            {loc !== "en" && (
+              // Release 0.4.2: the translated clinician line of the patient summary ("For my clinician").
+              // English has none: the item's patientClin (or, without one, its text) is the English line.
+              <Field path={P(`/items/${it.id}/clin`)} label={EDITOR_COPY.clinLine} kind="textarea" optional
+                hint={`${EDITOR_COPY.english} ${typeof it.patientClin === "string" ? it.patientClin : it.text}`} />
+            )}
           </div>
         ))}
       </div>
@@ -910,6 +925,17 @@ function PatientSection() {
   );
 }
 
+/** One line describing lexicon.normalize (read-only display; every key shown, unknown ones raw). */
+function normalizeSummary(n) {
+  const parts = Object.keys(n).map((k) => {
+    const v = n[k];
+    if (k === "apostrophes" && typeof v === "boolean") return v ? "typographic apostrophes (‘ ’ ʼ ′) read as '" : "apostrophes: off";
+    if (k === "numbers" && v === "en") return "standalone numbers 0–20 and round tens 30–90 read as English words";
+    return `${k}: ${JSON.stringify(v)}`;
+  });
+  return parts.length ? parts.join(" · ") : "none";
+}
+
 function LexiconSection() {
   const ed = useEd();
   const r = ed.rubric;
@@ -950,6 +976,11 @@ function LexiconSection() {
         <PhraseList path="/lexicon/negation/cues" label="Negation cues" />
         <PhraseList path="/lexicon/thirdParty/cues" label="Third-party cues" />
         <PhraseList path="/lexicon/historical/cues" label="Historical cues" />
+        {Array.isArray(lx.carryRefuse) && <PhraseList path="/lexicon/carryRefuse" label="Carry-over refusal phrases (read-only; a reply containing one never supplies a carried value, and in a heard entry's own utterance that states a band one withholds the value and opens no carry-over)" />}
+        {isObj(lx.normalize) && (
+          <div className="re-sub" data-normalize-config>
+            Text normalization before matching: {normalizeSummary(lx.normalize)} (read-only: approved lexicon configuration)
+          </div>)}
       </div>
       <div className="re-card" data-section="lexicon">
         <h3>Red-flag cues</h3>
@@ -968,6 +999,18 @@ function LexiconSection() {
             <div className="re-item" key={i}>
               <PhraseList path={`/lexicon/scale/${i}/cue`} label={`${e.id} cue — ${nameOf(e.id)}`} />
               {arr(e.bands).map((b, j) => <PhraseList key={j} path={`/lexicon/scale/${i}/bands/${j}/ph`} label={`${e.id} → option ${b.v}`} />)}
+              {e.heard === true && (
+                <div className="re-sub" data-heard-config={e.id}>
+                  Heard signal on{Number.isInteger(e.carry) ? ` · carry-over: the next ${e.carry} patient ${e.carry === 1 ? "reply" : "replies"} may supply the value` : ""} (read-only: approved lexicon configuration)
+                </div>)}
+              {Array.isArray(e.carryExclude) && (
+                <PhraseList path={`/lexicon/scale/${i}/carryExclude`}
+                  label={`${e.id} carry-over exclusions (read-only): these band phrases supply a value only in a sentence where the cue is said, and never supply a carried value`} />)}
+              {Array.isArray(e.yieldTo) && (
+                <div className="re-sub" data-yield={e.id}>
+                  Yields to {e.yieldTo.join(", ")} (read-only): a sentence that names one of these captures nothing for {e.id} unless an anchor phrase below is present and not negated.
+                </div>)}
+              {Array.isArray(e.anchor) && <PhraseList path={`/lexicon/scale/${i}/anchor`} label={`${e.id} anchors (read-only)`} />}
             </div>
           ))}
         </div>
@@ -1277,6 +1320,8 @@ export default function RubricEditor({ entries, activeKey, env, onApply, onDownl
   // Diff, locks, acknowledgements.
   const changes = useMemo(() => (draft && parent ? diffRubrics(parent.rubric, draft) : []), [draft, parent]);
   const changedSet = useMemo(() => new Set(changes.map((c) => c.path)), [changes]);
+  // Items whose English clinician line differs from the parent's (the source of a translation's clin).
+  const clinChanged = useMemo(() => new Set(parent && rubric && rubric !== parent.rubric ? changedClinItems(parent.rubric, rubric) : []), [parent, rubric]);
   const locks = useMemo(() => (draft && parent ? lockViolations(parent, draft) : []), [draft, parent]);
   const ackList = useMemo(() => (parent ? acknowledgePaths(parent, readsObserved) : []), [parent, readsObserved]);
   const ackByPath = useMemo(() => new Map(ackList.map((a) => [a.path, a])), [ackList]);
@@ -1352,9 +1397,13 @@ export default function RubricEditor({ entries, activeKey, env, onApply, onDownl
     if (!m || m[1] === "en" || !rubric) return false;
     const L = rubric.locales && rubric.locales[m[1]];
     if (L && arr(L.stale).includes(path)) return true;
+    // A translated clinician line follows its item's English clinician line (patientClin, or the
+    // item text without one), compared by item id exactly as deriveRubric does (release 0.4.2).
+    const c = /^\/items\/([^/]+)\/clin$/.exec(m[2]);
+    if (c) return clinChanged.has(c[1]) && getAt(rubric, path) !== undefined && !changedSet.has(path);
     const enPath = `/locales/en${m[2]}`;
     return changedSet.has(enPath) && getAt(rubric, path) !== undefined && !changedSet.has(path);
-  }, [rubric, changedSet]);
+  }, [rubric, changedSet, clinChanged]);
 
   const focusPath = useCallback((path) => {
     const sec = sectionOf(path || "");

@@ -4,9 +4,12 @@
 // A Patient summary long enough for at least two pages (every flag ticked, every item answered,
 // every context question answered) is printed with page.pdf() and read back with ctx.pdfText.
 // On every page the caveat header must be the topmost text, read exactly
-// "Prototype · not for clinical use" (+ " · Traducción sin revisar" for unreviewed es, + the
-// patient provenance marker for a non-built-in), and no other text item's box may intersect
-// the header's box (nothing printed under it). In es the unreviewed banner is on page 1.
+// "Prototype · not for clinical use" (in es followed by " — Prototipo · no apto para uso clínico",
+// the Spanish companion line of release 0.4.2, then " · Traducción sin revisar" for unreviewed es;
+// + the patient provenance marker for a non-built-in, in Spanish in es), and no other text item's
+// box may intersect the header's box (nothing printed under it). In es the unreviewed banner is
+// on page 1, and the derivation's provenance and stale notices there are the Spanish caveats.
+// The .txt closes with the dated caveat line, which in es carries the companion line too.
 //
 // Targets:
 //   dev        tests/dev/patient.html (the component inside the shell's PrintFrame, header
@@ -46,6 +49,8 @@ export default async function print(page, ctx) {
   const CAV = policy.CAVEATS;
   const P = CAV.prototype;
   const ES = CAV.unreviewed.es;
+  // Release 0.4.2 (D9): on a Spanish patient surface the English marker is followed by its Spanish companion.
+  const PES = `${P} \u2014 ${CAV.prototypeCompanion.es}`;
   const rubric = await (await fetch(new URL("app/modules/masque/masque.rubric.json", ctx.baseUrl))).json();
   const flagStrings = (rubric.redFlags || []).flatMap((f) => [f.text, f.points, f.action]).filter(Boolean);
   const out = path.join(ctx.artifactsDir, "print");
@@ -139,9 +144,9 @@ export default async function print(page, ctx) {
   // ------------------------------------------------------------------ dev page: en, es, derived
   const dev = [
     { label: "dev-en", q: "", loc: "en", header: P, page1: [] },
-    { label: "dev-es", q: "", loc: "es", header: `${P} · ${ES.title}`, page1: [ES.title, ES.body.slice(0, 40)] },
+    { label: "dev-es", q: "", loc: "es", header: `${PES} · ${ES.title}`, page1: [ES.title, ES.body.slice(0, 40)] },
     { label: "dev-derived-en", q: "?derived=1", loc: "en", header: `${P} · ${CAV.patient.edited.short}`, page1: [CAV.patient.edited.en, CAV.editedWording.en] },
-    { label: "dev-derived-es", q: "?derived=1", loc: "es", header: `${P} · ${ES.title} · ${CAV.patient.edited.short}`, page1: [ES.title, CAV.patient.edited.en, CAV.staleTranslation.en] },
+    { label: "dev-derived-es", q: "?derived=1", loc: "es", header: `${PES} · ${ES.title} · ${CAV.patient.edited.esShort}`, page1: [ES.title, CAV.patient.edited.es, CAV.staleTranslation.es] },
   ];
   const exportsDone = {};
   for (const d of dev) {
@@ -181,7 +186,8 @@ export default async function print(page, ctx) {
       const [dlt] = await Promise.all([page.waitForEvent("download"), page.click("[data-testid=patient-download-txt]")]);
       const txt = readFileSync(await dlt.path(), "utf8");
       const lastLine = txt.split("\n").pop();
-      check(/^Prototype · not for clinical use · \d{4}-\d{2}-\d{2}$/.test(lastLine), `/${d.label}/export/txt/dated`, "Prototype · not for clinical use · YYYY-MM-DD", lastLine);
+      const datedHead = d.loc === "es" ? PES : P;
+      check(lastLine.startsWith(`${datedHead} · `) && /^\d{4}-\d{2}-\d{2}$/.test(lastLine.slice(datedHead.length + 3)), `/${d.label}/export/txt/dated`, `${datedHead} · YYYY-MM-DD`, lastLine);
       check(/\.txt$/.test(dlt.suggestedFilename()), `/${d.label}/export/txt/name`, "*.txt", dlt.suggestedFilename());
       exportsDone[d.loc] = { file, header: d.header, page1: d.page1 };
     }
@@ -234,7 +240,7 @@ export default async function print(page, ctx) {
         if (loc === "es") { await ready(page, shellUrl); await page.click('nav.sa-tabs [data-tab="patient"]'); }
         const r = await fillPatient(page, loc);
         if (!check(r === "ok", `/shell-patient-${loc}/fill`, "ok", r)) continue;
-        const header = loc === "es" ? `${P} · ${ES.title}` : P;
+        const header = loc === "es" ? `${PES} · ${ES.title}` : P;
         const head = await page.textContent(".sa-print-head td").catch(() => null);
         check(head === header, `/shell-patient-${loc}/print-head`, header, head);
         await pdfChecks(page, `shell-patient-${loc}`, { header, page1: loc === "es" ? [ES.title] : [] });
@@ -264,7 +270,7 @@ export default async function print(page, ctx) {
         if (loc === "es") await ready(page, patientUrl);
         const r = await fillPatient(page, loc);
         if (!check(r === "ok", `/patient-page-${loc}/fill`, "ok", r)) continue;
-        const header = loc === "es" ? `${P} · ${ES.title}` : P;
+        const header = loc === "es" ? `${PES} · ${ES.title}` : P;
         await pdfChecks(page, `patient-page-${loc}`, { header, page1: loc === "es" ? [ES.title] : [] });
         omissionChecks(`patient-page-${loc}/media`, await printedText(page));
       }

@@ -11,7 +11,11 @@
 //   is captured with the "· voice" tag; the Physician toggle captures nothing; the browser ending
 //   a session reopens it (auto-restart); a recognition error is mapped to its message;
 //   stopSignal, micAllowed=false (also during "starting", the holdStart case), pagehide, unmount
-//   and remount (module switch) each leave no live session; the insecure-context notice shows
+//   and remount (module switch) each leave no live session; heard and carry-over by voice (a
+//   final "I'm feeling really dizzy" gives one dashed heard tag and a Heard card, Reset clears
+//   them; a Physician final neither carries nor consumes the window; an interim "a few hours"
+//   previews the carry tag and writes no answer; the final carries v_vertigo = 2 with the
+//   "follow-up to" tag, design 05 §7.2); the insecure-context notice shows
 //   before any click; no speech recognition → Listen disabled with the unsupported title; the
 //   shape fixture (no lexicon) hides the transport.
 // Part 2 — the shell's half, on screenair.html (needs WP12-M2, which mounts apps/Scribe.jsx):
@@ -25,6 +29,12 @@ const MIC_TOAST = "Microphone stopped — the Patient Companion never runs with 
 const UNSUPPORTED = "This browser has no speech recognition. Chrome, Edge and Safari support it — otherwise type what the patient says.";
 const INSECURE = "Microphone capture needs a secure page (https, or localhost while developing).";
 const NOT_ALLOWED = "Microphone permission was refused. Allow the microphone for this site and try again.";
+// Design 05 §2.1 (wording approved 2026-10-04): the heard item of the built-in module and its tags.
+const HEARD_ID = "v_vertigo";
+const DIZZY = "I'm feeling really dizzy";
+const HEARD_TAG = "heard “dizzy” · episode duration: not stated";
+const CARRY_PREVIEW = "? episode duration: 5 min – 72 h · follow-up to “dizzy”";
+const CARRY_TAG = "+ episode duration: 5 min – 72 h · follow-up to “dizzy”";
 
 export default async function voice(page, ctx) {
   const diffs = [];
@@ -44,6 +54,15 @@ export default async function voice(page, ctx) {
   };
   const lastScreen = () => page.evaluate(() => { const s = window.__scribeDev.screens; return s.length ? s[s.length - 1] : null; });
   const answeredCount = async () => Object.keys(((await lastScreen()) || {}).answers || {}).length;
+  const screenCount = () => page.evaluate(() => window.__scribeDev.screens.length);
+  // A positive barrier after an interim (review F3, tests; replaces a fixed 200 ms wait): emit a
+  // second interim and wait until its text is rendered. Results are handled in order and React
+  // commits them in order, so anything the first interim could have written (an answer, a
+  // published screen, a transcript line) is on the page and in the published screens by then.
+  const interimBarrier = async (text) => {
+    await call("emitInterim", text);
+    return waitFor((t) => { const b = document.querySelector("[data-testid=scribe-interim] .bub.interim"); return !!b && b.textContent === t; }, text);
+  };
   const listen = async () => {
     await page.click("[data-testid=scribe-listen]");
     return waitFor(() => window.__voiceStub.state === "started" && /Listening ·/.test((document.querySelector("[data-testid=scribe-voice-state]") || {}).textContent || ""));
@@ -69,11 +88,13 @@ export default async function voice(page, ctx) {
 
   // Interim: preview only.
   const before = await answeredCount();
+  const screensBefore = await screenCount();
   await call("emitInterim", "bright light bothers me and I feel nauseous");
   const interimShown = await waitFor(() => !!document.querySelector("[data-testid=scribe-interim] .bub.interim"));
   check(interimShown, "/dev/interim/preview", "dashed preview", "absent");
   check(await page.locator("[data-testid=scribe-interim] .captag.pending").count() > 0, "/dev/interim/pending-tags", "pending tags", 0);
-  await page.waitForTimeout(200);
+  check(await interimBarrier("bright light bothers me and I feel nauseous today"), "/dev/interim/barrier", "the second interim rendered", await page.textContent("[data-testid=scribe-interim] .bub.interim").catch(() => null));
+  check(await screenCount() === screensBefore, "/dev/interim/no-screen", screensBefore, await screenCount());
   check(await answeredCount() === before, "/dev/interim/no-answer", before, await answeredCount());
   check(await page.locator(".tsc .row:not([data-testid])").count() === 0, "/dev/interim/no-transcript-line", 0, await page.locator(".tsc .row:not([data-testid])").count());
 
@@ -156,6 +177,61 @@ export default async function voice(page, ctx) {
   await page.click("[data-testid=dev-remount]");
   check(await waitFor(() => !window.__voiceStub.live), "/dev/remount/stopped", false, await live());
   check(await page.locator("[data-testid=scribe-listen]").isEnabled(), "/dev/remount/fresh", "Listen enabled", "disabled");
+
+  // Heard and carry-over by voice (design 05 §2.3, §3.4, §7.2 `voice` row), on the fresh mount.
+  // Phase A: a heard cue gives one dashed tag and a Heard card; Reset clears both.
+  {
+    const heardCount = () => page.evaluate(() => document.querySelectorAll(".tsc .sa-scribe-heardtag").length);
+    const vertigo = async () => (((await lastScreen()) || {}).answers || {})[HEARD_ID];
+    const ptVoiceRows = (k) => waitFor((n) => [...document.querySelectorAll(".tsc .who")].filter((w) => w.textContent === "Patient · voice").length === n, k);
+    await page.click("[data-testid=scribe-reset]");
+    check(await listen(), "/dev/heard/start", "listening", await stub());
+    await call("emitFinal", DIZZY);
+    check(await waitFor(() => document.querySelectorAll(".tsc .sa-scribe-heardtag").length === 1), "/dev/heard/tag", 1, await heardCount());
+    check((await page.textContent(".tsc .sa-scribe-heardtag").catch(() => null)) === HEARD_TAG, "/dev/heard/tag-text", HEARD_TAG, await page.textContent(".tsc .sa-scribe-heardtag").catch(() => null));
+    check(await page.locator(".tsc .captag").count() === 0, "/dev/heard/no-captag", 0, await page.locator(".tsc .captag").count());
+    check(await vertigo() === undefined, "/dev/heard/no-answer", undefined, await vertigo());
+    await page.click("[data-testid=scribe-view-prompts]");
+    check(await waitFor((id) => !!document.querySelector(`[data-testid=scribe-heard] [data-heard="${id}"]`), HEARD_ID), "/dev/heard/card", "the Heard card in Ask next", "absent");
+    await page.click("[data-testid=scribe-reset]");
+    await page.click("[data-testid=scribe-view-prompts]");
+    check(await waitFor(() => !document.querySelector("[data-testid=scribe-heard]") && !document.querySelector(".sa-scribe-heardtag")), "/dev/heard/reset", "no Heard group, no heard tag", await page.evaluate(() => ({ group: !!document.querySelector("[data-testid=scribe-heard]"), tags: document.querySelectorAll(".sa-scribe-heardtag").length })));
+    check(await waitFor(() => !window.__voiceStub.live && !!document.querySelector("[data-testid=scribe-listen]")), "/dev/heard/reset-stops", false, await live());
+
+    // Phase B: heard → Physician "for hours" (neither carries nor consumes) → Patient "ok" (the
+    // first of the two replies) → interim "a few hours" previews the carry and writes nothing →
+    // final "a few hours" carries. Had the physician turn consumed a reply, "ok" would have
+    // closed the window and nothing would carry.
+    check(await listen(), "/dev/carry/start", "listening", await stub());
+    await call("emitFinal", DIZZY);
+    check(await waitFor(() => document.querySelectorAll(".tsc .sa-scribe-heardtag").length === 1), "/dev/carry/heard", 1, await heardCount());
+    await page.click(".spkb >> text=Physician");
+    await call("emitFinal", "for hours");
+    await waitFor(() => [...document.querySelectorAll(".tsc .who")].some((w) => w.textContent === "Physician · voice"));
+    const mdLine = page.locator(".tsc .row.md").last();
+    check(await mdLine.locator(".captag").count() === 0, "/dev/carry/physician/no-capture", 0, await mdLine.locator(".captag").count());
+    check(await vertigo() === undefined, "/dev/carry/physician/no-answer", undefined, await vertigo());
+    await page.click(".spkb >> text=Patient");
+    await call("emitFinal", "ok");
+    check(await ptVoiceRows(2), "/dev/carry/ok", "two patient lines", await page.locator(".tsc .row.pt").count());
+    const carryScreens = await screenCount();
+    await call("emitInterim", "a few hours");
+    check(await waitFor(() => !!document.querySelector("[data-testid=scribe-interim] .captag.pending")), "/dev/carry/interim/preview", "a pending carry tag", "absent");
+    const pending = await page.evaluate(() => [...document.querySelectorAll("[data-testid=scribe-interim] .captag.pending")].map((t) => t.textContent));
+    check(pending.length === 1 && pending[0] === CARRY_PREVIEW, "/dev/carry/interim/text", [CARRY_PREVIEW], pending);
+    check(await interimBarrier("a few hours I think"), "/dev/carry/interim/barrier", "the second interim rendered", await page.textContent("[data-testid=scribe-interim] .bub.interim").catch(() => null));
+    check(await screenCount() === carryScreens, "/dev/carry/interim/no-screen", carryScreens, await screenCount());
+    check(await vertigo() === undefined, "/dev/carry/interim/no-answer", undefined, await vertigo());
+    check(await page.locator(".tsc .row.pt:not([data-testid])").count() === 2, "/dev/carry/interim/no-transcript-line", 2, await page.locator(".tsc .row.pt:not([data-testid])").count());
+    await call("emitFinal", "a few hours");
+    check(await waitFor((id) => { const s = window.__scribeDev.screens; return s.length > 0 && s[s.length - 1].answers[id] === 2; }, HEARD_ID), "/dev/carry/answer", 2, await vertigo());
+    const carried = await page.evaluate(() => { const rows = [...document.querySelectorAll(".tsc .row.pt:not([data-testid])")]; const last = rows[rows.length - 1]; return last ? [...last.querySelectorAll(".captag:not(.pending)")].map((t) => t.textContent) : []; });
+    check(carried.length === 1 && carried[0] === CARRY_TAG, "/dev/carry/tag", [CARRY_TAG], carried);
+    await page.click("[data-testid=scribe-view-prompts]");
+    check(await waitFor(() => !document.querySelector("[data-testid=scribe-heard]")), "/dev/carry/card-gone", "no Heard group", "shown");
+    await page.click("[data-testid=scribe-stop]");
+    check(await waitFor(() => !window.__voiceStub.live), "/dev/carry/stopped", false, await live());
+  }
 
   // Insecure context: the notice is shown before any click, and Listen is disabled.
   {

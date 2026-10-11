@@ -1,4 +1,5 @@
-// engine/validate.js — the module validator, V1-V60 (design 03 §4.14). Owner: WP3.
+// engine/validate.js — the module validator, V1-V61 (design 03 §4.14; V61, the EMR template data,
+// release 0.4.3). Owner: WP3.
 //
 // validateModule({module, loaded, root, upload}) → Promise<ValidationReport>. It never throws.
 // Every finding is path-addressed: `path` is a JSON pointer into the rubric ("/domains/0/w"),
@@ -14,8 +15,8 @@
 // editor's live feedback. formatReport(report) renders a report as path-addressed lines.
 // Pure apart from timing; imports only engine files.
 import {
-  COPY_SLOTS, CONTRACT_VERSION, FORMAT, GLOBAL_PLACEHOLDERS, IDENTITY_TEMPLATE_FIELDS, LOGIC_PATHS,
-  RUBRIC_KEYS, SUPPORTED_LOCALES,
+  COPY_SLOTS, CONTRACT_VERSION, FORMAT, GLOBAL_PLACEHOLDERS, IDENTITY_TEMPLATE_FIELDS, LEXICON_CARRY_MAX,
+  LEXICON_NORMALIZE_KEYS, LEXICON_SCALE_KEYS, LOGIC_PATHS, RUBRIC_KEYS, SUPPORTED_LOCALES,
 } from "./contract.js";
 import { BANDS, HIGHEST_BAND, LOWEST_BAND, PROBE_KIND, TIERS } from "./vocab.js";
 import { CAVEATS, LIMITS, OMISSION_PATTERNS } from "./policy.js";
@@ -475,6 +476,63 @@ function checkSteps(r, c) {
   }
 }
 
+// V27, the clinician rules of the referral table (release 0.4.5): the fields engine/emr.js reads.
+const CLINICIAN_RULE_FIELDS = ["phenotypes", "source", "rule", "definition", "clarificationSource", "clarification", "confirm"];
+const CLINICIAN_RULE_BRACKETS = /[[\]{}]/;
+
+/**
+ * V27, phenotypes.referral.clinicianRules (release 0.4.5). A list of rules printed for the
+ * clinician in the EMR template, never acted on by the engine:
+ * {phenotypes, source?, rule?, definition?, clarificationSource?, clarification?, confirm?}.
+ * phenotypes a non-empty list of distinct phenotype values; source, rule and clarificationSource
+ * non-empty strings; definition, clarification and confirm non-empty lists of non-empty strings;
+ * at least one of rule, definition, clarification or confirm (a rule that prints nothing is an
+ * error); a source whenever the rule or a definition is shown, and a clarificationSource whenever
+ * a clarification is; no string carries [ ] { } (the EMR template's placeholders and template
+ * syntax). A field the engine never reads (an escalation destination or evidence among them: the
+ * engine escalates nothing) is a warning, and so is a clarificationSource without a clarification.
+ */
+function checkClinicianRules(ph, values, c) {
+  const ref = ph.referral;
+  if (!isObj(ref) || ref.clinicianRules === undefined) return;
+  if (!Array.isArray(ref.clinicianRules)) { c.E("V27", "/phenotypes/referral/clinicianRules", "clinicianRules must be a list of clinician rules"); return; }
+  ref.clinicianRules.forEach((e, i) => {
+    const p = ptr("phenotypes", "referral", "clinicianRules", i);
+    if (!isObj(e)) { c.E("V27", p, "a clinician rule is {phenotypes, source?, rule?, definition?, clarificationSource?, clarification?, confirm?}"); return; }
+    for (const k of Object.keys(e)) if (!CLINICIAN_RULE_FIELDS.includes(k)) c.W("V27", `${p}/${esc(k)}`, `unknown clinician-rule field "${k}" (it is never read; the engine prints these rules and escalates nothing)`);
+    walkStrings(e, p, (s, sp) => {
+      if (CLINICIAN_RULE_BRACKETS.test(s)) c.E("V27", sp, "clinician-rule strings may not contain [ ] { }: square brackets are the EMR template's placeholders");
+    });
+    if (!Array.isArray(e.phenotypes) || !e.phenotypes.length) c.E("V27", `${p}/phenotypes`, "phenotypes must be a non-empty list of phenotype values");
+    else {
+      const seen = new Set();
+      e.phenotypes.forEach((v, j) => {
+        if (!values.includes(v)) c.E("V27", `${p}/phenotypes/${j}`, `${JSON.stringify(v)} is not a phenotype value`);
+        else if (seen.has(v)) c.E("V27", `${p}/phenotypes/${j}`, `duplicate phenotype value "${v}"`);
+        seen.add(v);
+      });
+    }
+    for (const k of ["source", "rule", "clarificationSource"]) if (e[k] !== undefined && !nonEmpty(e[k])) c.E("V27", `${p}/${k}`, `${k} must be a non-empty string`);
+    for (const k of ["definition", "clarification", "confirm"]) {
+      if (e[k] === undefined) continue;
+      if (!Array.isArray(e[k]) || !e[k].length) c.E("V27", `${p}/${k}`, `${k} must be a non-empty list of strings`);
+      else e[k].forEach((s, j) => { if (!nonEmpty(s)) c.E("V27", `${p}/${k}/${j}`, "must be a non-empty string"); });
+    }
+    if (["rule", "definition", "clarification", "confirm"].every((k) => e[k] === undefined)) {
+      c.E("V27", p, "a clinician rule prints nothing: it needs a rule, a definition, a clarification or a confirm list");
+    }
+    if ((e.rule !== undefined || e.definition !== undefined) && e.source === undefined) {
+      c.E("V27", `${p}/source`, "a rule or definition that is shown needs its source (who stated it, and when)");
+    }
+    if (e.clarification !== undefined && e.clarificationSource === undefined) {
+      c.E("V27", `${p}/clarificationSource`, "a clarification that is shown needs its source (who stated it, and when)");
+    }
+    if (e.clarificationSource !== undefined && e.clarification === undefined) {
+      c.W("V27", `${p}/clarificationSource`, "clarificationSource without a clarification (it is never read)");
+    }
+  });
+}
+
 function checkPhenotypes(r, c) {
   // V27
   const ph = r.phenotypes;
@@ -508,6 +566,7 @@ function checkPhenotypes(r, c) {
   };
   table("referral", (e) => isObj(e) && nonEmpty(e.specialty) && nonEmpty(e.reason));
   table("cdsTerm", (e) => nonEmpty(e));
+  checkClinicianRules(ph, values, c);
 }
 
 function lexiconPhrases(lex) {
@@ -521,10 +580,58 @@ function lexiconPhrases(lex) {
     if (!isObj(e)) return;
     list(e.cue, `/lexicon/scale/${i}/cue`);
     arr(e.bands).forEach((b, j) => isObj(b) && list(b.ph, `/lexicon/scale/${i}/bands/${j}/ph`));
+    list(e.anchor, `/lexicon/scale/${i}/anchor`);
   });
   arr(lex.multi).forEach((e, i) => isObj(e) && list(e.ph, `/lexicon/multi/${i}/ph`));
   if (isObj(lex.redFlags)) for (const k of Object.keys(lex.redFlags)) list(lex.redFlags[k], ptr("lexicon", "redFlags", k));
+  list(lex.carryRefuse, "/lexicon/carryRefuse");
   return out;
+}
+
+// lexicon.normalize (contract LEXICON_NORMALIZE_KEYS): the characters apostrophes: true folds to
+// "'" before matching, and a standalone integer token that numbers: "en" spells out as a word
+// (0–20 and the round tens 30–90; bounded by anything but a letter, a digit or . : / , % -, where
+// a "." followed by whitespace or the end is sentence punctuation). A phrase holding a folded
+// apostrophe can never match (V29 warning, every phrase list). Numbers are spelled out only for
+// band phrase matching, so only a band phrase holding such a token can never match (V29 warning);
+// every other phrase list matches typed digits as digits.
+const FOLDED_APOSTROPHE_RE = /[\u2018\u2019\u02BC\u2032]/;
+const NUMBER_TOKEN_RE = /(?<![\p{L}\p{N}.:\/,%-])(\d+)(?![\p{L}\p{N}:\/,%-])(?!\.\S)/gu;
+const BAND_PHRASE_PTR_RE = /^\/lexicon\/scale\/\d+\/bands\/\d+\/ph\/\d+$/;
+const spelledNumber = (tok) => {
+  const n = Number(tok);
+  return tok === String(n) && (n <= 20 || (n <= 90 && n % 10 === 0));
+};
+
+/** The id cycles among scale entries through `yieldTo`, each once, as index lists starting at its lowest index. */
+function yieldCycles(scale) {
+  const n = scale.length;
+  const edges = scale.map((e, i) => {
+    if (!isObj(e) || !Array.isArray(e.yieldTo)) return [];
+    const out = [];
+    scale.forEach((t, j) => {
+      if (j !== i && isObj(t) && typeof t.id === "string" && t.id !== e.id && e.yieldTo.includes(t.id)) out.push(j);
+    });
+    return out;
+  });
+  const cycles = [];
+  let budget = 20000;
+  for (let s = 0; s < n && cycles.length < 20 && budget > 0; s++) {
+    const path = [s];
+    const onPath = new Set(path);
+    const walk = (u) => {
+      for (const v of edges[u]) {
+        if (cycles.length >= 20 || --budget <= 0) return;
+        if (v === s) { cycles.push(path.slice()); continue; }
+        if (v < s || onPath.has(v)) continue;
+        path.push(v); onPath.add(v);
+        walk(v);
+        path.pop(); onPath.delete(v);
+      }
+    };
+    walk(s);
+  }
+  return cycles;
 }
 
 function checkLexicon(r, c, { origin }) {
@@ -538,6 +645,8 @@ function checkLexicon(r, c, { origin }) {
   const flagIds = arr(r.redFlags).filter(isObj).map(f => f.id);
   const ctxValueOk = (id, v) => !!ctxById[id] && arr(ctxById[id].options).some(o => Array.isArray(o) && o[0] === v);
   const itemValueOk = (it, v) => (Array.isArray(it.scale) ? Number.isInteger(v) && v >= 0 && v < it.scale.length : v === "yes" || v === "no");
+  // Ids a yieldTo may name: every scale and yes/no entry of this lexicon.
+  const entryIds = new Set([...arr(lex.scale), ...arr(lex.bool)].filter((e) => isObj(e) && typeof e.id === "string").map((e) => e.id));
   // V28
   for (const k of ["bool", "ctx", "scale", "multi"]) if (!Array.isArray(lex[k])) c.E("V28", `/lexicon/${k}`, `lexicon.${k} must be a list`);
   arr(lex.bool).forEach((e, i) => {
@@ -566,7 +675,83 @@ function checkLexicon(r, c, { origin }) {
     if (!(e.fallback === null || (Number.isInteger(e.fallback) && e.fallback >= 0 && e.fallback < it.scale.length))) {
       c.E("V28", p + "/fallback", `fallback must be null or an option index of "${e.id}"`);
     }
+    // Heard signal, carry-over and the yield rule (contract Lexicon typedef; all optional).
+    if (e.heard !== undefined && typeof e.heard !== "boolean") c.E("V28", p + "/heard", "heard must be true or false");
+    if (e.heard === true && e.fallback !== null && e.fallback !== undefined) {
+      c.W("V28", p + "/heard", `"${e.id}" has a fallback, so its cue always sets a value and is never heard without one`);
+    }
+    if (e.carry !== undefined) {
+      if (!Number.isInteger(e.carry) || e.carry < 1 || e.carry > LEXICON_CARRY_MAX) {
+        c.E("V28", p + "/carry", `carry must be an integer from 1 to ${LEXICON_CARRY_MAX}: how many following patient replies may supply the value`);
+      }
+      if (e.heard !== true) c.E("V28", p + "/carry", "carry needs heard: true (carry-over starts from a cue heard without its value)");
+      arr(e.bands).forEach((b, j) => {
+        const o = isObj(b) && Number.isInteger(b.v) && b.v >= 0 ? it.scale[b.v] : undefined;
+        if (isObj(o) && o.f === 0) {
+          c.E("V28", p + "/carry", `band ${j} of "${e.id}" records option ${b.v} ("${o.label}", f = 0): a follow-up reply must never record a negative answer, so carry cannot be used on this entry`);
+        }
+      });
+    }
+    if (e.yieldTo !== undefined) {
+      if (!Array.isArray(e.yieldTo) || !e.yieldTo.length) c.E("V28", p + "/yieldTo", "yieldTo must be a non-empty list of lexicon entry ids");
+      else e.yieldTo.forEach((x, k) => {
+        const xp = `${p}/yieldTo/${k}`;
+        if (x === e.id) c.E("V28", xp, "an entry cannot yield to itself");
+        else if (typeof x !== "string" || !entryIds.has(x)) c.E("V28", xp, `"${x}" is not the id of another scale or yes/no entry of this lexicon`);
+        else if (e.yieldTo.indexOf(x) < k) c.E("V28", xp, `"${x}" is listed twice`);
+      });
+    }
+    if (e.anchor !== undefined) {
+      if (e.yieldTo === undefined) c.E("V28", p + "/anchor", "anchor has no effect without yieldTo");
+      if (!Array.isArray(e.anchor) || !e.anchor.length) c.E("V28", p + "/anchor", "anchor must be a non-empty phrase list");
+    }
+    if (e.carryExclude !== undefined) {
+      if (e.carry === undefined) c.E("V28", p + "/carryExclude", "carryExclude needs carry on the same entry (it names band phrases that never supply a carried value)");
+      if (!Array.isArray(e.carryExclude) || !e.carryExclude.length) c.E("V28", p + "/carryExclude", "carryExclude must be a non-empty list of this entry's band phrases");
+      else e.carryExclude.forEach((x, k) => {
+        const xp = `${p}/carryExclude/${k}`;
+        if (typeof x !== "string" || !x.trim()) c.E("V28", xp, "a carryExclude phrase must be a non-empty string");
+        else if (x !== x.toLowerCase()) c.E("V28", xp, "carryExclude phrases name band phrases, which are matched against lowercased text, so they must be lowercase");
+        else if (!arr(e.bands).some((b) => isObj(b) && Array.isArray(b.ph) && b.ph.includes(x))) {
+          c.E("V28", xp, `"${x}" is not a band phrase of "${e.id}" (carryExclude must name this entry's band phrases verbatim, so a band phrase it names cannot be removed)`);
+        } else if (e.carryExclude.indexOf(x) < k) c.E("V28", xp, `"${x}" is listed twice`);
+      });
+    }
+    for (const k of Object.keys(e)) {
+      if (!LEXICON_SCALE_KEYS.includes(k)) c.W("V28", ptr("lexicon", "scale", i, k), `"${k}" is not a lexicon scale field and is ignored (a misspelt heard, carry, yieldTo, anchor or carryExclude?)`);
+    }
   });
+  for (const cyc of yieldCycles(arr(lex.scale))) {
+    const names = cyc.map((j) => String(lex.scale[j].id));
+    c.E("V28", `/lexicon/scale/${cyc[0]}/yieldTo`, `yield cycle ${[...names, names[0]].join(" → ")}: an utterance that names all of them captures none of them`);
+  }
+  if (lex.carryRefuse !== undefined) {
+    if (!Array.isArray(lex.carryRefuse) || !lex.carryRefuse.length) c.E("V28", "/lexicon/carryRefuse", "carryRefuse must be a non-empty phrase list");
+    // It acts on carried replies (an entry with carry) and, for an entry with heard: true, on the
+    // cue's own utterance (no band value is taken there); with neither it is inert.
+    if (!arr(lex.scale).some((e) => isObj(e) && (e.heard === true || e.carry !== undefined))) {
+      c.W("V28", "/lexicon/carryRefuse", "carryRefuse has no effect: no scale entry has heard: true or carry");
+    }
+  }
+  const norm = lex.normalize;
+  if (norm !== undefined) {
+    if (!isObj(norm)) c.E("V28", "/lexicon/normalize", 'normalize must be an object: {apostrophes?: true or false, numbers?: "en"}');
+    else {
+      for (const k of Object.keys(norm)) {
+        if (!LEXICON_NORMALIZE_KEYS.includes(k)) c.E("V28", ptr("lexicon", "normalize", k), `"${k}" is not a normalize option (${LEXICON_NORMALIZE_KEYS.join(", ")})`);
+      }
+      if (norm.apostrophes !== undefined && typeof norm.apostrophes !== "boolean") {
+        c.E("V28", "/lexicon/normalize/apostrophes", "apostrophes must be true or false");
+      }
+      if (norm.numbers !== undefined) {
+        const lang = lex.lang === undefined ? "en-US" : lex.lang;
+        if (norm.numbers !== "en") c.E("V28", "/lexicon/normalize/numbers", 'numbers must be "en" (English number words, the only set the extractor knows)');
+        else if (typeof lang !== "string" || !/^en(?:-|$)/.test(lang)) {
+          c.E("V28", "/lexicon/normalize/numbers", `numbers "en" spells numbers as English words, so it needs an English lexicon lang ("en" or "en-…"), not "${lang}"`);
+        }
+      }
+    }
+  }
   arr(lex.multi).forEach((e, i) => {
     const p = `/lexicon/multi/${i}`;
     if (!isObj(e) || !Array.isArray(e.ids) || !e.ids.length) { c.E("V28", p + "/ids", "ids must be a non-empty list"); return; }
@@ -592,10 +777,20 @@ function checkLexicon(r, c, { origin }) {
     for (const id of Object.keys(lex.redFlags)) if (!flagIds.includes(id)) c.E("V28", ptr("lexicon", "redFlags", id), `"${id}" is not a red flag`);
   }
   // V29
+  const foldsApostrophes = isObj(norm) && norm.apostrophes === true;
+  const spellsNumbers = isObj(norm) && norm.numbers === "en";
   for (const [s, p] of lexiconPhrases(lex)) {
     if (typeof s !== "string" || !s.trim()) c.E("V29", p, "a phrase must be a non-empty string");
     else if (s !== s.toLowerCase()) c.E("V29", p, "phrases are matched against lowercased text, so they must be lowercase");
     else if (s.length < 3) c.W("V29", p, `the phrase "${s}" is under 3 characters and may match inside other words`);
+    if (typeof s !== "string") continue;
+    if (foldsApostrophes && FOLDED_APOSTROPHE_RE.test(s)) {
+      c.W("V29", p, `the phrase "${s}" holds a typographic apostrophe, which normalize.apostrophes folds to ' before matching, so the phrase can never match; write ' instead`);
+    }
+    if (spellsNumbers && BAND_PHRASE_PTR_RE.test(p)) {
+      const tok = [...s.matchAll(NUMBER_TOKEN_RE)].map((m) => m[1]).find(spelledNumber);
+      if (tok !== undefined) c.W("V29", p, `the band phrase "${s}" holds the number ${tok}, which normalize.numbers spells out as a word before band matching, so the phrase can never match; spell the number out`);
+    }
   }
   // V30
   for (const k of ["negation", "thirdParty", "historical"]) {
@@ -628,16 +823,22 @@ function checkLocales(r, c, merged) {
     if (typeof L.reviewed !== "boolean") c.E("V31", lp + "/reviewed", "reviewed must be true or false");
     // V32
     if (L.items !== undefined) {
-      if (!isObj(L.items)) { c.E("V32", lp + "/items", "items must map item ids to {q, opts?, ask?, help?}"); continue; }
+      if (!isObj(L.items)) { c.E("V32", lp + "/items", "items must map item ids to {q, opts?, ask?, help?, clin?}"); continue; }
       for (const id of Object.keys(L.items)) {
         const e = L.items[id], it = itemById[id], ip = ptr("locales", loc, "items", id);
         if (!it) { c.E("V32", ip, `"${id}" is not an item`); continue; }
-        if (!isObj(e)) { c.E("V32", ip, "an entry is {q, opts?, ask?, help?}"); continue; }
+        if (!isObj(e)) { c.E("V32", ip, "an entry is {q, opts?, ask?, help?, clin?}"); continue; }
         if (!nonEmpty(e.q)) c.E("V32", ip + "/q", "q must be non-empty");
         if (Array.isArray(it.scale)) {
           if (e.opts !== undefined && (!Array.isArray(e.opts) || e.opts.length !== it.scale.length)) c.E("V32", ip + "/opts", `opts must have exactly ${it.scale.length} entries (the item's scale)`);
           if (e.opts === undefined && loc === "en") c.E("V32", ip + "/opts", `a scale item needs opts (${it.scale.length})`);
         } else if (e.opts !== undefined) c.E("V32", ip + "/opts", "a boolean item has no opts");
+        // Release 0.4.2: an optional translated clinician line (the "For my clinician" block). English
+        // has none: its clinician line is the item's patientClin. V60 checks it like every locale string.
+        if (e.clin !== undefined) {
+          if (loc === "en") c.E("V32", ip + "/clin", "English takes its clinician line from the item's patientClin; clin is for translations");
+          else if (!nonEmpty(e.clin)) c.E("V32", ip + "/clin", "clin must be a non-empty string when present");
+        }
       }
     }
   }
@@ -747,15 +948,32 @@ function checkIdentityAndResearch(r, c, identity, { origin, classification }) {
 }
 
 function caveatStrings() {
-  return [CAVEATS.prototype, "not for clinical use", CAVEATS.unreviewed.es.title, CAVEATS.unreviewed.es.body, CAVEATS.unreviewed.es.txt, CAVEATS.illustrative]
-    .filter(nonEmpty).map(s => s.toLowerCase());
+  // Release 0.4.2: the Spanish patient caveats and the Spanish companion of the prototype marker
+  // are engine-owned too.
+  const P = CAVEATS.patient || {};
+  const es = [
+    P.edited && P.edited.es, P.edited && P.edited.esShort, P.uploaded && P.uploaded.es, P.uploaded && P.uploaded.esShort,
+    CAVEATS.editedWording && CAVEATS.editedWording.es, CAVEATS.staleTranslation && CAVEATS.staleTranslation.es,
+    CAVEATS.prototypeCompanion && CAVEATS.prototypeCompanion.es, "no apto para uso clínico",
+  ];
+  return [CAVEATS.prototype, "not for clinical use", CAVEATS.unreviewed.es.title, CAVEATS.unreviewed.es.body, CAVEATS.unreviewed.es.txt, CAVEATS.illustrative, ...es]
+    .filter(nonEmpty).map(caveatKey);
+}
+
+/**
+ * The form both sides of the V38 match take, in every language: canonical decomposition (NFD),
+ * combining marks U+0300-U+036F removed, lower case. So a caveat typed without its accents
+ * ("uso clinico") or stored decomposed still matches (release 0.4.2).
+ */
+function caveatKey(s) {
+  return String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
 function checkCaveats(x, base, c) {
   // V38
   const cav = caveatStrings();
   walkStrings(x, base, (s, p) => {
-    const l = s.toLowerCase();
+    const l = caveatKey(s);
     if (cav.some(k => l.includes(k))) c.E("V38", p, "caveat strings are engine-owned and never appear in module data");
   });
 }
@@ -866,6 +1084,332 @@ function checkSamples(r, c) {
   }
 }
 
+// ---- V61: the EMR template data (release 0.4.3) --------------------------------------------
+
+const EMR_KEYS = ["citations", "references", "instrumentRecs", "redFlagRefs", "redFlagPlaceholders", "history", "checklist", "examRows", "pastHistory"];
+/** The past-history groups of engine/emr.js (release 0.4.6): after the pregnancy line, or before the family-history placeholder. */
+const EMR_PAST_GROUPS = ["medical", "family"];
+const EMR_CITATION_FIELDS = ["title", "publisher", "citation", "url", "accessed"];
+const EMR_CITE_KEY_RE = /^[A-Z0-9][A-Za-z0-9-]*$/;
+const EMR_HTTPS_URL = /^https:\/\/[^\s[\]{}<>"]+$/;
+const EMR_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const EMR_RENDERS = ["done", "answeredNo", "note", "neverTried"];
+/**
+ * The fields engine/emr.js reads on each kind of emrTemplate row (review round 4); any other key is
+ * never read (V61 W). A checklist row's `id` is the validator's (unique row ids). A history row's
+ * `citations` has its own error, so it is not reported twice.
+ */
+const EMR_ROW_FIELDS = {
+  reference: ["label", "note", "citations", "showFor"],
+  history: ["item", "qualifier", "label", "probe", "citations"],
+  checklist: ["id", "group", "label", "citations", "placeholder", "box", "onlyWithSignal", "signals"],
+  "item signal": ["item", "value", "render", "qualifier"],
+  "probe signal": ["probe", "option", "render", "qualifier"],
+  "exam row": ["label", "citations", "probe", "optionPlaceholders"],
+  "option placeholder": ["option", "placeholder"],
+  "past history": ["item", "label", "group"],
+};
+const EMR_BRACKETS = /[[\]{}]/;
+const SQUARE_BRACKETS = /[[\]]/;
+/** The PROBE_KIND key of manoeuvre (examination) probes: the only kind an exam row may name. */
+const EMR_EXAM_KIND = "exam";
+
+/**
+ * V61, rubric half. The template prints module strings next to its own `[placeholders]`, so:
+ *   - every string of emrTemplate is free of [ ] { } (E), and the module strings the template prints
+ *     (domains and items, red flags, context items, phenotypes, info-prompt tags, the note and title
+ *     copy, the document title, the demo patient) carry no square bracket (W);
+ *   - shape: known keys, and on every row only the fields engine/emr.js reads (W otherwise: references
+ *     label, note, citations, showFor; history item, qualifier, label, probe; checklist id, group,
+ *     label, citations, placeholder, box, onlyWithSignal, signals; item signals item, value, render,
+ *     qualifier; probe signals probe, option, render, qualifier; exam rows label, citations, probe;
+ *     review round 4; release 0.4.6: exam rows also optionPlaceholders {option, placeholder}, and
+ *     pastHistory rows item, label, group); citations {title, publisher, citation, https url, accessed
+ *     YYYY-MM-DD} under keys /^[A-Z0-9][A-Za-z0-9-]*$/; every citation key named exists (E) and every
+ *     citation is used (W); every red flag, item, answer value and phenotype named exists (E);
+ *     labels, placeholders and qualifiers are non-empty strings; box and onlyWithSignal are
+ *     booleans (an onlyWithSignal row without signals is never printed: W); checklist ids are
+ *     unique ids and renders are known; an item signal's render matches its answer's polarity
+ *     ("done" and "note" print the item's positive wording, so they need a positive answer;
+ *     "answeredNo" needs a negative one: "no" or a scale option with f 0; "neverTried" comes from a
+ *     probe answer only) (E); instrumentRecs is a list of distinct rule ids; redFlagPlaceholders
+ *     maps red flags to non-empty strings; a history row carries no citations (they are never
+ *     printed), and only an item row a qualifier (E). Release 0.4.6: a pastHistory row has exactly
+ *     one of item or label and a group of medical or family, and its item is not also a history
+ *     row's or another pastHistory row's (it would print twice); an exam row's optionPlaceholders
+ *     is a list of {option: a probe option index, placeholder: a non-empty string}, on a row with a
+ *     probe only, one per option (E).
+ * V38 (caveat strings) covers emrTemplate like all module data; V60 does not apply (clinician
+ * surface). Probe and routing references, and the logic strings the template prints, are checked
+ * against the logic in checkV61Probes.
+ */
+function checkEmrTemplate(r, c) {
+  const warnBrackets = (x, base) => walkStrings(x, base, (s, p) => {
+    if (SQUARE_BRACKETS.test(s)) c.W("V61", p, "square brackets read as a placeholder in the EMR template; use parentheses");
+  });
+  warnBrackets(r.domains, "/domains");
+  warnBrackets(r.redFlags, "/redFlags");
+  warnBrackets(r.contextItems, "/contextItems");
+  warnBrackets(r.phenotypes, "/phenotypes");
+  warnBrackets(r.infoPrompts, "/infoPrompts");
+  if (isObj(r.copy)) {
+    warnBrackets(r.copy.indexName, "/copy/indexName");
+    warnBrackets(r.copy.note, "/copy/note");
+    for (const s of ["screener", "scribe"]) if (isObj(r.copy[s])) warnBrackets(r.copy[s].title, ptr("copy", s, "title"));
+    if (isObj(r.copy.screener)) warnBrackets(r.copy.screener.bandSuffix, "/copy/screener/bandSuffix");
+  }
+  if (isObj(r.fhir)) warnBrackets(r.fhir.documentTitle, "/fhir/documentTitle");
+  if (isObj(r.demo)) warnBrackets(r.demo.patient, "/demo/patient");
+
+  const t = r.emrTemplate;
+  if (t === undefined) return;
+  if (!isObj(t)) { c.E("V61", "/emrTemplate", "emrTemplate must be an object"); return; }
+  for (const k of Object.keys(t)) if (!EMR_KEYS.includes(k)) c.W("V61", ptr("emrTemplate", k), `unknown emrTemplate key "${k}" (it is never read)`);
+  walkStrings(t, "/emrTemplate", (s, p) => {
+    if (EMR_BRACKETS.test(s)) c.E("V61", p, "emrTemplate strings may not contain [ ] { }: square brackets are the template's placeholders");
+  });
+
+  const citeKeys = new Set();
+  if (t.citations !== undefined) {
+    if (!isObj(t.citations)) c.E("V61", "/emrTemplate/citations", "citations must be an object of citation records");
+    else for (const k of Object.keys(t.citations)) {
+      const p = ptr("emrTemplate", "citations", k);
+      const v = t.citations[k];
+      if (!EMR_CITE_KEY_RE.test(k)) c.E("V61", p, "a citation key matches /^[A-Z0-9][A-Za-z0-9-]*$/");
+      if (!isObj(v)) { c.E("V61", p, "a citation is {title, publisher, citation, url, accessed}"); continue; }
+      citeKeys.add(k);
+      for (const f of ["title", "publisher", "citation"]) if (!nonEmpty(v[f])) c.E("V61", `${p}/${f}`, `${f} is required`);
+      if (typeof v.url !== "string" || !EMR_HTTPS_URL.test(v.url)) c.E("V61", `${p}/url`, "url must be an https URL");
+      if (typeof v.accessed !== "string" || !EMR_DATE.test(v.accessed)) c.E("V61", `${p}/accessed`, "accessed must be a YYYY-MM-DD date");
+      for (const f of Object.keys(v)) if (!EMR_CITATION_FIELDS.includes(f)) c.W("V61", `${p}/${esc(f)}`, `unknown citation field "${f}"`);
+    }
+  }
+  const used = new Set();
+  const keysOk = (keys, p, required) => {
+    if (keys === undefined && !required) return;
+    if (!Array.isArray(keys) || (required && !keys.length)) { c.E("V61", p, "citations must be a non-empty list of citation keys"); return; }
+    keys.forEach((k, i) => {
+      if (typeof k !== "string" || !citeKeys.has(k)) c.E("V61", `${p}/${i}`, `${JSON.stringify(k)} is not a key of emrTemplate.citations`);
+      else used.add(k);
+    });
+  };
+  const label = (v, p, what) => { if (!nonEmpty(v)) c.E("V61", p, `${what} must be a non-empty string`); };
+  /** W for every key of a row that engine/emr.js never reads (review round 4). */
+  const knownFields = (row, kind, p) => {
+    for (const k of Object.keys(row)) if (!EMR_ROW_FIELDS[kind].includes(k)) c.W("V61", `${p}/${esc(k)}`, `unknown ${kind} field "${k}" (it is never read)`);
+  };
+  const list = (v, p) => {
+    if (v === undefined) return [];
+    if (!Array.isArray(v)) { c.E("V61", p, "must be a list"); return []; }
+    return v;
+  };
+  const items = dict();
+  arr(r.domains).forEach(d => arr(isObj(d) && d.items).forEach(it => { if (isObj(it)) items[it.id] = it; }));
+  const flagIds = new Set(arr(r.redFlags).filter(isObj).map(f => f.id));
+  const phenoValues = isObj(r.phenotypes) ? arr(r.phenotypes.values).filter(isObj).map(v => v.value) : [];
+  const showForOk = (sf, p) => {
+    if (sf === undefined) return;
+    if (!isObj(sf) || !Array.isArray(sf.phenotypes) || !sf.phenotypes.length) { c.E("V61", p, "showFor is {phenotypes: [phenotype values]}"); return; }
+    sf.phenotypes.forEach((v, i) => { if (!phenoValues.includes(v)) c.E("V61", `${p}/phenotypes/${i}`, `${JSON.stringify(v)} is not a phenotype value`); });
+  };
+
+  list(t.references, "/emrTemplate/references").forEach((row, i) => {
+    const p = ptr("emrTemplate", "references", i);
+    if (!isObj(row)) { c.E("V61", p, "a reference is {label | note, citations, showFor?}"); return; }
+    knownFields(row, "reference", p);
+    if ((row.label === undefined) === (row.note === undefined)) c.E("V61", p, "a reference has exactly one of label or note");
+    else if (row.label !== undefined) label(row.label, p + "/label", "label");
+    else label(row.note, p + "/note", "note");
+    keysOk(row.citations, p + "/citations", true);
+    showForOk(row.showFor, p + "/showFor");
+  });
+  if (t.instrumentRecs !== undefined) {
+    const seenRecs = new Set();
+    list(t.instrumentRecs, "/emrTemplate/instrumentRecs").forEach((id, i) => {
+      const p = ptr("emrTemplate", "instrumentRecs", i);
+      if (!nonEmpty(id)) c.E("V61", p, "an instrumentRecs entry is a routing rule id");
+      else if (seenRecs.has(id)) c.E("V61", p, `duplicate routing rule id "${id}"`);
+      seenRecs.add(id);
+    });
+  }
+  if (t.redFlagRefs !== undefined) {
+    if (!isObj(t.redFlagRefs)) c.E("V61", "/emrTemplate/redFlagRefs", "redFlagRefs must be an object of red-flag ids");
+    else for (const id of Object.keys(t.redFlagRefs)) {
+      const p = ptr("emrTemplate", "redFlagRefs", id);
+      if (!flagIds.has(id)) c.E("V61", p, `"${id}" is not a red flag`);
+      keysOk(t.redFlagRefs[id], p, true);
+    }
+  }
+  if (t.redFlagPlaceholders !== undefined) {
+    if (!isObj(t.redFlagPlaceholders)) c.E("V61", "/emrTemplate/redFlagPlaceholders", "redFlagPlaceholders must be an object of red-flag ids");
+    else for (const id of Object.keys(t.redFlagPlaceholders)) {
+      const p = ptr("emrTemplate", "redFlagPlaceholders", id);
+      if (!flagIds.has(id)) c.E("V61", p, `"${id}" is not a red flag`);
+      else label(t.redFlagPlaceholders[id], p, "a red-flag placeholder");
+    }
+  }
+  list(t.history, "/emrTemplate/history").forEach((row, i) => {
+    const p = ptr("emrTemplate", "history", i);
+    if (!isObj(row)) { c.E("V61", p, "a history row is {item, qualifier?} or {label, probe?}"); return; }
+    knownFields(row, "history", p);
+    if ((row.item === undefined) === (row.label === undefined)) c.E("V61", p, "a history row has exactly one of item or label");
+    else if (row.item !== undefined && !(typeof row.item === "string" && ownGet(items, row.item))) c.E("V61", p + "/item", `${JSON.stringify(row.item)} is not an item`);
+    else if (row.label !== undefined) label(row.label, p + "/label", "label");
+    if (row.probe !== undefined && (row.item !== undefined || !nonEmpty(row.probe))) c.E("V61", p + "/probe", "probe is a probe id, on a label row only");
+    if (row.qualifier !== undefined) {
+      if (row.item === undefined) c.E("V61", p + "/qualifier", "qualifier follows an item's negative answer; on an item row only");
+      else label(row.qualifier, p + "/qualifier", "qualifier");
+    }
+    if (row.citations !== undefined) c.E("V61", p + "/citations", "history rows carry no citations (the template never prints them); cite on a checklist or exam row");
+  });
+  const checklistIds = new Set();
+  list(t.checklist, "/emrTemplate/checklist").forEach((row, i) => {
+    const p = ptr("emrTemplate", "checklist", i);
+    if (!isObj(row)) { c.E("V61", p, "a checklist row is {id, group, label, citations, signals?}"); return; }
+    knownFields(row, "checklist", p);
+    if (typeof row.id !== "string" || !ID_RE.test(row.id)) c.E("V61", p + "/id", "id must match /^[a-z][a-z0-9_]*$/");
+    else if (checklistIds.has(row.id)) c.E("V61", p + "/id", `duplicate checklist id "${row.id}"`);
+    checklistIds.add(row.id);
+    label(row.group, p + "/group", "group");
+    label(row.label, p + "/label", "label");
+    if (row.placeholder !== undefined) label(row.placeholder, p + "/placeholder", "placeholder");
+    if (row.box !== undefined && typeof row.box !== "boolean") c.E("V61", p + "/box", "box is true or false (false: a status line without a box)");
+    if (row.onlyWithSignal !== undefined && typeof row.onlyWithSignal !== "boolean") c.E("V61", p + "/onlyWithSignal", "onlyWithSignal is true or false (true: the row prints only when a signal holds)");
+    else if (row.onlyWithSignal === true && !(Array.isArray(row.signals) && row.signals.length)) c.W("V61", p + "/onlyWithSignal", "an onlyWithSignal row without signals is never printed");
+    keysOk(row.citations, p + "/citations", true);
+    list(row.signals, p + "/signals").forEach((s, j) => {
+      const sp = `${p}/signals/${j}`;
+      if (!isObj(s)) { c.E("V61", sp, "a signal is {item, value, render} or {probe, option, render}"); return; }
+      if (!EMR_RENDERS.includes(s.render)) c.E("V61", sp + "/render", `render must be one of ${EMR_RENDERS.join(", ")}`);
+      if (s.qualifier !== undefined) label(s.qualifier, sp + "/qualifier", "qualifier");
+      if ((s.item === undefined) === (s.probe === undefined)) { c.E("V61", sp, "a signal names exactly one of item or probe"); return; }
+      knownFields(s, s.item !== undefined ? "item signal" : "probe signal", sp);
+      if (s.item !== undefined) {
+        const it = typeof s.item === "string" ? ownGet(items, s.item) : undefined;
+        if (!it) { c.E("V61", sp + "/item", `${JSON.stringify(s.item)} is not an item`); return; }
+        const ok = Array.isArray(it.scale) ? Number.isInteger(s.value) && s.value >= 0 && s.value < it.scale.length : s.value === "yes" || s.value === "no";
+        if (!ok) { c.E("V61", sp + "/value", `${JSON.stringify(s.value)} is not a valid answer of "${s.item}"`); return; }
+        // The render must match the answer's polarity: done and note print the item's positive
+        // wording; answeredNo is for a negative answer; never tried comes from a probe only.
+        const opt = Array.isArray(it.scale) ? it.scale[s.value] : null;
+        const neg = s.value === "no" || (isObj(opt) && opt.f === 0);
+        if (s.render === "neverTried") c.E("V61", sp + "/render", "neverTried comes from a probe answer only, never from an item");
+        else if ((s.render === "done" || s.render === "note") && neg) c.E("V61", sp + "/render", `render "${s.render}" prints the item's positive wording; ${JSON.stringify(s.value)} is a negative answer of "${s.item}" (use answeredNo)`);
+        else if (s.render === "answeredNo" && !neg) c.E("V61", sp + "/render", `render "answeredNo" needs a negative answer; ${JSON.stringify(s.value)} is a positive answer of "${s.item}"`);
+      } else {
+        if (!nonEmpty(s.probe)) c.E("V61", sp + "/probe", "probe must be a probe id");
+        if (!Number.isInteger(s.option) || s.option < 0) c.E("V61", sp + "/option", "option must be a probe option index");
+      }
+    });
+  });
+  list(t.examRows, "/emrTemplate/examRows").forEach((row, i) => {
+    const p = ptr("emrTemplate", "examRows", i);
+    if (!isObj(row)) { c.E("V61", p, "an exam row is {label, citations?, probe?, optionPlaceholders?}"); return; }
+    knownFields(row, "exam row", p);
+    label(row.label, p + "/label", "label");
+    keysOk(row.citations, p + "/citations", false);
+    if (row.probe !== undefined && !nonEmpty(row.probe)) c.E("V61", p + "/probe", "probe must be a probe id");
+    // Release 0.4.6: a placeholder under the row for a recorded option of its probe.
+    if (row.optionPlaceholders !== undefined) {
+      if (row.probe === undefined) c.E("V61", p + "/optionPlaceholders", "optionPlaceholders key placeholders to the options of the row's probe; on a row with a probe only");
+      const seenOpts = new Set();
+      list(row.optionPlaceholders, p + "/optionPlaceholders").forEach((h, j) => {
+        const hp = `${p}/optionPlaceholders/${j}`;
+        if (!isObj(h)) { c.E("V61", hp, "an option placeholder is {option, placeholder}"); return; }
+        knownFields(h, "option placeholder", hp);
+        if (!Number.isInteger(h.option) || h.option < 0) c.E("V61", hp + "/option", "option must be a probe option index");
+        else if (seenOpts.has(h.option)) c.E("V61", hp + "/option", `option ${h.option} already has a placeholder on this row`);
+        else seenOpts.add(h.option);
+        label(h.placeholder, hp + "/placeholder", "placeholder");
+      });
+    }
+  });
+  // Release 0.4.6: the past-history rows (a placeholder heading, or an item with its recorded state).
+  const historyRowItems = new Set(arr(t.history).filter((row) => isObj(row) && typeof row.item === "string").map((row) => row.item));
+  const pastItems = new Set();
+  list(t.pastHistory, "/emrTemplate/pastHistory").forEach((row, i) => {
+    const p = ptr("emrTemplate", "pastHistory", i);
+    if (!isObj(row)) { c.E("V61", p, "a past-history row is {item, group} or {label, group}"); return; }
+    knownFields(row, "past history", p);
+    if (!EMR_PAST_GROUPS.includes(row.group)) c.E("V61", p + "/group", `group must be one of ${EMR_PAST_GROUPS.join(", ")}`);
+    if ((row.item === undefined) === (row.label === undefined)) c.E("V61", p, "a past-history row has exactly one of item or label");
+    else if (row.label !== undefined) label(row.label, p + "/label", "label");
+    else if (!(typeof row.item === "string" && ownGet(items, row.item))) c.E("V61", p + "/item", `${JSON.stringify(row.item)} is not an item`);
+    else if (historyRowItems.has(row.item) || pastItems.has(row.item)) c.E("V61", p + "/item", `"${row.item}" is already a history or past-history row (it would print twice)`);
+    else pastItems.add(row.item);
+  });
+  for (const k of citeKeys) if (!used.has(k)) c.W("V61", ptr("emrTemplate", "citations", k), `citation "${k}" is never used`);
+}
+
+/**
+ * V61, logic half. The logic strings the template prints carry no square bracket (W): probe say,
+ * option labels and notes, and the routing copy (h, p, chips; strings only, a computed one is not
+ * read). With emrTemplate: the probes it names exist in the module's probe list, with that option;
+ * an exam row names an exam-kind probe (a probe of any other kind would print under the exam
+ * heading as a recorded examination); every instrumentRecs id is a routing rule whose chips, on
+ * every surface it has copy for, are a fixed list of strings (E: computed chips are cut from the
+ * answers, never instruments, and would otherwise print under "Instruments:").
+ */
+function checkV61Probes(module, c) {
+  const probes = module.logic && isObj(module.logic.probes) ? arr(module.logic.probes.list) : [];
+  const warnBrackets = (x, base) => walkStrings(x, base, (s, p) => {
+    if (SQUARE_BRACKETS.test(s)) c.W("V61", p, "square brackets read as a placeholder in the EMR template; use parentheses");
+  });
+  probes.forEach((p, i) => {
+    if (!isObj(p)) return;
+    const base = ptr("logic", "probes", "list", i);
+    warnBrackets(p.say, base + "/say");
+    arr(p.opts).forEach((o, j) => { if (isObj(o)) { warnBrackets(o.l, `${base}/opts/${j}/l`); warnBrackets(o.note, `${base}/opts/${j}/note`); } });
+  });
+  const routing = module.logic ? arr(module.logic.routing) : [];
+  routing.forEach((rule, i) => {
+    if (!isObj(rule) || !isObj(rule.copy)) return;
+    for (const surface of Object.keys(rule.copy)) {
+      const cp = rule.copy[surface];
+      if (!isObj(cp)) continue;
+      for (const f of ["h", "p", "chips"]) warnBrackets(cp[f], ptr("logic", "routing", i, "copy", surface, f));
+    }
+  });
+  const t = module.rubric && module.rubric.emrTemplate;
+  if (!isObj(t)) return;
+  const byId = dict();
+  for (const p of probes) if (isObj(p) && typeof p.id === "string") byId[p.id] = p;
+  arr(t.checklist).forEach((row, i) => arr(isObj(row) && row.signals).forEach((s, j) => {
+    if (!isObj(s) || s.probe === undefined) return;
+    const sp = ptr("emrTemplate", "checklist", i, "signals", j);
+    const pr = typeof s.probe === "string" ? ownGet(byId, s.probe) : undefined;
+    if (!pr) c.E("V61", sp + "/probe", `${JSON.stringify(s.probe)} is not a probe of this module's logic`);
+    else if (Number.isInteger(s.option) && !(s.option < arr(pr.opts).length)) c.E("V61", sp + "/option", `probe "${s.probe}" has no option ${s.option}`);
+  }));
+  arr(t.examRows).forEach((row, i) => {
+    if (!isObj(row) || row.probe === undefined) return;
+    const pr = typeof row.probe === "string" ? ownGet(byId, row.probe) : undefined;
+    if (!pr) c.E("V61", ptr("emrTemplate", "examRows", i, "probe"), `${JSON.stringify(row.probe)} is not a probe of this module's logic`);
+    else if (pr.kind !== EMR_EXAM_KIND) c.E("V61", ptr("emrTemplate", "examRows", i, "probe"), `probe "${row.probe}" is a ${JSON.stringify(pr.kind)} probe; an exam row names an exam probe`);
+    // Release 0.4.6: each option placeholder names an option the probe has.
+    if (pr) arr(row.optionPlaceholders).forEach((h, j) => {
+      if (isObj(h) && Number.isInteger(h.option) && h.option >= 0 && !(h.option < arr(pr.opts).length)) c.E("V61", ptr("emrTemplate", "examRows", i, "optionPlaceholders", j, "option"), `probe "${row.probe}" has no option ${h.option}`);
+    });
+  });
+  arr(t.history).forEach((row, i) => {
+    if (!isObj(row) || row.probe === undefined || row.item !== undefined) return;
+    if (!(typeof row.probe === "string" && ownGet(byId, row.probe))) c.E("V61", ptr("emrTemplate", "history", i, "probe"), `${JSON.stringify(row.probe)} is not a probe of this module's logic`);
+  });
+  const ruleById = dict();
+  for (const x of routing) if (isObj(x) && typeof x.id === "string") ruleById[x.id] = x;
+  arr(t.instrumentRecs).forEach((id, i) => {
+    if (!nonEmpty(id)) return;
+    const rule = ownGet(ruleById, id);
+    if (!rule) { c.E("V61", ptr("emrTemplate", "instrumentRecs", i), `"${id}" is not a routing rule of this module's logic`); return; }
+    const copy = isObj(rule.copy) ? rule.copy : {};
+    const bad = Object.keys(copy).filter((surface) => {
+      const chips = isObj(copy[surface]) ? copy[surface].chips : undefined;
+      return chips !== undefined && !(Array.isArray(chips) && chips.every((ch) => typeof ch === "string"));
+    });
+    if (bad.length) c.E("V61", ptr("emrTemplate", "instrumentRecs", i), `routing rule "${id}" computes its chips (or they are not a list of strings) on ${bad.join(", ")}; only fixed instrument chips may be listed`);
+  });
+}
+
 function checkGateRehearsal(r, c) {
   // V51 (W): the sample rail rehearses every gate.
   const samples = arr(r.sampleCases).filter(isObj);
@@ -892,7 +1436,7 @@ function checkGateRehearsal(r, c) {
   if (neg.length && !negPos) c.W("V51", "/sampleCases", "no sample case answers a rule-out item positively");
 }
 
-/** The rubric-only checks (V1-V4, V6, V7, V9-V39, V49-V51). */
+/** The rubric-only checks (V1-V4, V6, V7, V9-V39, V49-V51, the rubric half of V61). */
 function rubricChecks(r, c, opts) {
   checkV1Rubric(r, c);
   if (!isObj(r)) return { merged: {}, identity: null };
@@ -919,6 +1463,7 @@ function rubricChecks(r, c, opts) {
   checkCopy(r, c);
   checkSamples(r, c);
   checkGateRehearsal(r, c);
+  checkEmrTemplate(r, c);
   return { merged, identity };
 }
 
@@ -2027,6 +2572,7 @@ export async function validateModule({ module, loaded = [], root = null, upload 
     checkV1Logic(module, c);
     checkV5(module, c);
     checkV6Logic(module, c);
+    checkV61Probes(module, c);
     checkV8(module, others, c);
     checkV56(module, others, c);
     if (module.logic !== GENERIC_LOGIC) {

@@ -448,6 +448,8 @@ export async function bindModule(rubric, logic, meta = {}) {
     fhir,
     cds,
     copy,
+    // clinician consult-note data (release 0.4.3; engine/emr.js); null when the rubric has none
+    emrTemplate: isObj(r.emrTemplate) ? r.emrTemplate : null,
     // logic
     logic: boundLogic,
     // provenance
