@@ -28,7 +28,7 @@ import logic from "./logic.js";
 import provenance from "./provenance.js";
 import emr from "./emr.js";
 export { withEmrLogic, withEmrTemplate } from "./emr.js";
-export { withClinicianRules } from "./safety.js";
+export { withChartReading, withClinicianRules } from "./safety.js";
 
 /** Every validator code. */
 export const CODES = Array.from({ length: 61 }, (_, i) => `V${i + 1}`);

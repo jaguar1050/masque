@@ -5,8 +5,8 @@
 // validator reads: citations, a label and a note reference, instrument recs, red-flag references
 // and a red-flag placeholder, item (with a qualifier), label and probe history rows, a checklist row
 // with item, scale and probe signals, a qualifier, a placeholder and onlyWithSignal, a status row
-// without a box, an exam row tied to an exam probe; instrumentRecs names a rule whose chips are fixed
-// lists on every surface). withEmrLogic(ctx) returns the base logic with that exam probe (pr_exam) added:
+// without a box, an exam row tied to an exam probe, and (release 0.4.8) a plan-advice line with its
+// source and date; instrumentRecs names a rule whose chips are fixed lists on every surface). withEmrLogic(ctx) returns the base logic with that exam probe (pr_exam) added:
 // the base logic has none. The validate suite also asserts that this block, on that logic, alone
 // produces no V61 finding, so every generator below proves one rule and nothing else.
 
@@ -41,6 +41,7 @@ export function withEmrTemplate(ctx) {
       { id: "ex_three", group: "example", label: "Example status row", box: false, citations: ["EX-B"], signals: [] },
     ],
     examRows: [{ label: "Example exam row", citations: ["EX-B"], probe: "pr_exam" }],
+    planAdvice: [{ text: "example plan advice line.", source: "example source", decided: "2026-10-12" }],
   };
   return r;
 }
@@ -287,6 +288,36 @@ export default [
   {
     code: "V61", sev: "W", path: "/emrTemplate/examRows/0/extra", what: "an unknown exam-row field (never read)",
     build: mutate((t) => { t.examRows[0].extra = "example"; }),
+  },
+  // Release 0.4.8: the plan-advice lines (text printed beside the references; source and decided
+  // are the line's record).
+  {
+    code: "V61", sev: "E", path: "/emrTemplate/planAdvice", what: "planAdvice that is not a list",
+    build: mutate((t) => { t.planAdvice = { text: "example plan advice line." }; }),
+  },
+  {
+    code: "V61", sev: "E", path: "/emrTemplate/planAdvice/0", what: "a plan-advice line that is not an object",
+    build: mutate((t) => { t.planAdvice = ["example plan advice line."]; }),
+  },
+  {
+    code: "V61", sev: "E", path: "/emrTemplate/planAdvice/0/text", what: "a plan-advice line with a blank text",
+    build: mutate((t) => { t.planAdvice[0].text = "  "; }),
+  },
+  {
+    code: "V61", sev: "E", path: "/emrTemplate/planAdvice/0/text", what: "square brackets in a plan-advice text (the template's placeholder syntax)",
+    build: mutate((t) => { t.planAdvice[0].text = "example [plan] advice line."; }, { via: "shape" }),
+  },
+  {
+    code: "V61", sev: "E", path: "/emrTemplate/planAdvice/0/source", what: "a plan-advice line that names no source",
+    build: mutate((t) => { delete t.planAdvice[0].source; }),
+  },
+  {
+    code: "V61", sev: "E", path: "/emrTemplate/planAdvice/0/decided", what: "a plan-advice date that is not a real YYYY-MM-DD date",
+    build: mutate((t) => { t.planAdvice[0].decided = "2026-02-30"; }),
+  },
+  {
+    code: "V61", sev: "W", path: "/emrTemplate/planAdvice/0/extra", what: "an unknown plan-advice field (never read)",
+    build: mutate((t) => { t.planAdvice[0].extra = "example"; }),
   },
   {
     code: "V61", sev: "W", path: "/infoPrompts/prompts/0/tag", what: "square brackets in an info-prompt tag the template prints",

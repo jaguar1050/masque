@@ -50,12 +50,20 @@
 //             Spanish, and the hidden clinician panels are tagged lang="en" in es (untagged in en);
 //             a string toast and its dismiss button are tagged lang="en"; and a DOM scan of the
 //             mounted shell or page root (.sa-shell) in es finds no element tagged lang="en"
-//             inside the Companion but the "English" locale button, and no English text anywhere
-//             outside an element tagged lang="en". That root does not hold the deployed pages'
+//             inside the Companion but the "English" locale button and (release 0.4.8) the summary's
+//             English version section, and no English text anywhere outside an element tagged lang="en". That root does not hold the deployed pages'
 //             static chrome outside #root, so each deployed page (patient.html and
 //             screenair.html#mode=patient) is also booted as served in a hidden 1024 px frame,
 //             switched to Español, and its WHOLE body scanned the same way: the corner badge
 //             ("Prototype · not for clinical use", outside #root) must be tagged lang="en".
+//   english   (release 0.4.8, final review) an es export's English version repeats the caveat lines the
+//             English export of the same module prints (the provenance line; the edited-wording line
+//             when the English wording was edited), in English and only there: outside it every
+//             patient caveat stays in the export's locale, as before;
+//   video     (release 0.4.8) the built-in's introduction video panel (registry.json patientVideo) right
+//             above the instructions on the Patient tab, in patient mode (Hand to patient and by
+//             address) and on patient.html; never for the upload or the derivation; never in a
+//             .txt or .html export;
 //   settle    (release 0.4.3, review round 3) a walk clicks synchronously, but the host reports
 //             the Companion makes from its effects (its locale for the strip, the print header,
 //             <html lang> and the title; its dirty state for "Hand to patient") reach the shell in
@@ -114,6 +122,28 @@ function htmlText(html) {
   const doc = new DOMParser().parseFromString(html, "text/html");
   for (const el of doc.querySelectorAll("style, script")) el.remove();
   return doc.body ? doc.body.textContent : "";
+}
+
+/**
+ * Release 0.4.8: an export split at its English version — {outside, english}: for an .html the body
+ * text without / of its section.enver; for a .txt the lines outside / inside the block that runs from
+ * the rule before the locale's englishVersion title to the last footer rule. english is "" when the
+ * export has no English version.
+ */
+function splitEnglish(kind, raw, titleLoc) {
+  if (kind === "html") {
+    const doc = new DOMParser().parseFromString(raw, "text/html");
+    for (const el of doc.querySelectorAll("style, script")) el.remove();
+    const sec = doc.querySelector("section.enver");
+    const english = sec ? sec.textContent : "";
+    if (sec) sec.remove();
+    return { outside: doc.body ? doc.body.textContent : "", english };
+  }
+  const L = raw.split("\n");
+  const t0 = L.indexOf(String(titleLoc).toUpperCase());
+  const end = L.lastIndexOf("-".repeat(40));
+  if (t0 < 1 || end < t0) return { outside: raw, english: "" };
+  return { outside: [...L.slice(0, t0 - 1), ...L.slice(end)].join("\n"), english: L.slice(t0 - 1, end).join("\n") };
 }
 
 export default {
@@ -198,7 +228,24 @@ export default {
         const html = patient.summaryHtml(view, loc, summary, { generatedAt: NOW });
         const htmlBody = htmlText(html);
         const comp = (policy.CAVEATS.prototypeCompanion || {}).es;
-        for (const [kind, text] of [["txt", txt], ["html", htmlBody]]) {
+        // Release 0.4.8, final review: the English caveat lines the English export of this module prints
+        // (provenance, then the edited-wording line when the English wording was edited locally).
+        const Len = (m.locales || {}).en && m.locales.en.data;
+        const wantEnglish = [
+          ...(m.origin === "builtin" ? [] : m.origin === "derived" ? [policy.CAVEATS.patient.edited.en] : [policy.CAVEATS.patient.uploaded.en]),
+          ...(Len && Len.editedLocally ? [policy.CAVEATS.editedWording.en] : []),
+        ];
+        for (const [kind, text, raw] of [["txt", txt, txt], ["html", htmlBody, html]]) {
+          // Outside the English version of an es export, every caveat is in the export's locale.
+          const parts = loc === "es" ? splitEnglish(kind, raw, patient.PATIENT_CHROME.es.englishVersion) : { outside: text, english: "" };
+          if (loc === "es") {
+            c.check(parts.english !== "", `${at}/${loc}/${kind}/@englishVersion`, null, "the English version", "absent");
+            for (const line of wantEnglish) c.check(parts.english.includes(line), `${at}/${loc}/${kind}/english/@caveat`, { line }, "in the English version", "absent");
+            if (m.origin === "builtin") {
+              const any = [policy.CAVEATS.patient.edited.en, policy.CAVEATS.patient.uploaded.en, policy.CAVEATS.editedWording.en, policy.CAVEATS.staleTranslation.en].filter((l) => parts.english.includes(l));
+              c.check(!any.length, `${at}/${loc}/${kind}/english/@noCaveat`, null, "no caveat line in the built-in's English version", any);
+            }
+          }
           for (const str of flagStrings) c.check(!text.includes(str), `${at}/${loc}/${kind}/@flagText`, { text: str }, "absent", "present");
           for (const re of policy.OMISSION_PATTERNS) {
             const hit = re.exec(text);
@@ -210,16 +257,16 @@ export default {
           if (m.origin !== "builtin") {
             const cav = m.origin === "derived" ? policy.CAVEATS.patient.edited : policy.CAVEATS.patient.uploaded;
             const want = inLoc(cav, loc);
-            c.check(text.includes(want), `${at}/${loc}/${kind}/@patientProvenance`, null, want, "absent");
-            if (want !== cav.en) c.check(!text.includes(cav.en), `${at}/${loc}/${kind}/@patientProvenance/notEnglish`, null, `no "${cav.en}"`, "present");
+            c.check(parts.outside.includes(want), `${at}/${loc}/${kind}/@patientProvenance`, null, want, "absent");
+            if (want !== cav.en) c.check(!parts.outside.includes(cav.en), `${at}/${loc}/${kind}/@patientProvenance/notEnglish`, null, `no "${cav.en}" outside the English version`, "present");
           }
           const L = (m.locales || {})[loc] && m.locales[loc].data;
           if (L && L.editedLocally) noticeChecks++;
           if (L && Array.isArray(L.stale) && L.stale.length) noticeChecks++;
           for (const [on, cav, name] of [[L && L.editedLocally, policy.CAVEATS.editedWording, "editedWording"], [L && Array.isArray(L.stale) && L.stale.length, policy.CAVEATS.staleTranslation, "stale"]]) {
             if (!on) continue;
-            c.check(text.includes(inLoc(cav, loc)), `${at}/${loc}/${kind}/@${name}`, null, inLoc(cav, loc), "absent");
-            if (inLoc(cav, loc) !== cav.en) c.check(!text.includes(cav.en), `${at}/${loc}/${kind}/@${name}/notEnglish`, null, `no "${cav.en}"`, "present");
+            c.check(parts.outside.includes(inLoc(cav, loc)), `${at}/${loc}/${kind}/@${name}`, null, inLoc(cav, loc), "absent");
+            if (inLoc(cav, loc) !== cav.en) c.check(!parts.outside.includes(cav.en), `${at}/${loc}/${kind}/@${name}/notEnglish`, null, `no "${cav.en}" outside the English version`, "present");
           }
           // D9: the Spanish companion of the marker, next to the English marker, in es only.
           if (loc === "es") c.check(text.includes(`${policy.CAVEATS.prototype} \u2014 ${comp}`), `${at}/${loc}/${kind}/@companion`, null, `${policy.CAVEATS.prototype} — ${comp}`, "absent");
@@ -228,19 +275,29 @@ export default {
         if (loc === "es") {
           // The es .html tags each part with its language (D3, D7, D9): clinician lines, notices, the marker.
           const doc = new DOMParser().parseFromString(html, "text/html");
-          const lis = qa(doc, ".clin li");
+          // Release 0.4.8: the English version's clinician lines sit in a section lang="en", untagged.
+          const enLis = qa(doc, "section.enver .clin li");
+          c.check(enLis.length > 0 && enLis.every((li) => !li.hasAttribute("lang")) && qa(doc, 'section.enver[lang="en"]').length === 1, `${at}/${loc}/html/english/@lang`, null,
+            "one English version section lang en, its clinician lines untagged", enLis.map((li) => li.getAttribute("lang")).slice(0, 4));
+          const lis = qa(doc, ".clin li").filter((li) => !li.closest("section.enver"));
           const esItems = (view.locales.es && view.locales.es.data && view.locales.es.data.items) || {};
           const wantLi = (id) => (esItems[id] && esItems[id].clin ? "es" : "en");
           c.check(lis.length > 0 && lis.every((li) => li.getAttribute("lang") === "es" || li.getAttribute("lang") === "en") && !qa(doc, ".clin ul[lang]").length,
             `${at}/${loc}/html/clin/@lang`, null, "every clinician line tagged (es for an own clin line), the list untagged", lis.map((li) => li.getAttribute("lang")));
           const items = m.domains.flatMap((d) => d.items).filter((it) => esItems[it.id]);
           if (items.length && items.every((it) => wantLi(it.id) === "es")) c.check(lis.every((li) => li.getAttribute("lang") === "es"), `${at}/${loc}/html/clin/@es`, null, "lang es on every line", lis.map((li) => li.getAttribute("lang")));
-          for (const pn of qa(doc, "p.notice")) c.check(pn.getAttribute("lang") === "es", `${at}/${loc}/html/notice/@lang`, { text: pn.textContent }, "es", pn.getAttribute("lang"));
+          for (const pn of qa(doc, "p.notice").filter((x) => !x.closest("section.enver"))) c.check(pn.getAttribute("lang") === "es", `${at}/${loc}/html/notice/@lang`, { text: pn.textContent }, "es", pn.getAttribute("lang"));
+          // Release 0.4.8, final review: the English version's caveat lines, untagged inside its section lang="en".
+          const enNotes = qa(doc, "section.enver p.notice");
+          c.check(enNotes.length === wantEnglish.length && enNotes.every((x, i) => x.textContent === wantEnglish[i] && !x.hasAttribute("lang")), `${at}/${loc}/html/english/notice`, null,
+            wantEnglish, enNotes.map((x) => [x.textContent, x.getAttribute("lang")]));
           const spans = qa(doc, "span[lang]");
           c.check(spans.some((x) => x.getAttribute("lang") === "en" && x.textContent === policy.CAVEATS.prototype) && spans.some((x) => x.getAttribute("lang") === "es" && x.textContent === comp),
             `${at}/${loc}/html/marker/@lang`, null, "the English marker lang en, its companion lang es", spans.map((x) => `${x.getAttribute("lang")}:${x.textContent}`).slice(0, 6));
         }
         c.check(!/<script|javascript:|https?:\/\//i.test(html), `${at}/${loc}/html/@inert`, null, "no script and no URL", "found");
+        // Release 0.4.8: the introduction video is never in an export.
+        c.check(!/<iframe|<video|patient-companion-intro|\.mp4/i.test(html) && !/patient-companion-intro|\.mp4/i.test(txt), `${at}/${loc}/@noVideo`, null, "no video, frame or media file in the .txt / .html", "found");
       }
     }
     c.note(`exports checked: ${subjects.map((s) => s.name).join("; ")}; ${noticeChecks} edited-wording / stale-translation notices checked`);
@@ -392,7 +449,20 @@ async function renderedHalf(h, c, { patient, policy, masque, subjects }) {
     spanish: [...stringLeaves(patient.PATIENT_CHROME.es), ...stringLeaves(view.locales.es ? view.locales.es.data : {}),
       CAV.patient.edited.es, CAV.patient.uploaded.es, CAV.editedWording.es, CAV.staleTranslation.es],
   });
-  const tally = { surfaces: 0, scans: 0, scanTexts: 0, returns: 0 };
+  const tally = { surfaces: 0, scans: 0, scanTexts: 0, returns: 0, videos: 0 };
+  // Release 0.4.8: the built-in's introduction video (registry.json patientVideo) above the
+  // instructions on every patient surface; never for an uploaded or derived module. The collapsed
+  // state is per tab (sessionStorage): cleared first, so the panel starts expanded.
+  const VIDEO_URL = h.appUrl("modules/masque/media/patient-companion-intro.html");
+  try { sessionStorage.removeItem("screenair.patient.introVideoHidden"); } catch (_) { /* blocked */ }
+  const videoCheck = (at, root, builtin) => {
+    const vp = byTestId(root, "patient-video");
+    const fr = vp ? vp.querySelector("iframe") : null;
+    const intro = vp ? vp.nextElementSibling : null;
+    c.check(builtin ? !!vp && !!fr && fr.getAttribute("src") === VIDEO_URL && !!intro && intro.getAttribute("data-section") === "intro" : !vp, `${at}/video`, null,
+      builtin ? `the built-in's video panel above the instructions (${VIDEO_URL})` : "no video panel (not a built-in)", vp ? (fr ? fr.getAttribute("src") : "panel, no frame") : "absent");
+    if (builtin) tally.videos += 1;
+  };
   /**
    * The checks of a patient surface (release 0.4.2) in `root` (the visible shell or page) after a
    * walk in `loc`: the strip's marker, the print header, the footer, and in es the DOM scan.
@@ -425,7 +495,7 @@ async function renderedHalf(h, c, { patient, policy, masque, subjects }) {
     const scan = englishScan(root, {
       corpus: corpusFor(view),
       docLang: htmlLang() || "en",
-      allowEn: (el) => !el.closest('[data-testid="patient-app"]') || el.matches('[data-testid="patient-locale-en"]'),
+      allowEn: (el) => !el.closest('[data-testid="patient-app"]') || el.matches('[data-testid="patient-locale-en"], [data-testid="patient-english-version"]'),
     });
     c.check(!scan.langEn.length, `${at}/@scan/langEn`, { loc }, "no lang=\"en\" inside the Companion but the English button", scan.langEn.slice(0, 5));
     c.check(!scan.english.length, `${at}/@scan/english`, { loc }, "no English outside lang=\"en\"", scan.english.slice(0, 5));
@@ -474,6 +544,7 @@ async function renderedHalf(h, c, { patient, policy, masque, subjects }) {
         try {
           if (!builtin) await selectModule(C, s.key, m.id);
           const panel = await waitFor(() => { const p = C.querySelector("#sa-panel-patient"); return p && !p.hidden && byTestId(p, "patient-app") ? p : null; }, { what: "the Patient tab" });
+          videoCheck(`${base}/tab`, panel, builtin);
           const strip = () => byTestId(C, "caveat-strip");
           const headText = () => (C.querySelector("thead.sa-print-head") || {}).textContent || "";
           const langBefore = htmlLang();
@@ -522,6 +593,7 @@ async function renderedHalf(h, c, { patient, policy, masque, subjects }) {
           }
           c.check(document.title === "screenAIr · Patient Companion", `${base}/mode/title`, null, "screenAIr · Patient Companion", document.title);
           const modePanel = C.querySelector("#sa-panel-patient");
+          videoCheck(`${base}/mode`, modePanel, builtin);
           for (const loc of locs) {
             walks += await walkAndCheck(c, ctx, { root: modePanel, view, module: m, loc, at: `${base}/mode/${loc}`,
               chrome: () => [["visible-page", visibleText(shellEl, [WHAT_IT_ISNT])]] });
@@ -589,6 +661,7 @@ async function renderedHalf(h, c, { patient, policy, masque, subjects }) {
           c.check(!C.querySelector("nav.sa-tabs") && !C.querySelector("select"), `${base}/address/chrome`, null, "no tab bar, no picker", "present");
           if (builtin) {
             const panel = await waitFor(() => { const p = C.querySelector("#sa-panel-patient"); return p && !p.hidden && byTestId(p, "patient-app") ? p : null; }, { what: "the Patient panel" });
+            videoCheck(`${base}/address`, panel, builtin);
             for (const loc of locs) {
               walks += await walkAndCheck(c, ctx, { root: panel, view, module: m, loc, at: `${base}/address/${loc}`,
                 chrome: () => [["visible-page", visibleText(shellEl, [WHAT_IT_ISNT])]] });
@@ -621,6 +694,7 @@ async function renderedHalf(h, c, { patient, policy, masque, subjects }) {
           }
           if (builtin) {
             if (c.check(!!byTestId(C, "patient-app"), `${base}/page/rendered`, null, "the Companion", visibleText(C).slice(0, 200))) {
+              videoCheck(`${base}/page`, C, builtin);
               for (const loc of locs) {
                 walks += await walkAndCheck(c, ctx, { root: C, view, module: m, loc, at: `${base}/page/${loc}`,
                   chrome: () => [["visible-page", visibleText(shellEl, [WHAT_IT_ISNT])]] });
@@ -697,7 +771,7 @@ async function renderedHalf(h, c, { patient, policy, masque, subjects }) {
         const scan = englishScan(doc.body, {
           corpus: corpusFor(mv),
           docLang: "es",
-          allowEn: (el) => !el.closest('[data-testid="patient-app"]') || el.matches('[data-testid="patient-locale-en"]'),
+          allowEn: (el) => !el.closest('[data-testid="patient-app"]') || el.matches('[data-testid="patient-locale-en"], [data-testid="patient-english-version"]'),
         });
         c.check(!scan.langEn.length, `${at}/es/@scan/langEn`, null, "no lang=\"en\" inside the Companion but the English button", scan.langEn.slice(0, 5));
         c.check(!scan.english.length, `${at}/es/@scan/english`, null, "no English outside lang=\"en\" anywhere in the body", scan.english.slice(0, 5));
@@ -721,6 +795,7 @@ async function renderedHalf(h, c, { patient, policy, masque, subjects }) {
   c.note(`deployed pages in a frame (whole body, es): ${frames.map((f) => `${f.name} (${f.texts} text nodes)`).join("; ") || "none"}`);
   c.note(`rendered: ${live.map((s) => s.name).join("; ")} in the Patient tab, patient mode (Hand to patient and by address) and patient.html; ${walks} sections walked`);
   c.note(`release 0.4.2: ${tally.surfaces} patient surfaces checked (strip, print header, footer, <html lang>), ${tally.scans} es DOM scans (${tally.scanTexts} text nodes), ${tally.returns} returns to the clinician view from es`);
+  c.check(tally.videos === 4 * live.filter((s) => s.module.origin === "builtin").length, "/rendered/@video-coverage", null, "the video panel on the Patient tab, patient mode, by address and patient.html for each built-in", tally.videos);
   const esLive = live.filter((s) => Object.keys(patient.projectForPatient(s.module).locales || {}).includes("es"));
   c.check(tally.scans >= esLive.length * 2 && tally.returns === esLive.length, "/rendered/@es-coverage", null, `≥ ${esLive.length * 2} es scans, ${esLive.length} returns`, tally);
 }

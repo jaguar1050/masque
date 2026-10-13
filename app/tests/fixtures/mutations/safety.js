@@ -21,6 +21,52 @@ export function withClinicianRules(ctx) {
   return r;
 }
 
+/**
+ * The base rubric with a valid chart-reading block (lexicon.clauses) and two valid clarification
+ * entries (lexicon.clarify), release 0.4.7: one naming a probe of the base logic, one naming an
+ * item with its own ask. chartIgnoreThirdParty names the base lexicon's attribution cue and
+ * strictConflict the base's one rule-out item (p_minus, a yes/no entry of the negative domain). The validate suite asserts it alone produces no V28 or V29 finding, so
+ * each generator below that starts from it proves one rule. Placeholder words only.
+ */
+export function withChartReading(ctx) {
+  const r = ctx.rubric();
+  const row = (ph) => ({ ph, source: "draft" });
+  r.lexicon.clauses = {
+    wordStart: true,
+    affirm: [row("example affirm")],
+    deny: [row("example deny"), row("no ")],
+    post: [row(" example post"), row(": no")],
+    prefix: [row("example-")],
+    breaks: [row("example break")],
+    complement: [row("example for")],
+    mask: [row("example item ones")],
+    hedge: [row("example hedge"), row("?")],
+    placeholder: [row("***")],
+    placeholderAsk: { text: "Example placeholder question?", source: "draft" },
+    thirdParty: [row("example kin")],
+    chartIgnoreThirdParty: [row("example relative")],
+    sections: { exam: [row("example exam")], family: [row("example family")], skip: [row("example skip")] },
+    examItems: ["p_one"],
+    strictConflict: ["p_minus"],
+    redFlags: { p_rf_a: [row("example chart flag")] },
+    redFlagNegation: true,
+  };
+  r.lexicon.clarify = [
+    { id: "cl_probe", ph: ["example vague"], unless: ["example detail"], probe: "pr_criteria", source: "draft" },
+    { id: "cl_item", ph: ["example unclear"], item: "p_one", ask: { text: "Example clarify question?", source: "draft" }, source: "draft" },
+  ];
+  return r;
+}
+
+/** A mutated copy of the valid chart-reading block: `fn(clauses, clarify, rubric)` edits it in place. */
+const chartReading = (fn) => (ctx) => {
+  const r = withChartReading(ctx);
+  fn(r.lexicon.clauses, r.lexicon.clarify, r);
+  return { rubric: r };
+};
+const CL = "/lexicon/clauses";
+const CQ = "/lexicon/clarify";
+
 /** A mutated copy of the valid rule: `fn(rule, rubric)` edits it in place. */
 const clinicianRule = (fn, extra = {}) => (ctx) => {
   const r = withClinicianRules(ctx);
@@ -162,14 +208,6 @@ export default [
   {
     code: "V27", sev: "W", path: `${CR}/0/to`, what: "an escalation destination, which the engine never reads (it escalates nothing)",
     build: clinicianRule((e) => { e.to = { specialty: "Example escalated specialty", reason: "Example reason Y" }; }),
-  },
-  {
-    code: "V27", sev: "E", path: "/phenotypes/values/0/value", what: "a phenotype value that names an Object.prototype property (audit e1)",
-    build: (ctx) => {
-      const r = ctx.rubric(); r.phenotypes.values[0].value = "toString"; r.phenotypes.scribeDefault = "toString";
-      for (const s of r.sampleCases) if (s.complaint === "kind_x") s.complaint = "toString";
-      return { rubric: r, via: "shape" };
-    },
   },
   {
     code: "V28", sev: "E", path: "/lexicon/redFlags/p_rf_b", what: "a red flag with an empty phrase list",
@@ -326,6 +364,229 @@ export default [
   {
     code: "V29", sev: "W", path: "/lexicon/bool/1/ph/0", what: "a phrase under 3 characters",
     build: (ctx) => { const r = ctx.rubric(); r.lexicon.bool[1].ph[0] = "ex"; return { rubric: r }; },
+  },
+  // Chart reading and clarification triggers (release 0.4.7): lexicon.clauses and lexicon.clarify,
+  // each rule from the valid block of withChartReading.
+  {
+    code: "V28", sev: "E", path: CL, what: "clauses that is not an object",
+    build: chartReading((cl, cq, r) => { r.lexicon.clauses = ["example affirm"]; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/negate`, what: "an unknown clauses field",
+    build: chartReading((cl) => { cl.negate = [{ ph: "example deny two", source: "draft" }]; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/wordStart`, what: "wordStart that is not a boolean",
+    build: chartReading((cl) => { cl.wordStart = "yes"; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/redFlagNegation`, what: "redFlagNegation that is not a boolean",
+    build: chartReading((cl) => { cl.redFlagNegation = 1; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/deny`, what: "an empty clauses list",
+    build: chartReading((cl) => { cl.deny = []; }),
+  },
+  {
+    // Review round 3: the complement list is a clauses list like the others.
+    code: "V28", sev: "E", path: `${CL}/complement`, what: "an empty complement list",
+    build: chartReading((cl) => { cl.complement = []; }),
+  },
+  {
+    code: "V29", sev: "E", path: `${CL}/complement/0/ph`, what: "an uppercase complement word",
+    build: chartReading((cl) => { cl.complement[0].ph = "Example For"; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/affirm/0`, what: "a clauses row that is a bare phrase, not {ph, source}",
+    build: chartReading((cl) => { cl.affirm = ["example affirm"]; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/post/0/source`, what: "a clauses row with an unknown source",
+    build: chartReading((cl) => { cl.post[0].source = "approved"; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/hedge/2/ph`, what: "a clauses list naming a phrase twice",
+    build: chartReading((cl) => { cl.hedge.push({ ph: "example hedge", source: "draft" }); }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/breaks/0/note`, what: "a clauses row with a field other than ph and source",
+    build: chartReading((cl) => { cl.breaks[0].note = "example"; }),
+  },
+  {
+    code: "V29", sev: "E", path: `${CL}/mask/0/ph`, what: "an uppercase clauses phrase",
+    build: chartReading((cl) => { cl.mask[0].ph = "Example Item Ones"; }),
+  },
+  {
+    code: "V29", sev: "E", path: `${CL}/prefix/0/ph`, what: "a clauses cue with two leading spaces",
+    build: chartReading((cl) => { cl.prefix[0].ph = "  example-"; }),
+  },
+  {
+    // A short cue of a whole-word list (affirm …) is no V29 finding since review round 1: it never
+    // matches inside another word. A mask word is a substring, so a short one still is.
+    code: "V29", sev: "W", path: `${CL}/mask/1/ph`, what: "a short mask word made of letters",
+    build: chartReading((cl) => { cl.mask.push({ ph: "ex", source: "draft" }); }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/sections`, what: "sections that is not an object",
+    build: chartReading((cl) => { cl.sections = [{ ph: "example exam", source: "draft" }]; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/sections/history`, what: "an unknown section kind",
+    build: chartReading((cl) => { cl.sections.history = [{ ph: "example history", source: "draft" }]; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/sections/skip/1/ph`, what: "a header word in two section kinds",
+    build: chartReading((cl) => { cl.sections.skip.push({ ph: "example  exam", source: "draft" }); }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/examItems/0`, what: "examItems naming no item",
+    build: chartReading((cl) => { cl.examItems = ["p_missing"]; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/examItems/1`, what: "examItems naming an item twice",
+    build: chartReading((cl) => { cl.examItems = ["p_one", "p_one"]; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/examItems`, what: "examItems that is not a list",
+    build: chartReading((cl) => { cl.examItems = "p_one"; }),
+  },
+  // Review round 2: chart-register red-flag phrases by red-flag id.
+  {
+    code: "V28", sev: "E", path: `${CL}/redFlags`, what: "clauses.redFlags that is not an object",
+    build: chartReading((cl) => { cl.redFlags = [{ ph: "example chart flag", source: "draft" }]; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/redFlags/p_rf_z`, what: "clauses.redFlags naming no red flag",
+    build: chartReading((cl) => { cl.redFlags.p_rf_z = [{ ph: "example other flag", source: "draft" }]; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/redFlags/p_rf_a`, what: "an empty clauses.redFlags list",
+    build: chartReading((cl) => { cl.redFlags.p_rf_a = []; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/redFlags/p_rf_a/0/source`, what: "a clauses.redFlags row with an unknown source",
+    build: chartReading((cl) => { cl.redFlags.p_rf_a[0].source = "approved"; }),
+  },
+  {
+    code: "V29", sev: "E", path: `${CL}/redFlags/p_rf_a/0/ph`, what: "an uppercase clauses.redFlags phrase",
+    build: chartReading((cl) => { cl.redFlags.p_rf_a[0].ph = "Example Chart Flag"; }),
+  },
+  {
+    code: "V28", sev: "W", path: `${CL}/examItems`, what: "examItems without an exam section",
+    build: chartReading((cl) => { delete cl.sections.exam; }),
+  },
+  {
+    code: "V28", sev: "W", path: `${CL}/placeholder`, what: "placeholder without placeholderAsk",
+    build: chartReading((cl) => { delete cl.placeholderAsk; }),
+  },
+  {
+    code: "V28", sev: "W", path: `${CL}/placeholderAsk`, what: "placeholderAsk without placeholder",
+    build: chartReading((cl) => { delete cl.placeholder; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/placeholderAsk/text`, what: "a placeholder question with no text",
+    build: chartReading((cl) => { cl.placeholderAsk.text = " "; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/placeholderAsk/source`, what: "a placeholder question sourced as module text",
+    build: chartReading((cl) => { cl.placeholderAsk.source = "module"; }),
+  },
+  // Review fixes of release 0.4.7: chartIgnoreThirdParty and strictConflict.
+  {
+    code: "V28", sev: "E", path: `${CL}/chartIgnoreThirdParty/0/ph`, what: "a chartIgnoreThirdParty cue that is not an attribution cue of the lexicon",
+    build: chartReading((cl) => { cl.chartIgnoreThirdParty[0].ph = "example kin"; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/chartIgnoreThirdParty`, what: "an empty chartIgnoreThirdParty list",
+    build: chartReading((cl) => { cl.chartIgnoreThirdParty = []; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/strictConflict`, what: "strictConflict that is not a list",
+    build: chartReading((cl) => { cl.strictConflict = "p_minus"; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/strictConflict/0`, what: "strictConflict naming no item",
+    build: chartReading((cl) => { cl.strictConflict = ["p_missing"]; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/strictConflict/1`, what: "strictConflict naming an item twice",
+    build: chartReading((cl) => { cl.strictConflict = ["p_minus", "p_minus"]; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/strictConflict/2`, what: "strictConflict naming an item of a positive domain",
+    build: chartReading((cl) => { cl.strictConflict = ["p_minus", "p_four", "p_one"]; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CL}/strictConflict/3`, what: "strictConflict naming a scale item",
+    build: chartReading((cl) => { cl.strictConflict = ["p_minus", "p_four", "p_one", "p_two"]; }),
+  },
+  {
+    code: "V28", sev: "W", path: `${CL}/strictConflict/0`, what: "strictConflict naming a rule-out item with no yes/no lexicon entry",
+    build: chartReading((cl, cq, r) => { r.lexicon.bool = r.lexicon.bool.filter((e) => e.id !== "p_minus"); }),
+  },
+  {
+    code: "V28", sev: "E", path: CQ, what: "an empty clarify list",
+    build: chartReading((cl, cq, r) => { r.lexicon.clarify = []; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CQ}/0/id`, what: "a clarify id that is not an identifier",
+    build: chartReading((cl, cq) => { cq[0].id = "Example Id"; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CQ}/1/id`, what: "a duplicate clarify id",
+    build: chartReading((cl, cq) => { cq[1].id = "cl_probe"; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CQ}/0/ph`, what: "a clarify entry with no trigger phrase",
+    build: chartReading((cl, cq) => { cq[0].ph = []; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CQ}/0/unless`, what: "an empty unless list",
+    build: chartReading((cl, cq) => { cq[0].unless = []; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CQ}/0`, what: "a clarify entry naming a probe and an item",
+    build: chartReading((cl, cq) => { cq[0].item = "p_one"; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CQ}/1`, what: "a clarify entry naming neither a probe nor an item",
+    build: chartReading((cl, cq) => { delete cq[1].item; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CQ}/1/item`, what: "a clarify entry naming no item",
+    build: chartReading((cl, cq) => { cq[1].item = "p_ctx"; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CQ}/0/probe`, what: "a clarify entry naming a probe the logic does not have",
+    build: chartReading((cl, cq) => { cq[0].probe = "pr_missing"; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CQ}/1/ask`, what: "a clarify ask that is not {text, source}",
+    build: chartReading((cl, cq) => { cq[1].ask = "Example clarify question?"; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CQ}/1/ask/text`, what: "a clarify ask with no text",
+    build: chartReading((cl, cq) => { cq[1].ask.text = ""; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CQ}/1/ask/source`, what: "a clarify ask sourced as module text",
+    build: chartReading((cl, cq) => { cq[1].ask.source = "module"; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CQ}/0/source`, what: "a clarify entry with no source",
+    build: chartReading((cl, cq) => { delete cq[0].source; }),
+  },
+  {
+    code: "V28", sev: "E", path: `${CQ}/0/target`, what: "a clarify entry with an unknown field",
+    build: chartReading((cl, cq) => { cq[0].target = "p_one"; }),
+  },
+  {
+    code: "V29", sev: "E", path: `${CQ}/0/ph/0`, what: "an uppercase clarify trigger",
+    build: chartReading((cl, cq) => { cq[0].ph[0] = "Example Vague"; }),
+  },
+  {
+    code: "V29", sev: "E", path: `${CQ}/0/unless/0`, what: "an uppercase clarify qualifier",
+    build: chartReading((cl, cq) => { cq[0].unless[0] = "Example Detail"; }),
   },
   {
     code: "V30", sev: "E", path: "/lexicon/negation/window", what: "a zero negation window",

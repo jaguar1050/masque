@@ -74,6 +74,12 @@
 // family-history placeholder, which then reads "Other family history: [ ]"; an item listed there
 // leaves the review of systems; and an exam row's optionPlaceholders put a [placeholder] under the
 // row when its probe was answered with that option.
+// Release 0.4.8 (the clinical lead, 2026-10-12): the data's plan advice (emrTemplate.planAdvice, each
+// line's text verbatim, never re-cased) prints as a plan line ("- " and the text) right after the
+// empiric-treatment reference lines and before the treatment-offered placeholders, only where those
+// references print with no red flag open (the lead's answer: with the references, no red flag);
+// never under an open flag's screen-based block, and never without the references. The line's
+// source and date are its record in the data; they are not printed.
 //
 // Characters: module text is moved verbatim (≥, en and em dashes, accented letters); the structure
 // this file generates (bullets, separators, joiners) is ASCII "-", ":" and "|", apart from the
@@ -708,8 +714,13 @@ export function buildEmrTemplate(module, state = {}, { surface } = {}) {
     out.push(...clinicianRuleLines(module, complaint));
     return out;
   };
-  /** The empiric-treatment references for this picture and the treatment-offered lines, only with the referral (D4; F11: none for an undeclared complaint). */
-  const referenceBlock = (open) => {
+  /**
+   * The empiric-treatment references for this picture and the treatment-offered lines, only where the
+   * referral gate opens (decision D4). With `advice` (release 0.4.8: the no-flag path only), the data's
+   * plan-advice lines follow the reference lines, before the treatment-offered placeholders, and only
+   * when reference lines print.
+   */
+  const referenceBlock = (open, { advice = false } = {}) => {
     const refs = open && tpl ? arr(tpl.references).filter((r) => isObj(r) && showsFor(r.showFor, complaint)) : [];
     const refLines = [];
     for (const r of refs) {
@@ -722,7 +733,8 @@ export function buildEmrTemplate(module, state = {}, { surface } = {}) {
         for (const c of cs) refLines.push(`  Ref: ${c}`);
       }
     }
-    return refLines.length ? ["Empiric treatment references (for use before specialist review):", ...refLines, ...P.offered] : [];
+    const adviceLines = advice && refLines.length && tpl ? arr(tpl.planAdvice).filter((r) => isObj(r) && nonEmpty(r.text)).map((r) => `- ${r.text}`) : [];
+    return refLines.length ? ["Empiric treatment references (for use before specialist review):", ...refLines, ...adviceLines, ...P.offered] : [];
   };
   if (override) {
     // Red flags first (the routing override, as in the bundle): one module action per flag,
@@ -755,9 +767,9 @@ export function buildEmrTemplate(module, state = {}, { surface } = {}) {
     else if (!score.scorable) L.push(S.notScorable);
     else if (plain.error) L.push(S.ruleWithheld(plain.error.ruleId));
     else {
-      const plainRef = plainOpen ? referralFor(module, complaint, { routingError: null }) : null;
-      L.push(...referralBlock(plainRef));
-      L.push(...referenceBlock(plainOpen && plainRef !== null));
+      L.push(...referralBlock(plainOpen ? referralFor(module, complaint, { routingError: null }) : null));
+      // the references only: the plan advice never prints under an open red flag (release 0.4.8)
+      L.push(...referenceBlock(plainOpen));
     }
   } else if (!safetyReviewed) {
     L.push(S.safetyNotRecorded);
@@ -782,9 +794,9 @@ export function buildEmrTemplate(module, state = {}, { surface } = {}) {
     } else {
       L.push(`- ${slot("note.noDriver")}`);
     }
-    // Empiric-treatment references only with the referral (decision D4): the gate is open and a
-    // referral is issued (F11: none for a complaint that is not a declared phenotype value).
-    L.push(...referenceBlock(gateOpen && referral !== null));
+    // Empiric-treatment references only while the referral gate is open (decision D4); here, with no
+    // red flag open, the data's plan advice follows them (release 0.4.8).
+    L.push(...referenceBlock(gateOpen, { advice: true }));
   }
   // The management checklist documents history, not routing: it stays in every state (decision D7).
   // A row the data marks onlyWithSignal prints only when one of its signals holds.

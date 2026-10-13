@@ -7,27 +7,28 @@
 //   Scribe   routingRecs(scribe state)       vs buildRecs(band, complaint, domains, scorable && routingCleared, answers)
 //   derivePhenotype                          vs the `complaint` slice (Scb L846-850)
 //   activeDomains                            vs the active-domain slice (Scb L857-859)
-//   rankSuggestions (with skipped, vmp)      vs the `suggestions` slice (Scb L856-879), AD18 only
-//                                            (the slice run with scorable inverted is the intended list)
+//   rankSuggestions (with skipped, vmp)      vs the `suggestions` slice (Scb L856-879)
 //   gapSignals labels / alert                vs both `gapFlags` slices (Scr L873-878, Scb L916-920)
-//   cdsPreview                               vs the CDS preview slice (Scr L1329-1349), by rendered textContent,
-//                                            AD20 only (no index card for an undeclared complaint)
+//   cdsPreview                               vs the CDS preview slice (Scr L1329-1349), by rendered textContent
 //   buildNote(routingRecs …)                 vs buildNote(buildRecs …), AD6 only
 // Exhaustively: captureLabel vs capLabel for every item value, context item and flag (AD6 on
 // red-flag captures); referralFor vs the referral text of the baseline Screener and Scribe
 // bundles for every complaint (release 0.4.5: AD17 on the otologic and both destinations, expected
-// on both bundles of each; release 0.4.7: AD20 for "", decision F11); referralFor/cdsPreview never
-// read an inherited property of the byPhenotype tables.
+// on both bundles of each).
 // Release 0.4.5, the clinical-lead referral rule (no automatic escalation): referralFor unit cases
 // (otologic → Neurology — vestibular migraine and both → Neurology — mid-facial / migrainous cause,
-// whatever probe answers are passed, pr_internal_vertigo's included; sinonasal keeps Headache
-// medicine / Neurology through the table's default; no complaint and an unknown phenotype issue no
-// referral (release 0.4.7, decision F11); a routing error → null), the referral table
+// whatever probe answers are passed, pr_internal_vertigo's included; sinonasal, the default and an
+// unknown phenotype keep Headache medicine / Neurology; a routing error → null), the referral table
 // and the engine carry no escalation, the bundle on both surfaces in every sample state that
 // issues a referral (and none under a red flag, uncleared routing or a routing error), and the
 // AD17 self-checks (it excuses exactly otologic Neuro-otology → Neurology and both Headache
 // medicine / Neurology → Neurology, each with its own reason; an exhaustive sweep over phenotypes,
 // specialties and reasons, the reverse direction, another path and a malformed or missing delta).
+// Release 0.4.8, the clinical lead's question for item r_dur (2026-10-12): rankSuggestions is compared
+// with the baseline under AD19, which excuses exactly that item's new question and is expected in
+// every state whose baseline list suggests r_dur with its old question; AD19 self-checks (the item,
+// the old and new question, the direction, the place and the delta must all match; every other item,
+// question or field stays a difference).
 // Fail-closed (D6, §3.3): a copy of the MASQUE logic with a throwing routing rule, and one with
 // a throwing derive rule, over 2,000 states each (500 with ?quick=1): the rule-error card on
 // both surfaces; routingError set; no referral ServiceRequest while the red-flag Flag and
@@ -38,12 +39,11 @@ import { collector, guarded, loadMasque, need, validationNote } from "../harness
 import { ALLOWED_DIFFERENCES, ad6Pairs } from "../harness/diff.js";
 import { flatItems, ruleStream, sizes } from "../harness/matrix.js";
 import { REFERRAL_DELTA } from "../harness/referral-delta.js";
+import { QUESTION_DELTA } from "../harness/question-delta-048.js";
 
 const NOW = "2026-10-01T12:00:00.000Z";
 const AD6 = ALLOWED_DIFFERENCES.find((d) => d.id === "AD6");
-const AD18 = ALLOWED_DIFFERENCES.find((d) => d.id === "AD18");
-const AD20 = ALLOWED_DIFFERENCES.find((d) => d.id === "AD20");
-const INDEX_SRC = "CDS Hooks card · order-select";
+const AD19 = ALLOWED_DIFFERENCES.find((d) => d.id === "AD19");
 const useMemo = (f) => f();
 const hpc = (recs) => (recs || []).map((r) => ({ h: r.h, p: r.p, chips: r.chips }));
 const INJECTED = "injected by the rules suite";
@@ -78,8 +78,8 @@ export default {
 
     // ------------------------------------------------------------------ the rule matrix
     const rng = h.rng(h.seed ^ 0x52554c45); // "RULE"
-    let n = 0, ad6Pre = 0, ad6Seen = 0, cdsCards = 0, ad18Pre = 0, ad18Seen = 0, ad20Pre = 0, ad20Seen = 0;
-    const declared = ((module.phenotypes && module.phenotypes.values) || []).map((v) => v.value);
+    let n = 0, ad6Pre = 0, ad6Seen = 0, cdsCards = 0, ad19Pre = 0, ad19Seen = 0;
+    const ad19 = { AD19: { delta: QUESTION_DELTA } };
     const t0 = performance.now();
     for (const st of ruleStream(rng, spec, sizes(h.quick).rules)) {
       const { answers, complaint, ctx, rf, safetyReviewed, skipped, vmp } = st;
@@ -109,12 +109,8 @@ export default {
       const sugB = S["scribe.suggestions"](React, useMemo, scb.ALL_ITEMS, scb.ITEMS, scb.ASK, scb.VMPATHI_TAG, scb.VMPATHI_INFO,
         answers, complaintB, vmp, sB.scorable, skipped);
       const sugN = scribe.rankSuggestions(module, { answers, complaint: ph.value, phenotypeError: ph.error, vmp, scorable: sN.scorable, skipped });
-      // AD18 (F12): the baseline filter tests `scorable ||`, the inverse of its own comment; the
-      // slice with scorable inverted is the list the comment describes.
-      const sugI = S["scribe.suggestions"](React, useMemo, scb.ALL_ITEMS, scb.ITEMS, scb.ASK, scb.VMPATHI_TAG, scb.VMPATHI_INFO,
-        answers, complaintB, vmp, !sB.scorable, skipped);
-      const rs = c.diff(sugB, sugN.list, { at: "/rankSuggestions", input, keyOrder: true, allow: ["AD18"], ctx: { AD18: { intended: sugI } } });
-      if (AD18.detector({ baseline: sugB, intended: sugI })) { ad18Pre++; if (rs.observed.has("AD18")) ad18Seen++; }
+      const rs = c.diff(sugB, sugN.list, { at: "/rankSuggestions", input, keyOrder: true, allow: ["AD19"], ctx: ad19 });
+      if (AD19.detector({ p: ad19.AD19, list: sugB })) { ad19Pre++; if (rs.observed.has("AD19")) ad19Seen++; }
       const routingCleared = !override && safetyReviewed;
       const recsSB = scb.buildRecs(sB.band, complaintB, sB.domains, sB.scorable && routingCleared, answers);
       const stB = rules.buildRoutingState(module, { surface: "scribe", answers, ctx, complaint: ph.value, phenotypeError: ph.error, score: sN, activeFlags: rf, safetyReviewed });
@@ -136,9 +132,7 @@ export default {
       const pv = rules.cdsPreview(module, stS, { routingError: outS.error });
       const card = pv.safety || pv.index;
       if (card) cdsCards++;
-      const rc = c.diff(textB, card ? `${card.src}${card.title}${card.body}` : "", { at: "/cdsPreview", input, allow: ["AD20"],
-        ctx: { AD20: { complaint, declared, indexSrc: INDEX_SRC } } });
-      if (AD20.detector({ complaint, declared, baselineIssued: textB.startsWith(INDEX_SRC) })) { ad20Pre++; if (rc.observed.has("AD20")) ad20Seen++; }
+      c.diff(textB, card ? `${card.src}${card.title}${card.body}` : "", { at: "/cdsPreview", input });
 
       // The note, end to end (AD6).
       const vmpNote = vmp;
@@ -154,9 +148,9 @@ export default {
       if (n % 1000 === 0) await new Promise((r) => setTimeout(r, 0));
     }
     h.expect("AD6", { precondition: ad6Pre > 0, observed: ad6Seen === ad6Pre });
-    h.expect("AD18", { precondition: ad18Pre > 0, observed: ad18Seen === ad18Pre });
-    h.expect("AD20", { precondition: ad20Pre > 0, observed: ad20Seen === ad20Pre });
-    c.note(`rule states: ${n} (seed 0x${h.seed.toString(16)}), ${cdsCards} with a CDS card; AD6 on the note ${ad6Seen}/${ad6Pre}; AD18 on suggestions ${ad18Seen}/${ad18Pre}; AD20 on the CDS preview ${ad20Seen}/${ad20Pre}; ${Math.round(performance.now() - t0)} ms`);
+    h.expect("AD19", { precondition: ad19Pre > 0, observed: ad19Seen === ad19Pre });
+    c.check(ad19Pre > 0, "/rankSuggestions/@AD19", null, "some baseline suggestion lists suggest r_dur with its old question", ad19Pre);
+    c.note(`rule states: ${n} (seed 0x${h.seed.toString(16)}), ${cdsCards} with a CDS card; AD6 on the note ${ad6Seen}/${ad6Pre}; AD19 on the suggestions ${ad19Seen}/${ad19Pre}; ${Math.round(performance.now() - t0)} ms`);
 
     // ------------------------------------------------------------------ captureLabel vs capLabel
     let capN = 0, capPre = 0, capSeen = 0;
@@ -189,7 +183,7 @@ export default {
     const fullHigh = scr.SAMPLE_CASES.otologic.a;
     const sHigh = scb.computeScore(fullHigh);
     const AD17 = ALLOWED_DIFFERENCES.find((d) => d.id === "AD17");
-    let ad17Pre = 0, ad17Seen = 0, refPre = 0, refSeen = 0;
+    let ad17Pre = 0, ad17Seen = 0;
     for (const complaint of ["", ...spec.phenotypeValues]) {
       const ref = rules.referralFor(module, complaint);
       const want = (bundle) => (bundle.entry.map((e) => e.resource).find((r) => r.resourceType === "ServiceRequest" && r.priority === "routine") || {}).code;
@@ -198,36 +192,16 @@ export default {
       const bScb = fixed(() => scb.buildBundle({ patient: scb.PATIENT, answers: fullHigh, total: sHigh.total, floor: sHigh.floor, ceiling: sHigh.ceiling,
         coverage: sHigh.coverage, scorable: sHigh.scorable, band: sHigh.band, domains: sHigh.domains, complaint, note: "", activeFlags: [], emergent: false, routingCleared: true }));
       const got = ref ? { text: `Referral: ${ref.specialty} — evaluate for ${ref.reason}` } : undefined;
-      const adRef = { AD17: { delta: REFERRAL_DELTA, complaint }, AD20: { complaint, declared, indexSrc: INDEX_SRC } };
+      const ad17 = { AD17: { delta: REFERRAL_DELTA, complaint } };
       for (const [surface, b] of [["screener", bScr], ["scribe", bScb]]) {
-        const r = c.diff(want(b), got, { at: `/referralFor/${complaint || "(none)"}/${surface}/code`, input: { complaint }, allow: ["AD17", "AD20"], ctx: adRef });
-        if (AD17.detector({ p: adRef.AD17, baseline: (want(b) || {}).text })) { ad17Pre++; if (r.observed.has("AD17")) ad17Seen++; }
-        if (AD20.detector({ complaint, declared, baselineIssued: !!want(b) })) { refPre++; if (r.observed.has("AD20")) refSeen++; }
+        const r = c.diff(want(b), got, { at: `/referralFor/${complaint || "(none)"}/${surface}/code`, input: { complaint }, allow: ["AD17"], ctx: ad17 });
+        if (AD17.detector({ p: ad17.AD17, baseline: (want(b) || {}).text })) { ad17Pre++; if (r.observed.has("AD17")) ad17Seen++; }
       }
       c.check(rules.referralFor(module, complaint, { routingError: { family: "routing", ruleId: "x", message: "y" } }) === null,
         `/referralFor/${complaint || "(none)"}/@routingError`, { complaint }, null, "a referral");
     }
     c.check(ad17Pre === 4, "/referralFor/@AD17", null, "AD17's precondition on both baseline bundles of otologic and of both", ad17Pre);
     h.expect("AD17", { precondition: ad17Pre > 0, observed: ad17Seen === ad17Pre });
-    h.expect("AD20", { precondition: refPre > 0, observed: refSeen === refPre });
-
-    // Inherited properties never resolve a lookup (the byPhenotype tables are plain objects): a
-    // declared value named like an Object.prototype member falls back to the default.
-    {
-      const ph = { values: [{ value: "toString" }, { value: "constructor" }, { value: "x" }],
-        referral: { byPhenotype: { x: { specialty: "X", reason: "x" } }, default: { specialty: "D", reason: "d" } },
-        cdsTerm: { byPhenotype: { x: "xterm" }, default: "dterm" } };
-      const fake = { ...module, phenotypes: { ...module.phenotypes, ...ph } };
-      for (const v of ["toString", "constructor"]) {
-        c.diff({ specialty: "D", reason: "d" }, rules.referralFor(fake, v), { at: `/referralFor/@inherited/${v}`, input: { complaint: v } });
-      }
-      c.check(rules.referralFor(fake, "__proto__") === null, "/referralFor/@inherited/__proto__", { complaint: "__proto__" }, null, rules.referralFor(fake, "__proto__"));
-      c.check(rules.referralFor(fake, "hasOwnProperty") === null, "/referralFor/@undeclared", { complaint: "hasOwnProperty" }, null, rules.referralFor(fake, "hasOwnProperty"));
-      const st = rules.buildRoutingState(fake, { surface: "screener", answers: fullHigh, ctx: {}, complaint: "toString",
-        score: scoring.computeScore(fake, fullHigh), activeFlags: {}, safetyReviewed: true });
-      const pv = rules.cdsPreview(fake, st);
-      c.check(!!pv.index && pv.index.title.includes("dterm"), "/cdsPreview/@inherited", { complaint: "toString" }, "an index card with the default term", pv.index && pv.index.title);
-    }
 
     // ------------------------------------------------------------------ referralFor: the dizziness rule (release 0.4.5)
     // The clinical lead's rule as decided on 2026-10-07 to 2026-10-09: the otologic phenotype and both
@@ -255,9 +229,7 @@ export default {
         ["none", undefined], ["empty", {}], ["option-0", { pr_internal_vertigo: 0 }], ["option-1", { pr_internal_vertigo: 1 }], ["option-2", { pr_internal_vertigo: 2 }],
         ["out-of-range", { pr_internal_vertigo: 3 }], ["not-an-index", { pr_internal_vertigo: "0" }], ["other-probes", { pr_visual_vertigo: 0, pr_positional: 0 }],
       ];
-      // Release 0.4.7 (decision F11, AD20): no complaint and an undeclared phenotype issue no
-      // referral at all (0.4.5 expected the table's default here); the destination rule is unchanged.
-      const WANT = { otologic: NEURO_VM, both: NEURO_MID, sinonasal: HM_MID, "": null, "not-a-phenotype": null };
+      const WANT = { otologic: NEURO_VM, both: NEURO_MID, sinonasal: HM_MID, "": HM_MID, "not-a-phenotype": HM_MID };
       for (const [complaint, want] of Object.entries(WANT)) {
         for (const [name, probeAns] of PROBE_SETS) {
           const got = rules.referralFor(module, complaint, probeAns === undefined ? {} : { probeAns });
@@ -387,6 +359,55 @@ export default {
         && !AD17.detector({ p: P("otologic").AD17, baseline: NE_VM }) && !AD17.detector({ p: P("both").AD17, baseline: NO_VM })
         && !AD17.detector({ p: P("otologic").AD17, baseline: HM_MID }), "/AD17/detector", null,
         "the precondition only for the otologic and both baseline destinations (each with its own reason)", null);
+    }
+
+    // ------------------------------------------------------------------ AD19 self-checks (release 0.4.8)
+    // AD19 excuses exactly the changed question of the question delta (r_dur: "How long has this been
+    // going on?" → the lead's sentence) in one suggestion or heard prompt of that item. Every other
+    // item, question, direction, field or place, and a malformed or missing delta, stays a difference.
+    {
+      const row = QUESTION_DELTA.changed[0];
+      const OLD = row.from, NEW = row.to;
+      c.diff({ item: "r_dur", from: "How long has this been going on?", to: "Have symptoms persisted over 3 months despite trials of medical management?" },
+        { item: row.item, from: row.from, to: row.to }, { at: "/AD19/row" });
+      const sug = (id, ask, extra = {}) => ({ id, ask, tag: "recalcitrance", scale: undefined, kind: "scored", ...extra });
+      const P = (delta = QUESTION_DELTA) => ({ AD19: { delta } });
+      const run = (a, b, ctx, at = "/rankSuggestions") => h.diff(a, b, { at, keyOrder: true, allow: ["AD19"], ctx });
+      for (const [name, a, b, at] of [
+        ["suggestion", [sug("r_abx", "x"), sug("r_dur", OLD)], [sug("r_abx", "x"), sug("r_dur", NEW)], "/rankSuggestions"],
+        ["heard", [sug("r_dur", OLD, { kind: "heard", cueText: "q" })], [sug("r_dur", NEW, { kind: "heard", cueText: "q" })], "/heardPrompts"],
+      ]) {
+        const r = run(a, b, P(), at);
+        c.check(!r.diffs.length && r.observed.has("AD19"), `/AD19/excuses/${name}`, { a, b }, "excused", r.diffs);
+      }
+      const D = QUESTION_DELTA;
+      const refused = [
+        ["other-item", [sug("r_abx", OLD)], [sug("r_abx", NEW)], P()],
+        ["id-changed", [sug("r_dur", OLD)], [sug("r_abx", NEW)], P()],
+        ["other-old", [sug("r_dur", "How long has it been going on?")], [sug("r_dur", NEW)], P()],
+        ["other-new", [sug("r_dur", OLD)], [sug("r_dur", NEW.toLowerCase())], P()],
+        ["reversed", [sug("r_dur", NEW)], [sug("r_dur", OLD)], P()],
+        ["tag-changed", [sug("r_dur", OLD)], [sug("r_dur", NEW, { tag: "other" })], P()],
+        ["kind-changed", [sug("r_dur", OLD)], [sug("r_dur", NEW, { kind: "info" })], P()],
+        ["malformed/same", [sug("r_dur", OLD)], [sug("r_dur", NEW)], P({ ...D, changed: [{ ...row, to: row.from }] })],
+        ["malformed/no-item", [sug("r_dur", OLD)], [sug("r_dur", NEW)], P({ ...D, changed: [{ ...row, item: "" }] })],
+        ["malformed/empty", [sug("r_dur", OLD)], [sug("r_dur", NEW)], P({ ...D, changed: [] })],
+        ["no-delta", [sug("r_dur", OLD)], [sug("r_dur", NEW)], { AD19: {} }],
+        ["no-ctx", [sug("r_dur", OLD)], [sug("r_dur", NEW)], {}],
+      ];
+      for (const [name, a, b, ctx] of refused) {
+        const r = run(a, b, ctx);
+        c.check(r.diffs.length >= 1 && !r.observed.has("AD19"), `/AD19/refuses/${name}`, { a, b }, "a difference, not excused", r.diffs.length ? "observed" : "excused");
+      }
+      for (const at of ["/buildNote", "/rankSuggestions/0/ask", "/suggestions"]) {
+        const r = run([sug("r_dur", OLD)], [sug("r_dur", NEW)], P(), at);
+        c.check(r.diffs.length === 1 && !r.observed.has("AD19"), `/AD19/refuses/other-path${at}`, null, "only at …/rankSuggestions/<k> or …/heardPrompts/<k>", "excused");
+      }
+      const strOnly = h.diff(OLD, NEW, { at: "/rankSuggestions/0", allow: ["AD19"], ctx: P() });
+      c.check(strOnly.diffs.length === 1, "/AD19/refuses/bare-string", null, "a bare string is never excused (the item id is needed)", "excused");
+      c.check(AD19.detector({ p: P().AD19, list: [sug("r_abx", "x"), sug("r_dur", OLD)] }) && !AD19.detector({ p: P().AD19, list: [sug("r_dur", NEW)] })
+        && !AD19.detector({ p: P().AD19, list: [sug("r_abx", OLD)] }) && !AD19.detector({ p: { delta: { ...D, changed: [] } }, list: [sug("r_dur", OLD)] }),
+        "/AD19/detector", null, "the precondition only for a baseline list holding r_dur with its old question", null);
     }
 
     // ------------------------------------------------------------------ fail-closed

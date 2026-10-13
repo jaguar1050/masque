@@ -20,9 +20,10 @@ export const ANSWER = { YES: "yes", NO: "no", UNSURE: "unsure" };
 
 /**
  * Kinds of a Scribe capture. HEARD is a cue heard without its value: it carries no value and
- * never sets an answer (absent stays absent).
+ * never sets an answer (absent stays absent). CLARIFY (release 0.4.7) is a clarification cue
+ * (extraction.clarifyCues, never an extract capture): a question for the clinician, never an answer.
  */
-export const CAPTURE_KIND = { ITEM: "item", CTX: "ctx", REDFLAG: "redflag", HEARD: "heard" };
+export const CAPTURE_KIND = { ITEM: "item", CTX: "ctx", REDFLAG: "redflag", HEARD: "heard", CLARIFY: "clarify" };
 
 /**
  * Probe kinds. rank/label/c/bg are moved verbatim from Prb L47-54; caption is the Scribe's

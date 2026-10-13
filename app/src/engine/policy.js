@@ -2,8 +2,8 @@
 // and no caveat string may appear in module data (validator V38).
 // Plain data; no imports, no side effects.
 
-/** Release axis (D9, D21; pending the lead, Q2). 0.4.2: the Spanish patient companion completed (2026-10-06). 0.4.3: the EMR Friendly Template (2026-10-06). 0.4.4: the clinical-lead sign-off of the EMR template content recorded (2026-10-07). 0.4.5: the clinical-lead referral rule for dizziness cases (decided 2026-10-07 to 2026-10-10). 0.4.6: the clinical lead's answers on the EMR template's open items (2026-10-10). 0.4.7: 0.4.6 merged with the 2026-10-04 full-audit fixes (decisions F11-F16; allowed differences AD18-AD20) (2026-10-11). */
-export const APP_VERSION = "0.4.7";
+/** Release axis (D9, D21; pending the lead, Q2). 0.4.2: the Spanish patient companion completed (2026-10-06). 0.4.3: the EMR Friendly Template (2026-10-06). 0.4.4: the clinical-lead sign-off of the EMR template content recorded (2026-10-07). 0.4.5: the clinical-lead referral rule for dizziness cases (decided 2026-10-07 to 2026-10-10). 0.4.6: the clinical lead's answers on the EMR template's open items (2026-10-10). 0.4.7: chart-text capture and the clarification prompts, from the clinical lead's request and decisions of 2026-10-11 (lexicon 0.3.3 and gold set 0.4.0), signed off by the clinical lead on 2026-10-12. 0.4.8: the clinical lead's three fixes of 2026-10-12 (a module's clinician question reworded as data, the Patient Companion's introduction video, the English version of a non-English summary); and, the same day, the clinical lead's two follow-up requests (the lead's plan line for the EMR template, as data, and the Ambient Scribe's Question review). */
+export const APP_VERSION = "0.4.8";
 
 /**
  * Site switches. REQUIRE_SAFETY_REVIEW_TO_SIGN: Scb L171. SITE_SALT / SALT_IS_DEFAULT: Scr L66-67.
@@ -81,15 +81,6 @@ export const CAVEATS = {
  * Beyond score / likelihood / probability and an "NN/NNN" figure: a band word, a percentage figure
  * (a threshold written with a comparison sign, such as a criterion's "≥50%", is not a result and is
  * allowed), the words percent / percentage, and chance / odds / risk.
- *
- * No lookbehind anywhere (Safari before 16.4 cannot parse one, and every page importing this
- * file would fail). The percentage pattern therefore matches the context before the digit
- * instead of looking behind it: a digit d before "%" counts unless the run of digits, "." and
- * "," ending at d is preceded (after any whitespace) by a comparison sign. Its first
- * alternative is that whitespace and the non-sign character (or string start) before it; the
- * second, no whitespace and a character that is neither a sign, whitespace nor part of the run.
- * test() gives exactly what the former negative-lookbehind form gave (checked on a random
- * corpus); a match's index may start up to that context earlier.
  */
 export const OMISSION_PATTERNS = [
   /\bscor(?:e|es|ed|ing)\b/i,
@@ -98,7 +89,7 @@ export const OMISSION_PATTERNS = [
   /\b\d{1,3}\s*\/\s*\d{2,3}\b/,
   /\bpuntuaci[oó]n|\bpuntaje\b/i,
   /\bbands?\b|\bbandas?\b/i,
-  /(?:(?:^|[^≥≤<>=\s])\s+|^|[^≥≤<>=\s\d.,])[\d.,]*\d\s*[%％]/,
+  /(?<![≥≤<>=]\s*[\d.,]*)\d\s*[%％]/,
   /\bper\s?cent(?:age)?s?\b|\bporcentajes?\b|\bpor\s+ciento\b/i,
   /\bchances?\b|\bodds\b/i,
   /\brisks?\b|\briesgos?\b/i,

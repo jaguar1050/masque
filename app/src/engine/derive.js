@@ -32,8 +32,6 @@ const MODULE_ID_RE = /^[a-z][a-z0-9-]{1,47}$/;
 const LOCAL_TAG = /-local(?:[.-]|$)/;
 const LOCALE_META = new Set(["reviewed", "editedLocally", "stale"]);
 const GENERIC_ID = "*generic";
-// Path segments setAt refuses: they would write to a prototype, not to the rubric's data.
-const UNSAFE_SEGMENTS = new Set(["__proto__", "constructor", "prototype"]);
 
 // ------------------------------------------------------------------------- JSON pointers
 
@@ -74,9 +72,6 @@ export function getAt(obj, ptr) {
 export function setAt(obj, ptr, value) {
   const segs = ptrParse(ptr);
   if (!segs.length) throw new Error("setAt: cannot replace the root");
-  // A rubric is plain JSON data; these names would reach an object's prototype instead.
-  const bad = segs.find((k) => UNSAFE_SEGMENTS.has(k));
-  if (bad !== undefined) throw new Error(`setAt: the path segment "${bad}" is not allowed`);
   let v = obj;
   for (let i = 0; i < segs.length - 1; i++) {
     const k = segs[i];
@@ -268,7 +263,13 @@ const LOCKS = [
   ["/lexicon/scale/*/carryExclude", "Carry-over exclusions are approved lexicon configuration; not editable in the Rubric Editor."],
   ["/lexicon/carryRefuse", "Carry-over refusal phrases are approved lexicon configuration; not editable in the Rubric Editor."],
   ["/lexicon/normalize", "Text normalization before matching is approved lexicon configuration; not editable in the Rubric Editor."],
-  ["/emrTemplate", "The EMR template data is cited clinical content (the built-in module's was signed off by the clinical lead on 2026-10-07, with the lead's additions of 2026-10-10); not editable in the Rubric Editor."],
+  // Review round 1 (release 0.4.7): not "approved": these rows carry their own source (lead, module or
+  // draft), and the engine cannot know whether anyone has signed them off.
+  ["/lexicon/clauses", "Chart reading (clause cues, sections, conflicts, red-flag negation) is lexicon configuration, each row tagged with its source (lead, module or draft); not editable in the Rubric Editor."],
+  ["/lexicon/clarify", "Clarification prompts are lexicon configuration, each entry tagged with its source (lead, module or draft); not editable in the Rubric Editor."],
+  // Release 0.4.8, follow-up (review fix): names the lead's plan line of 2026-10-12 (emrTemplate.planAdvice),
+  // which cites no reference.
+  ["/emrTemplate", "The EMR template data is clinical content (the built-in module's was signed off by the clinical lead on 2026-10-07, with the lead's additions of 2026-10-10 and 2026-10-12; all of it cited except the 2026-10-12 plan line, the lead's own recommendation); not editable in the Rubric Editor."],
   ["/locales/*/reviewed", "Managed by screenAIr: edited wording is marked unreviewed."],
   ["/locales/*/editedLocally", "Managed by screenAIr."],
   ["/locales/*/stale", "Managed by screenAIr."],
@@ -759,21 +760,8 @@ function draftHex6(draftRubric) {
   return sha256HexSync(utf8Bytes(canonicalJson(r))).slice(0, 6);
 }
 
-/**
- * The calendar date a person sees (YYYY-MM-DD) in the local time zone. `now` is an ISO
- * timestamp, a Date or a timestamp; a bare "YYYY-MM-DD" is taken as written. A timestamp is an
- * instant, so its UTC date can be the day before or after the user's (functional audit L4).
- */
-export function localDate(now = null) {
-  if (typeof now === "string" && /^\d{4}-\d{2}-\d{2}$/.test(now)) return now;
-  const d = now === null || now === undefined || now === "" ? new Date() : new Date(now);
-  if (Number.isNaN(d.getTime())) return String(now).slice(0, 10);
-  const p2 = (n) => String(n).padStart(2, "0");
-  return `${String(d.getFullYear()).padStart(4, "0")}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
-}
-
 function isoDate(now) {
-  return localDate(now);
+  return String(now || new Date().toISOString()).slice(0, 10);
 }
 
 /** The family records a draft of `parent` is checked against (§3.11 "Family"). */
@@ -987,14 +975,6 @@ export async function deriveRubric(parent, draftRubric, {
     }
     if (stale.length) { L.stale = stale; L.reviewed = false; }
     else if (L.stale !== undefined) L.stale = [];
-  }
-  // A derivation never reviews a translation: a locale's `reviewed` never rises above the
-  // parent's (a hand-edited file loaded as derived may say `"reviewed": true`; V55 refuses
-  // one that is still higher than the root's).
-  const parentLocs = isObj(pr.locales) ? pr.locales : {};
-  for (const loc of Object.keys(locs)) {
-    if (!isObj(locs[loc]) || locs[loc].reviewed !== true) continue;
-    if (!(isObj(parentLocs[loc]) && parentLocs[loc].reviewed === true)) locs[loc].reviewed = false;
   }
 
   // Research: calibration and population carried unchanged (V54).

@@ -1467,100 +1467,295 @@ Review round 1 (2026-10-11) and its fixes: `CHANGELOG.md` (release 0.4.6, "Revie
 - The files, the deploy list and the AD4 row: `docs/refactor/02-app-divergences.md` ("screenAIr
   0.4.6").
 
-## screenAIr 0.4.7 (11 October 2026)
+## screenAIr 0.4.7 (11 to 12 October 2026; signed off by the clinical lead on 12 October 2026)
 
-Release 0.4.7 is release 0.4.6 (commit cb5b834) with the fixes of the full audit of 4 October 2026
-merged in (commits fcaf99e, 6b56810, 701a12e, 17511bf, c202853 and efa969f, made on a branch from
-release 0.4.0, commit e401c31, in parallel with releases 0.4.1-0.4.6). The audit's decisions are
-F11-F16 and the merge's MG1-MG3 (design 03, "Orchestrator decisions after the foundation phase"
-and "Decisions for release 0.4.7"). No clinical content changes: no item, weight, cut-point, red
-flag, phrase, probe, referral rule, EMR template text or patient wording is added, reworded or
-renumbered, and every 0.4.1-0.4.6 change is kept in full. No version axis but the release moves.
+Release 0.4.7 implements the **clinical lead's request of 11 October 2026** (chat, verbatim in
+`app/modules/masque/CHANGELOG.md`, release 0.4.7, and in `tests/harness/lexicon-delta-033.js`). It
+has four parts:
 
-The audit fixes, in brief (the commit messages carry the detail):
+- the Ambient Scribe's capture box becomes a large scrollable text area;
+- chart text (a history and physical) is read properly, so "not pulsatile" no longer flags
+  pulsatile tinnitus;
+- endorsement and denial verbiage triggers the criteria properly;
+- a section after the text asks the clinician to clarify unclear verbiage, for example "is the
+  rhinorrhea clear or purulent?" for a generic "runny nose".
 
-- **Validator, derivation and export** (fcaf99e). V11: domain keys join the shared id namespace,
-  `safety` and Object.prototype names are reserved (no duplicate FHIR `linkId`), `infoPrompts` is
-  checked; V27 phenotype values; V37 `demoCohorts`; V35 identifier templates render to one safe
-  token; V55 a derived locale is never marked reviewed above its parent's; V60's name, item and
-  label checks apply only to a module with a patient surface. Download all writes an uploaded
-  rubric's original bytes, so a derivation from it keeps its lineage after a zip round trip.
-  Lookbehind regexes rewritten (Safari before 16.4 could not parse them). User-facing dates use
-  local time; `setAt` refuses prototype segments.
-- **Engine** (6b56810). F15 (the score range is never narrower than the exact completion range);
-  `openPts` sums attainable headroom, rounded; F12 (AD18), F13 (AD19) and F11 (AD20) below;
-  own-property lookups for phenotype values; Unicode-safe negation offsets; CSV quoting of CR and
-  of formula-leading cells; zip inflation stops at the declared size.
-- **Research and data** (701a12e): the subsection "Audit fixes — research and data" below,
-  including F14.
-- **Apps, shell, pages and loader** (17511bf, c202853, efa969f). F16 (the upload consent scan
-  never states a negative and flags more global names). The pages load Babel with `defer`, the
-  loader URL carries the release (`?v=`) and a loader that cannot be imported is shown as an
-  error; `.htaccess` revalidates pages and modules and serves the ETL sources as plain text. An
-  app's Reset also clears its rows from the session (`clearRows`); a patient-mode reload naming a
-  module that is no longer loaded shows no other module's wording; an edited module that exists
-  only in this tab is confirmed before removal; the restore banner says what a saved module
-  needs; the Rubric Editor's dialogs are modal for the keyboard; the Scribe's FHIR cards no longer
-  widen the panel.
+The lead then answered three questions: "Don't raise, no listing" (a red flag the chart clearly
+denies is not raised), "Clickable answers (Recommended)" (each clarification is answered with a
+click on the item's or probe's own options) and "Draft, you sign off (Recommended)". Every cue list
+and clarification trigger the lead did not name was therefore drafted by the team and listed for the
+lead's sign-off in `CHANGELOG.md` ("SIGN-OFF"). **On 12 October 2026 the lead signed it off** (below,
+"Clinical-lead sign-off"): 278 rows approved (now `source: "lead-approved"`), 18 struck, the 19 Part D
+questions answered. The design is `06-chart-capture.md`; the decisions are CC1-CC53 in `03-design.md`
+(CC13-CC16: the four fixes before review; CC17-CC28: review round 1; CC46-CC53: the sign-off).
+
+What changes:
+
+- **Engine.** `extraction.js`:
+  - reads `lexicon.clauses` (chart reading: clauses, sections, word-start matching, masks, list
+    denials, post and prefix cues, hedges, placeholders, all mentions in text order, red-flag
+    negation behind `redFlagNegation`, clause evidence with `clause: {start, end}`);
+  - `extractInContext(…, {chart: true})` for typed chart text;
+  - new `clarifyCues`, outside `extract`;
+  - `EXTRACTOR_FEATURES` gains `clauses` and `clarify`.
+
+  `scribe.js` gains `clarifyPrompts` and `clarifyLabel`, and `vocab.js` `CAPTURE_KIND.CLARIFY`.
+  `validate.js` checks the two fields (V28, V29), and `contract.js` adds their constants and
+  typedefs. `policy.js`: `APP_VERSION` 0.4.7. Every new behaviour is opt-in lexicon data and does
+  nothing when absent.
+- **App.** `Scribe.jsx`:
+  - the entry box is a textarea: same test ids, Enter adds a line, Ctrl or Cmd+Enter captures;
+  - typed text is chart text;
+  - a Clarify section (`scribe-clarify`) appears under the box only when it has cards;
+  - clarify tags on transcript bubbles;
+  - Reset clears the draft and the cards, and an uncaptured draft counts as unsaved work.
+- **Module data.** Lexicon 0.3.2 → 0.3.3 (`clauses`, `clarify`, four negation cues) and gold set
+  0.3.0 → 0.4.0, generated from `tests/harness/lexicon-delta-033.js`. `masque.logic.js` is not
+  touched (probe set 1.0.0).
+
+### Fixes before review (11 October 2026)
+
+Four known problems of the first build were fixed before review; nothing else was re-tuned.
+
+- **CC13, chart pronouns.** In typed chart text the shipped attribution cues "her " and "his "
+  suppressed the patient's own symptoms ("Her tinnitus is bilateral."). The new draft list
+  `clauses.chartIgnoreThirdParty` names the lexicon's attribution cues that do not gate in chart
+  text; `extraction.js` reads it only with `opts.chart` (`extract`, `extractInContext`,
+  `clarifyCues`), and `Scribe.jsx` now passes `{chart: true}` to `clarifyCues` too. Relatives
+  (`clauses.thirdParty`), "family history of" and the other cues still gate; spoken lines read every
+  cue. V28: each row a cue of `lexicon.thirdParty.cues`. (Review round 1, CC21: as built here the
+  pronoun did not gate before any other person either; it now gates unless a finding follows it.)
+- **CC14, the conflict rule.** A conflict now needs one finding said both ways (the same phrase,
+  or overlapping spans of two phrases of the entry); different phrases that disagree record yes.
+  Reference n07 gives its 0.2.0 output again and leaves the gold set 0.4.0 supersede table. The
+  rule-out items (`clauses.strictConflict`: the yes/no items of the negative domain, draft) keep the strict rule, any affirmed and any denied mention being a conflict: a "yes" there
+  lowers the index, so recording nothing and asking is the conservative choice (CHANGELOG, "Four
+  fixes before review"). V28: yes/no items of a negative domain.
+- **CC15, whole-word cues.** The `clauses` cue lists match as whole words (a word end too, unless
+  the cue ends in a character that is no letter or digit), so "yes" no longer reads in
+  "yesterday". Symptom phrases stay stems; the lexicon's own gate cues stay word-start only.
+- **CC16, editor locks.** `derive.js` lock rows for `/lexicon/clauses` and `/lexicon/clarify` (no
+  clinical-lead claim; reworded in review round 1, CC27), and read-only summary lines in the Rubric
+  Editor's lexicon section.
+
+### Review round 1 (11 October 2026)
+
+The review confirmed twelve problems; each is fixed at its root cause with tests in both directions
+(CHANGELOG, "Review round 1"; design 06 §11). New data rows are drafts in the sign-off list.
+
+- **CC17, red flags.** A flag is lowered only by a denial that governs its phrase directly (a prefix,
+  a window cue with nothing but other words between, a deny cue naming it first in its list item or
+  in a later item of its list, a closing post cue right after it). Before, a denial of something else
+  in the clause hid affirmed flags, in chart and spoken lines.
+- **CC18, list scope.** New draft list `clauses.scopeEnd` (with, so, now, until, is, are, was, were,
+  to, from): a list denial, and a window, stops at such a word; a mention it does not reach is set
+  aside (`suppressedBy: "scope"`), never "no". A line holding a deny cue and no finding that is a
+  header or ends with the cue ("Patient denies:", "Denies") heads a list of the lines below it.
+- **CC19, post cues.** A post cue denies a mention only when it closes the item right after it, and
+  denies a list of findings it closes.
+- **CC20, sections.** Exam sub-labels keep the exam; new draft section kind `read` (17 headers) ends
+  any section; any other header ends a skip or family section; an inline section label holds for its
+  line only.
+- **CC21, chart pronouns.** "her " and "his " name the patient only before a finding.
+- **CC22, contractions.** A negation cue holding another at its end is measured from it, so the window
+  keeps its 0.3.2 reach; AD18 Wc narrowed; v025 and v042 leave the supersede table (7 rows).
+- **CC23-CC24.** A leading "?" hedges the words after it; chart reading lowercases without changing
+  length.
+- **CC25, the Clarify cards.** A rescue probe's card only while the probe is live (`liveProbes`); a
+  card never overwrites an answer; the rail holds every probe for an open card's item.
+- **CC26, the Clarify section.** Always-mounted status, region, named groups, focus moves; caption
+  reworded.
+- **CC27, CC28.** Lock wording without "approved"; V29 no short-phrase warning for whole-word clause
+  cues; AD18 and the capture evidence checks require the clause to hold the `cueIndex`; `opts.chart`
+  never carries, for any lexicon (stated and pinned).
+
+### Review round 2 (11 October 2026)
+
+The second review's lead items, each with a conservative default the team drafted for the lead to
+sign off (CHANGELOG, "Review round 2"; design 06 §12; decisions CC29-CC35 in 03). Every new phrase,
+cue and question is a draft row with a basis.
+
+- **CC29, chart reading for typed chart text only.** `lexicon.clauses` applies only with
+  `opts.chart`, which the Scribe passes for typed text. A spoken or demo line extracts exactly as in
+  release 0.4.6. `extractInContext` runs the 0.4.6 steps for it, with no chart-reader branch left.
+  `extraction` block 4 compares this engine with the frozen 0.4.6 engine
+  (`tests/fixtures/engine-0.4.6/`). AD18 excuses only typed chart text, and block 3's spoken
+  comparisons are strict. Gold set 0.4.0's supersede table is empty.
+- **CC30, chart-register red flags.** The new draft list `clauses.redFlags` (111 phrases, every flag)
+  is read after `lexicon.redFlags[flag]` in typed chart text. A hit inside a longer hit of the same
+  flag is part of it. The safety clarify entries lose their dangerous-answer qualifiers.
+- **CC31, shielded cues.** A negation, deny, post or prefix cue inside a longer affirm or hedge cue
+  is no cue. The treatment-failure affirm cues ("no improvement", "failed", "despite", …) rest on
+  it, as does the hedge "not sure".
+- **CC32, label answers and notation.** A cue right after a finding (a ":" or "-" between, or
+  nothing before a sign) answers it. An affirm cue affirms it; a deny cue answers its label only and
+  opens no list. Drafts: "(+)", "(-)", ": denies", " - no", "[ ]", "[]" and the hedges "maybe",
+  "unsure", "uncertain", "not sure", "might".
+- **CC33, report headers.** Draft masks for "ct showed", "scope showed", "lund-mackay", "audiogram
+  showed" and "hearing test showed". Two clarify entries ask what the report showed, and
+  clarification triggers are matched without the mask.
+- **CC34, exam items.** `examItems` is empty (the validator allows an empty list); a lead question.
+- **CC35, the template notice.** The placeholder card is a notice (role `note`) with one Dismiss
+  control and draft text "This line holds unfilled template text (***)."; the status counts
+  notices apart.
+
+### Review round 3 (11 October 2026)
+
+The third review's confirmed defects, each fixed at its root (CHANGELOG, "Review round 3"; design 06
+§13; decisions CC36-CC45 in 03). The new rows are drafts with a basis; spoken lines are untouched
+(block 4 still identical to release 0.4.6).
+
+- **CC36, signs between findings.** A cue answers the finding before it as a label only when it
+  closes the item, so a spaced sign between two findings is the next finding's prefix.
+- **CC37, abbreviations.** A "." before a lower-case word ends no chart clause after a short or dotted
+  token, in a capitalised clause that names no finding before it.
+- **CC38, CC39, red flags.** A later or carried list item lowers a flag only as the bare flag
+  phrase; a plus sign affirms; a label answer no longer enters the red-flag test. Draft phrase
+  "slurred speech" (`rf_focal`).
+- **CC40, complement words.** New draft list `clauses.complement` (for, in, about, after, since, on,
+  none of): no denial lowers a flag past one, no list denial reaches past one. Draft breaks "other
+  than", "besides", "apart from".
+- **CC41, later list items.** A later or carried item with any other word is set aside (list denial
+  or window), never "no"; an uncertain trigger still asks.
+- **CC42, lists under a denial.** "+" lines, lines with an affirm cue, and a plain line after
+  bullets end the list; plain item lines never wrap.
+- **CC43, label answers.** A label answer never overrides a prefix or a negation or deny cue in its
+  own item.
+- **CC44, denied qualifiers.** A clarification qualifier resolves a trigger only when undenied. Draft
+  deny cue "rather than".
+- **CC45, the slash and a second label; the change-log quote.** A "/" separates list items only
+  next to a space or a finding; a second "Label:" on a line starts a clause. The CHANGELOG quotes the
+  approved 0.3.2 change-log entry again, and `values` checks every quote.
+
+### Clinical-lead sign-off (12 October 2026)
+
+The lead decided every row of the sign-off list on the sign-off page and answered the Part D and
+follow-up questions in chat (CHANGELOG, "Clinical-lead sign-off (2026-10-12)"; design 06 §14;
+decisions CC46-CC53 in 03). Applied exactly:
+
+- **CC46-CC48, the rows.** 278 approved (every drafted row left is `lead-approved`, its basis keeping
+  the drafting record), 18 struck (the mask "aural", kept struck after the lead was told its effect,
+  and 17 chart red-flag phrases), 10 the lead's own words or decision. The validator accepts the source
+  `lead-approved`; `LEXICON_DELTA_033.signOff` records every outcome and answer, and
+  `lexicon033SignOffProblems` (`values`, the extractor's 167th check) proves it complete and applied.
+- **CC49, D7.** The hedge row "+/-".
+- **CC50, D8 wording.** Deny cues "not associated with", "not accompanied by", "neg for";
+  `rf_progressive` and `rf_asym` phrases; qualifiers removed from `cl_otalgia`, the safety entries and
+  the rule-out entries.
+- **CC51, D8 context markers.** Typed chart text captures no context marker (engine rule; AD18 rule X).
+- **CC52, D9.** Chart reading reads spoken and demo lines too, carry-over as before, the pronoun
+  exception and clarification typed only, and a reply word lowers no flag in speech. `extraction`
+  block 4 is now the speech-mode audit with explicit speech red-flag tests; AD18 audits spoken
+  comparisons. Five spoken-register gold outputs are superseded in gold 0.4.0 (e16, r02, f02, t007,
+  w019); no dialogue step changes.
+- **CC53.** The other answers are the recommended defaults; the gold 0.4.0 pins are re-taken.
+
+### Records fixes after the sign-off (12 October 2026)
+
+The final review of the sign-off found records that still said the 0.4.7 rows await the lead's
+sign-off (the CHANGELOG's version-axes paragraph, the `APP_VERSION` comment in `policy.js`, the
+comment over the entry box and Clarify wording in `Scribe.jsx`, the `changelog[14]` row of
+`SOURCES.md`), a README sentence that kept "+/-" to typed text, and CHANGELOG statements that D9
+superseded (r02, the scope of chart reading). All are corrected; no data, engine rule, gold label or
+user-facing text changed (`policy.js` and `Scribe.jsx`: comments only; the rubric is not
+regenerated). The two points the review found undecided were put to the lead in chat on 2026-10-12
+and decided, both keeping what was built (CHANGELOG, "Decided after the final review"; design 06
+§14): row 281's (`cl_rhinorrhea`) drafted triggers and qualifiers ("Approve all"), and the
+reply-word rule applied with D9 ("Don't lower"). Regression tests: `values` (the
+deployed records and source comments hold none of those statements while the sign-off is recorded,
+and the README does not keep "+/-" to typed text) and `capture` (two spoken "+/-" lines).
 
 ### Allowed differences from the baseline (design §8.4), as amended
 
 | Id | Where | Baseline | screenAIr | Why |
 |---|---|---|---|---|
-| AD4 (amended) | Every printed release string | `0.3.0` | `0.4.7` (was `0.4.0`, then `0.4.1` to `0.4.6`) | Release 0.4.7 (MG1). `policy.js APP_VERSION` and `diff.js NEW_RELEASE` move together. |
-| AD18 (new; AD13 on the audit branch) | Scribe suggestions: `rules` `/rankSuggestions` | the pool widens while the screen IS scorable (the code tests `scorable \|\|`, against its own comment) | the pool widens while the screen is NOT scorable | F12. The new list must equal the baseline slice run with `scorable` inverted. |
-| AD19 (new; AD14 on the audit branch) | QuestionnaireResponse domain group answers: `golden` (both bundle surfaces), `render-screener` bundles | `valueInteger` holding a fractional value | `valueDecimal` for fractional points | F13. Only that key change, same value. |
-| AD20 (new; AD15 on the audit branch) | Screener-surface bundle, CDS preview, `referralFor`, the Screener's result card: `golden`, `rules`, `render-screener` | a complaint that is not a declared phenotype value (`""` included) falls back to the default: a referral and an index card nobody entered (the scenario samples) | no referral ServiceRequest and no CDS index card | F11. On the result card AD20 composes with AD15 (the EMR button), listed first (MG3). The EMR plan follows the same `referralFor`: "Referral: [clinician decision]", no clinician rule block and no empiric-treatment references (D4), under an open red flag too. Never on the Scribe in the app, whose UI always derives a declared complaint; an engine caller passing an undeclared complaint on either surface is gated the same way. |
+| AD4 (amended) | Every printed release string | `0.3.0` | `0.4.7` (was `0.4.0`, then `0.4.1`, `0.4.2`, `0.4.3`, `0.4.4`, `0.4.5` and `0.4.6`) | Release 0.4.7. `policy.js APP_VERSION` and `diff.js NEW_RELEASE` move together. |
+| AD18 (new) | MASQUE lexicon: `values` `/lexicon` and `/module/versions` (listed before AD13, so AD13 then sees the 0.3.2 form); `extraction` block 3 `/extract033/…` | lexicon 0.3.2 | lexicon 0.3.3 = 0.3.2 plus **exactly** the delta of `tests/harness/lexicon-delta-033.js` | CC2, CC8, CC9. `/lexicon` only when `revertLexiconDelta(full, delta)` reproduces the 0.3.2 projection, which proves the whole delta exact (`clauses`, `clarify`, `goldSet` and the appended cues included). `/module/versions` only for lexicon `0.3.3` → `0.3.2`. `/extract033/…` capture arrays, only on the shipped 0.3.3 lexicon, for typed chart text (`ctx.AD18.chart`, both sides run with `opts.chart`) and, since the lead's decision D9 of 2026-10-12, spoken lines (review round 2 had kept a spoken comparison strict; rules P and X never fire there): first the evidence rule E (every 0.3.3 capture must carry an exact `clause` as its last key, its evidence is put back to the whole text, and the 0.3.2 side carries no `clause`); then only the captures of an id that one of fourteen stated rules names are dropped from both sides. Since review round 1 E also requires each clause to hold its capture's `cueIndex` and not to start or end inside a word. Each rule is a superset of one chart-reading mechanism (S0 a line break or tab, G a section word, W word start or mask, Wc a mid-word gate cue other than a negation cue at the end of a word-start negation cue holding it, S a clause boundary between cue and phrase (a leading "?" ends no sentence), L deny / `scopeEnd` before, affirm anywhere (review round 2), post / prefix in the sentence, H hedge or placeholder, T `clauses.thirdParty`, N an appended negation cue, M two or more mentions, RF a negated red flag under `redFlagNegation`, B a heard entry in a text of more than one clause, P with `opts.chart` (`ctx.AD18.chart`) a `clauses.chartIgnoreThirdParty` cue before the hit, C (review round 2) a `clauses.redFlags` phrase of the flag, X (the sign-off, D8) with `opts.chart` every id a context-marker capture can carry). A value carried into a spoken reply passes the evidence rule with the whole reply as its evidence (D9 keeps carry-over). The clauses cue lists are read anywhere, a superset of their whole-word matching. Equal afterwards, key order included. Self-checks on crafted texts in the `extraction` suite (`ad18Explain`; 35 since the sign-off), each also reading the text as a spoken line: excused there too, except the typed rules P and X, which excuse nothing in speech. Detector: any raw difference. |
 
-The other allowed differences (AD1-AD3, AD5-AD17) are unchanged. F14 (the attainable range from the
-floor in the Research tab) is a `research-parity` normalisation, not an entry of
-`ALLOWED_DIFFERENCES` (subsection below). `tests/harness/divergences.js`, `tests/baseline/**` and
-`reference/**` are untouched.
+The other allowed differences (AD1-AD3, AD5-AD17) are unchanged. AD13 still excuses exactly the
+0.3.1 → 0.3.2 delta (`lexicon-delta.js`, unchanged). Block 2 now compares the lexicon equivalent to
+0.3.1 with the one equivalent to 0.3.2, each obtained by reverting the shipped lexicon along the
+chain.
 
-### Where the two lines of work meet
+**Parity subject (release 0.4.7).** The `extraction` block 1 and `render-scribe` parity
+comparisons run on `revertLexiconChain(module.lexicon, [LEXICON_DELTA, LEXICON_DELTA_033])`, the
+0.3.1-equivalent lexicon. The chain is proven exact link by link: `values` (AD13, AD18) and the
+extractor. This is not a widening. Gold set 0.3.0, its benchmark and the round 2-3 pins run on the
+0.3.2-equivalent lexicon (`revertLexiconDelta(shipped, LEXICON_DELTA_033)`), the only oracle of 0.3.2
+behaviour. The 0.3.3 behaviour is proven by AD18, gold set 0.4.0, the `capture` chart block and the
+`render-scribe` clarify blocks.
 
-- **F11 and the EMR Friendly Template.** The note's referral line reads `referralFor`, as the
-  bundle does, so for an undeclared complaint (the Screener's scenario samples) neither carries a
-  referral: the plan prints "Referral: [clinician decision]", no clinician rule block and no
-  empiric-treatment references (D4: references only with the referral), including in the
-  "Screen-based referral and references" block under an open red flag. In 0.4.6 the note printed
-  the default phenotype's referral and references there, as the bundle printed the referral.
-  The change is in `src/engine/emr.js` (`referenceBlock` opens only when `referralFor` issues a
-  referral).
-- **The Patient export's print header** (`src/engine/patient.js`, presentation only). In print the
-  frame's header cell drops its letter-spacing and steps down to 10.5px, so the Spanish header
-  ("… · Traducción sin revisar", release 0.4.2) stays on one line at Letter/A4 width with a wider
-  fallback monospace; at 11.5px/.03em it wrapped and the repeated page header lost "revisar" (the
-  print spec's `/export-es/pageN/header` check, which fails on cb5b834 alone). No wording changes.
-- **AD20 and AD15 on one result card.** The baseline card holds the index card and no EMR button;
-  the new card the button and no index card. AD20 removes the card and hands on the rest, which
-  AD15 must then close exactly (`tests/harness/diff.js`).
-- **Renumbering (MG2).** The audit's AD13-AD15 are AD18-AD20 in the harness, the suites and these
-  documents; 0.4.1-0.4.6's AD13-AD17 keep their numbers and meanings.
+**The textarea is not a parity difference.** In the parity runs the box is empty, and its hint
+lives only in the placeholder, the button's title and `aria-keyshortcuts`, none of which is
+`textContent`. The Clarify section renders nothing while it has no card, and it never has one on
+the 0.3.1-equivalent module. So `render-scribe` parity still allows only AD4, AD5, AD6 and AD15.
 
-### Changed files
+`tests/harness/divergences.js`, `tests/baseline/**`, `reference/**`, `masque.logic.js`,
+`tests/harness/lexicon-delta.js` and the other deltas are untouched. The FHIR bundles, the CDS
+preview, the CDS Hooks document, the Scribe note and the EMR template are built as in release 0.4.6
+from the same answers; only the printed release and version strings differ. A clarification answered by a click is recorded as a probe or item
+answer, which the note and bundle print as before.
 
-Every audit change listed above, merged onto release 0.4.6; plus `src/engine/policy.js`
-(`APP_VERSION` 0.4.7), the pages' loader query (`?v=0.4.7`), `tests/harness/diff.js` (`NEW_RELEASE`
-0.4.7, AD4 text, AD18-AD20), the suites that use them, `modules/masque/CHANGELOG.md` (the 0.4.7
-entry) and `docs/refactor/02-app-divergences.md`, `03-design.md`, `04-module-authoring.md`.
+### New files
 
-**Deploy list for 0.4.7.** The lead deploys. Paths are under `app/`, and the list is every deployed
-file whose bytes differ from release 0.4.6 (commit cb5b834):
+| Path (under `app/`) | Purpose |
+|---|---|
+| `tests/harness/lexicon-delta-033.js` | `LEXICON_DELTA_033`, the second link of the delta chain (0.3.2 → 0.3.3), plain data. It holds the lead's request and three answers verbatim, the lead's `signOff` of 2026-10-12 (every row's outcome, the struck rows, every answer; `null` until then), the `clauses` block (with `scopeEnd` and `sections.read` since review round 1, and `redFlags` and the round-2 rows since review round 2) and 14 `clarify` entries (every row tagged `lead` or, since the sign-off, `lead-approved`), four negation cues, one basis per row, switch, entry and appended cue (286 since the sign-off; 294 after review round 3), and the change-log entry. Local-only. |
+| `tests/fixtures/goldset/masque_extraction_goldset_0.4.0.json` | Gold set 0.4.0. It holds the 0.3.0 cases and dialogues verbatim (pinned by SHA-256 in `_meta.includes`), 273 chart cases, read as typed chart text (k001 the lead's history and physical; k002-k051 the team's catalogue rows; k052-k065 the fixes before review; k066-k122 review round 1; k123-k186 review round 2; k187-k259 review round 3; k260-k273 the sign-off; draft expectations) and a supersede table of five spoken-register case labels that D9 changes (e16, r02, f02, t007, w019; empty from review round 2 until the sign-off). Local-only. |
+| `tests/fixtures/engine-0.4.6/extraction.js`, `contract.js` | Review round 2: the release 0.4.6 extraction engine and its contract, byte for byte the git blobs of `f57780b` (SHA-256 pinned in `tests/suites/extraction.js`), the oracle of `extraction` block 4 (since the sign-off: lexicon 0.3.2 read by this engine equals release 0.4.6's reading, the 0.3.2 side of the speech-mode audit). Never imported by the app. Local-only. |
+| `tests/dev/hp-example.txt` | The lead's history and physical, verbatim (a template with `***` placeholders, no patient data), as a manual paste source. Local-only. |
 
-- `.htaccess`, `screenair.html`, `patient.html`, `assets/masque-loader.js`;
-- `src/engine/{cohort,contract,derive,emr,exportAll,extraction,fhir,patient,policy,rules,scoring,scribe,validate,zip}.js`;
-- `src/apps/{PatientCompanion,ResearchTab,RubricEditor,Scribe}.jsx`, `src/shell/{ScreenAIr,UploadDialog,chrome}.jsx`,
-  `src/shell/{registry,shell.css}.js`, `src/ui/common.jsx`, `src/MASQUE_Population.jsx`,
-  `src/PopulationArtifact.jsx`, `src/ResearchReadinessPanel.jsx`;
-- `data/README.md`, `data/population-estimates.index.json`, the three `nhanes-*` and four
-  `meps-*-sinus` population artifacts; `etl/masque_population_etl.R`,
-  `etl/population_estimates.schema.json`, `etl/README_DATA_CONNECTION.md`;
-- `modules/masque/CHANGELOG.md`.
+### Changed files (from release 0.4.6, commit f57780b)
 
-`masque.rubric.json`, `masque.logic.js` and the other module files are byte for byte release
-0.4.6's. Everything under `app/tests/` is local-only and never deployed. After upload, check that
-the footer reads release 0.4.7.
+| Path (under `app/`) | Change |
+|---|---|
+| `src/engine/extraction.js` | Chart reading behind `lexicon.clauses` (header "Chart reading"); `opts.chart` for typed chart text (`extract`, `extractInContext`, `clarifyCues`: `clauses.chartIgnoreThirdParty`); the conflict rule (one finding said both ways; `clauses.strictConflict`); whole-word `clauses` cue lists; `clarifyCues` and `createExtractor().clarifyCues`; `EXTRACTOR_FEATURES` += `clauses`, `clarify`. Review round 1: red flags lowered only by a governing denial; list paths with `scopeEnd`, uncertain (set-aside) mentions and lists under a denying line; closing post cues; exam sub-labels, `read` headers and line-scoped inline section labels; pronouns before a finding only; contraction reach; a leading "?"; length-keeping lowercase; the header's `opts.chart` statement. Review round 2: chart reading only with `opts.chart` (a spoken line on the 0.4.6 path, `extractInContext` steps 2-7 restored to 0.4.6); `clauses.redFlags` (the flag lists in chart text, a hit inside a longer hit of the flag dropped); shielded cues; label answers (and no take-back by another label's answer); unmasked clarification triggers. `firstHit`, `allHits`, `cueBefore`, `negatedNear` and `EXTRACTOR_KIND` unchanged. A band phrase outside a heard cue's clause still withholds the entry. Names no module id (t-ids). Review round 3: closing label answers (a spaced sign is the next finding's prefix) that never override a denial in their item; abbreviations end no clause; a second label on a line starts one; the slash rule; a plus sign affirms; lists under a denial end at a positive line; later and carried list items with other words set aside (list denial and window); `clauses.complement`; the red-flag test narrowed to four conditions; `clarifyCues` reads only undenied qualifiers and asks for uncertain triggers. Sign-off (2026-10-12): chart reading for every line under `clauses` (D9; `opts.chart` marks typed chart text), spoken lines keeping carry-over (`heardBand`, yields), the pronoun gate and the reply-word rule for red flags; no context marker from typed chart text (D8); `clarifyCues` typed only; the header's "Spoken lines". |
+| `src/engine/scribe.js` | `clarifyPrompts` (text order, one card per target, answered, skipped or dismissed targets dropped; since review round 1 a rescue probe's card only while `liveProbes` keeps it, with `rf` in the state, no card that would overwrite an answer, a rescue's item as its target) and `clarifyLabel`. `kindOf` and `captureLabel` never label a clarify cue as a red flag, and `ingestCaptures` ignores clarify cues. Review round 2: the placeholder card documented as a notice. |
+| `src/engine/vocab.js` | `CAPTURE_KIND.CLARIFY`. |
+| `src/engine/validate.js` | V28 `checkClauses` (with `chartIgnoreThirdParty` against `lexicon.thirdParty.cues` and `strictConflict` against the negative domains), `checkClarify`, `checkClarifyProbes`; V29 over the new phrase lists, with at most one boundary space and no short-phrase warning for a punctuation-only cue or (review round 1) a cue of a whole-word list or a section word. Review round 2: `clauses.redFlags` (an object keyed by red flags of the module, each a `{ph, source}` list) and an `examItems` list that may be empty. |
+| `src/engine/contract.js` | `LEXICON_CLAUSES_KEYS`, `LEXICON_CLAUSE_LISTS`, `LEXICON_SECTION_KINDS`, `LEXICON_SOURCES`, `LEXICON_ASK_SOURCES`, `LEXICON_CLARIFY_KEYS`; the `clauses` and `clarify` typedefs. Review round 1: `scopeEnd` (key and list) and the section kind `read`. Review round 2: the key `redFlags`; the typedef states chart reading is for typed chart text only. Review round 3: the key and list `complement`. Sign-off: `LEXICON_SOURCES` and `LEXICON_ASK_SOURCES` += `lead-approved`; the typedefs say chart reading reads spoken lines too. |
+| `src/engine/policy.js` | `APP_VERSION` `0.4.7` (that line and its comment; `SITE` untouched). Records fixes: the comment says the release was signed off by the clinical lead on 2026-10-12. |
+| `src/engine/derive.js` | `LOCKS` rows for `/lexicon/clauses` and `/lexicon/clarify` (fixes before review; since review round 1 "lexicon configuration, each row tagged with its source", never "approved"). |
+| `src/apps/RubricEditor.jsx` | Read-only summary lines for `lexicon.clauses` and `lexicon.clarify` in the lexicon section (`data-clauses-config`, `data-clarify-config`; generic, no module ids; fixes before review; reworded in review round 1). Sign-off: the summary lines count each source tag (lead, lead-approved, draft, module). |
+| `src/apps/Scribe.jsx` | The textarea (CSS in `SCRIBE_EXTRA_CSS`, `sa-scribe-` prefix), chart text (`{chart: true}` for `extractInContext` and `clarifyCues`), the Clarify section and cards, clarify tags on bubbles, Reset and `dirtySummary`. Review round 1: `rf` passed to `clarifyPrompts`; a rescue card's item and every rail probe for an open card's item held back; the caption reworded; an always-mounted status (`scribe-clarify-status`), region, named card groups and focus moves. Review round 2: the template-text card is a notice (role `note`, one Dismiss control, `scribe-clarify-dismiss`), and the status counts notices apart. Generic copy only; no module ids. Sign-off: comments only (D8, D9). Records fixes: the comment over the entry box and Clarify wording says the lead approved it (C1-C12). |
+| `modules/masque/masque.rubric.json` | Regenerated (never hand-edited): lexicon 0.3.3 (`clauses`, `clarify`, four negation cues, `goldSet` 0.4.0) and the `lexicon` change-log entry (`/changelog/14`); after review round 2 175,785 bytes, SHA-256 `27dbda77…`; after review round 3 177,796 bytes, SHA-256 `5e899364…`. After the sign-off 180,587 bytes, SHA-256 `b2943f8a…` (18 rows struck, 257 tags `lead-approved`, 10 rows added, qualifiers removed, the change-log note rewritten and dated 2026-10-12). |
+| `modules/masque/CHANGELOG.md`, `SOURCES.md`, `README.md` | The 0.4.7 entry: the request and answers verbatim; what changed; the version axes; gold set 0.4.0 and its supersede table; the benchmark block; the SIGN-OFF list; points for the lead; what did not land; lineage. The version-axes table. The source map (166 checks), the delta rows with their source tags, the nine extractor checks, `changelog[14]` and the field rows. One README paragraph and the axes line. Review round 3: the round's section, the renumbered sign-off tables (280 + 14 rows), Part D's exact red-flag rule with its known lowering cases and the round's lead items, and the 2026-10-04 section's quote of the approved 0.3.2 change-log entry restored. Sign-off: "Clinical-lead sign-off (2026-10-12)" (outcome table, the struck rows, the Part D answers and the D8 follow-up answers verbatim, the aural-mask confirmation), the sign-off tables marked as decided, the gold set, benchmark and verification after the sign-off; SOURCES with the `lead-approved` tags and ten checks; README. Records fixes: the version-axes paragraph, the D9-superseded statements, the known limits found after the sign-off and the verification after the records fixes; SOURCES `changelog[14]`; README ("+/-" in every line, two known limits). |
+| `tests/harness/diff.js` | `DELTA_FIELDS` += `/clauses`, `/clarify`; `checkDelta` shape checks; `revertLexiconChain`; AD18 (`ad18Rules`, `ad18Unclause`, `ad18Explain`; rule P for `opts.chart`; review round 1: E checks the clause holds the `cueIndex`, L reads `scopeEnd`, Wc narrowed, a leading "?" ends no sentence; review round 2: typed chart text only, rule C, L reads affirm cues anywhere); `NEW_RELEASE` 0.4.7 and the AD4 text; the AD range in `allowedDifference` (AD1-AD18). Local-only. Sign-off: `lexicon033SignOffProblems`; AD18 audits spoken comparisons (rule X typed only; a carried capture keeps the whole reply). |
+| `tests/tools/extract-rubric.js` | Applies the 0.3.3 delta after the 0.3.2 delta; nine checks (166 in all; review round 1: the `scopeEnd` and `sections.read` rows and one basis per appended negation cue; review round 2: the `clauses.redFlags` rows, every flag named, the empty `examItems`'s own basis); the change-log position checks move the earlier entries one place up. Local-only. Review round 3: the `complement` rows. Sign-off: the sign-off record complete and applied (167 checks), every row `lead`/`lead-approved`, the change-log entry dated as the sign-off. |
+| `tests/suites/extraction.js` | Parity subject through the chain; block 2 on 0.3.1 vs 0.3.2 equivalents; new block 3 (0.3.2 vs 0.3.3 under AD18, with the delta-033 cue corpus, the chart cases, both also with `opts.chart`, and AD18 self-checks; review round 1: scopeEnd, pronoun and list frames, two self-check pairs, four contraction checks; review round 2: block 4, the release 0.4.6 spoken path against the frozen engine; block 3's spoken comparisons asserted identical; self-checks for rules C and L and for spoken comparisons). Local-only. Review round 3: block 3 frames for complement words, signs, abbreviations, later list items and "+" lines. Sign-off: block 4 replaced by the speech-mode audit (0.3.2 vs 0.3.3 on spoken lines under AD18, dialogue slots strict, the 0.3.2 side against the frozen 0.4.6 engine) with 15 speech red-flag tests; block 3's spoken comparisons audited; self-checks for spoken readings and rule X. |
+| `tests/suites/capture.js` | Features, `NEW_TOP_FIELDS`, default-off on the 0.3.1 and 0.3.2 equivalents (no clarify cue, no clause evidence, `opts.chart` changing no capture of `extract`; review round 1: with a slot open it never carries); neutral-fixture chart cases and `clarifyCues` cases (with both directions of each fix before review and of review round 1; `clarifyPrompts` rescue liveness; every chart capture's clause holds its cue); blocks 2 and 4 on the 0.3.2 equivalent; block 5 for gold set 0.4.0 (`GOLD_0_4_0_SHA256`, `EXPECTED_BENCHMARK_040`; chart cases read with `opts.chart`) with the lead's H&P checks. Review round 2: every chart case of block 1 also read without `opts.chart` against the fixture without the chart block; fixture cases for shielded cues, label answers, chart red flags and unmasked triggers; block 5's 40 explicit round-2 texts and the safety-qualifier guard; pins re-taken from the team's run. Local-only. Review round 3: 35 fixture cases (2 changed), 2 `clarifyCues` cases, 68 MASQUE texts with explicit expectations, the red-flag battery (181 phrases × 38 templates), gold set 0.4.0 `k187`-`k259`, the H&P's ten cards. Sign-off: each fixture chart case also read the other way (`OTHER_READING`), reply-word and context-marker cases, nine spoken MASQUE lines, the round-2/3 texts' spoken readings under AD18, the supersede shape accepting the sign-off's date, the H&P's eleven cards, pins re-taken. Records fixes: two spoken "+/-" lines (11 spoken MASQUE lines). |
+| `tests/suites/values.js` | The chain at `/lexicon/@delta`; AD18 then AD13 at `/lexicon` and `/module/versions`; the 0.3.3 record and change-log entry (`logAt(1)`, the earlier entries one place up); the delta's leaves exempt from the provenance sweep (pointer and value). Local-only. Review round 3: the CHANGELOG quotes every rubric change-log entry verbatim, once. Sign-off: the sign-off record (totals, Part D and follow-up answers) pinned, complete and applied, mutations refused; the change-log entry dated as the sign-off. Records fixes: while the sign-off is recorded, the deployed records and source comments hold no statement that the 0.4.7 rows await it, and the README does not keep "+/-" to typed text (32 checks). |
+| `tests/suites/render-scribe.js` | `module031` through the chain; the footer pins at lexicon 0.3.3; the textarea value setter; new blocks: typed chart text arms no slot; the lead's H&P pasted through the box (the lead's checks, the cards equal `clarifyPrompts`, never twice in Ask next, Skip, flag, item and placeholder paths, the EMR template, Reset); the runny-nose example; a typed pronoun line recorded, the same line spoken attributed; review round 1: rescue-card liveness, never twice on a rule-out conflict card, the section's accessibility and focus; review round 2: the template notice (text, Dismiss only, role `note`) and the status line, `r_normal` absent from the H&P. Local-only. Review round 3: the H&P's ten cards. Sign-off: the H&P's eleven cards, `m_aura` not recorded. |
+| `tests/suites/shape.js` | The textarea value setter; `scribe-clarify` hidden without a lexicon. Local-only. |
+| `tests/suites/editor.js` | Lexicon 0.3.3 and `0.3.3-local`; `clauses` and `clarify` kept byte for byte through a derivation; their lock rows (reason wording, never "approved" since review round 1, not editable, direct edits refused). Local-only. |
+| `tests/suites/validate.js`, `tests/fixtures/mutations/safety.js`, `index.js` | 46 generators for the `clauses` and `clarify` rules and a valid chart-reading control (`withChartReading`); review round 1: the short-cue generator uses a mask word; review round 2: six generators for `clauses.redFlags` and `examItems` (52 in all). Local-only. Review round 3: two generators for `complement` (54 in all). |
+| `tests/harness/foundations.js` | `ENGINE_EXPORTS` += the new contract constants, `clarifyCues`, `clarifyPrompts`, `clarifyLabel`. Local-only. |
+
+`docs/refactor/02-app-divergences.md`, `03-design.md`, `04-module-authoring.md` and the new
+`06-chart-capture.md` record the release (not deployed).
+
+**Deploy list for 0.4.7 (signed off by the clinical lead on 2026-10-12).** The lead deploys. Paths
+are under `app/`. The list is every file outside `app/tests/` whose bytes differ from release 0.4.6
+(commit f57780b), `git diff --name-only f57780b HEAD -- app ':!app/tests'`, unchanged by the sign-off
+and by the records fixes after it (which change `policy.js` and `Scribe.jsx` in comments only, and
+the three module records):
+
+- `src/engine/extraction.js`, `src/engine/scribe.js`, `src/engine/vocab.js`,
+  `src/engine/validate.js`, `src/engine/contract.js`, `src/engine/policy.js`;
+- `src/engine/derive.js`;
+- `src/apps/Scribe.jsx`, `src/apps/RubricEditor.jsx`;
+- `modules/masque/masque.rubric.json`, `modules/masque/CHANGELOG.md`, `modules/masque/SOURCES.md`,
+  `modules/masque/README.md`.
+
+No page (`*.html`), import map, loader, logic file or other module changes. Everything under
+`app/tests/` (including `lexicon-delta-033.js`, both gold sets and `hp-example.txt`) is local-only
+and never deployed. The sign-off's strikes and additions are in the regenerated rubric. After upload:
+
+- check the changed files at their plain URLs (`masque.rubric.json` should hash `b2943f8a…`, 180,587 bytes);
+- `Scribe.jsx` and `RubricEditor.jsx` are `.jsx` files, which the host has served stale after
+  earlier uploads, so confirm the textarea and the Clarify section, and the editor's read-only
+  chart-reading line, in the page;
+- check that the footer reads release 0.4.7, lexicon 0.3.3 and gold set 0.4.0.
 
 ### Version label
 
@@ -1568,60 +1763,397 @@ the footer reads release 0.4.7.
 |---|---|---|
 | Release | **0.4.7** | `app/src/engine/policy.js` |
 | Instrument | 0.2 | `masque.rubric.json` `instrumentVersion` |
-| Lexicon | 0.3.2 | `masque.rubric.json` `lexicon.version` |
+| Lexicon | **0.3.3** | `masque.rubric.json` `lexicon.version` |
 | Probe set | 1.0.0 | `masque.logic.js` `probes.version` |
-| Gold set | 0.3.0 (lexicon 0.3.2) | `masque.rubric.json` `lexicon.goldSet.version` |
+| Gold set | **0.4.0** (lexicon 0.3.3) | `masque.rubric.json` `lexicon.goldSet.version` |
 
-The rubric and the logic are not touched, so every hash (`contentHash`, `instrumentHash`,
-`scoringHash` `32cc4f44…`, `logicSha256`) is release 0.4.6's and the illustrative calibration
-still applies. The ETL's own `ETL_VERSION` is 0.6.1 (subsection below); it is not one of the five
-axes.
+`lexiconHash` and `contentHash` move. The instrument and scoring hashes and the calibration's
+`scoringHash` (`32cc4f44…`) are unchanged. `logicSha256` is unchanged (`masque.logic.js` is not
+touched). Derivations saved on 0.4.6 no longer verify against the built-in module (the lexicon
+changed; `CHANGELOG.md`, release 0.4.7, "Lineage").
 
-### Audit fixes — research and data (4 October 2026)
+### Verification after the records fixes
 
-Every committed estimate is unchanged: all 19 artifacts were regenerated from the same source
-files (sha256 as recorded) with the edited ETL and compared field by field; no estimate, interval,
-n, df or suppression flag moved. Only the artifacts whose content changed were replaced.
+Run of 12 October 2026 on branch `claude/release-0.4.7`, after the records fixes, in the in-app
+browser.
 
-- **ETL 0.6.0 → 0.6.1** (`app/etl/masque_population_etl.R`). UTF-8: under a POSIX locale R wrote the
-  map's "§" as the text `<U+00A7>` in the three NHANES definitions; the script now switches LC_CTYPE
-  to UTF-8 or refuses to run, and writes UTF-8 bytes. A multi-item concept with one item missing and
-  none positive is missing, not negative (only NHANES `dizziness_balance` has two items; no number
-  changed). Optional per-concept `missingCodes` (default 7/8/9, so every map reads as before);
-  `demographics.gender` takes `recode`/`missing` like sex. Cost rows: `unweightedN` counts
-  non-missing cost (identical in every committed artifact), and cost rows over the whole eligible
-  domain no longer carry `unweightedPositives`.
-- **Artifacts replaced:** `nhanes-1999-2000`, `-2001-2002`, `-2003-2004` (definition now reads "§7.1";
-  `producedBy` 0.6.1; `generatedAt`), and the four `meps-*-sinus` files (`unweightedPositives`
-  dropped from the six eligible-domain cost rows each; `producedBy`; `generatedAt`). `downloadedAt`
-  kept. The other twelve still say 0.6.0: regenerating them changes nothing but that label.
-- **Schema:** `suppress` is now required on every estimate (all 19 artifacts and the test fixture
-  carry it); `df` described correctly as PSUs minus strata.
-- **Readiness panel.** An uploaded population artifact is checked with `checkArtifactMarker` +
-  `checkSchema` against the gate's schema (`populationSchemaUrl`, passed by the Research tab) and
-  refused with the failures listed; no schema, no rendering. Model card / manifest: an incomputable
-  equity-mitigation gap is `null`, not `0`. Calibration-in-the-large and the slope are withheld below
-  the reporting minimum (`minGroupN`, 30), as the function's own comment required. PPV and NPV show
-  their denominators (flagged / unflagged rows). The avoidable share is Σw·avoidable / Σw·annual over
-  rows carrying both costs, with that n shown (same value on the demo rows). These are intended
-  changes from the baseline panel: `research` compares the five KPIs on their own and the rest of
-  each tab exactly; the functions `research-parity` diffs are untouched.
-- **F14 (allowed difference).** The Research tab passes `snap.floor`; the panel's attainable range,
-  the lower bound of the probability range and `currentPatientOutput.attainableRange` /
-  `probabilityRange` run floor–ceiling (they used the point total as the floor). A host that passes no
-  floor gets the old behaviour. `research-parity` adds an "unscorable-floor" screen and normalises
-  exactly `attainableRange[0]` and `probabilityRange[0]`; it also normalises the M2 `null`-for-`0`.
-- **PopulationArtifact.** A row is printed only with `suppress === false` and a finite estimate and
-  interval; list fields are Array-guarded; the renderer sits in an error boundary (reported in place,
-  host stays up). `money()` picks the unit after rounding: $1.00 billion, never "$1000.0 million".
-  The Population page's summary table uses the same suppression rule.
-- **Research tab.** The section switch is a full tablist: arrow keys / Home / End, roving tabindex,
-  `aria-controls` to `role="tabpanel"` sections (always present; content still mounts on first visit).
-- **Docs and index text.** The index note no longer says cycles are never pooled (NAMCS 2015–2019 and
-  MEPS 2019–2021 are); the NAMCS single-year counts are now adult visits (28, 26, 5, 6; sinusitis
-  overlap 26, 10, 8, 10 — summing to the pooled 65 and 54), recounted with the ETL, where the old
-  all-ages counts had two years at or above 30. `app/data/README.md` no longer says the folder is
-  empty and notes that the NHANES fetch manifest was written on the lead's machine and that the
-  provenance `directory` field is a scratch path (the provenance files are not edited).
-  `README_DATA_CONNECTION.md` gives the suppression rule per map, the full eligibility and
-  missing-code fields, and the Research tab in place of `population.html` (now a redirect).
+- `extract-rubric.html` reports "Identical" to the committed rubric: SHA-256
+  `b2943f8ac3dd6c045220bb8da43448571391a4a4c221fcbedd30c7dd2ba13819`, 167 checks passed, 180,587
+  bytes (unchanged).
+- The suites at `app/tests/index.html?seed=1296126801`: **23/23 PASS, 0 fail, 0 invalid**,
+  1,596,236 checks (1,596,196 after the sign-off): values 3,886 → 3,918, capture 293,863 → 293,871;
+  every other suite has the count in the table below. Gold set 0.4.0 and its pins are unchanged.
+- The lead's history and physical: typed, `m_photo` yes, `v_aural` yes, `x_purulent` no, `x_anosmia` no and `v_vertigo` heard, with
+  `rf_pulsatile`, `m_aura`, `v_head`, `n_allo` and `r_normal` set aside, no red flag and eleven Clarify
+  cards; spoken, the same captures and set-asides with `v_vertigo` 2, no red flag and no card.
+
+### Verification after the sign-off
+
+Run of 12 October 2026 on branch `claude/release-0.4.7`, after the clinical lead's sign-off and these
+records, in the headless Edge browser (the in-app browser could not open a tab).
+
+- `extract-rubric.html` reports "Identical" to the committed rubric: SHA-256
+  `b2943f8ac3dd6c045220bb8da43448571391a4a4c221fcbedd30c7dd2ba13819`, 167 checks passed (ten for
+  the 0.3.3 delta), 180,587 bytes. `scoringHash` is unchanged (`32cc4f44…`).
+- The suites at `app/tests/index.html?seed=1296126801`: **23/23 PASS, 0 fail, 0 invalid**,
+  1,596,196 checks (1,575,855 before the sign-off).
+
+| Suite | Checks | Suite | Checks |
+|---|---|---|---|
+| integrity | 78 | emr | 125,013 |
+| values | 3,886 | render-screener | 1,290 |
+| golden | 412 | render-scribe | 405 |
+| sweep | 104,273 | render-patient | 8,964 |
+| rules | 221,845 | omissions | 20,480 |
+| patient | 303,615 | research | 160 |
+| extraction | 331,727 | research-parity | 436 |
+| capture | 293,863 | editor | 301 |
+| probes | 100,049 | roundtrip | 183 |
+| cohort-gen | 10 | upload | 87 |
+| validate | 471 | static | 1,040 |
+| shape | 77,608 |  |  |
+
+- `extraction` block 4 (the speech-mode audit): 591 named texts × 7 option sets, and 2,263 cue texts and 5,000 synthetic utterances × 2: 18,663 comparisons of the frozen 0.4.6 engine and this one on lexicon 0.3.2, all identical, and 18,663 of lexicon 0.3.2 vs 0.3.3 as spoken lines under AD18 (16,346 differ raw, all explained); 95 dialogues, 220 `extractInContext` steps: identical to release 0.4.6 on lexicon 0.3.2, the 0.3.3 captures audited (126 steps differ, all explained), the slot and carry results identical; 15 explicit speech red-flag texts through `extract` and `extractInContext`, all as expected.
+- `extraction` block 3: 125,663 comparisons of lexicon 0.3.2 vs 0.3.3 (120,591 without `opts.chart`, read as spoken lines since D9); 98,220 differ raw and AD18 explains all of them; of the first 4,000 with captures, 1,742 keep a capture compared strictly; 35 AD18 self-checks. Blocks 1 (35,364 strict comparisons on lexicon 0.3.1) and 2 (132,039 comparisons of 0.3.1 vs 0.3.2 under AD13) are unchanged.
+- `capture` block 5: gold set 0.4.0 on lexicon 0.3.3: 535 cases (273 chart) and 93 dialogues; tp 470, fp 0, fn 0; 5 superseded labels, and exactly those 5 cases (no dialogue step) change against lexicon 0.3.2; catalogue agreement 32 of 50. The 68 round-3 and 40 round-2 chart texts pass, each spoken reading audited under AD18; the 9 spoken MASQUE lines pass; the red-flag battery: 170 phrases of 12 flags × 21 affirming and 17 denying templates (6,460 texts), every affirmed flag raised and no clearly denied one. `GOLD_0_4_0_SHA256` (`99dff3ac…`) and `EXPECTED_BENCHMARK_040` were re-taken from this run; `GOLD_0_3_0_SHA256` (`729492ef…`) and `EXPECTED_BENCHMARK` are unchanged.
+- The built-in module validates with 0 errors and the one V12 warning it had before.
+
+### Verification
+
+Run of 11 October 2026 on branch `claude/release-0.4.7`, after review round 3 and these records (before
+the sign-off).
+
+- `extract-rubric.html` reports "Identical" to the committed rubric: SHA-256
+  `5e8993646a577ba5da95b88671e2ee6490af5a5c511368de4e029227eb95a2b5`, 166 checks passed (nine for
+  the 0.3.3 delta), 177,796 bytes. Earlier builds:
+
+  | Build | SHA-256 | Checks | Bytes |
+  |---|---|---|---|
+  | after review round 2 | `27dbda77…` | 166 | 175,785 |
+  | after review round 1 | `2db1e0ec…` | 166 | 160,506 |
+  | after the fixes before review | `6ebfe3f0…` | 166 | 156,482 |
+  | first 0.4.7 build | `dfa669b0…` | 166 | 155,468 |
+  | release 0.4.6 | `173f28b9…` | 157 | 138,226 |
+
+  `scoringHash` is unchanged (`32cc4f44…`).
+- The suites at `app/tests/index.html?seed=1296126801`: **23/23 PASS**, 0 fail, 0 invalid, 1,575,855
+  checks. Earlier totals: 1,570,551 after review round 2, 1,547,839 after review round 1, 1,541,059
+  after the fixes before review, 1,530,336 in the first 0.4.7 build.
+
+  | Suite | Checks | Suite | Checks |
+  |---|---|---|---|
+  | integrity | 78 | emr | 125,013 |
+  | values | 3,928 | render-screener | 1,290 |
+  | golden | 412 | render-scribe | 404 |
+  | sweep | 104,273 | render-patient | 8,964 |
+  | rules | 221,845 | omissions | 20,480 |
+  | patient | 303,615 | research | 160 |
+  | extraction | 311,445 | research-parity | 436 |
+  | capture | 293,763 | editor | 301 |
+  | probes | 100,049 | roundtrip | 183 |
+  | cohort-gen | 10 | upload | 87 |
+  | validate | 471 | static | 1,040 |
+  | shape | 77,608 |  |  |
+
+  Moved in review round 3: values 3,889 → 3,928, validate 469 → 471, extraction 307,323 → 311,445,
+  capture 292,623 → 293,763 and render-scribe 403 → 404. From release 0.4.6 (1,407,588 checks) the
+  release adds 168,267 checks.
+- `extraction`:
+  - **Block 4:** the frozen 0.4.6 engine on lexicon 0.3.2 against this engine on lexicon 0.3.3
+    without `opts.chart`. 18,342 extract comparisons and 220 `extractInContext` steps (95
+    dialogues), all identical.
+  - **Block 3:** 124,860 comparisons of lexicon 0.3.2 vs 0.3.3. The 119,934 without `opts.chart`
+    are all identical. The 4,716 typed-chart comparisons that differ raw are all explained by AD18.
+    Of the first 4,000 with captures, 1,766 keep a capture compared strictly. 29 AD18 self-checks.
+  - **Blocks 1 and 2:** block 1 (35,364 strict comparisons on lexicon 0.3.1) and block 2 (132,039
+    comparisons of 0.3.1 vs 0.3.2 under AD13) are unchanged.
+- `capture` block 5:
+  - Gold set 0.4.0 on lexicon 0.3.3: 521 cases (259 chart) and 93 dialogues; tp 466, fp 0, fn 0.
+  - No superseded label, and no output changed against lexicon 0.3.2. The catalogue agrees on 32 of
+    50 rows.
+  - The red-flag battery: 181 phrases of 12 flags × 21 affirming and 17 denying templates (6,878
+    texts), all as expected.
+  - `GOLD_0_3_0_SHA256` (`729492ef…`) and `EXPECTED_BENCHMARK` are unchanged.
+  - `GOLD_0_4_0_SHA256` (`f3339e9b…`) and `EXPECTED_BENCHMARK_040` were taken from the team's run
+    and must be re-taken from the lead's run before upload.
+- **Sensitivity:** against the review-round-2 engine, `capture` fails with 400 differences (the cap)
+  and `render-scribe` with 9.
+- The built-in module validates with 0 errors and the one V12 warning it had before.
+- No cloud Playwright run (no Node on this machine).
+
+## screenAIr 0.4.8 (12 October 2026)
+
+Release 0.4.8 makes the **clinical lead's three fixes of 12 October 2026** (chat, verbatim in
+`app/modules/masque/CHANGELOG.md`, release 0.4.8) and the lead's **two follow-up requests** of the
+same day (the plan line and the Question review, below). The decisions are LF1-LF16 in
+`03-design.md` (LF15 and LF16 from the review of the follow-up).
+
+- **Fix 2 (data).** Item `r_dur`'s clinician question (`ask`, the Scribe's Ask-next card
+  "recalcitrance") changes from "How long has this been going on?" to the lead's sentence, verbatim,
+  "Have symptoms persisted over 3 months despite trials of medical management?", through
+  `tests/harness/question-delta-048.js`. `ask` is outside `instrumentHash` and `scoringHash`, so no
+  version axis but the release moves.
+- **Fix 3 (module media, shell, app).** The lead's video, as supplied, in
+  `modules/masque/media/` with a poster frame and a script-free frame page, named on the built-in's
+  registry entry (`patientVideo`); the Patient Companion shows it above its instructions on the first
+  step in a collapsible panel (a sandboxed iframe without scripts, `preload="none"`, no autoplay,
+  collapsed state per tab, never printed or exported). Uploaded and derived modules never show it.
+- **Fix 1 (engine, app).** A Spanish summary adds, after its findings, the English version of the
+  same findings (the English summary of the same answers), titled in Spanish and in English, on
+  screen, in print and in the `.txt` and `.html`, with the English caveat lines English output prints
+  for the same questionnaire right under its title (none for the built-in module). In print the title
+  is kept whole and with the block under it. English output (`.txt`, `.html`, screen) is unchanged
+  byte for byte apart from the release and the date.
+- **Chrome.** `PATIENT_CHROME` gains `videoShow`, `videoHide`, `videoTitle` and `englishVersion`
+  (Spanish: AI translation, unreviewed), recorded in `tests/harness/patient-chrome-048.js`.
+- **Follow-up: the plan line (data, engine).** The EMR Friendly Template's plan prints the lead's
+  line "recommend a trial of migraine abortives if not contra-indicated due to other conditions."
+  (verbatim) right after the empiric-treatment reference lines, before the treatment-offered
+  placeholders, wherever the references print with no red flag open, on the Screener and the Scribe;
+  never under an open red flag's screen-based block, and not in the encounter note, the FHIR bundle
+  or the Screener's result cards (the lead's answers). Data: `emrTemplate.planAdvice`, through
+  `tests/harness/emr-plan-delta-048.js`; V61 knows the key (LF10, LF11).
+- **Follow-up: Question review (app, engine).** The Ambient Scribe's view switch is a tab list
+  with a Question review tab right of Ask next: every scored item once by domain, its current answer
+  ("not answered", never no) and where the encounter recorded it; each answer can be changed or
+  cleared there, through the Ask next path, so the score, coverage, suggestions, Clarify cards,
+  encounter note, bundle and EMR template follow. The default view is unchanged (LF12-LF14). A
+  change or clear of an item a probe answer wrote withdraws that probe answer, its note and its
+  probe-keyed checklist entry (LF15, review of the follow-up).
+
+### Allowed differences from the baseline (design §8.4), as amended
+
+| Id | Where | Baseline | screenAIr | Why |
+|---|---|---|---|---|
+| AD4 (amended) | Every printed release string | `0.3.0` | `0.4.8` (was `0.4.0`, then `0.4.1` to `0.4.7`) | Release 0.4.8. `policy.js APP_VERSION` and `diff.js NEW_RELEASE` move together. |
+| AD19 (new) | `rules` `/rankSuggestions/<k>` (and `…/heardPrompts/<k>`) | `{id: "r_dur", ask: "How long has this been going on?", …}` | `{id: "r_dur", ask: "Have symptoms persisted over 3 months despite trials of medical management?", …}` | LF1, LF2. Exactly the changed rows of `QUESTION_DELTA` (`ctx.AD19 = {delta}`): one suggestion or heard prompt object whose id is the row's item on both sides, whose baseline `ask` is the row's `from` and new `ask` its `to`, excused whole only when the question is the one difference (tag, scale, kind and key order equal). A malformed delta, another item, question, field, direction or place, or a bare string stays a difference (self-checks in `rules`). Expected wherever a baseline list holds `r_dur` with its old question (1,722 of 20,012 states). `render-scribe` parity needs no AD19: no parity checkpoint shows `r_dur`'s card (a new behaviour block checks the card). |
+| AD20 (new) | `patient` and `golden` es `summaryText`; `render-patient` es summary text | the Spanish summary (no English) | the same plus the English version of the findings | LF5, LF6. `ctx.AD20 = {locale, block}` for a `.txt`: exactly the lines `ad20Block` builds (a rule, the es and the English `englishVersion` titles upper-cased, a rule, a blank, then `ad20EnglishBody` of the English `.txt` of the same answers, preceded by the English caveat lines, `ad20EnglishNotices` of that `.txt`, and a blank when there are any; none for the built-in module), once, as one run ending right before the last footer rule, removed there. `{locale, text, before}` for rendered text: the English version section's exact `textContent` (the two titles, the English caveat lines and the English findings rendered by the companion's own `SummaryBody`), once, right before the disclaimer. Only where `ctx.loc` is the parameter's locale (never `en`); listed right after AD4, before AD14, AD10 and AD16. The English part is checked separately against the baseline's English summary and `.txt` of the same answers. Self-checks in `patient`. Expected on every es export and every es summary checkpoint. |
+| AD21 (new, follow-up) | `render-scribe` parity snapshots `…/view_safety`, `…/view_prompts`, `…/view_note` (the right card's text) | `Safety ✓ Ask next (n) Note FHIR` | the same with ` Question review` between the Ask next and Note tabs | LF12, LF14. `ctx.AD21 = {text: " Question review", before: " Note"}`: the new side must hold `text + before` exactly once, right after the Ask next tab's text ("Ask next " and its count); `text` is removed there and nothing else is touched. Listed before AD15 and AD5, which need the rest to match. Self-checks in `render-scribe` (left of Ask next, twice, another label, another difference, after Note: refused). Expected at every compared snapshot. The review view itself is never compared. |
+
+The other allowed differences (AD1-AD3, AD5-AD18) are unchanged. The es DOM scans (`render-patient`,
+`omissions`) allow the English version section's own `lang="en"` besides the "English" button.
+
+### New files
+
+| Path (under `app/`) | Purpose |
+|---|---|
+| `modules/masque/media/patient-companion-intro.mp4` | The clinical lead's introduction video, as supplied: 60.04 s, 1280 × 720 H.264 + AAC, moov at the front, 14,783,849 bytes, SHA-256 `3ce9088b6c26bcb4d3c370c8d20f0269d8d7a973d8f4be3ab2d745eb89800a28`. Not re-encoded. Deployed. |
+| `modules/masque/media/patient-companion-intro-poster.jpg` | Its frame at 0.5 s, 1280 × 720 JPEG, 78,113 bytes, SHA-256 `d3c0a2c2…`. Deployed. |
+| `modules/masque/media/patient-companion-intro.html` | The frame page: no script, `noindex, nofollow`, the prototype marker (`lang="en"`), one `<video controls preload="none" playsinline>` with the poster and the MP4. Deployed. |
+| `tests/harness/question-delta-048.js` | `QUESTION_DELTA`: the lead's request verbatim, the changed `ask` of `r_dur`, its basis and the `question` change-log entry. Plain data. Local-only. |
+| `tests/harness/patient-chrome-048.js` | `PATIENT_CHROME_048`: the four new chrome keys in English and Spanish with a basis each and the translation record (AI, unreviewed). Plain data. Local-only. |
+| `tests/harness/emr-plan-delta-048.js` | `EMR_PLAN_DELTA` (follow-up): the lead's request and two answers verbatim, the added `emrTemplate.planAdvice`, its basis and the `emr-plan` change-log entry. Plain data. Local-only. |
+
+### Changed files (from release 0.4.7, commit b516872)
+
+| Path (under `app/`) | Change |
+|---|---|
+| `src/engine/patient.js` | `PATIENT_CHROME` += `videoShow`, `videoHide`, `videoTitle`, `englishVersion` (en and es). `buildPatientSummary` attaches `english` outside English (withheld together). `summaryText` / `summaryHtml` add the English version, headed by `englishVersionNotices` (new export: the English caveat lines of the view); their findings come from `summaryTextBody` / `summaryHtmlBody`; `EXPORT_CSS` unchanged from 0.4.7, `ENVER_CSS` (the section's rules, with `@media print .enver-title{break-inside:avoid;break-after:avoid}`) appended only to an `.html` holding the section. English output byte for byte unchanged (`.txt`, `.html`, screen). |
+| `src/apps/PatientCompanion.jsx` | `video` prop and `IntroVideo` (the panel above the instructions; `VIDEO_HIDDEN_KEY`, `sessionStorage`); `SummaryBody` (exported) renders the findings, and the Spanish summary adds the English version section (`patient-english-version`, `lang="en"`) with the English caveat lines under its title (`patient-english-notices`); CSS `.vid*`, `.enver*` under `.mp`, print: `.mp .enver-title{break-inside:avoid;break-after:avoid}`, `.mp .enver .call{break-inside:avoid}`. Generic: no module ids. |
+| `src/shell/registry.js` | `patientVideoPath`; a built-in entry carries `patientVideo`. |
+| `src/shell/ModuleWorkspace.jsx`, `src/shell/PatientPage.jsx` | Pass the entry's `patientVideo`, resolved against `env.appBase`, to the companion as `video`. |
+| `src/engine/contract.js` | The `ChangelogEntry` typedef's kinds += `question` (a comment); follow-up: the `EmrTemplate` typedef += `planAdvice`. |
+| `src/engine/emr.js` | Follow-up: `referenceBlock(open, {advice})` prints `emrTemplate.planAdvice` (each `- <text>`) after the reference lines, before the treatment-offered placeholders, on the no-flag path only; header comment. No condition word. |
+| `src/engine/validate.js` | Follow-up: V61 knows `planAdvice` (`{text, source, decided}`: E for a non-list, a non-object line, a blank text or source, a `decided` that is not a real date; W for another field); `EMR_KEYS`, the row fields, `emrRealDate`. |
+| `src/engine/scribe.js` | Follow-up: `questionReview` (the review's rows) and `REVIEW_SOURCE` (the source names); review of the follow-up: `retractProbeAnswers` (the probe answers left once an item is changed or cleared in the review) and `probeNoteList` (the notes of the probe answers on record, in the order answered). |
+| `src/apps/Scribe.jsx` | Follow-up: the view switch as a tab list (`VIEWS`, `tabProps`, `onViewKeyDown`, one `tabpanel`); the Question review view (`scribe-review-list`, rows `data-review-item`, `data-answered`, `data-source`); `answerSrc` (the source of each current answer, set by `ingest`, `answerProbe`, `answerPrompt` with `via`, `reviewAnswer`, `reviewClear`); Reset clears it; the dirty summary counts a clearing edit; CSS `.sa-scribe-qr-*`; English chrome. Review of the follow-up: `reviewAnswer` and `reviewClear` retract the probe answer that wrote the item (`retractProbeAnswers`); `probeNotes` is derived from `probeAns` (`probeNoteList`), no longer state; an unanswered skipped row reads "skipped in Ask next" whatever source is recorded. Generic: no module ids. |
+| `src/engine/policy.js` | `APP_VERSION` `0.4.8` (that line and its comment; the comment names the follow-up's two requests since the review of the follow-up). |
+| `src/engine/derive.js` | Review of the follow-up: the `/emrTemplate` lock reason names the lead's additions of 2026-10-12 and that the plan line is the one uncited line (LF16). |
+| `modules/registry.json` | `patientVideo` on the built-in's entry. |
+| `modules/masque/masque.rubric.json` | Regenerated (never hand-edited): `r_dur`'s `ask` and the `question` change-log entry (`/changelog/15`); follow-up: `emrTemplate.planAdvice` and the `emr-plan` entry (`/changelog/16`); 183,194 bytes, SHA-256 `371b875c…` (181,583 bytes, `57a8445d…`, before the follow-up). |
+| `modules/masque/CHANGELOG.md`, `SOURCES.md`, `README.md` | The 0.4.8 entry (with the follow-up: both requests and answers verbatim, the plan line, the Question review, for the lead; and the review of the follow-up) and the version-axes paragraph; the source map (181 checks), the question delta's and the plan delta's rows and checks, the 0.4.8 chrome and media tables, the field row and the regeneration notes; two README paragraphs. |
+| `.htaccess` | `AddType video/mp4 .mp4`. |
+| `tests/harness/diff.js` | `applyQuestionDelta`, `revertQuestionDelta`; AD19; AD20 (`ad20Block` with the English caveat lines, `ad20EnglishBody`, `ad20EnglishNotices`, `AD20_FOOTER_RULE`); follow-up: AD21 (`ad21Strip`); `NEW_RELEASE` 0.4.8 and the AD4 text; the AD range in `allowedDifference` (AD1-AD21). Local-only. |
+| `tests/tools/extract-rubric.js`, `extract-rubric.html` | Applies the question delta, then (follow-up) the plan delta last; six and eight checks (181 in all); the earlier change-log position checks move up. The hashes it reports are the written rubric's (after the calibration's `scoringHash` is stored), and the page shows `lexiconHash` and `contentHash` too. Local-only. |
+| `tests/suites/emr.js` | Follow-up: the plan line from the data in the oracle (every state of the matrix, the flags and the fuzz: once after the references with no flag, never otherwise); a release 0.4.8 block (line-exact placement per picture and surface; absent under every flag, tier and capture source, closed, unscorable, unreviewed, rule errors, the bundle and the encounter note; no other reader; a module without the key; V61); the 0.4.6 "also" comparison leaves the line out. Local-only. |
+| `tests/fixtures/mutations/emr.js` | Follow-up: the valid block carries a plan-advice line; seven V61 generators for it. Local-only. |
+| `tests/suites/shape.js` | Follow-up: the fixture's Question review (every item once, answered rows from Ask next); review of the follow-up: the probe-rail check runs in the Ask next view, before the review. Local-only. |
+| `tests/suites/capture.js` | Review of the follow-up: `retractProbeAnswers` and `probeNoteList` on crafted probe answers (block 3). Local-only. |
+| `tests/suites/editor.js` | Review of the follow-up: the `/emrTemplate` lock reason re-pinned; `/emrTemplate/planAdvice` probed; an edit of the plan line is a lock violation. Local-only. |
+| `tests/harness/foundations.js` | Follow-up: the `scribe.js` export list += `REVIEW_SOURCE`, `questionReview`; review of the follow-up: += `retractProbeAnswers`, `probeNoteList`. Local-only. |
+| `tests/suites/values.js` | The ASK pin on the reverted rubric; the question delta (landed, re-applied, hashes, record, item, refusals, basis, change-log entry, sweep exemption); follow-up: the plan delta (reverted first, so every emrTemplate check reads the rubric without it; landed, re-applied, hashes, record, line, refusals, basis, change-log entry last, sweep exemption), the 0.4.6 block pinned under it (`0152cfd8…`) and the shipped block re-pinned (`5f740853…`); the earlier change-log entries moved up; `PATIENT_CHROME.es` keys += the 0.4.8 keys, each pinned in both languages; every hash the latest CHANGELOG entry quotes begins the shipped rubric's. Local-only. |
+| `tests/suites/rules.js` | rankSuggestions under AD19 (expected); AD19 self-checks. Local-only. |
+| `tests/suites/render-scribe.js` | `r_dur`'s Ask-next card reads the lead's question with Yes / No; the old question printed nowhere. Follow-up: AD21 in the parity (allowed, expected at every snapshot, self-checks); the Question review block (tab list, order, roles, keys, default view; every item once by domain; sources heard, typed, probe, Clarify, Ask next, skipped; edit and clear moving the answers, readout, coverage, note and EMR template; dirty summary; Reset). Review of the follow-up: the cleared item shown again in Ask next (the shown suggestions equal `rankSuggestions`); a skip after a review clear on the row; a probe-written item changed and cleared (note, EMR template with the expected probe answers, checklist signal, rail). Local-only. |
+| `tests/suites/render-patient.js` | The video panel (en, es); the English version section on every es summary (DOM equal to `SummaryBody` of the English summary; AD20 expected); its caveat lines = English mode's for the upload and the derivation, none for the built-in; the print rules (CSSOM); clinician-line tags; scans allow the section. Local-only. |
+| `tests/suites/omissions.js` | The video panel on the four patient surfaces for the built-in, never for the upload or derivation, never in an export; the English section's tags in the `.html`; the English caveat lines inside the English version, the locale's outside it; scans allow the section. Local-only. |
+| `tests/suites/patient.js` | The English twin vs the baseline's English summary and `.txt`; AD20 on every es export; the bilingual exports line by line and block by block; withheld together; the English caveat lines on four views (`.txt`, `.html`); the English `.html` stylesheet pinned to 0.4.7's, the bilingual one's print rules; AD20 self-checks (with caveat lines). Local-only. |
+| `tests/suites/golden.js` | AD20 on the es `summaryText`, its English part = the English export of the same screen (with its caveat lines). Local-only. |
+| `tests/suites/upload.js` | The registry entry's `patientVideo`; `patientVideoPath`; no video on uploaded or derived entries. Local-only. |
+| `tests/dev/MountPatient.jsx` | Passes the built-in's video. Local-only. |
+
+`docs/refactor/02-app-divergences.md`, `03-design.md` and `04-module-authoring.md` record the
+release (not deployed).
+
+**Deploy list for 0.4.8.** The lead deploys. Paths are under `app/`. The list is every file outside
+`app/tests/` whose bytes differ from release 0.4.7 (commit b516872),
+`git diff --name-only b516872 HEAD -- app ':!app/tests'`:
+
+- `.htaccess`;
+- `modules/registry.json`;
+- `modules/masque/masque.rubric.json`, `modules/masque/CHANGELOG.md`, `modules/masque/SOURCES.md`,
+  `modules/masque/README.md`;
+- `modules/masque/media/patient-companion-intro.mp4`, `modules/masque/media/patient-companion-intro-poster.jpg`,
+  `modules/masque/media/patient-companion-intro.html` (new);
+- `src/engine/patient.js`, `src/engine/policy.js`, `src/engine/contract.js`, `src/engine/emr.js`,
+  `src/engine/validate.js`, `src/engine/scribe.js` (the last three new in the follow-up),
+  `src/engine/derive.js` (new in the review of the follow-up);
+- `src/apps/PatientCompanion.jsx`, `src/apps/Scribe.jsx` (follow-up);
+- `src/shell/registry.js`, `src/shell/ModuleWorkspace.jsx`, `src/shell/PatientPage.jsx`.
+
+That is 21 files (20 after the follow-up, 16 before it).
+
+No page (`app/*.html`), import map, loader or logic file changes.
+
+Everything under `app/tests/` (including the three new harness files) is local-only and never
+deployed. Deploy from `git archive` with autocrlf off (the MP4 and the JPEG are binary). After
+upload:
+
+- check the changed files at their plain URLs (`masque.rubric.json` should hash `371b875c…`,
+  183,194 bytes; the MP4 `3ce9088b…`, 14,783,849 bytes, served as `video/mp4`);
+- `PatientCompanion.jsx`, `Scribe.jsx`, `ModuleWorkspace.jsx` and `PatientPage.jsx` are `.jsx`
+  files, which the host has served stale after earlier uploads: confirm the video panel on
+  `patient.html` and in patient mode, the English version of a Spanish summary, the Scribe's `r_dur`
+  question and its Question review tab;
+- open the EMR Friendly Template on the Screener's "Sample: dizziness": the plan line follows the
+  references; on "Sample: red flag" it is absent;
+- check that the footer reads release 0.4.8.
+
+**Final review (12 October 2026).** Four minor findings, each fixed at its cause with a regression
+test (proven by reverting the fix): (1) the English version's title could end a printed page alone
+(now kept whole, so its two lines never part, and with the block under it in the companion's print
+stylesheet and the `.html`; its urgent box kept whole in the companion; checked on four reproductions
+printed to PDF in headless Edge); (2) the English version left out the English caveat lines English
+output prints for an uploaded or locally changed questionnaire (now repeated under its title); (3) the
+English `.html` carried four unused `.enver` rules although the records said English output was
+unchanged (now added only with the section; the English stylesheet is pinned to 0.4.7's); (4) the
+records quoted a `contentHash` the rubric never had, taken from the extractor's hashes of the rubric
+before its calibration's `scoringHash` was stored (the extractor now reports the written rubric's
+hashes, and `values` checks every hash the CHANGELOG entry quotes). Details in
+`app/modules/masque/CHANGELOG.md` (release 0.4.8, "Final review").
+
+**Follow-up (12 October 2026).** The clinical lead's two new requests (verbatim in the CHANGELOG
+entry, "Follow-up"): the plan line (commit 72c0c07) and the Question review (commit a5c493c); then
+these records. The release number stays 0.4.8.
+
+**Review of the follow-up (12 October 2026).** One major and seven minor findings, each fixed at its
+cause (the code fixes with a regression test proven by reverting the fix): (1) a Question review
+change or clear of an item a probe answer wrote left that probe's note (encounter note and EMR
+template) and its probe-keyed EMR checklist entry stating the old finding; the review now retracts
+the probe answer, and the encounter note's probe notes are derived from the probe answers on record
+(LF15); (2) a skip after a review clear did not show on the row; (3) the `shape` probe-rail check ran
+in the review view, where it could not fail; (4) the `render-scribe` check that a cleared item returns
+to Ask next passed without the item shown; (5) AD21's row fell outside its table above (a blank
+line); (6) `SOURCES.md` did not list the `question` and `emr-plan` change-log entries in its table, nor
+`emr-plan` in its paragraph; (7) the Rubric Editor's `/emrTemplate` lock reason did not name the
+lead's uncited plan line of 2026-10-12 (LF16; `derive.js` joins the deploy list); (8) `policy.js`'s
+release comment named only the three fixes. Details in `app/modules/masque/CHANGELOG.md` (release
+0.4.8, "Review of the follow-up").
+
+### Version label
+
+| Axis | Value | Owner |
+|---|---|---|
+| Release | **0.4.8** | `app/src/engine/policy.js` |
+| Instrument | 0.2 | `masque.rubric.json` `instrumentVersion` |
+| Lexicon | 0.3.3 | `masque.rubric.json` `lexicon.version` |
+| Probe set | 1.0.0 | `masque.logic.js` `probes.version` |
+| Gold set | 0.4.0 (lexicon 0.3.3) | `masque.rubric.json` `lexicon.goldSet.version` |
+
+`contentHash` (`523df8a1…`; `7674bf7d…` before the follow-up) moves. `instrumentHash`
+(`b06dfaad…`), `scoringHash` (`32cc4f44…`, the calibration's) and `lexiconHash` (`90edcfd5…`) do
+not; `logicSha256` is unchanged. Derivations saved on 0.4.7 still verify against the built-in
+module.
+
+### Verification
+
+Run of 12 October 2026 on branch `claude/release-0.4.8`, in the in-app browser.
+
+- `extract-rubric.html` reports "Identical" to the committed rubric (again after the review of the
+  follow-up, which changes no rubric byte): SHA-256
+  `371b875cc8c4eaa8677f16ae8dbe7e927951b44c8f9455eca183c7bc5ba6644e`, 181 checks passed (six for
+  the question delta, eight for the follow-up's plan line), 183,194 bytes. `instrumentHash`
+  `b06dfaad…`, `scoringHash` `32cc4f44…` and `lexiconHash` `90edcfd5…` unchanged; `contentHash`
+  `523df8a1…` (before the follow-up: `57a8445d…`, 173 checks, `contentHash` `7674bf7d…`).
+- The suites at `app/tests/index.html?seed=1296126801` (no filter), after the review of the
+  follow-up and these records: **23/23 PASS, 0 fail, 0 invalid**, 1,650,669 checks (after the
+  follow-up, before its review: 1,650,620; after the final review's fixes, before the follow-up:
+  1,647,342; release 0.4.7: 1,596,236). The suites whose count moved:
+
+  | Suite | Checks | Before the follow-up's review | Before the follow-up | Release 0.4.7 |
+  |---|---|---|---|---|
+  | patient | 354,233 | 354,233 | 354,233 | 303,615 |
+  | capture | 293,888 | 293,871 | 293,871 | 293,871 |
+  | rules | 221,866 | 221,866 | 221,866 | 221,845 |
+  | emr | 128,196 | 128,196 | 125,013 | 125,013 |
+  | shape | 77,610 | 77,610 | 77,608 | 77,608 |
+  | omissions | 20,508 | 20,508 | 20,508 | 20,480 |
+  | render-patient | 9,306 | 9,306 | 9,306 | 8,964 |
+  | values | 3,976 | 3,976 | 3,958 | 3,918 |
+  | static | 1,074 | 1,074 | 1,058 | 1,040 |
+  | validate | 478 | 478 | 471 | 471 |
+  | render-scribe | 491 | 462 | 410 | 405 |
+  | golden | 442 | 442 | 442 | 412 |
+  | editor | 304 | 301 | 301 | 301 |
+  | upload | 91 | 91 | 91 | 87 |
+
+  Every other suite has the same count (integrity 78, sweep 104,273, extraction 331,727, probes
+  100,049, cohort-gen 10, render-screener 1,290, research 160, research-parity 436, roundtrip 183).
+- Review of the follow-up, each code fix proven by revert: with `Scribe.jsx` as it was before the
+  review (commit ce27797) `render-scribe` fails 16 checks (the skip after a review clear; the probe
+  note left in the encounter note and the EMR template after a clear and after a change; the probe
+  rail; the probe-keyed checklist entry after a change and after a clear); with `reviewClear` keeping
+  a skip instead of dropping it, 9 (the cleared item missing from the suggestions, which no longer
+  equal `rankSuggestions`, its card, the skip still on the row); with the probe rail rendered
+  unconditionally, `shape` fails `/render/scribe/probeRail`, which the old placement let pass. In `screenair.html` the review's two
+  reproductions now hold: after "No nausea" (`pr_headmotion_nausea`) and the nausea corrected to Yes
+  in the Question review, the encounter note lists nausea and no longer prints "Head-motion dizziness
+  without nausea — does not qualify as a Bárány vestibular symptom"; after "Genuinely clear"
+  (`pr_scan_detail`) and the finding corrected to Yes, the EMR template's checklist reads "recorded
+  on screen: Objective sinus inflammation on endoscopy/CT when symptomatic" with no "via probe:
+  Genuinely clear", and after "Clear answer" the row is "[ ] … not recorded" and the probe is back on
+  the rail. The console of a fresh tab stayed clean.
+- Follow-up, the plan line: printing it under an open red flag too (the engine changed on purpose,
+  then restored) fails the `emr` suite (400 differences, in the matrix's flag states and every
+  red flag), so the gating is tested. AD21 observed at every compared `render-scribe` snapshot.
+- Follow-up, `screenair.html`: the Screener's "Sample: dizziness" (otologic, no flag) EMR template
+  prints, in the plan, the six reference entries and then "- recommend a trial of migraine abortives
+  if not contra-indicated due to other conditions." right before "Acute (abortive) treatment offered
+  today: [agent, dose - or not offered, reason]"; "Sample: red flag" prints the references under
+  "Screen-based referral and references (the FHIR bundle withholds the referral while a red flag is
+  open):" and no plan line. In the Scribe, a chart note typed into the box ("Her tinnitus is
+  bilateral. Endorses photophobia.", Ctrl+Enter) and six demo lines: the Question review tab right of
+  Ask next lists all 30 scored items, the typed answers as "typed chart text" and the demo's as
+  "heard in encounter"; changing the typed tinnitus answer to No moved the index range (0–97 →
+  0–93) and the vestibular domain (4/25 → 0/25), showed "edited" and "First recorded: Yes · typed
+  chart text", and the EMR template then read "Answered no: Fluctuating aural fullness or tinnitus
+  with episodes"; clearing the typed photophobia answer returned it to "not answered" (coverage 20%
+  → 17%), and the encounter note and the EMR template dropped it. Keyboard: from Ask next,
+  ArrowRight selects and focuses Question review, Tab moves to the first row's first answer button,
+  Shift+Tab back to the selected tab; only the selected tab is in the tab order. At 375 px no
+  horizontal scroll (the review 309 px wide). The console of a fresh tab stayed clean through the
+  Scribe and the Screener.
+- AD19 observed on 1,722 of 1,722 baseline suggestion lists holding `r_dur` (`rules`); AD20 on
+  10,160 of 10,160 es exports (`patient`, each English twin equal to the baseline's English summary
+  and `.txt`), on every es screen of `golden` and on 95 of 95 es summary checkpoints
+  (`render-patient`).
+- `screenair.html`: the Scribe's Ask-next card for `r_dur` reads "Have symptoms persisted over 3
+  months despite trials of medical management?" under "recalcitrance" with Yes / No; the Screener's
+  item card still shows the statement ("Symptoms have persisted or recurred for more than 3 months")
+  and neither question; patient mode in English and Spanish shows the video panel right above the
+  instructions ("Hide the video" / "Ocultar el video"), the video plays, hides and shows; a Spanish
+  run to the summary shows the English version on screen, and its `.txt` and `.html` carry both
+  languages (one English section; the Spanish footer and dated marker last); at 375 px the page
+  has no horizontal scroll (frame 343 px); the console of a fresh tab stayed clean. `patient.html`
+  the same.
+- The video was viewed before it was added (frames at 0 to 59 s; described in `app/modules/masque/CHANGELOG.md`, release 0.4.8).
+- Final review fixes, beyond the suites (headless Edge 155): the review's four reproductions (its
+  driver's seeds 56433, 88109, 103947 and 111866, Spanish, with and without red flags) printed to PDF
+  from patient mode, and the `.html` export of 111866: the English version's whole title opens page 3
+  together with its first block (the urgent box, or "What I want to describe"); before the fix the
+  title ended page 2 (in 111866 its English line moved to page 3 even with `break-after` alone, so
+  the title is also kept whole). Twenty answer sets (five fixed patterns with and without red flags, ten
+  random) driven through release 0.4.7 (b516872, served from a `git archive`) and this release in
+  patient mode: in English the `.txt`, the `.html` and the screen text are identical once the release
+  and the date are normalised; in Spanish the same holds once the English version (and, in the
+  `.html`, its styles) is removed.
+- No cloud Playwright run (no Node on this machine).

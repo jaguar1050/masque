@@ -9,6 +9,7 @@
         "./modules/masque/README.md",
         "./modules/masque/CHANGELOG.md"
       ],
+      "patientVideo": "./modules/masque/media/patient-companion-intro.html",
       "default": true
     }
   ]

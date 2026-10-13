@@ -15,8 +15,9 @@
 // editor's live feedback. formatReport(report) renders a report as path-addressed lines.
 // Pure apart from timing; imports only engine files.
 import {
-  COPY_SLOTS, CONTRACT_VERSION, FORMAT, GLOBAL_PLACEHOLDERS, IDENTITY_TEMPLATE_FIELDS, LEXICON_CARRY_MAX,
-  LEXICON_NORMALIZE_KEYS, LEXICON_SCALE_KEYS, LOGIC_PATHS, RUBRIC_KEYS, SUPPORTED_LOCALES,
+  COPY_SLOTS, CONTRACT_VERSION, FORMAT, GLOBAL_PLACEHOLDERS, IDENTITY_TEMPLATE_FIELDS, LEXICON_ASK_SOURCES, LEXICON_CARRY_MAX,
+  LEXICON_CLARIFY_KEYS, LEXICON_CLAUSE_LISTS, LEXICON_CLAUSES_KEYS, LEXICON_NORMALIZE_KEYS, LEXICON_SCALE_KEYS,
+  LEXICON_SECTION_KINDS, LEXICON_SOURCES, LOGIC_PATHS, RUBRIC_KEYS, SUPPORTED_LOCALES,
 } from "./contract.js";
 import { BANDS, HIGHEST_BAND, LOWEST_BAND, PROBE_KIND, TIERS } from "./vocab.js";
 import { CAVEATS, LIMITS, OMISSION_PATTERNS } from "./policy.js";
@@ -43,10 +44,6 @@ const VERSION_RE = /^\d+(\.\d+)*(-[a-z0-9.-]+)?$/;
 const HEX64 = /^[0-9a-f]{64}$/;
 const LOCAL_TAG = /-local(?:[.-]|$)/;
 const ABS_URL = /^[a-z][a-z0-9+.-]*:\/\/[^\s{}]+$/i;
-// V35: the identity fields that render to URLs; every other IDENTITY_TEMPLATE_FIELDS value is
-// an identifier token (file names, screen ids, codes, CDS ids).
-const URL_IDENTITY_FIELDS = ["fhir.questionnaireUrl", "fhir.codeSystem", "fhir.answerSystem", "fhir.criteriaSystem", "fhir.weightExtension", "cds.source.url"];
-const IDENT_TOKEN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const PLACEHOLDER_RE = /\{([A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)*)\}/g;
 const SMOKE_SEED = 0x5A1C;
 const SMOKE_RANDOM_STATES = 256;
@@ -258,18 +255,12 @@ function checkInstrument(r, c) {
   }
 }
 
-// The FHIR Questionnaire's red-flag group uses this linkId, so no id of any kind may take it.
-const RESERVED_LINK_IDS = new Set(["safety"]);
-
 function idNamespace(r, c) {
-  // V11: one id namespace across items, context items, flags, info prompts and domain keys.
-  // Domain keys join it because the FHIR Questionnaire uses a domain's key as its group linkId
-  // and an item's id as the item's linkId: a key equal to an id would give two linkIds alike.
+  // V11: one id namespace across items, context items, flags and info prompts.
   const seen = new Map();
   const visit = (id, path, what) => {
     if (typeof id !== "string" || !ID_RE.test(id)) { c.E("V11", path, `${what} id must match /^[a-z][a-z0-9_]*$/`); return; }
     if (isProtoName(id)) { c.E("V11", path, `${what} id "${id}" is reserved: it names a property every JavaScript object inherits, so a lookup by it would read as present when the data is absent`); return; }
-    if (RESERVED_LINK_IDS.has(id)) { c.E("V11", path, `${what} id "${id}" is reserved: the FHIR Questionnaire's red-flag group uses the linkId "${id}"`); return; }
     if (seen.has(id)) c.E("V11", path, `id "${id}" is already used by ${seen.get(id)}`);
     else seen.set(id, `${what} ${path}`);
   };
@@ -288,38 +279,6 @@ function idNamespace(r, c) {
   arr(r.contextItems).forEach((ci, i) => { if (isObj(ci)) visit(ci.id, ptr("contextItems", i, "id"), "context item"); });
   arr(r.redFlags).forEach((f, i) => { if (isObj(f)) visit(f.id, ptr("redFlags", i, "id"), "red flag"); });
   if (isObj(r.infoPrompts)) arr(r.infoPrompts.prompts).forEach((p, i) => { if (isObj(p)) visit(p.id, ptr("infoPrompts", "prompts", i, "id"), "info prompt"); });
-  // Domain keys last, so a collision is reported at the key. A key V10 already refuses (not a
-  // slug, an Object.prototype name) is not reported twice.
-  arr(r.domains).forEach((d, i) => {
-    if (!isObj(d) || typeof d.key !== "string" || !ID_RE.test(d.key) || isProtoName(d.key)) return;
-    const path = ptr("domains", i, "key");
-    if (RESERVED_LINK_IDS.has(d.key)) { c.E("V11", path, `domain key "${d.key}" is reserved: the FHIR Questionnaire's red-flag group uses the linkId "${d.key}"`); return; }
-    if (seen.has(d.key)) {
-      // Two domains with one key are V10's finding; only a key shared with an id is V11's.
-      if (!seen.get(d.key).startsWith("domain ")) c.E("V11", path, `domain key "${d.key}" is already used by ${seen.get(d.key)} (domain keys and ids share one namespace: both are FHIR linkIds)`);
-    } else seen.set(d.key, `domain ${path}`);
-  });
-}
-
-function checkInfoPrompts(r, c) {
-  // V11: the Scribe's info prompts. They share the id namespace (idNamespace); their shape is
-  // checked here, because the Scribe reads every field without a guard.
-  const ip = r.infoPrompts;
-  if (ip === undefined) return;
-  if (!isObj(ip)) { c.E("V11", "/infoPrompts", "infoPrompts must be {gateDomain, tagPrefix, maxScored, maxTotal, prompts}"); return; }
-  const domainKeys = arr(r.domains).filter(isObj).map(d => d.key);
-  if (typeof ip.gateDomain !== "string" || !domainKeys.includes(ip.gateDomain)) c.E("V11", "/infoPrompts/gateDomain", `gateDomain must be a domain key (got ${JSON.stringify(ip.gateDomain)})`);
-  if (ip.tagPrefix !== undefined && typeof ip.tagPrefix !== "string") c.E("V11", "/infoPrompts/tagPrefix", "tagPrefix must be a string");
-  for (const k of ["maxScored", "maxTotal"]) {
-    if (ip[k] !== undefined && !(Number.isInteger(ip[k]) && ip[k] >= 0)) c.E("V11", `/infoPrompts/${k}`, `${k} must be a non-negative integer`);
-  }
-  if (!Array.isArray(ip.prompts)) { c.E("V11", "/infoPrompts/prompts", "prompts must be a list of {id, tag, ask}"); return; }
-  ip.prompts.forEach((p, i) => {
-    const pp = ptr("infoPrompts", "prompts", i);
-    if (!isObj(p)) { c.E("V11", pp, "an info prompt is {id, tag, ask}"); return; }
-    // The id is idNamespace's (pattern, reserved names, uniqueness across every id kind).
-    for (const k of ["tag", "ask"]) if (!nonEmpty(p[k])) c.E("V11", `${pp}/${k}`, `${k} must be a non-empty string`);
-  });
 }
 
 function checkContext(r, c) {
@@ -586,10 +545,7 @@ function checkPhenotypes(r, c) {
   arr(ph.values).forEach((v, i) => {
     const p = ptr("phenotypes", "values", i);
     if (!isObj(v) || !nonEmpty(v.value)) { c.E("V27", p, "a phenotype value is {value, h, d}"); return; }
-    // Values key the referral and cdsTerm tables (plain objects): a name every object inherits
-    // ("toString") would read as present there when the module defines nothing for it.
-    if (isProtoName(v.value)) c.E("V27", p + "/value", `phenotype value "${v.value}" is reserved: it names a property every JavaScript object inherits, so a lookup by it would read as present when the data is absent`);
-    else if (values.includes(v.value)) c.E("V27", p + "/value", `duplicate phenotype value "${v.value}"`);
+    if (values.includes(v.value)) c.E("V27", p + "/value", `duplicate phenotype value "${v.value}"`);
     values.push(v.value);
     for (const k of ["h", "d"]) if (typeof v[k] !== "string") c.E("V27", `${p}/${k}`, `${k} must be a string`);
   });
@@ -630,7 +586,190 @@ function lexiconPhrases(lex) {
   arr(lex.multi).forEach((e, i) => isObj(e) && list(e.ph, `/lexicon/multi/${i}/ph`));
   if (isObj(lex.redFlags)) for (const k of Object.keys(lex.redFlags)) list(lex.redFlags[k], ptr("lexicon", "redFlags", k));
   list(lex.carryRefuse, "/lexicon/carryRefuse");
+  // Release 0.4.7: the chart-reading lists ({ph, source} rows) and the clarification phrases.
+  const rows = (xs, p) => arr(xs).forEach((e, i) => { if (isObj(e)) out.push([e.ph, `${p}/${i}/ph`]); });
+  const cl = lex.clauses;
+  if (isObj(cl)) {
+    for (const k of LEXICON_CLAUSE_LISTS) rows(cl[k], `/lexicon/clauses/${k}`);
+    if (isObj(cl.sections)) for (const k of LEXICON_SECTION_KINDS) rows(cl.sections[k], `/lexicon/clauses/sections/${k}`);
+    if (isObj(cl.redFlags)) for (const k of Object.keys(cl.redFlags)) rows(cl.redFlags[k], ptr("lexicon", "clauses", "redFlags", k));
+  }
+  arr(lex.clarify).forEach((e, i) => { if (isObj(e)) { list(e.ph, `/lexicon/clarify/${i}/ph`); list(e.unless, `/lexicon/clarify/${i}/unless`); } });
   return out;
+}
+
+// Chart-reading cues may carry one boundary space at either end (" negative", ": no", "no "), never
+// more, and no tab or line break; a cue made only of punctuation ("?", "***") is never matched
+// inside a word, so the short-phrase warning does not apply to it (V29, release 0.4.7). Nor does it
+// apply to a clauses cue list matched as whole words (every list but mask, a substring, and
+// chartIgnoreThirdParty, the lexicon's own word-start cues) or to a section word, matched as a whole
+// header (review round 1: scopeEnd "so", "is", "to").
+const CLAUSE_PHRASE_PTR_RE = /^\/lexicon\/clauses\//;
+const CLAUSE_SUBSTRING_PTR_RE = /^\/lexicon\/clauses\/(?:mask|chartIgnoreThirdParty)\//;
+const CLAUSE_SPACING_RE = /^\s{2,}|\s{2,}$|[\t\r\n]/;
+const HAS_WORD_CHAR_RE = /[\p{L}\p{N}]/u;
+
+/**
+ * lexicon.clauses (release 0.4.7; contract LEXICON_CLAUSES_KEYS), V28: an object of known keys;
+ * wordStart and redFlagNegation booleans; each list a non-empty list of {ph, source} rows, source one
+ * of LEXICON_SOURCES, a phrase once per list; sections an object of LEXICON_SECTION_KINDS lists, a
+ * header word in one kind only; examItems unique item ids, possibly none (a warning without
+ * sections.exam); redFlags an object whose keys are red flags of the module, each a non-empty list of
+ * {ph, source} rows (review round 2: chart-register red-flag phrases);
+ * placeholderAsk {text, source} (warned when placeholder and placeholderAsk come apart);
+ * chartIgnoreThirdParty rows naming cues of lexicon.thirdParty.cues; strictConflict unique yes/no
+ * item ids of a negative (rule-out) domain (a warning for one with no lexicon.bool entry). The
+ * phrases themselves are V29's (lexiconPhrases).
+ */
+function checkClauses(lex, items, c, r) {
+  const cl = lex.clauses;
+  if (cl === undefined) return;
+  const P = "/lexicon/clauses";
+  if (!isObj(cl)) { c.E("V28", P, "clauses must be an object of chart-reading lists and switches"); return; }
+  for (const k of Object.keys(cl)) {
+    if (!LEXICON_CLAUSES_KEYS.includes(k)) c.E("V28", ptr("lexicon", "clauses", k), `"${k}" is not a clauses field (${LEXICON_CLAUSES_KEYS.join(", ")})`);
+  }
+  for (const k of ["wordStart", "redFlagNegation"]) {
+    if (cl[k] !== undefined && typeof cl[k] !== "boolean") c.E("V28", `${P}/${k}`, `${k} must be true or false`);
+  }
+  const quoted = (xs) => xs.map((x) => `"${x}"`).join(", ");
+  const rowList = (xs, p, what) => {
+    if (!Array.isArray(xs) || !xs.length) { c.E("V28", p, `${what} must be a non-empty list of {ph, source}`); return []; }
+    const seen = new Set();
+    const phrases = [];
+    xs.forEach((e, i) => {
+      const ep = `${p}/${i}`;
+      if (!isObj(e) || typeof e.ph !== "string") { c.E("V28", ep, "an entry is {ph, source}: the phrase and where it comes from"); return; }
+      for (const k of Object.keys(e)) if (k !== "ph" && k !== "source") c.E("V28", `${ep}/${esc(k)}`, `"${k}" is not a field of a {ph, source} entry`);
+      if (!LEXICON_SOURCES.includes(e.source)) c.E("V28", `${ep}/source`, `source must be one of ${quoted(LEXICON_SOURCES)}`);
+      if (seen.has(e.ph)) c.E("V28", `${ep}/ph`, `"${e.ph}" is listed twice`);
+      seen.add(e.ph);
+      phrases.push([e.ph, `${ep}/ph`]);
+    });
+    return phrases;
+  };
+  const lists = {};
+  for (const k of LEXICON_CLAUSE_LISTS) if (cl[k] !== undefined) lists[k] = rowList(cl[k], `${P}/${k}`, k);
+  // chartIgnoreThirdParty: the lexicon's own attribution cues that do not gate in typed chart text.
+  const tpCues = isObj(lex.thirdParty) && Array.isArray(lex.thirdParty.cues) ? lex.thirdParty.cues : [];
+  for (const [ph, pp] of lists.chartIgnoreThirdParty || []) {
+    if (!tpCues.includes(ph)) c.E("V28", pp, `"${ph}" is not a cue of lexicon.thirdParty.cues; chartIgnoreThirdParty names the lexicon's attribution cues that do not gate in chart text`);
+  }
+  if (cl.sections !== undefined) {
+    if (!isObj(cl.sections)) c.E("V28", `${P}/sections`, `sections must be an object of header-word lists by kind (${LEXICON_SECTION_KINDS.join(", ")})`);
+    else {
+      const kindOfWord = new Map();
+      for (const k of Object.keys(cl.sections)) {
+        if (!LEXICON_SECTION_KINDS.includes(k)) { c.E("V28", ptr("lexicon", "clauses", "sections", k), `"${k}" is not a section kind (${LEXICON_SECTION_KINDS.join(", ")})`); continue; }
+        for (const [w, wp] of rowList(cl.sections[k], ptr("lexicon", "clauses", "sections", k), `sections.${k}`)) {
+          const key = w.toLowerCase().replace(/\s+/g, " ").trim();
+          const other = kindOfWord.get(key);
+          if (other !== undefined && other !== k) c.E("V28", wp, `"${w}" is already a ${other} section word; a header word names one kind`);
+          else kindOfWord.set(key, k);
+        }
+      }
+    }
+  }
+  if (cl.redFlags !== undefined) {
+    if (!isObj(cl.redFlags)) c.E("V28", `${P}/redFlags`, "redFlags must be an object of chart-register phrase lists by red-flag id");
+    else {
+      const flagIds = new Set(arr(r && r.redFlags).filter(isObj).map((f) => f.id));
+      for (const k of Object.keys(cl.redFlags)) {
+        const fp = ptr("lexicon", "clauses", "redFlags", k);
+        if (!flagIds.has(k)) c.E("V28", fp, `"${k}" is not a red flag of the module`);
+        rowList(cl.redFlags[k], fp, `redFlags.${k}`);
+      }
+    }
+  }
+  if (cl.examItems !== undefined) {
+    if (!Array.isArray(cl.examItems)) c.E("V28", `${P}/examItems`, "examItems must be a list of item ids (empty: nothing is captured inside an exam section)");
+    else if (cl.examItems.length) {
+      cl.examItems.forEach((id, i) => {
+        if (typeof id !== "string" || !ownGet(items, id)) c.E("V28", `${P}/examItems/${i}`, `${JSON.stringify(id)} is not an item`);
+        else if (cl.examItems.indexOf(id) < i) c.E("V28", `${P}/examItems/${i}`, `"${id}" is listed twice`);
+      });
+      if (!(isObj(cl.sections) && cl.sections.exam !== undefined)) c.W("V28", `${P}/examItems`, "examItems has no effect without sections.exam (no text is ever read as an exam)");
+    }
+  }
+  // strictConflict: the rule-out items, for which any affirmed and any denied mention is a conflict.
+  if (cl.strictConflict !== undefined) {
+    const sc = cl.strictConflict;
+    if (!Array.isArray(sc) || !sc.length) c.E("V28", `${P}/strictConflict`, "strictConflict must be a non-empty list of item ids");
+    else {
+      const negative = new Set();
+      arr(r && r.domains).forEach((d) => { if (isObj(d) && d.negative === true) arr(d.items).forEach((it) => { if (isObj(it)) negative.add(it.id); }); });
+      const boolIds = new Set(arr(lex.bool).filter(isObj).map((e) => e.id));
+      sc.forEach((id, i) => {
+        const ip = `${P}/strictConflict/${i}`;
+        if (typeof id !== "string" || !ownGet(items, id)) c.E("V28", ip, `${JSON.stringify(id)} is not an item`);
+        else if (sc.indexOf(id) < i) c.E("V28", ip, `"${id}" is listed twice`);
+        else if (Array.isArray(items[id].scale)) c.E("V28", ip, `"${id}" is a scale item; strictConflict lists yes/no items`);
+        else if (!negative.has(id)) c.E("V28", ip, `"${id}" is not an item of a negative (rule-out) domain; strictConflict lists the rule-out items, whose "yes" lowers the index`);
+        else if (!boolIds.has(id)) c.W("V28", ip, `"${id}" has no yes/no entry in lexicon.bool, so strictConflict has no effect for it`);
+      });
+    }
+  }
+  if (cl.placeholderAsk !== undefined) {
+    const a = cl.placeholderAsk;
+    if (!isObj(a)) c.E("V28", `${P}/placeholderAsk`, "placeholderAsk must be {text, source}");
+    else {
+      if (!nonEmpty(a.text)) c.E("V28", `${P}/placeholderAsk/text`, "placeholderAsk.text must be a non-empty string (the question of the placeholder card)");
+      if (!LEXICON_ASK_SOURCES.includes(a.source)) c.E("V28", `${P}/placeholderAsk/source`, `source must be one of ${quoted(LEXICON_ASK_SOURCES)}`);
+      for (const k of Object.keys(a)) if (k !== "text" && k !== "source") c.E("V28", `${P}/placeholderAsk/${esc(k)}`, `"${k}" is not a field of placeholderAsk`);
+    }
+    if (cl.placeholder === undefined) c.W("V28", `${P}/placeholderAsk`, "placeholderAsk has no effect without placeholder (no placeholder card is ever shown)");
+  } else if (cl.placeholder !== undefined) {
+    c.W("V28", `${P}/placeholder`, "placeholder without placeholderAsk: a placeholder clause records nothing, but no card can ask about it");
+  }
+}
+
+/**
+ * lexicon.clarify (release 0.4.7; contract LEXICON_CLARIFY_KEYS), V28, rubric half: a non-empty
+ * list of entries with known keys, an id matching ID_RE and unique, a non-empty ph list, a
+ * non-empty unless list when present, exactly one of probe (a non-empty string; checked against the
+ * logic by checkClarifyProbes) or item (an item), an ask {text, source} when present, and a source.
+ */
+function checkClarify(lex, items, c) {
+  const list = lex.clarify;
+  if (list === undefined) return;
+  const P = "/lexicon/clarify";
+  if (!Array.isArray(list) || !list.length) { c.E("V28", P, "clarify must be a non-empty list of clarification entries"); return; }
+  const quoted = (xs) => xs.map((x) => `"${x}"`).join(", ");
+  const ids = new Set();
+  list.forEach((e, i) => {
+    const p = `${P}/${i}`;
+    if (!isObj(e)) { c.E("V28", p, "a clarification entry is {id, ph, unless?, probe | item, ask?, source}"); return; }
+    for (const k of Object.keys(e)) if (!LEXICON_CLARIFY_KEYS.includes(k)) c.E("V28", `${p}/${esc(k)}`, `"${k}" is not a clarify field (${LEXICON_CLARIFY_KEYS.join(", ")})`);
+    if (typeof e.id !== "string" || !ID_RE.test(e.id)) c.E("V28", `${p}/id`, "id must match /^[a-z][a-z0-9_]*$/");
+    else if (ids.has(e.id)) c.E("V28", `${p}/id`, `duplicate clarify id "${e.id}"`);
+    else ids.add(e.id);
+    if (!Array.isArray(e.ph) || !e.ph.length) c.E("V28", `${p}/ph`, "ph must be a non-empty list of trigger phrases");
+    if (e.unless !== undefined && (!Array.isArray(e.unless) || !e.unless.length)) c.E("V28", `${p}/unless`, "unless must be a non-empty list of qualifier phrases when present");
+    if ((e.probe === undefined) === (e.item === undefined)) c.E("V28", p, "a clarification entry names exactly one of probe or item");
+    else if (e.item !== undefined && !(typeof e.item === "string" && ownGet(items, e.item))) c.E("V28", `${p}/item`, `${JSON.stringify(e.item)} is not an item`);
+    else if (e.probe !== undefined && !nonEmpty(e.probe)) c.E("V28", `${p}/probe`, "probe must be a probe id");
+    if (e.ask !== undefined) {
+      if (!isObj(e.ask)) c.E("V28", `${p}/ask`, "ask must be {text, source}");
+      else {
+        if (!nonEmpty(e.ask.text)) c.E("V28", `${p}/ask/text`, "ask.text must be a non-empty string");
+        if (!LEXICON_ASK_SOURCES.includes(e.ask.source)) c.E("V28", `${p}/ask/source`, `ask.source must be one of ${quoted(LEXICON_ASK_SOURCES)}`);
+        for (const k of Object.keys(e.ask)) if (k !== "text" && k !== "source") c.E("V28", `${p}/ask/${esc(k)}`, `"${k}" is not a field of ask`);
+      }
+    }
+    if (!LEXICON_SOURCES.includes(e.source)) c.E("V28", `${p}/source`, `source must be one of ${quoted(LEXICON_SOURCES)}`);
+  });
+}
+
+/** lexicon.clarify, V28, logic half (release 0.4.7): every probe an entry names is a probe of the module's logic. */
+function checkClarifyProbes(module, c) {
+  const lex = module.rubric && module.rubric.lexicon;
+  if (!isObj(lex) || !Array.isArray(lex.clarify)) return;
+  const pr = module.logic && module.logic.probes;
+  const ids = new Set((Array.isArray(pr) ? pr : isObj(pr) ? arr(pr.list) : []).filter(isObj).map((x) => x.id));
+  lex.clarify.forEach((e, i) => {
+    if (!isObj(e) || !nonEmpty(e.probe) || e.item !== undefined) return;
+    if (!ids.has(e.probe)) c.E("V28", `/lexicon/clarify/${i}/probe`, `"${e.probe}" is not a probe of this module's logic`);
+  });
 }
 
 // lexicon.normalize (contract LEXICON_NORMALIZE_KEYS): the characters apostrophes: true folds to
@@ -641,9 +780,7 @@ function lexiconPhrases(lex) {
 // band phrase matching, so only a band phrase holding such a token can never match (V29 warning);
 // every other phrase list matches typed digits as digits.
 const FOLDED_APOSTROPHE_RE = /[\u2018\u2019\u02BC\u2032]/;
-// No lookbehind (Safari before 16.4 cannot parse one): the character before the token, or the
-// string start, is matched instead; group 1 is the token, as in extraction.js NUMBER_TOKEN.
-const NUMBER_TOKEN_RE = /(?:^|[^\p{L}\p{N}.:\/,%-])(\d+)(?![\p{L}\p{N}:\/,%-])(?!\.\S)/gu;
+const NUMBER_TOKEN_RE = /(?<![\p{L}\p{N}.:\/,%-])(\d+)(?![\p{L}\p{N}:\/,%-])(?!\.\S)/gu;
 const BAND_PHRASE_PTR_RE = /^\/lexicon\/scale\/\d+\/bands\/\d+\/ph\/\d+$/;
 const spelledNumber = (tok) => {
   const n = Number(tok);
@@ -799,6 +936,8 @@ function checkLexicon(r, c, { origin }) {
       }
     }
   }
+  checkClauses(lex, items, c, r);
+  checkClarify(lex, items, c);
   arr(lex.multi).forEach((e, i) => {
     const p = `/lexicon/multi/${i}`;
     if (!isObj(e) || !Array.isArray(e.ids) || !e.ids.length) { c.E("V28", p + "/ids", "ids must be a non-empty list"); return; }
@@ -827,9 +966,11 @@ function checkLexicon(r, c, { origin }) {
   const foldsApostrophes = isObj(norm) && norm.apostrophes === true;
   const spellsNumbers = isObj(norm) && norm.numbers === "en";
   for (const [s, p] of lexiconPhrases(lex)) {
+    const clausePhrase = CLAUSE_PHRASE_PTR_RE.test(p);
     if (typeof s !== "string" || !s.trim()) c.E("V29", p, "a phrase must be a non-empty string");
     else if (s !== s.toLowerCase()) c.E("V29", p, "phrases are matched against lowercased text, so they must be lowercase");
-    else if (s.length < 3) c.W("V29", p, `the phrase "${s}" is under 3 characters and may match inside other words`);
+    else if (clausePhrase && CLAUSE_SPACING_RE.test(s)) c.E("V29", p, `the cue "${s}" has more than one space at an end, a tab or a line break; one boundary space at either end is the most a cue may carry`);
+    else if (s.length < 3 && !(clausePhrase && (!HAS_WORD_CHAR_RE.test(s) || !CLAUSE_SUBSTRING_PTR_RE.test(p)))) c.W("V29", p, `the phrase "${s}" is under 3 characters and may match inside other words`);
     if (typeof s !== "string") continue;
     if (foldsApostrophes && FOLDED_APOSTROPHE_RE.test(s)) {
       c.W("V29", p, `the phrase "${s}" holds a typographic apostrophe, which normalize.apostrophes folds to ' before matching, so the phrase can never match; write ' instead`);
@@ -921,16 +1062,13 @@ function checkLocales(r, c, merged) {
 function checkIdentityAndResearch(r, c, identity, { origin, classification }) {
   // V35
   const fieldPath = (f) => "/" + f.split(".").map(esc).join("/");
-  for (const f of URL_IDENTITY_FIELDS) {
+  for (const f of ["fhir.questionnaireUrl", "fhir.codeSystem", "fhir.answerSystem", "fhir.criteriaSystem", "fhir.weightExtension", "cds.source.url"]) {
     const v = getPath(identity, f);
     if (typeof v !== "string" || !ABS_URL.test(v)) c.E("V35", fieldPath(f), `${f} must render to an absolute URL (got ${JSON.stringify(v)})`);
   }
   for (const f of IDENTITY_TEMPLATE_FIELDS) {
     const v = getPath(identity, f);
     if (typeof v !== "string" || !v.trim() || /[{}]/.test(v) || /\s/.test(v)) c.E("V35", fieldPath(f), `${f} must render to a non-empty identifier without spaces or braces (got ${JSON.stringify(v)})`);
-    // The other identity fields name files (filePrefix), screen ids, codes and CDS ids: a
-    // single safe token, so "{id}/../.." can never become a path in Download all.
-    else if (!URL_IDENTITY_FIELDS.includes(f) && !IDENT_TOKEN.test(v)) c.E("V35", fieldPath(f), `${f} must render to letters, digits, ".", "_" and "-" only, starting with a letter or digit, at most 64 characters (got ${JSON.stringify(v)})`);
   }
   for (const f of ["questionnaireName", "questionnaireTitle", "publisher", "description", "safetyGroupText", "indexDisplay", "documentType", "documentTitle"]) {
     if (!nonEmpty(identity.fhir[f])) c.E("V35", `/fhir/${f}`, `fhir.${f} must be non-empty`);
@@ -982,7 +1120,6 @@ function checkIdentityAndResearch(r, c, identity, { origin, classification }) {
   if (Array.isArray(rs.fairnessAxes) && Array.isArray(rs.expected)) {
     rs.fairnessAxes.forEach((a, i) => { if (!rs.expected.includes(a)) c.E("V37", `/research/fairnessAxes/${i}`, `"${a}" is not an expected column`); });
   }
-  checkDemoCohorts(rs.demoCohorts, c);
   if (rs.population !== undefined) {
     const pop = rs.population;
     if (!isObj(pop)) c.E("V37", "/research/population", "population must be {index, schema, map}");
@@ -996,51 +1133,6 @@ function checkIdentityAndResearch(r, c, identity, { origin, classification }) {
       c.E("V37", "/research/population", "Population estimates are accepted only for built-in modules and verified derivations of one; remove `research.population`");
     }
   }
-}
-
-// The most rows one demo-cohort group may generate (cohort.makeCohort loops n times per group).
-const DEMO_GROUP_MAX_N = 5000;
-
-function checkDemoCohorts(dc, c) {
-  // V37: research.demoCohorts, the specs cohort.makeCohort generates rows from. makeCohort
-  // reads spec.seed, spec.prevalence, spec.hi/lo {pos:[base, span], neg:[base, span]}, and
-  // per group sex[0], gender[0], n, hi and labeled; extraRows are copied as rows.
-  if (dc === undefined) return;
-  if (!Array.isArray(dc)) { c.E("V37", "/research/demoCohorts", "demoCohorts must be a list of {id, label, why, spec}"); return; }
-  const fin = (x) => typeof x === "number" && Number.isFinite(x);
-  const range = (x) => Array.isArray(x) && x.length === 2 && fin(x[0]) && fin(x[1]);
-  const ids = new Set();
-  dc.forEach((d, i) => {
-    const p = ptr("research", "demoCohorts", i);
-    if (!isObj(d)) { c.E("V37", p, "a demo cohort is {id, label, why, spec}"); return; }
-    if (!nonEmpty(d.id)) c.E("V37", p + "/id", "id must be a non-empty string");
-    else if (ids.has(d.id)) c.E("V37", p + "/id", `duplicate demo cohort id "${d.id}"`);
-    ids.add(d.id);
-    if (!nonEmpty(d.label)) c.E("V37", p + "/label", "label must be a non-empty string");
-    if (d.why !== undefined && typeof d.why !== "string") c.E("V37", p + "/why", "why must be a string");
-    const s = d.spec;
-    if (!isObj(s)) { c.E("V37", p + "/spec", "spec must be {seed, prevalence, hi, lo, groups, extraRows?}"); return; }
-    if (!Number.isInteger(s.seed)) c.E("V37", p + "/spec/seed", "seed must be an integer");
-    if (!fin(s.prevalence) || s.prevalence < 0 || s.prevalence > 1) c.E("V37", p + "/spec/prevalence", "prevalence must be a number in [0, 1]");
-    const groups = Array.isArray(s.groups) ? s.groups : null;
-    if (!groups || !groups.length) c.E("V37", p + "/spec/groups", "groups must be a non-empty list of {sex, gender, n, hi, labeled}");
-    for (const k of ["hi", "lo"]) {
-      if (groups && !groups.some(g => isObj(g) && (g.hi === true) === (k === "hi"))) continue;   // not drawn from
-      const sc = s[k];
-      if (!isObj(sc) || !range(sc.pos) || !range(sc.neg)) c.E("V37", `${p}/spec/${k}`, `${k} must be {pos: [base, span], neg: [base, span]} with finite numbers`);
-    }
-    arr(groups).forEach((g, j) => {
-      const gp = `${p}/spec/groups/${j}`;
-      if (!isObj(g)) { c.E("V37", gp, "a group is {sex, gender, n, hi, labeled}"); return; }
-      for (const k of ["sex", "gender"]) if (!nonEmpty(g[k])) c.E("V37", `${gp}/${k}`, `${k} must be a non-empty string`);
-      if (!Number.isInteger(g.n) || g.n < 1 || g.n > DEMO_GROUP_MAX_N) c.E("V37", `${gp}/n`, `n must be an integer from 1 to ${DEMO_GROUP_MAX_N}`);
-      for (const k of ["hi", "labeled"]) if (typeof g[k] !== "boolean") c.E("V37", `${gp}/${k}`, `${k} must be true or false`);
-    });
-    if (s.extraRows !== undefined) {
-      if (!Array.isArray(s.extraRows)) c.E("V37", p + "/spec/extraRows", "extraRows must be a list of rows");
-      else s.extraRows.forEach((row, j) => { if (!isObj(row)) c.E("V37", `${p}/spec/extraRows/${j}`, "a row is an object"); });
-    }
-  });
 }
 
 function caveatStrings() {
@@ -1182,13 +1274,20 @@ function checkSamples(r, c) {
 
 // ---- V61: the EMR template data (release 0.4.3) --------------------------------------------
 
-const EMR_KEYS = ["citations", "references", "instrumentRecs", "redFlagRefs", "redFlagPlaceholders", "history", "checklist", "examRows", "pastHistory"];
+const EMR_KEYS = ["citations", "references", "instrumentRecs", "redFlagRefs", "redFlagPlaceholders", "history", "checklist", "examRows", "pastHistory", "planAdvice"];
 /** The past-history groups of engine/emr.js (release 0.4.6): after the pregnancy line, or before the family-history placeholder. */
 const EMR_PAST_GROUPS = ["medical", "family"];
 const EMR_CITATION_FIELDS = ["title", "publisher", "citation", "url", "accessed"];
 const EMR_CITE_KEY_RE = /^[A-Z0-9][A-Za-z0-9-]*$/;
 const EMR_HTTPS_URL = /^https:\/\/[^\s[\]{}<>"]+$/;
 const EMR_DATE = /^\d{4}-\d{2}-\d{2}$/;
+/** A YYYY-MM-DD string that is a real calendar date (release 0.4.8: a plan-advice line's `decided`). */
+const emrRealDate = (s) => {
+  if (typeof s !== "string" || !EMR_DATE.test(s)) return false;
+  const [y, m, d] = s.split("-").map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d));
+  return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
+};
 const EMR_RENDERS = ["done", "answeredNo", "note", "neverTried"];
 /**
  * The fields engine/emr.js reads on each kind of emrTemplate row (review round 4); any other key is
@@ -1204,6 +1303,8 @@ const EMR_ROW_FIELDS = {
   "exam row": ["label", "citations", "probe", "optionPlaceholders"],
   "option placeholder": ["option", "placeholder"],
   "past history": ["item", "label", "group"],
+  // release 0.4.8: text is printed; source and decided are the line's record (checked, never printed)
+  "plan advice": ["text", "source", "decided"],
 };
 const EMR_BRACKETS = /[[\]{}]/;
 const SQUARE_BRACKETS = /[[\]]/;
@@ -1234,7 +1335,10 @@ const EMR_EXAM_KIND = "exam";
  *     one of item or label and a group of medical or family, and its item is not also a history
  *     row's or another pastHistory row's (it would print twice); an exam row's optionPlaceholders
  *     is a list of {option: a probe option index, placeholder: a non-empty string}, on a row with a
- *     probe only, one per option (E).
+ *     probe only, one per option (E). Release 0.4.8: planAdvice is a list of {text, source, decided}:
+ *     text a non-empty string (printed verbatim as a plan line beside the references), source a
+ *     non-empty string and decided a real YYYY-MM-DD date (who decided the line and when; never
+ *     printed) (E); any other field is never read (W).
  * V38 (caveat strings) covers emrTemplate like all module data; V60 does not apply (clinician
  * surface). Probe and routing references, and the logic strings the template prints, are checked
  * against the logic in checkV61Probes.
@@ -1434,6 +1538,16 @@ function checkEmrTemplate(r, c) {
     else if (historyRowItems.has(row.item) || pastItems.has(row.item)) c.E("V61", p + "/item", `"${row.item}" is already a history or past-history row (it would print twice)`);
     else pastItems.add(row.item);
   });
+  // Release 0.4.8: the plan-advice lines (printed beside the empiric-treatment references, with no red
+  // flag open), each with its record.
+  list(t.planAdvice, "/emrTemplate/planAdvice").forEach((row, i) => {
+    const p = ptr("emrTemplate", "planAdvice", i);
+    if (!isObj(row)) { c.E("V61", p, "a plan-advice line is {text, source, decided}"); return; }
+    knownFields(row, "plan advice", p);
+    label(row.text, p + "/text", "text");
+    if (!nonEmpty(row.source)) c.E("V61", p + "/source", "source must name who decided the line");
+    if (!emrRealDate(row.decided)) c.E("V61", p + "/decided", "decided must be the YYYY-MM-DD date the line was decided");
+  });
   for (const k of citeKeys) if (!used.has(k)) c.W("V61", ptr("emrTemplate", "citations", k), `citation "${k}" is never used`);
 }
 
@@ -1545,7 +1659,6 @@ function rubricChecks(r, c, opts) {
   checkV9(r, c);
   checkInstrument(r, c);
   idNamespace(r, c);
-  checkInfoPrompts(r, c);
   checkContext(r, c);
   checkPatientContext(r, c);
   checkFlags(r, c);
@@ -2100,10 +2213,8 @@ function modulePhraseMatcher(module) {
   add(suffix, 2);
   add(note.likelihoodOf, 2);
   const reEsc = (w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  // "No letter or digit before" is the string start or a non-letter/digit character, matched
-  // (not looked behind: Safari before 16.4 has no lookbehind); only test() is used.
   const res = [...phrases].map(p => [p, new RegExp(
-    "(?:^|[^\\p{L}\\p{N}])" + p.split(" ").map(reEsc).join("\\s+") + "(?![\\p{L}\\p{N}])", "iu")]);
+    "(?<![\\p{L}\\p{N}])" + p.split(" ").map(reEsc).join("\\s+") + "(?![\\p{L}\\p{N}])", "iu")]);
   return (s) => {
     if (typeof s !== "string") return null;
     for (const [p, re] of res) if (re.test(s)) return p;
@@ -2468,17 +2579,6 @@ function checkV47(module, c, rec) {
   }
 }
 
-/**
- * Whether the module has a patient surface: the condition of patient.js projectForPatient's
- * `available` (English patient wording with at least one item entry), restated here so the
- * validator does not import the patient projection.
- */
-function patientSurface(module) {
-  const en = isObj(module.locales) && isObj(module.locales.en) && isObj(module.locales.en.data) ? module.locales.en.data : null;
-  const items = en && isObj(en.items) ? en.items : null;
-  return !!items && Object.keys(items).some(id => isObj(items[id]));
-}
-
 function checkV60Static(module, c) {
   // Every patient-facing module string: rubric locales (minus their review metadata), the
   // string values of every logic sum, and the rubric strings projectForPatient carries onto
@@ -2488,20 +2588,16 @@ function checkV60Static(module, c) {
   // when English has no title for that step (§3.5).
   // Each is checked against OMISSION_PATTERNS and the module's own index and band phrases
   // (modulePhraseMatcher).
-  // The name, the item texts and the fallback domain labels reach a patient only through the
-  // Patient Companion, which a module without English patient wording does not have
-  // (patientSurface): then they are clinician text and are not checked.
   const r = module.rubric;
   const phraseHit = modulePhraseMatcher(module);
-  const v60 = (s, p, hint = "") => { const why = v60Reason(s, phraseHit); if (why) c.E("V60", p, why + hint); };
-  const surface = patientSurface(module);
-  if (surface) v60(r.name, "/name", " (the module name heads the patient page and its exports)");
+  const v60 = (s, p) => { const why = v60Reason(s, phraseHit); if (why) c.E("V60", p, why); };
+  v60(r.name, "/name");
   arr(r.domains).forEach((d, i) => {
     if (!isObj(d)) return;
     arr(d.items).forEach((it, j) => {
       if (!isObj(it)) return;
       if (typeof it.patientClin === "string") v60(it.patientClin, ptr("domains", i, "items", j, "patientClin"));
-      else if (surface) v60(it.text, ptr("domains", i, "items", j, "text"), "; without patientClin the item text is what the patient summary's \"For my clinician\" block shows, so give the item a patientClin line that names no score");
+      else v60(it.text, ptr("domains", i, "items", j, "text"));
     });
   });
   const steps = isObj(module.steps) ? arr(module.steps.patient) : [];
@@ -2514,8 +2610,8 @@ function checkV60Static(module, c) {
     if (typeof own === "string") continue;
     for (const k of arr(st.domainKeys)) fallbackKeys.add(k);
   }
-  if (surface) arr(r.domains).forEach((d, i) => {
-    if (isObj(d) && fallbackKeys.has(d.key)) v60(d.label, ptr("domains", i, "label"), "; a patient step without an English title shows its domain labels, so give the step a title in locales.en.steps");
+  arr(r.domains).forEach((d, i) => {
+    if (isObj(d) && fallbackKeys.has(d.key)) v60(d.label, ptr("domains", i, "label"));
   });
   if (isObj(r.locales)) {
     for (const loc of Object.keys(r.locales)) {
@@ -2599,20 +2695,12 @@ function checkDerived(module, c, { loaded, root }) {
       if (L.editedLocally !== true) c.E("V55", ptr("locales", loc, "editedLocally"), `the "${loc}" wording differs from the root's, so it is marked editedLocally: true`);
     }
     if (Array.isArray(L.stale) && L.stale.length && L.reviewed !== false) c.E("V55", ptr("locales", loc, "reviewed"), `"${loc}" has stale translations, so it is not reviewed`);
-    // A derivation never reviews a translation: a locale the root has unreviewed (or does not
-    // have) stays unreviewed, whatever a hand-edited file says.
-    const rootReviewed = isObj(rootLocs[loc]) && rootLocs[loc].reviewed === true;
-    if (L.reviewed === true && !rootReviewed) c.E("V55", ptr("locales", loc, "reviewed"), `"${loc}" is not reviewed in the root module, so a derived module may not mark it reviewed`);
   }
 }
 
 // ---- V57-V59: upload --------------------------------------------------------------------
 
-// No lookbehind (Safari before 16.4 cannot parse one, and this file would not load): the
-// character before a name is matched as group 1 instead — the string start or a character
-// that cannot continue an identifier or a member access. That character is never part of the
-// previous match (a match ends on an identifier character), so no hit is lost; group 2 is the name.
-const API_RE = /(^|[^.\w$])(window|document|globalThis|fetch|XMLHttpRequest|WebSocket|localStorage|sessionStorage|indexedDB|navigator|eval|Function)(?![\w$])|\bimport\s*\.\s*meta\b/g;
+const API_RE = /(?<![.\w$])(window|document|globalThis|fetch|XMLHttpRequest|WebSocket|localStorage|sessionStorage|indexedDB|navigator|eval|Function)(?![\w$])|\bimport\s*\.\s*meta\b/g;
 
 /** Source text with comments and string/template literals blanked (a signal scanner, not a parser). */
 function codeOnly(src) {
@@ -2635,7 +2723,7 @@ function codeOnly(src) {
 
 export function apiReferences(src) {
   const found = new Set();
-  for (const m of codeOnly(String(src)).matchAll(API_RE)) found.add(m[2] || "import.meta");
+  for (const m of codeOnly(String(src)).matchAll(API_RE)) found.add(m[1] || "import.meta");
   return [...found];
 }
 
@@ -2695,6 +2783,7 @@ export async function validateModule({ module, loaded = [], root = null, upload 
     checkV5(module, c);
     checkV6Logic(module, c);
     checkV61Probes(module, c);
+    checkClarifyProbes(module, c);
     checkV8(module, others, c);
     checkV56(module, others, c);
     if (module.logic !== GENERIC_LOGIC) {

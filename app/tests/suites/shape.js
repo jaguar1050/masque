@@ -21,7 +21,9 @@
 //     generic card alone when cleared and scorable, no CDS card; with the red flag on, the
 //     override card instead and the safety CDS card), no sample rail; the Scribe with the
 //     no-lexicon notice and no Listen / Play / Step / typed input, every suggestion answered,
-//     no probe rail, no routing card, the note's noDriver line; the Patient Companion walked to
+//     no probe rail, no routing card, the note's noDriver line; (release 0.4.8, follow-up) its
+//     Question review lists every scored item of the fixture once, in domain order, each answered
+//     row from Ask next and every other row "not answered"; the Patient Companion walked to
 //     its summary (each item's `q` quoted, exports free of OMISSION_PATTERNS, the at-home link
 //     refused for a non-built-in); Research's two "no population / no research configuration"
 //     messages; the Rubric Editor open on the fixture;
@@ -287,7 +289,7 @@ async function renderHalf(h, c, E, fixtureModule) {
       p = await openTab(C, "scribe");
       const notice = byTestId(p, "scribe-no-lexicon");
       c.check(!!notice && notice.textContent.trim() === NO_LEXICON, at("/scribe/noLexicon"), null, NO_LEXICON, notice ? notice.textContent.trim() : "absent");
-      for (const id of ["scribe-listen", "scribe-stop", "scribe-play", "scribe-step", "scribe-input", "scribe-capture", "scribe-meter"]) {
+      for (const id of ["scribe-listen", "scribe-stop", "scribe-play", "scribe-step", "scribe-input", "scribe-capture", "scribe-meter", "scribe-clarify"]) {
         c.check(!byTestId(p, id), at(`/scribe/transport/${id}`), null, "hidden (no lexicon)", "shown");
       }
       click(byTestId(p, "scribe-view-prompts"));
@@ -299,7 +301,19 @@ async function renderHalf(h, c, E, fixtureModule) {
         click(b);
       }
       c.check(!byTestId(p, "scribe-suggestions") || !byTestId(p, "scribe-suggestions").querySelector(".prompt"), at("/scribe/suggestions"), null, "all answered", "outstanding");
-      c.check(!byTestId(p, "scribe-probes"), at("/scribe/probeRail"), null, "hidden (no probes)", "shown");
+      // The probe rail lives in the Ask next view: checked there, before the Question review is opened
+      // (release 0.4.8, follow-up; review fix: it ran in the review view, where it could not fail).
+      c.check(!!byTestId(p, "scribe-prompts") && !byTestId(p, "scribe-probes"), at("/scribe/probeRail"), null, "hidden in the Ask next view (no probes)",
+        byTestId(p, "scribe-prompts") ? "shown" : "not in the Ask next view");
+      // Release 0.4.8, follow-up: the Question review of the fixture.
+      click(byTestId(p, "scribe-view-review"));
+      const qrRows = byTestId(p, "scribe-review-list") ? qa(byTestId(p, "scribe-review-list"), "[data-review-item]") : [];
+      c.diff(m.allItems.map((it) => it.id), qrRows.map((r) => r.getAttribute("data-review-item")), { at: at("/scribe/review/rows") });
+      const qrBad = qrRows.filter((r) => (r.getAttribute("data-answered") === "true"
+        ? r.getAttribute("data-source") !== "askNext"
+        : r.getAttribute("data-source") !== "" || !r.textContent.includes("not answered")));
+      c.check(qrRows.length > 0 && qrRows.some((r) => r.getAttribute("data-answered") === "true") && !qrBad.length, at("/scribe/review/sources"), null,
+        "each answered row from Ask next, every other row not answered", qrBad.map((r) => r.getAttribute("data-review-item")));
       click(byTestId(p, "scribe-view-safety"));
       const review = byTestId(p, "scribe-review");
       if (c.check(!!review, at("/scribe/review"), null, "the safety review button", "absent")) click(review);
@@ -382,9 +396,14 @@ async function renderHalf(h, c, E, fixtureModule) {
 
 // ============================================================================ placeholder half
 
-/** Set a React-controlled text input as typing would (native setter + one input event). */
+/**
+ * Set a React-controlled text input or textarea as typing would (the element's own native value
+ * setter + one input event). The Scribe's entry box is a textarea since release 0.4.7, whose value
+ * setter is HTMLTextAreaElement's (HTMLInputElement's throws "Illegal invocation" on it).
+ */
 function typeInto(input, value) {
-  const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+  const proto = input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+  const set = Object.getOwnPropertyDescriptor(proto, "value").set;
   flushSync(() => { set.call(input, value); input.dispatchEvent(new Event("input", { bubbles: true })); });
 }
 

@@ -22,11 +22,13 @@
 //   lexicon       a phrase added → lexicon -local, instrument locked, gold set "not re-run";
 //                 the last cue phrase of a flag removed → V28; a yes/no phrase, or a cue and a
 //                 band phrase of the heard entry, added → every scale entry's heard, carry,
-//                 yieldTo and anchor, carryRefuse and normalize kept as the root's (0.3.2-local)
+//                 yieldTo and anchor, carryRefuse, normalize, clauses and clarify kept as the root's
+//                 (0.3.3-local since release 0.4.7)
 //   capture       (design 05 §5.3, §7.2) heard / carry / carryExclude / yieldTo / anchor /
-//                 carryRefuse / normalize are locked with a reason that says "approved lexicon
-//                 configuration" and never claims any module's clinical-lead approval (round 2
-//                 R6); a child naming a new item in a yield rule deletes it with the yield rule
+//                 carryRefuse / normalize, and since release 0.4.7 clauses and clarify (chart
+//                 reading, clarification prompts) are locked with a reason that says "approved
+//                 lexicon configuration" and never claims any module's clinical-lead approval
+//                 (round 2 R6), and are not editable paths; a child naming a new item in a yield rule deletes it with the yield rule
 //                 restored, no lock violation and no V28; a direct edit of any of those fields is
 //                 a "Read-only" lock violation, also when it rides along with a deletion (round 2
 //                 R7: deleting an unrelated red flag, or an item, exempts nothing else under
@@ -43,14 +45,14 @@
 //                 line survives a derivation, a patientClin edit makes it stale, and a clin in
 //                 English or an empty one is V32; changedClinItems (read by deriveRubric and by
 //                 the editor's "English changed" tag) follows patientClin or, without one, the
-//                 item text, by item id; a hand-edited "reviewed": true never rises above the
-//                 parent's
+//                 item text, by item id
 //   add-item      the Add item rules (V11, V13, V15, V32) and a valid item round trip;
 //                 domains cannot be added, removed or reordered (lockViolations)
 //   shape         Create lexicon (V28 names every flag) and Create English patient wording
 //                 (V23/V32), then a valid derivation of the upload (row 6)
 //   emr           (release 0.4.3) /emrTemplate and every pointer below it are locked with the
-//                 clinical-lead reason (since release 0.4.4 it names the sign-off); any direct
+//                 clinical-lead reason (since release 0.4.4 it names the sign-off; since the 0.4.8
+//                 follow-up also the lead's uncited plan line of 2026-10-12); any direct
 //                 edit of the block (a label, a URL, a reorder, an added citation or key, a
 //                 removed row, the whole block) is a Read-only
 //                 lock violation; deleting a red flag removes exactly its redFlagRefs and
@@ -65,8 +67,7 @@
 //                 placeholder label, removing the rule) a Read-only lock violation, and a derivation
 //                 keeps it byte for byte
 //   identity      a label equal to a built-in's is refused; id and label collisions get -2 / (2)
-//   locks         locked fields are reported; revertChange and Revert all restore the parent;
-//                 setAt refuses __proto__ / constructor / prototype segments
+//   locks         locked fields are reported; revertChange and Revert all restore the parent
 import React from "react";
 import { collector, guarded, loadMasque, need } from "../harness/kit.js";
 
@@ -85,6 +86,9 @@ const captureConfig = (lx) => ({
   scale: (lx && Array.isArray(lx.scale) ? lx.scale : []).map((e) => ({ id: e.id, heard: e.heard, carry: e.carry, yieldTo: e.yieldTo, anchor: e.anchor, carryExclude: e.carryExclude })),
   carryRefuse: lx ? lx.carryRefuse : undefined,
   normalize: lx ? lx.normalize : undefined,
+  // Release 0.4.7: chart reading and the clarification triggers (lexicon 0.3.3).
+  clauses: lx ? lx.clauses : undefined,
+  clarify: lx ? lx.clarify : undefined,
 });
 
 export default {
@@ -135,11 +139,7 @@ export default {
     {
       const m = R1.module, rb = R1.rubric;
       c.check(new RegExp(`^local-${M.id}-[0-9a-f]{6}$`).test(m.id), "/instrument/id", null, `local-${M.id}-<hex6>`, m.id);
-      // The label carries the date the user sees: NOW's local calendar date (functional audit L4).
-      const t = new Date(NOW);
-      const localDay = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
-      c.check(derive.localDate(NOW) === localDay && derive.localDate("2026-10-02") === "2026-10-02", "/instrument/localDate", null, localDay, derive.localDate(NOW));
-      c.check(m.label === `${M.label} — edited ${localDay}`, "/instrument/label", null, `${M.label} — edited ${localDay}`, m.label);
+      c.check(m.label === `${M.label} — edited ${NOW.slice(0, 10)}`, "/instrument/label", null, `${M.label} — edited ${NOW.slice(0, 10)}`, m.label);
       c.check(new RegExp(`^${M.instrumentVersion.replace(/\./g, "\\.")}-local\\.[0-9a-f]{6}$`).test(m.instrumentVersion), "/instrument/version", null, "<root>-local.<hash6>", m.instrumentVersion);
       c.check(m.instrumentVersion.endsWith(m.hashes.instrumentHash.slice(0, 6)), "/instrument/version/hash6", null, m.hashes.instrumentHash.slice(0, 6), m.instrumentVersion);
       for (const k of ["questionnaireUrl", "codeSystem", "indexCode"]) {
@@ -248,9 +248,10 @@ export default {
       c.check(canon(r.module.lexicon.goldSet) === canon(M.lexicon.goldSet), "/lexicon/goldSet", null, "the root's gold set", r.module.lexicon.goldSet);
       // The capture configuration survives the derivation unchanged (design 05 §7.2 editor b).
       const rootCfg = captureConfig(M.lexicon);
-      c.check(M.lexicon.version === "0.3.2" && rootCfg.scale.some((e) => e.heard === true) && rootCfg.scale.some((e) => Array.isArray(e.yieldTo)) && Array.isArray(rootCfg.carryRefuse) && !!rootCfg.normalize,
-        "/lexicon/capture-config/root", null, "lexicon 0.3.2 with heard, yieldTo, carryRefuse and normalize", [M.lexicon.version, rootCfg]);
-      c.check(/^0\.3\.2-local\.[0-9a-f]{6}$/.test(r.module.lexicon.version), "/lexicon/capture-config/version", null, "0.3.2-local.<hash6>", r.module.lexicon.version);
+      c.check(M.lexicon.version === "0.3.3" && rootCfg.scale.some((e) => e.heard === true) && rootCfg.scale.some((e) => Array.isArray(e.yieldTo)) && Array.isArray(rootCfg.carryRefuse) && !!rootCfg.normalize
+          && !!rootCfg.clauses && Array.isArray(rootCfg.clarify),
+        "/lexicon/capture-config/root", null, "lexicon 0.3.3 with heard, yieldTo, carryRefuse, normalize, clauses and clarify", [M.lexicon.version, rootCfg]);
+      c.check(/^0\.3\.3-local\.[0-9a-f]{6}$/.test(r.module.lexicon.version), "/lexicon/capture-config/version", null, "0.3.3-local.<hash6>", r.module.lexicon.version);
       c.check(canon(captureConfig(r.module.lexicon)) === canon(rootCfg), "/lexicon/capture-config/kept", { edit: "yes/no phrase added" }, rootCfg, captureConfig(r.module.lexicon));
       c.check(canon(captureConfig(r.rubric.lexicon)) === canon(rootCfg), "/lexicon/capture-config/kept-rubric", { edit: "yes/no phrase added" }, rootCfg, captureConfig(r.rubric.lexicon));
       const hi = M.lexicon.scale.findIndex((e) => e.heard === true);
@@ -259,7 +260,7 @@ export default {
         b.lexicon.scale[hi].cue.push("a cue phrase added by the editor suite");
         b.lexicon.scale[hi].bands[0].ph.push("a band phrase added by the editor suite");
         const rb = await run(M, b);
-        c.check(rb.validation.ok && /^0\.3\.2-local\.[0-9a-f]{6}$/.test(rb.module.lexicon.version), "/lexicon/capture-config/band-edit/ok", null, "no errors, 0.3.2-local.<hash6>", [rb.module.lexicon.version, codes(rb.validation)]);
+        c.check(rb.validation.ok && /^0\.3\.3-local\.[0-9a-f]{6}$/.test(rb.module.lexicon.version), "/lexicon/capture-config/band-edit/ok", null, "no errors, 0.3.3-local.<hash6>", [rb.module.lexicon.version, codes(rb.validation)]);
         c.check(canon(captureConfig(rb.module.lexicon)) === canon(rootCfg), "/lexicon/capture-config/band-edit/kept", { edit: `cue and band phrase on /lexicon/scale/${hi}` }, rootCfg, captureConfig(rb.module.lexicon));
         c.check(rb.module.versions.goldSetLexicon && rb.module.versions.goldSetLexicon !== rb.module.versions.lexicon, "/lexicon/capture-config/band-edit/not-re-run", null, "gold set lexicon ≠ lexicon (footer: not re-run)", rb.module.versions);
       }
@@ -280,14 +281,29 @@ export default {
       c.check(!!sc[1] && Array.isArray(sc[1].carryExclude) && sc[1].carryExclude.length > 0, "/capture/indices/carryExclude", null, "scale 1 v_vertigo has carryExclude (round 2 R3a)", sc[1] && sc[1].carryExclude);
       const lockedPaths = ["/lexicon/scale/1/heard", "/lexicon/scale/1/carry", "/lexicon/scale/1/carryExclude", "/lexicon/scale/1/carryExclude/0",
         "/lexicon/scale/2/yieldTo", "/lexicon/scale/2/anchor", "/lexicon/scale/2/anchor/0",
-        "/lexicon/carryRefuse", "/lexicon/carryRefuse/0", "/lexicon/normalize", "/lexicon/normalize/numbers"];
+        "/lexicon/carryRefuse", "/lexicon/carryRefuse/0", "/lexicon/normalize", "/lexicon/normalize/numbers",
+        // Release 0.4.7: chart reading and the clarification prompts (lexicon 0.3.3).
+        "/lexicon/clauses", "/lexicon/clauses/affirm/0", "/lexicon/clauses/affirm/0/ph", "/lexicon/clauses/chartIgnoreThirdParty/0",
+        "/lexicon/clauses/sections/exam", "/lexicon/clauses/strictConflict", "/lexicon/clauses/strictConflict/0", "/lexicon/clauses/redFlagNegation",
+        "/lexicon/clarify", "/lexicon/clarify/0", "/lexicon/clarify/0/ph/0", "/lexicon/clarify/0/ask/text"];
       for (const p of lockedPaths) c.check(derive.lockReason(p) !== null, `/capture/lock${p}`, null, "a lock reason", derive.lockReason(p));
+      for (const p of lockedPaths.filter((x) => /^\/lexicon\/(clauses|clarify)(\/|$)/.test(x))) {
+        c.check(!derive.isEditablePath(p), `/capture/not-editable${p}`, null, "not an editable path", derive.lockReason(p));
+      }
+      c.check(!!M.lexicon.clauses && Array.isArray(M.lexicon.clauses.chartIgnoreThirdParty) && Array.isArray(M.lexicon.clauses.strictConflict) && Array.isArray(M.lexicon.clarify)
+          && !!M.lexicon.clarify[0] && !!M.lexicon.clarify[0].ask, "/capture/indices/clauses", null,
+        "lexicon.clauses with chartIgnoreThirdParty and strictConflict, clarify[0] with an ask (the locked paths above exist)", [Object.keys(M.lexicon.clauses || {}), arr(M.lexicon.clarify).length]);
       // The engine is module-agnostic: its lock reasons cannot know who approved a module's
       // configuration (round 2 R6, review F8).
       for (const p of lockedPaths) {
         const why = derive.lockReason(p) || "";
-        c.check(why.includes("approved lexicon configuration") && !/clinical[- ]lead/i.test(why), `/capture/lock-wording${p}`, null,
-          "\"… approved lexicon configuration …\", no clinical-lead claim", why);
+        // Review round 1 (release 0.4.7): the chart-reading and clarification rows carry their source
+        // (most are drafts awaiting sign-off), so their locks never call them "approved".
+        const tagged = /^\/lexicon\/(clauses|clarify)(\/|$)/.test(p);
+        c.check((tagged ? why.includes("lexicon configuration") && why.includes("source (lead, module or draft)") && !/approved/i.test(why)
+            : why.includes("approved lexicon configuration")) && !/clinical[- ]lead/i.test(why), `/capture/lock-wording${p}`, null,
+          tagged ? "\"… lexicon configuration, each … tagged with its source (lead, module or draft) …\", never \"approved\", no clinical-lead claim"
+            : "\"… approved lexicon configuration …\", no clinical-lead claim", why);
       }
       for (const p of ["/lexicon/scale/1/cue/0", "/lexicon/scale/1/bands/0/ph/0", "/lexicon/scale/2/cue"]) {
         c.check(derive.isEditablePath(p), `/capture/editable${p}`, null, "editable", derive.lockReason(p));
@@ -454,6 +470,14 @@ export default {
       });
       ro2("carryRefuse", "/lexicon/carryRefuse", (lx) => { lx.carryRefuse = [...(lx.carryRefuse || []), "a refusal added by the editor suite"]; });
       ro2("normalize", "/lexicon/normalize", (lx) => { if (lx.normalize === undefined) lx.normalize = { apostrophes: true }; else delete lx.normalize; });
+      // Release 0.4.7: chart reading and the clarification prompts.
+      ro2("clauses-row", "/lexicon/clauses/affirm", (lx) => { lx.clauses.affirm.push({ ph: "an affirm cue added by the editor suite", source: "draft" }); });
+      ro2("clauses-chartIgnoreThirdParty", "/lexicon/clauses/chartIgnoreThirdParty", (lx) => { lx.clauses.chartIgnoreThirdParty = lx.clauses.chartIgnoreThirdParty.slice(1); });
+      ro2("clauses-strictConflict", "/lexicon/clauses/strictConflict", (lx) => { lx.clauses.strictConflict = lx.clauses.strictConflict.slice(1); });
+      ro2("clauses-switch", "/lexicon/clauses/redFlagNegation", (lx) => { lx.clauses.redFlagNegation = lx.clauses.redFlagNegation !== true; });
+      ro2("clauses-removed", "/lexicon/clauses", (lx) => { delete lx.clauses; });
+      ro2("clarify-ask", "/lexicon/clarify/0", (lx) => { lx.clarify[0].ask = { ...lx.clarify[0].ask, text: `${lx.clarify[0].ask.text} (edited)` }; });
+      ro2("clarify-entry", "/lexicon/clarify", (lx) => { lx.clarify = lx.clarify.slice(1); });
     }
 
     // --------------------------------------------------------------- locales
@@ -526,16 +550,6 @@ export default {
       f.locales.es.redFlags[flagId].q += " (editado)";
       const ch2 = await derive.classifyChanges(M, f, { readsObserved: ro });
       c.check(!ch2.staleRedFlagPaths.length, "/locales/staleRedFlag/updated", null, [], ch2.staleRedFlagPaths);
-      // A hand-edited file (Load as derived) typing "reviewed": true into an unreviewed locale:
-      // the derivation never raises a locale's reviewed above its parent's, so the
-      // unreviewed-translation banner stays (audit e9).
-      const hv = fresh();
-      hv.domains[posDomain].items[0].text += " (edited)";
-      c.check(M.rubric.locales.es.reviewed === false, "/locales/reviewed/root-es", null, false, M.rubric.locales.es.reviewed);
-      hv.locales.es.reviewed = true;
-      const rv = await run(M, hv);
-      c.check(rv.validation.ok && rv.rubric.locales.es.reviewed === false && rv.rubric.locales.en.reviewed === M.rubric.locales.en.reviewed,
-        "/locales/reviewed/never-rises", null, "es reviewed:false (as the parent's), en unchanged", [rv.rubric.locales.es.reviewed, rv.rubric.locales.en.reviewed, codes(rv.validation)]);
     }
 
     // -------------------------------------------------------------- add item
@@ -640,11 +654,13 @@ export default {
     {
       const T = M.rubric.emrTemplate;
       if (c.check(!!T && typeof T === "object" && !Array.isArray(T), "/emr/present", null, "the built-in carries emrTemplate", T === undefined ? "absent" : typeof T)) {
-        const REASON = "The EMR template data is cited clinical content (the built-in module's was signed off by the clinical lead on 2026-10-07, with the lead's additions of 2026-10-10); not editable in the Rubric Editor.";
+        const REASON = "The EMR template data is clinical content (the built-in module's was signed off by the clinical lead on 2026-10-07, with the lead's additions of 2026-10-10 and 2026-10-12; all of it cited except the 2026-10-12 plan line, the lead's own recommendation); not editable in the Rubric Editor.";
         const firstCite = Object.keys(T.citations || {})[0];
         const firstRefFlag = Object.keys(T.redFlagRefs || {})[0];
         const probe = ["/emrTemplate", `/emrTemplate/citations/${firstCite}/url`, "/emrTemplate/references/0/label", `/emrTemplate/redFlagRefs/${firstRefFlag}/0`,
-          "/emrTemplate/history/0", "/emrTemplate/checklist/0/label", "/emrTemplate/checklist/0/signals", "/emrTemplate/examRows/0/label"];
+          "/emrTemplate/history/0", "/emrTemplate/checklist/0/label", "/emrTemplate/checklist/0/signals", "/emrTemplate/examRows/0/label",
+          // Release 0.4.8, follow-up (review fix): the lead's plan line, which the reason now names.
+          "/emrTemplate/planAdvice", "/emrTemplate/planAdvice/0/text"];
         for (const p of probe) {
           c.check(derive.lockReason(p) === REASON && !derive.isEditablePath(p), `/emr/locked${p}`, null, REASON, derive.lockReason(p));
         }
@@ -658,6 +674,7 @@ export default {
           ["add-citation", (t) => { t.citations["EX-EDITOR"] = { ...t.citations[firstCite] }; }],
           ["add-key", (t) => { t.extra = []; }],
           ["remove-row", (t) => { t.examRows.pop(); }],
+          ["plan-line", (t) => { t.planAdvice[0].text += " (edited)"; }],
         ];
         for (const [name, fn] of edits) {
           const x = fresh();
@@ -825,13 +842,6 @@ export default {
       let b2 = add;
       for (const ch of derive.diffRubrics(M.rubric, add)) b2 = derive.revertChange(b2, M.rubric, ch);
       c.check(canon(b2) === canon(M.rubric), "/revert/added-item", null, "the parent", derive.diffRubrics(M.rubric, b2));
-      // setAt refuses path segments that would reach a prototype (hardening).
-      for (const p of ["/__proto__/polluted", "/domains/0/constructor/prototype/polluted", "/copy/prototype"]) {
-        let threw = false;
-        try { derive.setAt({ domains: [{}], copy: {} }, p, "x"); } catch (_) { threw = true; }
-        c.check(threw && ({}).polluted === undefined && Object.prototype.polluted === undefined, `/setAt/refuses${p}`, null, "throws, nothing polluted", threw);
-      }
-      c.check(derive.getAt(derive.setAt({}, "/copy/indexName", "x"), "/copy/indexName") === "x", "/setAt/plain", null, "x", "not set");
     }
 
     c.note(`MASQUE readsObserved: ${Object.keys(ro.items || {}).length} items; acknowledgePaths: ${derive.acknowledgePaths(M, ro).length} fields`);

@@ -26,19 +26,35 @@
 //     banner notices follow the locale where a translation exists, each tagged with its own
 //     language; a clinician line uses the locale's own `clin` line when it has one (tagged per
 //     line); the progress line tags an English fallback title; context option buttons take
-//     the language of their options.
+//     the language of their options;
+//   - release 0.4.8 (the clinical lead's request of 2026-10-12): a module whose host passes a
+//     `video` (a built-in's registry entry `patientVideo`, resolved against the app/ folder) shows
+//     it above the instructions on the first step, in a collapsible panel holding a script-free
+//     iframe (sandbox="allow-same-origin", no allow-scripts) whose page plays it (controls, preload="none", playsinline, no
+//     autoplay). It is shown by default; "Hide the video" collapses it, remembered for this browser
+//     tab only (sessionStorage; D20 keeps localStorage for modules and drafts). It is never printed
+//     and never in the exports. Its strings are engine chrome (videoShow, videoHide, videoTitle);
+//   - release 0.4.8 (same request): outside English the summary adds, after the locale's findings,
+//     the English version of the same findings (the summary's `english`), in a section tagged
+//     lang="en" under the title chrome.englishVersion in the locale and in English, so an
+//     English-speaking clinician can read the printed page; right under the title it repeats the
+//     English caveat lines English mode shows for the same view (englishVersionNotices: the patient
+//     provenance and the edited-wording notice; none for the built-in module); the findings are
+//     rendered by one component (SummaryBody) in both languages. In print the title (which carries
+//     the section's dashed rule) is kept whole and with the block under it (break-inside and
+//     break-after avoid) and the section's urgent box is kept whole. English mode is unchanged.
 //
 // No side effects at import time.
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft, ArrowRight, Check, Printer, Download, TriangleAlert, ShieldCheck,
-  HelpCircle, MessageSquareQuote, Stethoscope, Info, RotateCcw, ClipboardList,
+  HelpCircle, MessageSquareQuote, Stethoscope, Info, RotateCcw, ClipboardList, Play, EyeOff,
 } from "lucide-react";
 import {
   TIER_DISPLAY, chromeFor, localeText, localeFallback, flagCopy, buildPatientSummary,
   askForm, askFormLang, summaryText, summaryHtml, richText, patientProvenanceFor, langTag,
-  patientPrintHeader, patientPrintHeaderParts,
+  patientPrintHeader, patientPrintHeaderParts, englishVersionNotices,
 } from "../engine/patient.js";
 import { ANSWER } from "../engine/vocab.js";
 import { safetyGate } from "../engine/gates.js";
@@ -152,6 +168,29 @@ const PATIENT_CSS = `
 @media print{
   .mp .sum.prov{break-inside:avoid}
 }
+
+.mp .vid{margin:12px 0 14px}
+.mp .vidtoggle{font:inherit;font-size:15.5px;font-weight:620;cursor:pointer;display:inline-flex;align-items:center;gap:9px;
+  max-width:100%;text-align:left;border:1.5px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;
+  padding:11px 16px;min-height:48px}
+.mp .vidtoggle svg{flex:0 0 auto}
+.mp .vidtoggle:hover{border-color:var(--petrol2)}
+.mp .vidtoggle:focus-visible{outline:3px solid var(--petrol2);outline-offset:2px}
+.mp .vidbox{position:relative;width:100%;height:0;padding-top:56.25%;margin-top:10px;border-radius:14px;overflow:hidden;background:#12302F}
+.mp .vidbox[hidden]{display:none}
+.mp .vidbox iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0;display:block}
+@media print{
+  .mp .vid{display:none!important}
+}
+
+.mp .enver{margin-top:22px}
+.mp .enver-title{font-size:17px;line-height:1.35;margin-bottom:2px;padding-top:16px;border-top:2px dashed var(--line)}
+.mp .enver-title span{display:block}
+.mp .enver-title .enver-en{font-weight:600;color:#38504F}
+@media print{
+  .mp .enver-title{break-inside:avoid;break-after:avoid}
+  .mp .enver .call{break-inside:avoid}
+}
 `;
 
 // ----------------------------------------------------------------------------- engine chrome
@@ -186,6 +225,8 @@ const DIRTY_SUMMARY = "answers in progress";
 // ----------------------------------------------------------------------------- helpers
 
 const hasOwn = (o, k) => !!o && typeof o === "object" && Object.prototype.hasOwnProperty.call(o, k);
+/** A lang helper that tags nothing (release 0.4.8: the English version sits inside a section tagged lang="en"). */
+const NO_LANG = () => undefined;
 const arr = (x) => (Array.isArray(x) ? x : []);
 
 function localeEntry(view, loc) {
@@ -207,11 +248,6 @@ function wording(view, loc, family, id) {
 function fill(tpl, vars) {
   return String(tpl).replace(/\{(name|appVersion|instrument)\}/g, (m, k) => (vars[k] === undefined || vars[k] === null ? m : String(vars[k])));
 }
-
-/*  Text colour of the tier tag (non-clinical style only). The tier palette's coral and amber
-    read 3.9:1 and 3.7:1 on their own tints at 11px; these darker shades of the same hues reach
-    5.3:1 and 5.5:1 (WCAG AA). Background, border and checkbox colours are unchanged. */
-const TIER_TEXT = { now: "#A8432B", soon: "#8E5516" };
 
 /** Tier display for a red flag's tier (Pat L263-272); an unknown tier reads as the slower one. */
 function tierOf(tier) {
@@ -246,12 +282,12 @@ export { patientPrintHeader, patientPrintHeaderParts };
  * The Patient Companion (§5.5). It serves the Patient tab, the shell's patient mode and the
  * standalone patient page; the surrounding chrome differs, not the component.
  *
- * @param {{view: Object, appVersion?: string,
+ * @param {{view: Object, appVersion?: string, video?: (string|null),
  *          onDirty?: function(string, (string|null)): void,
  *          onModuleError?: function({family: string, ruleId: string, message: string}): void,
  *          onPrintContext?: function({loc: string, reviewed: boolean, editedLocally: boolean, stale: boolean}): void}} props
  */
-export default function PatientCompanion({ view, appVersion = APP_VERSION, onDirty, onModuleError, onPrintContext }) {
+export default function PatientCompanion({ view, appVersion = APP_VERSION, video = null, onDirty, onModuleError, onPrintContext }) {
   const [sec, setSec] = useState(0);
   const [a, setA] = useState({});        // item id -> value | "unsure"
   const [ctx, setCtx] = useState({});
@@ -369,6 +405,8 @@ export default function PatientCompanion({ view, appVersion = APP_VERSION, onDir
                 </div>
               )}
 
+              {current.kind === "intro" && typeof video === "string" && video ? <IntroVideo src={video} t={t} fbLang={fbLang} /> : null}
+
               {current.kind === "intro" && <Intro view={view} t={t} loc={loc} fbLang={fbLang} txLang={txLang} />}
 
               {current.kind === "safety" && (
@@ -467,6 +505,51 @@ function TitleText({ lang, children }) {
   return lang ? <span lang={lang}>{children}</span> : <>{children}</>;
 }
 
+// ----------------------------------------------------------------------------- the introduction video
+
+/** sessionStorage key of the collapsed introduction video (release 0.4.8; this browser tab only). */
+export const VIDEO_HIDDEN_KEY = "screenair.patient.introVideoHidden";
+
+function readVideoHidden() {
+  try { return window.sessionStorage.getItem(VIDEO_HIDDEN_KEY) === "1"; } catch (_) { return false; }
+}
+
+function writeVideoHidden(hidden) {
+  try {
+    if (hidden) window.sessionStorage.setItem(VIDEO_HIDDEN_KEY, "1");
+    else window.sessionStorage.removeItem(VIDEO_HIDDEN_KEY);
+  } catch (_) { /* storage blocked: the panel still works, it just is not remembered */ }
+}
+
+/**
+ * The module's introduction video above the instructions (release 0.4.8): a button that hides or
+ * shows it (aria-expanded, aria-controls) and, while shown, a 16:9 script-free iframe
+ * (sandbox="allow-same-origin" and no allow-scripts, as the clinician apps' EMR template frame; the
+ * page has no script either) titled with the chrome's videoTitle, whose page holds the
+ * <video controls preload="none" playsinline> (no autoplay). Hiding unmounts the iframe, so a
+ * playing video stops. `noprint`, and hidden by the print CSS: never on paper or in an export.
+ */
+function IntroVideo({ src, t, fbLang }) {
+  const [hidden, setHidden] = useState(readVideoHidden);
+  const boxId = useId();
+  const toggle = () => setHidden((h) => { const next = !h; writeVideoHidden(next); return next; });
+  const key = hidden ? "videoShow" : "videoHide";
+  return (
+    <div className="vid noprint" data-testid="patient-video">
+      <button type="button" className="vidtoggle" aria-expanded={!hidden} aria-controls={boxId} onClick={toggle} data-testid="patient-video-toggle">
+        {hidden ? <Play size={17} aria-hidden="true" /> : <EyeOff size={17} aria-hidden="true" />}
+        <span lang={fbLang(key)}>{t[key]}</span>
+      </button>
+      <div className="vidbox" id={boxId} hidden={hidden} data-testid="patient-video-box">
+        {hidden ? null : (
+          <iframe src={src} title={t.videoTitle} sandbox="allow-same-origin" allow="fullscreen" loading="lazy"
+            referrerPolicy="no-referrer" data-testid="patient-video-frame" />
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ----------------------------------------------------------------------------- sections
 
 function Intro({ view, t, loc, fbLang, txLang }) {
@@ -513,7 +596,7 @@ function Safety({ allFlags, flags, rf, setRf, safetyDone, setSafetyDone, urgent,
               <div className="box">{rf[f.id] && <Check size={15} />}</div>
               <div className="ft">
                 {f.q}
-                <span className="tier" style={{ background: d.bg, color: TIER_TEXT[d.key] || d.color }}>
+                <span className="tier" style={{ background: d.bg, color: d.color }}>
                   {d.key === "now" ? t.tierNow : t.tierSoon}
                 </span>
               </div>
@@ -686,23 +769,58 @@ function Summary({ view, built, onReset, t, loc, appVersion, fbLang, txLang }) {
     );
   }
 
-  const { said, ask, gapLine, unsureList, clin, flags, urgent } = summary;
+  const { said, clin, flags } = summary;
   // A near-empty summary must not be handed over as if it were a finished one (Pat L999-1001).
+  const thin = said.length === 0 && clin.length === 0 && flags.length === 0;
+  // Release 0.4.8: outside English, the English findings of the same answers follow the locale's.
+  const english = loc !== "en" && summary.english && typeof summary.english === "object" ? summary.english : null;
+  const tEn = chromeFor("en");
+  // English's own caveat lines (provenance, edited wording), as English mode shows them for this view.
+  const enNotices = english ? englishVersionNotices(view) : [];
+
+  return (
+    <div className="card" data-testid="patient-section" data-section="summary">
+      <h2>{t.summaryTitle}</h2>
+      {thin ? null : <p className="lede noprint" lang={fbLang("summaryLede")}>{t.summaryLede}</p>}
+      <SummaryBody view={view} summary={summary} t={t} loc={loc} fbLang={fbLang} txLang={txLang} />
+      {english ? (
+        <section className="enver" lang="en" data-testid="patient-english-version">
+          <h3 className="enver-title"><span lang={langTag(loc)}>{t.englishVersion}</span><span className="enver-en">{tEn.englishVersion}</span></h3>
+          {enNotices.length ? (
+            <div className="sum prov" data-testid="patient-english-notices">
+              {enNotices.map((line, i) => <p key={i}>{line}</p>)}
+            </div>
+          ) : null}
+          <SummaryBody view={view} summary={english} t={tEn} loc="en" fbLang={NO_LANG} txLang={NO_LANG} />
+        </section>
+      ) : null}
+
+      {nav}
+      {disclaimer}
+    </div>
+  );
+}
+
+/**
+ * The findings of a summary in `loc`'s chrome `t` (release 0.4.8: one component for the locale's
+ * findings and, outside English, for the English version): the thin box, the flags, the opening
+ * line, the said and ask lists, the not-sure list and the clinician block, as the summary card has
+ * always shown them.
+ */
+export function SummaryBody({ view, summary, t, loc, fbLang, txLang }) {
+  const { said, ask, gapLine, unsureList, clin, flags, urgent } = summary;
   const thin = said.length === 0 && clin.length === 0 && flags.length === 0;
   const call = tierOf(urgent ? "emergent" : "urgent");
   const clinicianLede = clin.length > 0 ? localeText(view, loc, "ui.clinicianLede") : null;
 
   return (
-    <div className="card" data-testid="patient-section" data-section="summary">
-      <h2>{t.summaryTitle}</h2>
+    <div className="sumbody" data-testid="patient-summary-body">
       {thin ? (
         <div className="sum ask" data-testid="patient-thin">
           <h3>{t.thinTitle}</h3>
           <p>{t.thin}</p>
         </div>
-      ) : (
-        <p className="lede noprint" lang={fbLang("summaryLede")}>{t.summaryLede}</p>
-      )}
+      ) : null}
 
       {flags.length > 0 && (
         <div className="call" style={{ background: call.bg }}>
@@ -756,9 +874,6 @@ function Summary({ view, built, onReset, t, loc, appVersion, fbLang, txLang }) {
           <ul>{clin.map((c, i) => <li key={i} lang={loc !== "en" ? c.lang || "en" : undefined}>{c.neg ? "− " : "+ "}{c.t}</li>)}</ul>
         </div>
       )}
-
-      {nav}
-      {disclaimer}
     </div>
   );
 }

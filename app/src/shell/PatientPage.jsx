@@ -16,6 +16,9 @@
 // the English prototype marker with the locale's companion line and the patient caveats in the
 // locale, each part tagged with its language. The pre-locale messages (NOT_AVAILABLE,
 // LOAD_FAILED, "Technical detail") stay English.
+//
+// Release 0.4.8: the built-in's introduction video (registry.json `patientVideo`) is handed to the
+// companion, which shows it in a collapsible frame above its instructions.
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { HeartHandshake } from "lucide-react";
@@ -53,7 +56,7 @@ export default function PatientPage({ env }) {
           if (live) setState({ status: "failed", detail });
           return;
         }
-        if (live) setState({ status: "ready", module: entry.module });
+        if (live) setState({ status: "ready", module: entry.module, patientVideo: entry.patientVideo || null });
       } catch (err) {
         if (live) setState({ status: "failed", detail: [String(err && err.message ? err.message : err)] });
       }
@@ -62,6 +65,12 @@ export default function PatientPage({ env }) {
   }, [env]);
 
   const view = useMemo(() => (state.status === "ready" ? projectForPatient(state.module) : null), [state]);
+  // Release 0.4.8: the built-in's patient introduction video (its registry entry's patientVideo),
+  // resolved against the app/ folder; null when the entry has none.
+  const video = useMemo(() => {
+    if (state.status !== "ready" || typeof state.patientVideo !== "string") return null;
+    try { return new URL(state.patientVideo, env.appBase).href; } catch (_) { return null; }
+  }, [state, env]);
   const onPrintContext = useCallback((pc) => setPrintCtx(pc || null), []);
   const loc = printCtx && printCtx.loc ? printCtx.loc : "en";
   const ownTitle = PATIENT_CHROME[loc] && PATIENT_CHROME[loc].title;
@@ -88,7 +97,7 @@ export default function PatientPage({ env }) {
     content = (
       <main className="sa-main sa-patient-page-main" data-module={view.id}>
         <div role="region" aria-label={title} lang={loc === "en" ? undefined : titleLang} className="sa-panel sa-panel-patient" data-panel="patient">
-          <PatientCompanion view={view} appVersion={APP_VERSION} onPrintContext={onPrintContext} />
+          <PatientCompanion view={view} appVersion={APP_VERSION} video={video} onPrintContext={onPrintContext} />
         </div>
       </main>
     );

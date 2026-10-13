@@ -12,18 +12,23 @@ edited module from this one, the edit is appended to that module's own `changelo
 | Axis | Value | Where |
 |---|---|---|
 | Instrument | 0.2 | `masque.rubric.json` `instrumentVersion` |
-| Lexicon | 0.3.2 | `masque.rubric.json` `lexicon.version` |
+| Lexicon | 0.3.3 | `masque.rubric.json` `lexicon.version` |
 | Probe set | 1.0.0 | `masque.logic.js` `probes.version` |
-| Gold set | 0.3.0 (lexicon 0.3.2) | `masque.rubric.json` `lexicon.goldSet`; the file is `app/tests/fixtures/goldset/masque_extraction_goldset_0.3.0.json` (local-only, never deployed) |
+| Gold set | 0.4.0 (lexicon 0.3.3) | `masque.rubric.json` `lexicon.goldSet`; the file is `app/tests/fixtures/goldset/masque_extraction_goldset_0.4.0.json`, which includes gold set 0.3.0 (`masque_extraction_goldset_0.3.0.json`, unchanged) by its SHA-256 (both local-only, never deployed) |
 
-The release (screenAIr's own) is `APP_VERSION` in `app/src/engine/policy.js`: 0.4.7 since
-2026-10-11 (release 0.4.6 plus the fixes of the full audit of 2026-10-04; see the 0.4.7 entry).
-Before it: 0.4.6 (2026-10-10, the clinical lead's answers on the EMR template's open items), 0.4.5 (the clinical lead's referral rule for dizziness cases, decided from 2026-10-07
+The release (screenAIr's own) is `APP_VERSION` in `app/src/engine/policy.js`: 0.4.8 since
+2026-10-12 (the clinical lead's three fixes of 2026-10-12: the `r_dur` clinician question, the
+Patient Companion's introduction video and the English version of a Spanish summary; see the 0.4.8
+entry). Before it: 0.4.7 (2026-10-11, chart-text capture and the clarification prompts; its rows
+were decided by the clinical lead on 2026-10-12), 0.4.6 (2026-10-10, the
+clinical lead's answers on the EMR template's open items), 0.4.5 (the clinical lead's referral rule for dizziness cases, decided from 2026-10-07
 to 2026-10-10), 0.4.4 (2026-10-07, the record of the clinical lead's sign-off of the EMR template content),
 0.4.3 (2026-10-06, the EMR Friendly Template), 0.4.2 earlier the same day and 0.4.1. Release 0.4.3
 also carries the Patient `.txt` thin warning and engine round 3d, both made in separate sessions
 on 2026-10-06 and integrated on 2026-10-07 (see the 0.4.3 entry). The label's "v1" is display
-copy, not a version axis. None of 0.4.3, 0.4.4, 0.4.5, 0.4.6 and 0.4.7 moves another axis.
+copy, not a version axis. None of 0.4.3, 0.4.4, 0.4.5 and 0.4.6 moves another axis; 0.4.7
+moves the lexicon (0.3.2 → 0.3.3) and the gold set (0.3.0 → 0.4.0); 0.4.8 moves no other axis
+(an item's clinician question is outside `instrumentHash` and `scoringHash`).
 
 ## 2026-10-02
 
@@ -2151,67 +2156,2316 @@ rubric is offered as "Load as derived". Neither was tested separately in this re
 - The files, the deploy list and the AD4 row: `docs/refactor/02-app-divergences.md` ("screenAIr
   0.4.6").
 
-## 2026-10-11: release 0.4.7, the 2026-10-04 audit fixes on release 0.4.6
+## 2026-10-11 to 2026-10-12: release 0.4.7, chart-text capture and the clarification prompts (signed off by the clinical lead on 2026-10-12)
 
-Release screenAIr 0.4.7 (0.4.6 → 0.4.7) is release 0.4.6 with the fixes of the full audit of
-2026-10-04 merged in. The audit (six independent audits: clinical content, security, functional
-flows, engine edge cases, data pipeline, runtime/deploy/accessibility) was made on a branch from
-release 0.4.0 in parallel with releases 0.4.1-0.4.6; its decisions are F11-F16 in
-`docs/refactor/03-design.md`, and the merge's are MG1-MG3 ("Decisions for release 0.4.7").
-**No clinical content changes:** no item, weight, cut-point, red flag, phrase, probe, referral
-rule, EMR template text or patient wording is added, reworded or renumbered, and every 0.4.1-0.4.6
-change, the clinical lead's decisions included, is kept in full. `masque.rubric.json` and
-`masque.logic.js` are byte for byte release 0.4.6's, so the rubric's own change log gains no
-entry, every hash (`contentHash`, `instrumentHash`, `scoringHash` `32cc4f44…`, `logicSha256`) is
-unchanged and the illustrative calibration still applies. Instrument 0.2, lexicon 0.3.2, probe set
-1.0.0 and gold set 0.3.0 are unchanged; only the release moves.
+Release screenAIr 0.4.7 (0.4.6 → 0.4.7) implements the clinical lead's request of 11 October 2026:
+a large scrollable capture box, chart text (a history and physical) read properly, endorsement and
+denial verbiage that triggers the criteria properly, and a section that asks the clinician to
+clarify unclear verbiage. Lexicon 0.3.2 → 0.3.3 and gold set 0.3.0 → 0.4.0. Instrument 0.2 and
+probe set 1.0.0 are unchanged, and `masque.logic.js` is not touched, so `logicSha256` is
+unchanged. The lexicon gains two keys (`clauses`, `clarify`) and four negation cues, and the rubric
+gains one change-log entry (kind `lexicon`, `/changelog/14`), so `lexiconHash`, `contentHash` and the
+rubric's bytes change. `instrumentHash` and `scoringHash` (`32cc4f44…`) do not move, and the
+illustrative calibration still applies.
 
-What the audit fixes change for this module (engine, apps and tests; none of it is module data):
+**Signed off by the clinical lead on 2026-10-12.** The lead chose "Draft, you sign off" (below), so
+every cue list and clarification trigger the lead did not name was drafted by the team and listed at
+the end of this entry. On 2026-10-12 the lead decided every row of that list on the sign-off page
+(278 approved, 18 struck), answered its 19 Part D questions and two follow-up questions in chat, and
+wrote "done, re-rest and upload 0.4.7". The decisions are applied as given ("Clinical-lead sign-off
+(2026-10-12)", near the end of this entry): every drafted row left is marked `source:
+"lead-approved"`, the struck rows are gone, the rows the lead approved in the answers are added, and
+`LEXICON_DELTA_033.signOff` records every outcome. The review of the release (rounds 1, 2 and 3, below)
+changed the chart-reading rules and added draft rows before the sign-off. Review round 2 kept chart
+reading to typed chart text; since the lead's decision D9 of 2026-10-12 it reads spoken and demo lines
+too.
 
-- **F11 (AD20).** No referral ServiceRequest and no CDS index card when the complaint is not one
-  of the declared phenotype values (`""` included). Before, a Screener result reached without a
-  complaint (the five scenario samples) issued the default referral and CDS card nobody entered.
-  The EMR template reads the same `referralFor`, so its plan prints "Referral: [clinician
-  decision]", no clinician rule block and no empiric-treatment references there (D4: references
-  only with the referral), including in the "Screen-based referral and references" block under an
-  open red flag, in agreement with the bundle. In the app the Scribe's complaint is always derived
-  as a declared value, so nothing changes on the Scribe; an engine caller that passes an
-  undeclared complaint on either surface is gated the same way.
-- **F12 (AD18).** The Scribe's suggestion pool widens while the screen is NOT scorable, as the
-  baseline's own comment says (its code tested the inverse).
-- **F13 (AD19).** QuestionnaireResponse domain group answers are `valueDecimal` for fractional
-  points (a scale factor below 1), `valueInteger` otherwise.
-- **F14.** The Research tab's attainable range and probability range start at the screen's
-  floor, not at the point total.
-- **F15.** The score range is never narrower than the exact best/worst-case completion range;
-  this module's output is byte for byte unchanged (checked on 2M answer sets).
-- **F16.** The upload consent scan never states a negative and flags more global names.
-- **Validator** (V11, V27, V35, V37, V55, V60; `docs/refactor/04-module-authoring.md`). This
-  module validates as before.
-- **Research and data.** ETL 0.6.0 → 0.6.1 (its own version, not a module axis): UTF-8 output,
-  a refusal plus "no" within a concept is missing, not negative; seven population artifacts
-  regenerated with no estimate, interval, n, df or suppression flag changed; uploaded artifacts
-  schema-checked; uncomputable fairness gaps `null`, not `0`; calibration figures withheld below
-  30 labelled rows; PPV and NPV with their denominators.
-- **Elsewhere:** Download all keeps an uploaded rubric's bytes (lineage survives the zip);
-  own-property phenotype lookups; Unicode-safe negation offsets; CSV quoting; zip inflation
-  bounded; Safari-safe regexes; local dates; session rows cleared on an app's Reset; keyboard
-  modals in the Rubric Editor; the pages' loader URL carries the release; in print, the Patient
-  export's Spanish page header stays on one line (presentation only, no wording change).
+### The request (verbatim, 2026-10-11, chat)
 
-Allowed differences: the audit's AD13, AD14 and AD15 are renumbered **AD18**, **AD19** and
-**AD20**, because releases 0.4.1-0.4.5 had already given AD13-AD17 to the lexicon delta, the
-Spanish completion, the EMR button, the Patient `.txt` thin warning and the referral
-destinations, which keep their numbers. AD4 now reads 0.4.7.
+The user, who is the project's clinical lead, wrote:
+
+> Make the patient capture statement a large textbook that is scrollable.
+>
+> The patient capture statement also does not parse through chart text fully. For example the following history and physical flags pulsatile tinnitus even though the chart says "not pulsatile": [the H&P in `app/tests/dev/hp-example.txt`]
+>
+> Ensure verbiage for endorsements (e.g. endorses, reports, has, yes) and denials (e.g. denies, no, lacks, doesn't have) properly triggers criteria.
+>
+> Create a section after inputting the text where the program prompts the user for clarification on unclear verbiage, e.g. a generic "runny nose" report should prompt the clinician to ask "is the rhinorrhea clear or purulent?"
+
+The history and physical the lead pasted is kept verbatim as `app/tests/dev/hp-example.txt` and as
+gold set 0.4.0 case `k001`. It is a template with `***` placeholders and holds no patient data.
+
+### The lead's answers (verbatim, 2026-10-11)
+
+The lead then answered three questions in the same chat. The questions, the chosen options and the
+answers are kept verbatim in `app/tests/harness/lexicon-delta-033.js` (`request`, `decisions`).
+
+- **Red flags.** Question: "When the chart text denies a red flag (e.g. "tinnitus is not
+  pulsatile"), what should happen? Today red flags are never negated, by design, so nothing can hide
+  one." Answer:
+
+  > Don't raise, no listing
+
+  The option read: "A clear denial simply does not raise the flag."
+- **Answers.** Question: "In the clarification section, should the clinician be able to answer each
+  prompt with a click?" Answer:
+
+  > Clickable answers (Recommended)
+
+  The option read: "Each prompt shows the question and the item's own answer options (e.g. Clear /
+  Purulent); a click records the answer as recorded by the clinician."
+- **Wording.** Question: "New cue words and clarification questions are lexicon content, which the
+  project rules say must come from you. How should I source them?" Answer:
+
+  > Draft, you sign off (Recommended)
+
+  The option read: "I use your examples verbatim, draft the rest (questions taken from the module's
+  own item wording where possible), test, and show you the full list to approve before anything is
+  uploaded."
+
+**What the lead named, used verbatim:** the affirm cues "endorses", "reports", "has" and "yes"; the
+deny cues "denies", "no", "lacks" and "doesn't have"; and the question "is the rhinorrhea clear or
+purulent?", stored and shown as written, never re-cased. "has" and "no" are stored with their
+boundary space (`has `, `no `), so they do not match "hash" or "nose". Everything else is a draft.
+
+**This reverses an upstream rule.** Until now red flags were never negated:
+`reference/MASQUE_v0.3.1/changelog/CHANGELOG_fix02_red_flags.md` says capture "may only ever raise a
+flag, never clear one", and a denial still raised the flag. With `clauses.redFlagNegation` on (the
+lead's decision), a red flag whose every mention is denied is neither raised nor listed. One
+undenied mention still raises it, and sections, hedges and placeholders never lower a flag. Capture
+still never clears a flag that is already raised, so the Safety strip's wording stays true and is
+unchanged. From review round 2 until the lead's decision D9 of 2026-10-12 all of this held in typed
+chart text only, and a spoken line raised every flag phrase as before. Since D9 it holds in spoken
+and demo lines too (with the reply-word rule: "D7 and D9" under "Clinical-lead sign-off
+(2026-10-12)"), so gold set 0.4.0 supersedes the reference label r02 ("No, I've never had double
+vision or anything like that." → `rf_focal`) and four other outputs ("Gold set 0.4.0" below). The
+reference file itself is unchanged.
+
+### What changed
+
+**Extraction engine (`engine/extraction.js`).** All new behaviour is opt-in lexicon data and does
+nothing when absent. The frozen baseline and the lexicons equivalent to 0.3.1 and 0.3.2 extract
+exactly as before: extraction block 1 (strict, 35,364 comparisons) is unchanged, and the default-off
+proofs run 2,000 seeded utterances on each. `EXTRACTOR_KIND` is unchanged; `EXTRACTOR_FEATURES`
+gains `clauses` and `clarify`. With `lexicon.clauses`, in typed chart text (`opts.chart`) and, since
+the lead's decision D9 of 2026-10-12, in spoken and demo lines too (review round 2 had kept it to
+typed chart text; design `docs/refactor/06-chart-capture.md`):
+
+- **Segmentation.** The text is read in lines, section headers (`clauses.sections`), labels ("CC:",
+  "ROS:"), wrapped lines and clauses. A clause ends at `.` `!` `?` or `;` followed by whitespace, at
+  a line end that is not a wrap, after a label and before a `clauses.breaks` cue (review round 3:
+  also before a second "Label:" on a line, and never at the "." of an abbreviation inside a
+  sentence). A clause never crosses a header.
+- **Matching.** Every phrase and every negation, attribution and history cue matches only at a
+  word start (`wordStart`). The `clauses` cue lists match as whole words (a word start and a word
+  end), so the lead's "yes" never reads at the start of "yesterday". A hit inside a `mask` word is
+  no hit, so "aura" inside "aural" no longer counts.
+- **Negation**, for a hit, the first that applies: the lexicon's window clipped to the clause (an
+  affirm cue between the negation cue and the hit keeps it affirmed); a `prefix` cue glued to the
+  hit ("non-positional": the mention is dropped, never recorded as a denial); a `deny` cue earlier
+  in the clause with no affirm cue between them (a list denial); a `post` cue after the hit
+  ("Photophobia: no"). Review rounds 1 and 3 (below) narrowed the list denial, the post cue and
+  the label answers.
+- **All mentions, in text order.** A yes/no item mentioned only affirmed records yes and only
+  denied records no. One finding said both ways (the same phrase, or two of the item's phrases
+  whose spans overlap) records nothing and is asked instead (a conflict card). When different
+  phrases of the item disagree, the affirmed mention wins, except for the rule-out items
+  (`strictConflict`), where any affirmed and any denied mention is a conflict. Context, scale and
+  multi-answer entries take the first undenied mention in text order. A heard entry takes its
+  duration only from its cue's own clause.
+- **Sections.** Nothing captures under an allergy or medication header. Under a family-history
+  header every capture is attributed to someone else (`m_fhx` excepted). Under an exam header only
+  the `examItems` capture: none since review round 2 (it named `r_normal` and `x_objective`).
+- **Hedges and placeholders.** A hedged clause, or one holding unfilled template text, records
+  nothing; each is asked instead.
+- **Red flags** (`redFlagNegation`): as above; since review round 1 only a denial that governs the
+  flag phrase directly lowers a flag (narrowed in review round 3; Part D of the sign-off list gives
+  the exact conditions).
+- **Evidence.** Each capture's evidence is its clause, with `clause: {start, end}` added.
+- **Typed chart text.** `extractInContext(…, {chart: true})` never consumes, refuses, carries into or
+  arms a carry-over slot, for any lexicon (with `lexicon.clauses` or not). With `{chart: true}`
+  (`extract`, `extractInContext` and `clarifyCues`) the attribution cues listed in
+  `clauses.chartIgnoreThirdParty` ("her ", "his ") do not gate when a finding follows them: in a
+  chart note they name the patient. Before any other word, relatives and every other cue still
+  gate (review round 1).
+- **One decision of the data stage.** A duration stated in another sentence of the same line still
+  withholds the heard entry, as before chart reading, so no normal carry-over slot opens. Without
+  this, three voice dialogues (d077, d092, d093) carried the next reply in as the episode duration,
+  for example "All week." as Over 72 h. Since review round 2 voice lines carry exactly as in 0.4.6
+  (since D9 they are read with chart reading but keep their carry-over and release 0.4.6's band
+  choice), so the decision applies to typed text only, which never carries.
+
+**Clarifications (`clarifyCues`, `clarifyPrompts`).** `extraction.clarifyCues(lexicon, text)` runs
+outside `extract`, so no capture, carry-over slot, gold label or benchmark depends on it. It returns
+four kinds of cue:
+
+- **trigger:** a `lexicon.clarify` phrase in a clause that is not denied, attributed, historical or
+  a placeholder, and holds none of the entry's `unless` qualifiers (since review round 3 only an
+  undenied qualifier counts, and a mention set aside as uncertain still asks);
+- **hedge:** an item mentioned only in hedged clauses;
+- **conflict:** a yes/no item with one finding both affirmed and denied (for a rule-out item, any
+  affirmed and any denied mention);
+- **placeholder:** one cue for unfilled template text.
+
+`scribe.clarifyPrompts` turns the cues into cards, in text order and one per target. It drops a card
+whose probe or item is already answered or skipped (since review round 1: a rescue probe's card
+only while the probe is live, as on the Ask next rail). The question is the entry's `ask` (only the
+rhinorrhea entry has one, the lead's question), else the probe's `say`, else the item's `ask`, all
+module text verbatim. The answers are the probe's options or the item's own options. Clarifications
+are not probes (the probe set stays 1.0.0), not captures and not note lines.
+
+**Validator and contract.** V28 checks `clauses` (keys, switches, `{ph, source}` lists, sources,
+sections, `examItems`, `placeholderAsk`, `chartIgnoreThirdParty` against the lexicon's attribution
+cues, `strictConflict` against the negative domains) and `clarify` (keys, ids, `ph`, `unless`, exactly one of
+`probe` or `item`, the probe against the logic, `ask`, `source`). V29 checks every new phrase list,
+which may carry one boundary space at most (a short cue of a whole-word list, such as the scopeEnd
+cue "so", is no warning since review round 1). No new V-code was needed; 54 mutation generators and a
+control cover the rules (review round 2: `clauses.redFlags`, every key a red flag of the module, and
+an `examItems` list that may be empty; review round 3: the `complement` list). `contract.js` gains `LEXICON_CLAUSES_KEYS`, `LEXICON_CLAUSE_LISTS`,
+`LEXICON_SECTION_KINDS`, `LEXICON_SOURCES`, `LEXICON_ASK_SOURCES`, `LEXICON_CLARIFY_KEYS` and the
+typedefs (review round 1: the key and list `scopeEnd`, the section kind `read`; review round 3: the
+key and list `complement`).
+
+**Lexicon 0.3.3 (module data).** The change is `app/tests/harness/lexicon-delta-033.js`, the second
+link of the delta chain. `lexicon-delta.js`, the approved 0.3.1 → 0.3.2 record, is untouched. The
+extractor applies the new delta after the 0.3.2 one and proves it by revert. It holds:
+
+- `clauses`: 268 phrase rows (8 the lead's, 260 drafts; 27 of them, `scopeEnd` and
+  `sections.read`, from review round 1; 139 from review round 2, 111 of those the chart-register
+  red-flag phrases of the new list `clauses.redFlags`; and 12 from review round 3: the new list
+  `clauses.complement`, three breaks, the deny cue "rather than" and the `rf_focal` phrase "slurred
+  speech"), the draft switches `wordStart`,
+  `placeholderAsk`, `examItems` (empty since review round 2) and `strictConflict`, and
+  `redFlagNegation` (the lead's decision);
+- `clarify`: 14 entries (`cl_scan_report` and `cl_audiogram_report` from review round 2);
+- four draft negation cues, `wasn't`, `weren't`, `aren't` and `hadn't`, because under `wordStart` the
+  0.3.2 cue "n't" no longer reads inside a contraction.
+
+There is one basis per row, switch, entry and appended negation cue (294 in all since review round
+3; 282 after review round 2; 142 after review round 1, which gave the four appended cues their own
+basis rows).
+
+**Ambient Scribe (`apps/Scribe.jsx`).**
+
+- **The box.** The one-line box is now a textarea: 8 rows, at least 200 px, at most 60% of the
+  window height, resizable vertically, scrolling. Enter adds a line; Ctrl or Cmd+Enter captures
+  (never while an input method is composing). The button still reads "Capture". Typed text is
+  chart text (`chart: true`), for its captures and its clarification cues alike.
+- **The Clarify section.** It appears under the box only when it has cards. Each card quotes the
+  clause, asks the question and offers one button per answer, plus Skip (since review round 2 the
+  template-text card is a notice with one Dismiss control). Probe cards answer through
+  the probe path, so flags are only raised and the EMR note's "recorded by clinician via probe"
+  label is unchanged. Item cards answer through the item path.
+- **Never asked twice.** While a card is open, its probe leaves the Ask next rail and its item (a
+  rescue probe's: the item it re-asks) leaves the suggestions, the heard cards and, since review
+  round 1, the rail's other probes for that item.
+- **Transcript and reset.** Patient bubbles keep their line breaks. Clarify tags on a bubble have
+  their own class and are never capture tags. Reset clears the cards and the draft, and an
+  uncaptured draft counts as "text not yet captured". The app names no module id.
+
+**The lead's history and physical** (gold set 0.4.0 case k001, read as typed chart text with
+`extract(lexicon, text, {includeHeard: true, chart: true})`):
+
+| | Lexicon 0.3.2 (release 0.4.6) | Lexicon 0.3.3 (release 0.4.7) |
+|---|---|---|
+| `rf_pulsatile` | raised ("not pulsatile": red flags were never negated) | not raised, not listed |
+| `m_aura` | yes, from "aura" inside "aural fullness" | not recorded since the sign-off: the lead struck the mask "aural" (and kept it struck when told this effect), so "aural fullness" states aura and "denies auras" denies it, one finding said both ways (a conflict card); before the sign-off, no |
+| `x_purulent`, `x_anosmia` | yes: "Denies" is 140 or more characters back, outside the window | no (list denial) |
+| `v_head` | yes, from "non-positional" | not recorded (`prefix`) |
+| `n_allo` | yes, from the exam's "light touch" | not recorded (exam section) |
+| `m_head` | 1 (Occasional), from "known headaches" | not recorded: "Reportedly has known headaches." is hedged, so a card asks |
+| `v_vertigo` | 2, from "minutes to hours" elsewhere in the note | heard: the dizziness clause states no duration |
+| `m_photo`, `v_aural` | yes | yes |
+| `r_normal` | yes, from the exam's "within normal limits" | not recorded (exam section; review round 2: until then `r_normal` was an exam item and was recorded) |
+| Evidence | the whole note, for every capture | the capture's own clause |
+| Clarify cards | none | 11 since the sign-off, in text order: which ear (`pr_laterality`), ear pain (`n_otalgia`), unfilled template text (a notice since review round 2), sudden hearing drop (`pr_sudden_drop`), audiogram (`pr_audiogram`), aura stated both ways (`m_aura`, conflict; since the sign-off), headache (`m_head`, hedge), tinnitus quality (`pr_tinnitus_quality`; review round 3: "not pulsatile" no longer silences it), kind of dizziness (`pr_internal_vertigo`), neck (`pr_neck`), HINTS (`pr_head_impulse`) |
+
+The lead's runny-nose example, "Reports runny nose.", asks the lead's question word for word, with
+`pr_purulence`'s two answers. "Yes, purulent or culture-positive" writes `x_purulent` yes; "Clear or
+no drainage" writes no.
+
+The rubric's change-log entry, verbatim (rewritten at the sign-off and dated 2026-10-12, the day of
+the lead's decisions):
+
+- **lexicon** (`/lexicon/version`, `/lexicon/clauses`, `/lexicon/clarify`, `/lexicon/goldSet`, `/lexicon/negation/cues`): Lexicon 0.3.2 → 0.3.3 (release 0.4.7), from the clinical lead's request and decisions of 2026-10-11, signed off by the clinical lead on 2026-10-12 (sign-off page and chat): every row the team drafted and the lead approved is marked lead-approved; the 18 rows the lead struck are gone (the mask aural, kept struck after the lead was told that "aural fullness" then reads as aura; the chart red-flag phrases sudden onset headache, sudden-onset headache, facial numbness, aphasia, vision loss, visual loss, visual obscuration, jaw pain with chewing, jaw pain when chewing, jaw pain on chewing, periorbital swelling, periorbital edema, periorbital oedema, orbital swelling, eye pain, pain with eye movement and pain on eye movement); and the rows the lead approved at the sign-off are added (deny: not associated with, not accompanied by, neg for; hedge: +/-; rf_progressive: progressively worse, progressively worsening, worse each week; rf_asym: left-sided hearing loss, right-sided hearing loss, asymmetric hearing loss). Chart reading (clauses) applies to every line, typed chart text, spoken and demo lines alike (the lead's decision D9 of 2026-10-12; review round 2 had kept it to typed chart text): a statement, a pasted chart note or a spoken line is read clause by clause; a clause ends at . ! ? or ; followed by whitespace (a "?" opening a clause belongs to the words after it, so "? aura" is hedged; since review round 3 the "." of an abbreviation inside a sentence ends nothing: "No assoc. nausea."), at a line end that is not a wrapped line, after a section label, before a second "Label:" on a line of labels and before a break word, and never crosses a header. Every phrase and every negation, attribution and history cue matches only at a word start (wordStart); the clauses cue lists match as whole words, so "yes" never reads at the start of "yesterday"; and a phrase lying inside a mask word is no hit (mask: number, and since review round 2 the report headers ct showed, scope showed, lund-mackay, audiogram showed, hearing test showed, which name a test rather than its result, and hay fever). A mention is denied by a negation cue within the window inside its clause with no scopeEnd word between (a negation cue holding another at its end, as "didn't" holds "n't", is measured from that cue, so a contraction keeps its 0.3.2 reach), by a deny cue earlier in its clause, or on a line heading its list ("Patient denies:" over bullets or short lines), with no affirm cue between (a list denial, which a scopeEnd word or, since review round 3, a complement word ends, and which reaches a later list item only when that item is the finding alone: a mention it does not reach is set aside, recorded neither yes nor no; a window cue reaches a later item on the same terms), or by a post cue that closes the mention's item right after it (a ":", one word, or a list of findings it closes, between); an affirm cue between a negation cue and the mention keeps it affirmed, and one governing the mention keeps a post cue from denying it; a prefix cue glued to it drops the mention without recording a denial. A negation, deny, post or prefix cue lying inside a longer affirm or hedge cue is no cue ("no relief" holds "no ", "not sure" holds "not "); an affirm cue right after a finding (only a ":" or "-" between, or nothing before a sign such as "(+)") that closes the item answers it as a label and affirms it unless a denial in the label's own item governs it, and a deny cue so placed answers its label only and opens no list; a sign between two findings with only spaces around it is the prefix of the finding after it, and a plus sign before a word affirms it (review round 3). affirm (lead: endorses, reports, has, yes; lead-approved: endorsed, reported, admits, positive for, complains of, c/o, describes, presents with, (+), and the failed-treatment cues no improvement, no relief, no response, no benefit, without improvement, without relief, without benefit, failed, refractory to, despite); deny (lead: denies, no, lacks, doesn't have; lead-approved: denied, negative for, without, does not have, don't have, do not have, haven't had, hasn't had, (-), rather than, and since the sign-off not associated with, not accompanied by, neg for); post (lead-approved: negative, denied, absent, not present, : no, : none, (-), : denies, - no); prefix (lead-approved: non-, non); breaks (lead-approved: but, however, although, though, except, whereas, —, other than, besides, apart from); scopeEnd (lead-approved: with, so, now, until, is, are, was, were, to, from); complement (lead-approved, review round 3: for, in, about, after, since, on, none of). A yes/no item mentioned only affirmed records yes and only denied records no; one finding (the same phrase) both affirmed and denied records nothing and is asked instead, while different phrases of one item that disagree record yes (the affirmed mention wins: "It's not the weather … it's when I skip meals."), except for the rule-out items (strictConflict, lead-approved: x_purulent, x_objective, x_lowfreq, x_anosmia), where a "yes" lowers the index, so any affirmed and denied mention records nothing and is asked; context, scale and multi-answer entries take their first undenied mention in text order; in typed chart text a heard entry takes its duration only from its cue's own clause (a spoken line keeps release 0.4.6's band choice). A hedged clause (hedge: reportedly, possible, possibly, probable, questionable, suspected, unclear whether, unclear if, rule out, r/o, ?, maybe, unsure, uncertain, not sure, might, and since the sign-off +/-) and a clause holding unfilled template text (placeholder: ***, ___, [ ], []) record nothing; each is asked instead. Attribution and history windows stop at the clause; relatives named in chart wording are attribution cues (thirdParty: mother, father, mom, dad, sister, brother, daughter, son, parents, sibling, aunt, uncle, cousin, grandmother, grandfather, family history of, family hx of); in typed chart text the attribution cues "her " and "his " name the patient when a finding follows them and then do not gate (chartIgnoreThirdParty, lead-approved; a spoken line reads every cue, D19), while before any other word ("Her husband has tinnitus."), relatives and every other cue still gate. Section headers (sections; exam: physical exam, physical examination, exam, examination, otoscopic exam, otoscopy, objective, vital signs; family: family history, family hx, fhx; skip: allergies, allergy, medications, medication, meds, current medications; read: hpi, history of present illness, interval history, ros, review of systems, past medical history, pmh, past surgical history, psh, social history, assessment, plan, assessment and plan, assessment/plan, a/p, impression, impression and plan): nothing captures under an allergy or medication header, every capture under a family-history header is attributed to someone else (m_fhx excepted), and under an exam header nothing captures (examItems, empty since review round 2); a read header is read normally and ends any section, an exam's own sub-labels ("HEENT:", "Neuro:") keep the exam, any other header ends a skip or family-history section, and a section word as an inline label ("Allergies: NKDA") holds for its line only. Red flags (redFlagNegation; the lead's decision of 2026-10-11): a red flag whose every mention is denied is not raised and not listed; one undenied mention still raises it, and hedges, placeholders and sections never lower one. Only a denial that governs the flag phrase directly denies it (narrowed in review round 3): a prefix; in its own list item, a window or deny cue before it with only plain words between (no complement or scopeEnd word, affirm cue or plus sign); a deny cue heading its list when its later item is the bare flag phrase; or a closing post cue right after it; a list denial that does not reach it this way ("Migraine without aura, now with worst headache of her life.") or a distant post cue ("Reports pulsatile tinnitus with negative CTA.") never lowers one. Each flag also reads chart-register phrases (clauses.redFlags, review round 2, lead-approved: e.g. sudden hearing loss, ssnhl, unilateral hearing loss, slurred speech, pulsatile wording, epistaxis, nasal mass, proptosis, painful eye movement, diplopia, facial droop, dysarthria, worse with cough, wakes from sleep, steadily worsening, scalp tenderness, jaw claudication, new headache over 50, fever, weight loss), a hit inside a longer hit of the same flag being part of it. Spoken and demo lines keep their carry-over (heard slots, carryRefuse, yieldTo) exactly as before, and in a spoken line a deny cue that opens its clause before a word starting no finding answers the clinician's question ("no it's more of a whooshing with my heartbeat") and lowers no red flag; typed chart text sets no context marker, which the clinician sets (the lead's D8 answer). Negation cues appended (lead-approved): wasn't, weren't, aren't, hadn't. Clarification prompts (clarify), read only by the clarification section, for typed chart text only, and never by extraction: when a mention lacks its qualifier the clinician is asked the module's own question with its own answers: cl_rhinorrhea → pr_purulence; cl_tinnitus_quality → pr_tinnitus_quality; cl_laterality → pr_laterality; cl_hearing_onset → pr_sudden_drop; cl_audiogram → pr_audiogram; cl_dizziness_kind → pr_internal_vertigo; cl_otalgia → n_otalgia; cl_smell → pr_smell; cl_nasal_side → pr_nasal_mass; cl_hints → pr_head_impulse; cl_neck → pr_neck; cl_viral_onset → n_viral; cl_scan_report → pr_scan_detail and cl_audiogram_report → pr_audiogram (review round 2: a masked report header asks what the report showed). Since review round 3 a qualifier the text denies resolves nothing ("not bilateral"), and a trigger set aside as uncertain still asks. Review round 2 removed from the safety entries' qualifiers every word that states the dangerous answer without raising its flag (left, right, unilateral, one ear, same ear, one side, one-sided, sudden, pulsing, pulses, heartbeat, bloody) and the test names audiogram, audiometry and hearing test. The sign-off removed the qualifiers deep (cl_otalgia), clicking and steady (cl_tinnitus_quality), progressive (cl_hearing_onset) and the positive-answer qualifiers of the rule-out entries (cl_rhinorrhea: purulent, thick, green, yellow, cloudy, discolored, discoloured, colored, coloured, culture; cl_audiogram: low-frequency, low frequency; cl_smell: between episodes, between flares, persistent, constant, all the time; cl_scan_report: scan showed inflammation, opacification, mucosal thickening, polyps; cl_audiogram_report: low frequency loss, hearing drops during, hearing comes back). cl_rhinorrhea asks the lead's question "is the rhinorrhea clear or purulent?" with pr_purulence's answers; every trigger and qualifier is lead-approved. Instrument 0.2 and probe set 1.0.0 unchanged. Gold set 0.3.0 → 0.4.0: the 0.3.0 cases and dialogues verbatim, the chart cases (the lead's history and physical, 50 catalogue rows, 14 review-fix cases k052-k065, 57 review-round-1 cases k066-k122, 64 review-round-2 cases k123-k186, 73 review-round-3 cases k187-k259 and 14 sign-off cases k260-k273) and a supersede table for the 0.2.0 and 0.3.0 outputs that lexicon 0.3.3 changes (since the lead's decision D9 five cases, each read now as a spoken line under chart reading: e16, r02, f02, t007, w019; no dialogue step).
+
+### Four fixes before review (2026-10-11)
+
+Four known problems of the first 0.4.7 build were fixed before review, and nothing else was
+re-tuned. Each new data row is a draft and is in the sign-off list below (rows 121-122 and 276-279,
+numbered as after review round 3).
+
+1. **Pronouns in chart text.** The shipped attribution cues "her " and "his " made a chart note's
+   "Her tinnitus is bilateral." or "His dizziness is episodic." read as someone else's symptom, so
+   nothing was recorded. In a chart note these pronouns name the patient. The new draft list
+   `clauses.chartIgnoreThirdParty` (`"her "`, `"his "`) names the lexicon's attribution cues that do
+   not gate in typed chart text. The engine reads it only with `opts.chart` (typed text: the Scribe
+   passes it to `extractInContext` and to `clarifyCues`); spoken and demo lines read every cue as
+   before. Relatives (`clauses.thirdParty`: "Her mother has headaches." stays the mother's), "family
+   history of" and the lexicon's other cues ("my mother", "they get") still gate, and `m_fhx` still
+   records "Her mother gets migraines." (Corrected in review round 1: as built here, the pronoun
+   before any other person, as in "Her husband has tinnitus." or "Her children have tinnitus.", did
+   not gate either; it now gates unless a finding follows it.) V28 requires each row to be a cue of
+   `lexicon.thirdParty.cues`. The gold set 0.4.0 chart cases are now read as typed chart text
+   (`{includeHeard: true, chart: true}`), as the Scribe reads them; no earlier chart case changes.
+2. **The conflict rule.** "A yes/no item affirmed and denied in one text records nothing" also
+   fired when different phrases named different findings of one item: reference case n07 ("It's
+   not the weather, I checked — it's when I skip meals.") lost its correct `m_trig` yes, and so
+   would any item that covers several sub-findings. Now a conflict needs one finding said both
+   ways: the same phrase of the entry, or two of its phrases whose spans overlap, affirmed in one
+   mention and denied in another. When different phrases disagree, the affirmed mention wins and
+   records yes. n07 gives its 0.2.0 output again and leaves the supersede table.
+
+   **The rule-out items keep the strict rule** (draft list `clauses.strictConflict`: `x_purulent`,
+   `x_objective`, `x_lowfreq`, `x_anosmia`, the yes/no items of the Discriminators domain). For
+   them any affirmed and any denied mention is still a conflict: nothing is recorded and a conflict
+   card asks. A "yes" on these items lowers the index by 5 or 8 points. Letting the affirmed
+   mention win would lower the index on a chart that also denies the finding ("No purulent
+   drainage. Thick discharge last month."), which can hide a positive screen. Letting the denial
+   win would record a "no" that the text contradicts (absent data is never negative data).
+   Recording nothing leaves the index where it was and asks the clinician (gate, don't warn), so
+   it is the conservative choice for the index. V28 requires each id to be a yes/no item of a
+   negative domain, and the extractor checks that the list is exactly those items.
+3. **Whole-word cues.** The lead's affirm cue "yes" matched the start of "yesterday", so in
+   "Denies vertigo since yesterday, nausea, photophobia." the list denial stopped and nausea and
+   photophobia read yes. The cue lists of `clauses` (affirm, deny, post, prefix, breaks, hedge,
+   placeholder, thirdParty) now match as whole words: at a word start and at a word end, except on
+   a side where the cue's own first or last character is not a letter or digit (`"has "`, `"non-"`,
+   `" negative"`, `"?"`). Symptom phrases still match as stems ("light sensitiv"), and the lexicon's
+   own negation, attribution and history cues still match at a word start only. "Nausea: yes."
+   still affirms.
+4. **Editor locks.** `derive.js` gains lock rows for `/lexicon/clauses` and `/lexicon/clarify`, with
+   the "approved lexicon configuration" wording of the other capture locks (reworded in review round
+   1: the rows are drafts, not approved) and no clinical-lead claim (the `editor` suite checks both, and that neither path is editable). The Rubric Editor's
+   lexicon section shows both fields as read-only summary lines (`data-clauses-config`,
+   `data-clarify-config`), as it shows `normalize`.
+
+Tests: 17 new chart-reading cases and 6 clarification cases on the neutral fixture of the `capture`
+suite (both directions of each fix), the default-off proof extended to `opts.chart`, 14 new gold
+set 0.4.0 chart cases (`k052`-`k065`), AD18 rule P (below) with a 20th self-check, 8 new mutation
+generators, two new `render-scribe` blocks (a typed "Her tinnitus is bilateral." records `v_aural`
+and shows the tinnitus-quality card; the same line spoken records nothing) and 44 new `editor`
+checks.
+
+### Review round 1 (2026-10-11)
+
+The review of the release found the problems below, each confirmed in the browser. Each is fixed at
+its root cause and pinned by tests in both directions. Every new data row is a draft in the sign-off
+list (rows 59-68 and 140-156, and the bases of rows 269-272, numbered as after review round 3), so the release still waits for the
+lead's sign-off and nothing is uploaded. The frozen-baseline parity stays strict, and the lead's
+history and physical gives exactly what it gave before the round (the same captures, set-aside
+mentions and nine cards).
+
+1. **Red flags hidden by a denial of something else** (critical). With `redFlagNegation` a flag was
+   dropped whenever the general negation rules read its phrase as denied. So a denial earlier or
+   later in the clause hid it: "Vertigo without hearing loss, with double vision and slurred
+   speech.", "Migraine without aura, now with worst headache of her life.", "No relief with
+   meclizine, now with pulsatile tinnitus.", "Reports pulsatile tinnitus with negative CTA head and
+   neck." and "Not relieved, worse lying down." raised nothing, in chart and spoken lines alike,
+   where 0.4.6 raised every one. The lead's decision covers a clear denial. A flag is now lowered
+   only by a denial that governs its phrase directly:
+   - a prefix ("non-pulsatile");
+   - a window cue with nothing but other words between ("Tinnitus is not pulsatile", "Denies
+     pulsatile tinnitus"): no comma, ";", ":", "/", joining word, finding, affirm cue or scopeEnd
+     word between;
+   - a deny cue naming it first in its own list item, or first in a later item of the same list,
+     with no finding before it there, at most two other words before it and one after ("No vision
+     loss, diplopia, facial droop, weakness, or slurred speech." and "Denies double vision, slurred
+     speech, facial numbness, or weakness." still lower `rf_focal`);
+   - a post cue that closes its item right after it ("Pulsatile tinnitus denied.").
+
+   A list denial that does not reach the flag this way, a distant or unclosed post cue, and a mention
+   set aside (fix 3) never lower a flag.
+2. **A denial heading a list of lines** (major). "Patient denies:", "Denies:", "Negative for:" or a
+   bare "Denies" over bullets or one item per line opened no scope, so every listed symptom read yes.
+   Such a line now heads a list: it holds a deny cue, no affirm cue after it and no finding, and it is
+   a header or ends with that cue. Its bullet and deeper-indented lines, and under a header its plain
+   lines of at most four words with no cue and no scopeEnd word, read as if the denial opened them,
+   until a blank line, a header or any other line. "Negative for:" over "- nausea", "- aura",
+   "- double vision" records `m_nausea` and `m_aura` no and raises no `rf_focal`.
+3. **List denials and post cues that reached too far** (major). A deny cue reached to the clause end,
+   and a post cue anywhere later in the list item. "No interpreter available, so nausea, photophobia
+   and tinnitus were not reviewed." recorded all three as no; "Nausea and vomiting negative."
+   recorded `m_nausea` yes; "Photophobia: no change since last visit." recorded `m_photo` no; and
+   "Positional vertigo with negative Dix-Hallpike." recorded `v_head` no. Now:
+   - **scopeEnd.** A new draft list `clauses.scopeEnd` (with, so, now, until, is, are, was, were, to,
+     from, rows 59-68) ends a list denial. A scopeEnd word between the deny cue and the mention, or
+     after the mention in a later list item, stops it. A mention the denial does not reach is set
+     aside: it records neither yes nor no (`suppressedBy: "scope"`), so absent data is never
+     negative data. A window cue with a scopeEnd word between it and the mention does not reach it
+     either.
+   - **Post cues.** A post cue denies a mention only when it closes the mention's item (the clause
+     end, punctuation, "and" or "or" after it). It must stand right after the mention, with only a
+     ":", one other word ("Positional testing negative.", catalogue PN3) or a list of findings it
+     closes between ("Nausea, photophobia: negative." denies both). An affirm cue governing the
+     mention keeps a post cue from denying it. An affirm cue later in the clause that names no
+     finding takes the denial back ("Pulsatile tinnitus previously denied, now endorsed.": set
+     aside).
+4. **Exam sub-labels and inline section labels** (major). An all-capitals sub-label inside an exam
+   ("HEENT:") ended the exam, so a normal sensory exam recorded `n_allo` yes. An inline "Allergies:
+   NKDA", "Medications: …", "Exam: …" or "Family history: …" silenced or gated every line below it,
+   with no sign on screen. Now:
+   - a header inside an exam is a sub-label and keeps the exam, whatever its case;
+   - a new draft section kind `read` (rows 140-156: hpi, history of present illness, interval
+     history, ros, review of systems, past medical history, pmh, past surgical history, psh, social
+     history, assessment, plan, assessment and plan, assessment/plan, a/p, impression, impression and
+     plan) is read normally and ends any section, so an assessment after the exam is read;
+   - any other header ends an allergy, medication or family-history section;
+   - a section word as an inline label holds for its line and its wrapped continuation only.
+5. **The rescue card** (major). The Clarify card for `pr_internal_vertigo`, a rescue probe that
+   re-asks `v_vertigo` only while it is unanswered or 0, stayed open after `v_vertigo` was recorded.
+   Answering it overwrote the recorded duration (5 min – 72 h became Under 5 min). `clarifyPrompts`
+   now shows a rescue probe's card only while the probe is live as Ask next reads it (`liveProbes`,
+   its `when`). It drops any other probe's card when its target is answered or an option would write
+   an answered item. A rescue's item counts as its target, so the card and the item's heard or
+   suggestion card are one target. In the Scribe an open card also holds the rail's other probes for
+   its item: the strict-conflict card for `x_anosmia` and the rule-out probe `pr_smell` were both
+   shown.
+6. **Pronouns before a person** (major). As first built, `chartIgnoreThirdParty` made "her " and "his "
+   never gate in chart text. So "Her husband has tinnitus.", "His wife reports dizziness.", "Her
+   friend has vertigo lasting hours." and "Her children have tinnitus." were recorded as the
+   patient's, although the fixes before review said relatives and the other cues still gated. Now
+   the pronoun names the patient only when a finding follows it ("Her tinnitus is bilateral."); before
+   any other word it gates as in speech. The cost: "Her symptoms include tinnitus." records nothing in
+   chart text, as in 0.4.6.
+7. **Contractions** (major). Under `wordStart` the 0.3.2 cue "n't" no longer read inside "didn't",
+   and the full-word cues start three characters earlier. So 276 of 672 templated denials ("I didn't
+   have any nausea.", "Patient doesn't report thick discharge.") flipped from no to yes, and AD18's
+   rule Wc excused the flip. A negation cue that holds another negation cue at its end is now
+   measured from that cue, so every contraction keeps exactly its 0.3.2 reach. Wc no longer excuses
+   such a cue (a contraction that is no cue, such as "can't", still is). Gold cases v025 and v042 give
+   their 0.3.0 labels again and leave the supersede table. The basis of the four appended
+   contractions is corrected, and each has its own basis row.
+8. **A leading "?"** (major). "? aura - pt unsure." ended an empty clause at the "?", so "aura" was
+   recorded yes. A "?" with no word before it in its clause now belongs to the words after it, which
+   it hedges.
+9. **Offsets after "İ"** (minor). Lowercasing "İ" gives two characters, which shifted every later
+   offset (wrong `cueIndex` and `cueText`, possibly the wrong clause). Chart reading now lowercases
+   without changing the length.
+10. **Wording and records** (minor).
+    - The lock rows and the Rubric Editor's read-only lines no longer call `clauses` and `clarify`
+      "approved lexicon configuration". They say each row is tagged with its source (lead, module or
+      draft).
+    - The Clarify caption read " · the text names these without the detail the screen needs — ask,
+      then record the answer; nothing is recorded until you do", which is wrong for hedge, conflict
+      and placeholder cards. It now reads " · the text leaves these open; nothing is recorded until
+      you answer". It, the "and" joining a conflict card's two quotes and the new screen-reader
+      status are rows C9-C11 of the sign-off list.
+    - The chart-case counts in SOURCES ("51") and in the rubric's change-log note ("50 catalogue
+      rows") were stale; both now count every chart case.
+    - `opts.chart` is not inert without `lexicon.clauses`: `extractInContext` with it never carries,
+      for any lexicon (spec §3.8). The extractor's header, 02 and 06 said otherwise. They now say so,
+      and the capture suite pins it on the lexicon equivalent to 0.3.2.
+11. **Tests that could not catch a wrong clause** (minor). AD18's evidence rule and the capture
+    suite's evidence checks accepted any clause consistent with its evidence. Both now also require
+    the clause to hold the capture's `cueIndex`; AD18 also requires that the clause neither starts nor
+    ends inside a word. Two new self-check pairs prove it.
+12. **The Clarify section for assistive technology** (minor). An always-mounted, visually hidden
+    status ("2 questions to clarify") announces the cards. The section is a region labelled
+    "Clarify", and each card is a group named by its question. After an answer or Skip, focus moves to
+    the card now in its place, or back to the box when none is left.
+
+Tests:
+- `capture`: 40 new chart-reading cases on the neutral fixture (both directions of each fix), 4
+  `clarifyPrompts` checks (rescue liveness, one target), the cue-holding check on every chart case,
+  and the `opts.chart` pin on the lexicon equivalent to 0.3.2;
+- gold set 0.4.0: 57 new chart cases (`k066`-`k122`) and 2 supersede rows fewer;
+- `extraction`: block 3's own corpus gains scopeEnd, pronoun and list frames; AD18's rule L reads
+  scopeEnd, its sentences treat a leading "?" as the engine does, and Wc is narrowed; 2 new self-check
+  pairs and 4 contraction checks;
+- `render-scribe`: one block (rescue-card liveness through the Scribe, never twice on a rule-out
+  conflict card, the section's accessibility and focus) and the updated typed-chart check;
+- `editor`: the lock wording;
+- `validate`: a short cue of a whole-word `clauses` list is no V29 warning, so the mutation for a
+  short cue now uses a mask word, which is still matched inside words.
+
+A sensitivity run with the old `scribe.js` and `Scribe.jsx` failed 12 checks of `render-scribe`.
+
+### Review round 2 (2026-10-11)
+
+The second review found that chart reading also ran on spoken and demo lines, that chart-worded red
+flags had no phrases while the clarification qualifiers silenced the safety cards, and that several
+chart forms of the reviewers' held-out corpus read wrongly (treatment failure, chart notation,
+report headers, exam lines). The lead's working choice stays "Draft, you sign off". Every new
+phrase, cue and question below is a draft row with a basis, its basis starting "(review round 2)" in
+the sign-off list. Nothing is approved beyond the lead's own words and decisions, and nothing is
+uploaded before the lead signs the list off.
+
+1. **Chart reading is for typed chart text only** (critical). `lexicon.clauses` (word starts, masks,
+   sections, post and prefix cues, list scope, label answers and red-flag negation) now applies only
+   to text read with `opts.chart`, which is what the Scribe's box submits. A spoken or demo line
+   extracts exactly as in release 0.4.6, whatever the lexicon's `clauses` hold: the same captures,
+   the same evidence (the whole utterance), the same carry-over, and red flags never lowered. A new
+   `extraction` block 4 proves it. It loads the frozen 0.4.6 engine
+   (`app/tests/fixtures/engine-0.4.6/`, the git blobs of `f57780b`, SHA-256 pinned, local-only) with
+   the lexicon equivalent to 0.3.2, and this engine with lexicon 0.3.3 and no `opts.chart`. The two
+   are deep-equal over the 44 reference cases, the 218 cases and 93 dialogues of gold set 0.3.0, the
+   module's demo transcript, the baseline Scribe's script, the 186 chart cases read as spoken lines,
+   block 3's cue texts and 5,000 synthetic utterances. That is 17,399 extract comparisons and 220
+   `extractInContext` steps compared whole.
+   - AD18 now excuses only comparisons of typed chart text. Block 3's 117,333 spoken comparisons of
+     lexicon 0.3.2 and 0.3.3 are strict, and all are identical.
+   - `clarifyCues` stays typed-only: the Scribe calls it for typed text, with `opts.chart`. Without
+     it, `clarifyCues` reads the triggers structurally and gives no hedge, conflict or placeholder
+     cue.
+   - The supersede table of gold set 0.4.0 is empty: its seven rows were spoken cases.
+   - Reference case r02 raises `rf_focal` from speech again, as the reference file says.
+   - The data stage's rule that a duration in another sentence blocks carry-over applied to voice
+     lines only through chart reading. Voice lines now carry exactly as in 0.4.6.
+   - In typed text the lead's decision holds as before: a clearly denied red flag is not raised.
+2. **Chart-register red flags** (critical). A new draft list `clauses.redFlags` gives each of the
+   twelve flags chart wording, read in typed chart text only (111 phrases; rows 157-268 as numbered after review round 3, which added row 177). Each phrase
+   is taken from the flag's own text: "sudden hearing loss", "ssnhl", "unilateral hearing loss",
+   "asymmetric hearing", "pulse-synchronous", "epistaxis", "unilateral nasal obstruction", "nasal
+   mass", "periorbital swelling", "proptosis", "pain on eye movement", "eye pain", "diplopia",
+   "facial droop", "dysarthria", "worse with cough", "worse with valsalva", "wakes from sleep",
+   "steadily worsening", "sudden severe headache", "scalp tenderness", "jaw claudication", "new
+   headache after age 50", "fever", "weight loss" and the others in the list.
+   - A hit inside a longer hit of the same flag is part of it, so the shipped "droop" inside "facial
+     droop" does not escape a list of negatives.
+   - A draft mask ("hay fever") keeps "fever" from raising `rf_systemic`, and word starts keep
+     "febrile" out of "afebrile".
+   - The safety clarification entries lose every qualifier that states the dangerous answer without
+     raising its flag: `cl_laterality` (left, right, unilateral, one ear, same ear),
+     `cl_hearing_onset` (sudden), `cl_nasal_side` (one side, one-sided, unilateral, left, right),
+     `cl_tinnitus_quality` (pulsing, pulses, heartbeat) and `cl_rhinorrhea` (bloody). A stated
+     dangerous detail now raises its flag through a phrase or leaves the card visible; it never
+     silences the card. `cl_tinnitus_quality` keeps "pulsatile" and "whooshing", which are
+     `rf_pulsatile` phrases, and the safe answers stay qualifiers (bilateral, both ears, alternating,
+     gradual, steady, clicking).
+3. **Treatment failure** (major). New draft affirm cues "no improvement", "no relief", "no
+   response", "no benefit", "without improvement", "without relief", "without benefit", "failed",
+   "refractory to" and "despite" (rows 14-23). A new engine rule protects their scope: a negation,
+   deny, post or prefix cue lying inside a longer affirm or hedge cue is no cue. "No improvement with
+   antibiotics." records `r_abx` yes (it read no) and "No benefit after sinus surgery." records
+   `r_surg` yes. "No antibiotics to date." still records `r_abx` no.
+4. **Chart notation and hedges** (major). New drafts: the deny cue "(-)", the affirm cue "(+)", the
+   post cues "(-)", ": denies" and " - no", the placeholders "[ ]" and "[]", and the hedges "maybe",
+   "unsure", "uncertain", "not sure" and "might". A new engine rule reads label answers: a cue right
+   after a finding, with only a ":" or "-" between (or nothing, before a sign such as "(+)"),
+   answers that finding.
+   - An affirm cue so placed affirms the finding, whatever else would deny it ("Denies nausea,
+     photophobia: endorses.").
+   - A deny cue so placed answers its label only and opens no list ("Aura: (-), nausea" records
+     nausea yes).
+   - An affirm cue that answers another finding's label no longer takes a post cue back ("Aura (-),
+     nausea (+).").
+
+   So "(-) aura", "Aura: (-)", "Nausea: denies", "Nausea: denied" and "Nausea - no" read no, and
+   "(+) photophobia" and "Photophobia: (+)" read yes. "Nausea: [ ]" or "Nausea: ___" records nothing
+   and shows the template notice. "Nausea maybe sometimes." is asked, not recorded. "Not sure if the
+   tinnitus is pulsatile." still raises `rf_pulsatile`, because the hedge shields its "not " and a
+   hedge never lowers a flag.
+5. **Report headers** (major). New draft masks for the rule-out phrases that name a test rather than
+   its result: `x_objective`'s "ct showed", "scope showed" and "lund-mackay", and `x_lowfreq`'s
+   "audiogram showed" and "hearing test showed" (rows 78-82). In typed chart text they capture
+   nothing by themselves. A result phrase in the same text still does: "CT showed mucosal
+   thickening" records `x_objective` yes.
+   - Two draft clarification entries ask what the report showed: `cl_scan_report` (pr_scan_detail's
+     question) and `cl_audiogram_report` (pr_audiogram's). Clarification triggers are matched
+     without the mask.
+   - `cl_audiogram` no longer counts the test names "audiogram", "audiometry" and "hearing test" as
+     resolving it.
+   - Held-out H09 now records `x_objective` no from the endoscopy line instead of showing a conflict
+     card.
+6. **Exam items** (major). `clauses.examItems` is empty, so nothing is captured inside an exam
+   section.
+   - The lead's history and physical no longer records `r_normal` from "lids, lashes and lacrimal
+     glands within normal limits".
+   - An office exam line ("Nose: no polyps.") no longer answers `x_objective`.
+
+   Part D asks the lead whether a normal exam may answer `r_normal` or `x_objective`.
+7. **The template-text card** (minor). The placeholder card is now a notice. It quotes the line and
+   shows the draft text "This line holds unfilled template text (***)." (`clauses.placeholderAsk`,
+   row 274). Its one control is "Dismiss" (row C12), with no answers and no Skip. The screen-reader
+   status counts it as a notice ("8 questions to clarify, 1 notice").
+
+**The lead's history and physical after round 2.**
+- **Captured:** `m_photo` yes, `m_aura` no, `v_aural` yes, `x_purulent` no, `x_anosmia` no;
+  `v_vertigo` heard (no duration).
+- **Set aside:** `rf_pulsatile` (denied), `v_head` ("non-positional"), `n_allo` and `r_normal` (exam
+  section). No red flag is raised.
+- **Clarify cards:** the same nine, in order: which ear (`cl_laterality`), ear pain (`cl_otalgia`),
+  the template-text notice (Dismiss only), sudden hearing drop (`cl_hearing_onset`), audiogram
+  (`cl_audiogram`), headache (a hedge card for `m_head`), kind of dizziness (`cl_dizziness_kind`),
+  neck (`cl_neck`) and HINTS (`cl_hints`).
+
+**The reviewers' held-out corpus (30 chart texts written before any engine run), before and after
+round 2.** Every case not listed gives what it gave before.
+
+| Case | Before round 2 | After round 2 |
+|---|---|---|
+| H01 | `m_aura` yes from "(-) aura" | `m_aura` no |
+| H04 | `rf_pulsatile` raised; no laterality card | the same, and the laterality card ("right ear" no longer silences it) |
+| H09 | `x_objective` conflict card ("Lund-Mackay 0" against "no polyps") | `x_objective` no; the scan card leaves at once (its item is answered) |
+| H11 | `rf_ssnhl` not raised; no laterality or onset card | `rf_ssnhl` raised; laterality and onset cards |
+| H12 | no laterality card ("left" silenced it) | the laterality card |
+| H18 | `m_head` none ("without improvement in facial pain" read as a denial) | `m_head` 1 |
+| H20 | `rf_gca` not raised | `rf_gca` raised |
+| H21 | `rf_orbital` not raised | `rf_orbital` raised; `rf_systemic` not raised ("Afebrile"); the nasal-side card |
+| H22 | `rf_mass` not raised | `rf_mass` raised; the nasal-side card |
+| H23 | `m_nausea` yes ("Nausea maybe sometimes.") | asked (a hedge card), not recorded |
+| H24 | `m_nausea` yes ("Nausea: [ ]") | nothing; the template notice |
+| H25 | `x_objective` no from an office exam | nothing |
+| H27 | `rf_progressive` not raised | `rf_progressive` raised (`v_head` is still recorded from "bending over", Part E) |
+
+The corpus names eight red flags explicitly. Three were raised before round 2 and all eight are
+raised after it, and no flag the text denies is raised. Its four implicit flags (`rf_asym` in H04,
+H11 and H12; `rf_new50` in H20) need inference that no phrase can make. The laterality card now
+asks in H04, H11 and H12.
+
+Tests:
+- `extraction`: block 4 (new). Block 3 asserts that its spoken comparisons are identical. AD18 gains
+  rule C (chart red-flag phrases) and a widened rule L (an affirm cue anywhere in the sentence). Its
+  self-checks add rule C and a label answer, check that no spoken comparison is excused, and check
+  that every self-check text reads identically on both lexicons when spoken (29 self-checks).
+- `capture`:
+  - every chart-reading case of block 1 is also read without `opts.chart` and found identical to
+    the fixture without the chart block;
+  - 17 new fixture cases (shielded cues, label answers, chart red flags, the inner hit, a chart
+    phrase read as speech) and the unmasked trigger;
+  - block 5 gains 40 chart texts with explicit expectations, each also read as a spoken line, and a
+    guard that no safety entry keeps a removed qualifier;
+  - gold set 0.4.0 is updated (below).
+- `render-scribe`: the notice (its text, Dismiss only, role `note`, nothing recorded) and the status
+  line; `r_normal` absent from the history and physical.
+- `validate`: six mutations (the shape of `clauses.redFlags`, an unknown flag, an empty list, a
+  source, a capital letter; `examItems` that is not a list). `examItems` may be empty.
+- **Sensitivity:** the new `extraction` and `capture` suites fail against the round-1 engine, with
+  400 differences each (the cap).
+
+### Review round 3 (2026-10-11)
+
+The third review read held-out chart texts written before any engine run, typed red-flag sentences
+through the real box, and the round-2 label-answer rule. It confirmed ten defects: three that hid an
+affirmed red flag in typed text, and seven that read a denial as "yes" (or a finding as "no"). Each is
+fixed at its root in the engine, with draft rows only where a word list was needed. The lead's
+working choice stays "Draft, you sign off". Every new row is a draft with a basis starting "(review
+round 3)" in the sign-off list, and nothing is approved beyond the lead's own words and decisions.
+Nothing is uploaded before the lead signs the list off. Spoken and demo lines are untouched: block 4
+still finds them identical to release 0.4.6.
+
+1. **Signs between findings** (major). In a review-of-systems line with a sign before every finding
+   and only spaces between ("(+) a (-) b"), each sign was read as the answer of the finding before
+   it. Now a sign with only spaces around it, between two findings, is the prefix of the finding
+   after it. A sign, like any cue, answers the finding before it as a label only when it closes the
+   item (the clause end, punctuation, "and" or "or" after it).
+   - "ROS: (+) headache (-) aura (-) nausea" records `m_aura` and `m_nausea` no (they read yes).
+   - "(-) fever (-) chills (-) weight loss" raises nothing (it raised `rf_systemic`).
+   - "(-) diplopia (-) dysarthria" and held-out Q01's ROS line no longer raise `rf_focal`.
+   - "Aura (-), nausea (+)." and "Aura: (-), nausea" read as before.
+2. **Abbreviations** (major). Chart reading cut a clause at every "." followed by a space, so a
+   denial before "assoc.", "hx.", "sx.", "e.g." or "approx." no longer reached the finding after it,
+   which then read yes. Now such a "." ends nothing when a lower-case word follows it, the clause it
+   would end opens with a capital and names no finding before it, and the word before it has at most
+   six letters or holds a dot.
+   - "No assoc. nausea.", "Denies hx. of aura.", "No sx. of nausea.", "Pt. reports no assoc.
+     nausea." and "Denies e.g. nausea or photophobia." read no again, as in 0.4.6.
+   - "No assoc. diplopia." no longer raises `rf_focal`.
+   - A "." still ends the clause after a finding ("Denies vertigo at rest. nausea with movement."
+     records nausea yes) and for a writer who does not capitalise sentences ("no aura. nausea
+     present.").
+3. **An affirmed red flag in a later list item** (critical). A deny cue heading a list lowered a flag
+   in a later item whenever the item had at most two words before the flag phrase and one after,
+   whatever those words were. Now a later item, or an item of a list carried from a line above,
+   lowers a flag only when it is the bare flag phrase: no other word, no affirm cue and no plus sign
+   in it. A plus sign before a word ("+double vision", "+ night sweats") now affirms it, like an
+   affirm cue.
+   - Now raised: "No nausea, double vision reported.", "No N/V, night sweats noted.", "No nausea,
+     +double vision.", "Without warning, she developed double vision.", "No trauma, then
+     nosebleeds.", "No headache, only nosebleeds.", "No nausea, sudden hearing loss reported." (with
+     the hearing cards), "Neuro: no facial droop, diplopia present." and "No headache history, sudden
+     severe headache today."
+   - A new draft phrase, `"slurred speech"` for `rf_focal` (row 177, the flag's own ask), keeps "No
+     vision loss, diplopia, facial droop, weakness, or slurred speech." a list of bare flag phrases,
+     so nothing is raised there.
+4. **A denial whose object is something else** (critical). A deny or window cue lowered a flag in
+   its own item whatever words lay between, so "No steroids given for sudden hearing loss." lowered
+   `rf_ssnhl`. A new draft list `clauses.complement` (rows 69-75: for, in, about, after, since, on,
+   none of) holds the words after which the denied word is something else. Past one of them no
+   denial lowers a flag, and a list denial reaches no item (the mention is set aside). New draft
+   breaks "other than", "besides" and "apart from" (rows 56-58) end the clause, as "except" does.
+   - Now raised: "No steroids given for sudden hearing loss." (`rf_ssnhl`, with the hearing cards),
+     "No workup for the double vision.", "No CT for diplopia.", "No MRI for vision loss yet.", "No
+     change in the whooshing since last visit.", "None of her epistaxis episodes needed packing.",
+     "Denies complaints other than nosebleeds." and "Negative for everything other than fever."
+   - "No workup for pulsatile tinnitus." and "No change in pulsatile tinnitus since last visit."
+     raise `rf_pulsatile` and no longer record `v_aural` no.
+   - "of" is not a row, so "No history of malignancy." still lowers `rf_systemic` (Part D).
+   - The lexicon's 14-character window still reaches past a complement word for a yes/no item, as
+     in 0.4.6: "No hx of aura." reads no, and so does "No CT for tinnitus." (Part D).
+5. **Lists under a denial** (critical). A line opening with "+" was read as a short item of the
+   denied list, and so was an unbulleted line after the bullets. Now a line opening with "+" or
+   holding an affirm cue ends the list, and once a bullet was read a plain line ends it too. A plain
+   item line under a denial header is its own item, never part of a wrapped line.
+   - "Denies:" over "- nausea" and "+ night sweats" raises `rf_systemic` and records nausea no.
+   - "Patient denies:" over "- fever", "- chills" and "New nosebleed this week." raises `rf_mass`
+     and not `rf_systemic`.
+   - "Patient denies:" over the plain lines "fever" and "chills" raises nothing.
+6. **A denied safe-answer qualifier** (major). A clarification qualifier silenced its card whether
+   or not the text denied it, so "Tinnitus, not bilateral" silenced the laterality card while stating
+   the dangerous answer. Now a qualifier the text denies resolves nothing: it states the other answer,
+   which the card then asks the clinician to confirm. This applies to every entry, because the
+   extractor does not know a probe's kind, and asking is the safe side. A new draft deny cue "rather
+   than" (row 37) denies what follows it.
+   - The laterality card asks for "Tinnitus, not bilateral; left ear only." and "Hearing loss in the
+     left ear, not bilateral."
+   - The sudden-onset card asks for "Hearing loss, not gradual." and "Hearing loss, abrupt rather
+     than gradual."
+   - The one-sided-nose card asks for "Nasal obstruction, non-alternating, always the right side."
+     and "Congestion, not alternating, left side only."
+   - The lead's history and physical now shows ten cards: "Tinnitus is not pulsatile" no longer
+     silences the tinnitus-quality card.
+7. **Affirmed tinnitus after an unrelated denial** (major). A list denial, and the window across a
+   comma, recorded a later item as "no" even when the item said more than the finding. Now such an
+   item is set aside (no capture), never "no", and a clarification trigger set aside this way still
+   asks.
+   - "No nausea, tinnitus reported." and "No dizziness, tinnitus in the right ear only." record no
+     `v_aural`, and the tinnitus-quality and laterality cards ask (they recorded `v_aural` no and
+     showed no card).
+   - A bare later item is still denied: "No nausea, tinnitus." records `v_aural` no.
+8. **Records** (minor). Part D told the lead that the red-flag rule "never hides one the text
+   affirms". That was not true. Part D now states the exact conditions under which a flag is lowered,
+   lists the lowering cases still known, and points to the new red-flag battery that tests them.
+9. **An affirm cue after "Finding -" or "Finding:"** (major). The round-2 label-answer rule took any
+   affirm cue after a dash or colon as the finding's answer, even when more words followed and even
+   against a denial before the label. Now a cue answers a label only when it closes the item, and a
+   label answer never overrides a prefix or a negation or deny cue in the label's own list item.
+   - "No nausea - reports good appetite.", "Denies photophobia - has been sleeping well." and "No aura
+     - has had headaches for years." read no again.
+   - "ROS: negative for nausea - positive for photophobia." reads nausea no and photophobia yes.
+   - "Denies sudden hearing loss - reports gradual decline over years." and "Denies diplopia -
+     reports blurry vision when tired." raise nothing.
+   - "Non-pulsatile tinnitus: yes." records `v_aural` yes and does not raise `rf_pulsatile`.
+   - "Non-positional vertigo - reports episodes lasting hours." records no `v_head`.
+   - "Denies nausea, photophobia: endorses." still affirms the photophobia: its own item holds no
+     denial.
+10. **A deny cue after "Finding:" or "Finding -"** (major). The same rule took a deny cue right after
+    a label as that label's answer, so it opened no list. Now a deny cue followed by findings opens
+    its list as before.
+    - "Headache: denies nausea, vomiting, photophobia, phonophobia." denies all four.
+    - "Dizziness: denies hearing loss, tinnitus, diplopia or dysarthria." records `v_aural` no and
+      raises nothing.
+    - "Headache - no fever, weight loss, jaw claudication or scalp tenderness." raises neither
+      `rf_gca` nor `rf_systemic`.
+
+Two related engine fixes came up while testing these:
+- **The slash.** A "/" separates list items only when a space or a finding touches it ("nausea/
+  vomiting", "fever/chills/night sweats"). Between two other words it joins them inside one item. So
+  the lead's history and physical keeps "visual/auditory auras" as one denied item (`m_aura` no),
+  and "No h/o malignancy." stays a clear denial.
+- **A second label on a line.** On a line of labels, a second "Label:" starts a clause of its own.
+  "Nausea: no Photophobia: yes" now records nausea no and photophobia yes; it read nausea yes and
+  photophobia no.
+
+**The lead's history and physical after round 3.**
+- **Captured:** `m_photo` yes, `m_aura` no, `v_aural` yes, `x_purulent` no, `x_anosmia` no;
+  `v_vertigo` heard (no duration).
+- **Set aside:** `rf_pulsatile` (denied), `v_head` ("non-positional"), `n_allo` and `r_normal` (exam
+  section). No red flag is raised.
+- **Clarify cards, in order (ten):** which ear (`cl_laterality`), ear pain (`cl_otalgia`), the
+  template-text notice (Dismiss only), sudden hearing drop (`cl_hearing_onset`), audiogram
+  (`cl_audiogram`), headache (a hedge card for `m_head`), tinnitus quality (`cl_tinnitus_quality`,
+  new in round 3), kind of dizziness (`cl_dizziness_kind`), neck (`cl_neck`) and HINTS (`cl_hints`).
+
+**The round-3 reviewers' held-out corpus** (30 chart texts written before any engine run), scored
+with the reviewers' own script on typed chart text:
+
+| Measure | Before round 3 | After round 3 |
+|---|---|---|
+| Strict expectations (`expect`) | 18 correct, 2 missed, 1 wrong (of 21) | the same |
+| Red flags the text states (`rfRaise`) | 9 of 11 raised | the same |
+| Red flags the text denies (`rfNot`) | 35 of 37 not raised | 36 of 37 not raised |
+| Soft expectations | 19 correct, 48 missed, 1 wrong | the same |
+| Clarify cards expected | 3 of 3 | 3 of 3 |
+
+Q01's ROS line no longer raises `rf_focal`. The one denied flag still raised is Q05's `rf_systemic`
+from the review-of-systems form "- fever, - chills, - weight loss", a lead item in Part D. The two
+flags still missed are `rf_asym` (Q09) and `rf_progressive` (Q16), the chart-wording gap in Part D.
+
+Tests:
+- `capture` block 1: 35 new fixture cases and 2 changed ones (signs, abbreviations, later list
+  items, plus signs, complement words, the end of a list, label answers, a second label, the slash);
+  two new `clarifyCues` cases (a denied qualifier, an uncertain trigger). Each case is also read as
+  a spoken line and found identical to the fixture without the chart block.
+- `capture` block 5:
+  - 68 round-3 texts with explicit expectations, each also read as a spoken line exactly as on
+    lexicon 0.3.2;
+  - a red-flag battery: every red-flag phrase of the shipped lexicon (181 phrases of 12 flags) in
+    21 templates that affirm it (it must be raised) and 17 that clearly deny it (it must not be),
+    6,878 texts;
+  - gold set 0.4.0 (below), with the history-and-physical card list.
+- `extraction` block 3: new cue frames for complement words, signs, abbreviations, later list items
+  and "+" lines; AD18 explains every typed difference, and every spoken comparison is identical.
+- `validate`: two mutations of the new list (empty, a capital letter). `render-scribe`: the ten
+  cards of the history and physical through the real box.
+- `values`: a new check that this change log quotes every rubric change-log entry verbatim, once.
+  It found that the 0.4.7 records had replaced the 2026-10-04 section's quote of the approved 0.3.2
+  entry with the 0.4.7 one; that quote is restored.
+- **Sensitivity:** against the round-2 engine, `capture` fails with 400 differences (the cap) and
+  `render-scribe` with 9.
+
+### Version axes (release 0.4.7)
+
+| Axis | Release 0.4.6 | Release 0.4.7 | Owner |
+|---|---|---|---|
+| Release | 0.4.6 | **0.4.7** | `app/src/engine/policy.js` `APP_VERSION` |
+| Instrument | 0.2 | 0.2 | `masque.rubric.json` `instrumentVersion` |
+| Lexicon | 0.3.2 | **0.3.3** | `masque.rubric.json` `lexicon.version` |
+| Probe set | 1.0.0 | 1.0.0 | `masque.logic.js` `probes.version` |
+| Gold set | 0.3.0 (lexicon 0.3.2) | **0.4.0** (lexicon 0.3.3) | `masque.rubric.json` `lexicon.goldSet` |
+
+The five numbers stay separate. The gold set moves with the lexicon, so no footer reads
+"(benchmarked on lexicon 0.3.2; not re-run)".
+
+### Gold set 0.4.0
+
+`app/tests/fixtures/goldset/masque_extraction_goldset_0.4.0.json` (local-only, never deployed;
+SHA-256 `99dff3ac…`, 269,705 bytes after the sign-off; `f3339e9b…`, 254,161 bytes after review
+round 3) holds:
+
+- **the 0.3.0 cases and dialogues, verbatim.** `_meta.includes` pins gold set 0.3.0 (SHA-256
+  `729492ef…`, 218 cases, 93 dialogues), and `_meta.basedOn` still pins the reference file and its
+  44 cases;
+- **273 chart cases** (register `chart`, id prefix `k`), read as typed chart text
+  (`{includeHeard: true, chart: true}`). `k001` is the lead's history and physical, verbatim.
+  `k002`-`k051` are the 50 rows of the team's chart-text catalogue, drafted on 2026-10-11 to probe
+  the chart-reading failure modes. `k052`-`k065` test the four fixes before review (chart pronouns,
+  the conflict rule, whole-word cues), `k066`-`k122` the fixes of review round 1, `k123`-`k186` those
+  of review round 2, `k187`-`k259` those of review round 3 and `k260`-`k273` what the lead's
+  sign-off of 2026-10-12 added or changed (the hedge "+/-", the three deny cues, the new
+  `rf_progressive` and `rf_asym` phrases, no context marker from typed chart text, the removed
+  clarification qualifiers, the struck `rf_orbital` phrases). The round-3 cases are mostly the
+  round-3 reviewers' own texts: signs between findings, abbreviations, later list items that hold
+  more than the finding, complement words, the end of a list under a denial, denied clarification
+  qualifiers, label answers that close their label, a second label on a line and the slash. Each case
+  has `expect`, `expectAbsent` and `expectClarify`, and `k001` and `k122` also have
+  `expectEvidence`;
+- **a supersede table of five case labels since the sign-off** (empty from review round 2 until then).
+  The lead's decision D9 reads spoken lines with chart reading too, which changes the output of five
+  spoken-register cases; each row gives the 0.3.0 label (`was`, still the file's), the 0.4.0 label
+  (`now`), cites D9 of 2026-10-12 and names the rule:
+  - **e16** (0.2.0) "My hearing test showed it drops during the spells.": `x_lowfreq` yes → nothing.
+    The lead-approved mask "hearing test showed" (a report header) now applies to speech; for the
+    lead: a spoken report of the result records nothing and no card asks (clarification stays typed
+    only), and `x_lowfreq` is a rule-out item, so the index is not lowered;
+  - **r02** (0.2.0) "No, I've never had double vision or anything like that.": `rf_focal` → not
+    raised (the lead's red-flag decision, now read in speech: "never" denies the phrase directly);
+  - **f02** (0.2.0) "Symptoms reportedly began following a viral upper respiratory illness.":
+    `n_viral` yes → nothing (the hedge "reportedly");
+  - **t007** (0.3.0) "My headache lasts all day, maybe a week.": `m_dur` 2 and `m_head` 1 → nothing
+    (the hedge "maybe" drops the whole clause; "hedge = nearest finding" was offered at D8 and not
+    picked, a known limit);
+  - **w019** (0.3.0) "How long am I dizzy? For two days at a time.": the heard `v_vertigo` → nothing
+    (the hedge "?").
+  No dialogue step of gold set 0.3.0 changes: carry-over is as before (D9).
+
+Every 0.4.0 label is a draft test expectation (`labelStatus: "draft"`): the lead signed off the
+lexicon rows on 2026-10-12, not the cases. The 0.3.3 output agrees with the catalogue's own draft
+expectation on 32 of the 50 rows (33 before review round 3: k027 no longer records `x_purulent` no;
+the sign-off changed no row's agreement: k035 now agrees on `c_dismiss` but still misses `m_fhx`, and
+k006 and k037 now also record `m_aura`). Each row that differs says why.
+
+The sign-off changed ten chart labels, each to the engine's output and each with a note citing the
+decision:
+- **k001** (the lead's history and physical), **k006**, **k037:** the mask "aural" struck, so "aural
+  fullness" reads aura. k001 then states and denies aura (a conflict card, eleven cards); k006 and
+  k037 record `m_aura` yes, which leaves their `expectAbsent` (the team's draft superseded by the
+  lead's decision);
+- **k004:** the `rf_focal` phrase "facial numbness" struck, so "numbness" (`n_burn`) stands in a later
+  list item after "facial" and is set aside rather than recorded no;
+- **k126, k166, k223:** `rf_orbital` and `rf_vision` phrases struck: no flag;
+- **k035, k243:** the D8 answer: typed chart text sets no context marker (`c_dismiss`, `c_dur`);
+- **k162:** the D8 answer removed the scan report's positive-answer qualifiers, so `clarifyCues` lists
+  the trigger (the Scribe drops the card: `x_objective` is recorded from the same words).
+
+Review round 3 changed eleven chart labels, each to the engine's output and each with a note:
+- **k001, k015:** "not pulsatile" no longer silences the tinnitus-quality card;
+- **k070, k074, k075, k099, k102:** a trigger set aside as uncertain asks (the tinnitus cards);
+- **k071:** the window's denial of "pulsatile" across a comma leaves the tinnitus-quality card
+  asking (the flag stays raised);
+- **k027:** "purulent drainage" in a later list item is set aside, so `x_purulent` is not recorded;
+- **k061:** "since" is a complement word, so `m_nausea` and `m_photo` are set aside (added to its
+  `expectAbsent`);
+- **k104:** a later item with another word is set aside, so `m_photo` is not recorded (added to its
+  `expectAbsent`). This reverses the round-1 label "a clean denied list still denies every item, a
+  trailing word included".
+
+Review round 2 changed six chart labels (k001, k017, k068, k079, k081, k121), each with a note.
+
+Gold set 0.3.0 is byte for byte unchanged and still pinned. It and its benchmark run on the lexicon
+equivalent to 0.3.2 (the shipped lexicon with the 0.3.3 delta reverted), the only oracle of 0.3.2
+behaviour. Since D9 the shipped lexicon read as speech gives the same outputs except the five
+superseded cases.
+
+**The labels superseded earlier, restored, and superseded again.**
+- **Superseded again at the sign-off:** r02, f02 and w019 (and e16 and t007, new) with D9, above.
+- **Restored in review round 2:** the first build and review round 1 superseded seven
+  spoken-register labels: r02, f02, y032, t013, w011, w013 and w019 (a red flag denied in speech, a
+  hedge, a duration from another clause, a word start, a "?"). Spoken lines are read exactly as in
+  0.3.2 again, so all seven keep their 0.2.0 and 0.3.0 labels.
+- **Dropped earlier:** review round 1 dropped v025 and v042, whose contractions keep their 0.3.2
+  reach. The fixes before review dropped n07: a denied weather trigger and an affirmed meal trigger
+  are different findings of `m_trig`.
+
+### Benchmark, gold set 0.4.0 (in-sample regression snapshot: development figures, not performance)
+
+Copied from the `capture` suite's notes in the final run of 2026-10-12 after the clinical lead's
+sign-off (seed 1296126801, in the headless Edge browser: the in-app browser could not open a tab),
+which reported no difference. `GOLD_0_4_0_SHA256` (`99dff3ac…`) and
+`EXPECTED_BENCHMARK_040` (tp 470, fp 0, fn 0, 93 and 93 dialogues, 273 chart cases, catalogue agreement 32, 5 superseded labels) in `app/tests/suites/capture.js` were
+re-taken from that run (after review round 3: `f3339e9b…`, tp 466, 259 chart cases, no superseded
+label). `GOLD_0_3_0_SHA256` (`729492ef…`) and `EXPECTED_BENCHMARK` are unchanged. The 0.3.0 block of
+the same run matches the block printed under 2026-10-04 except its first line, which now names the
+features `clauses` and `clarify` the engine offers.
+
+```text
+lexicon 0.3.3 · rule-based / phrase-match with local negation · features scale.heard, scale.carry, scale.carryExclude, scale.yieldTo, scale.anchor, carryRefuse, normalize.apostrophes, normalize.numbers, clauses, clarify · development set 0.4.0
+!! AUTHORED — written by hand to probe known failure modes.
+!! These are development figures, not validation results; every 0.4.0 label is a draft test expectation.
+!! The 0.3.0 labels are the 0.3.2 extractor's own output and the chart labels the 0.3.3 extractor's (regression snapshots); P/R/F1 on them is tautological, not a measurement.
+
+utterances 535 (44 from 0.2.0 + 218 from 0.3.0 + 273 chart) · labelled extractions 470
+  micro  P 100.0%  R 100.0%  F1 100.0%  (tp 470 fp 0 fn 0)
+  supersede table 5 labels (5 cases, 0 dialogue steps); outputs changed against lexicon 0.3.2: 5 cases, 0 dialogue steps
+  chart-text catalogue: the 0.3.3 output agrees with the team's draft expectation on 32/50 rows
+
+DIALOGUES (93)
+  carry applied as labelled   93/93
+  refused as labelled         93/93
+```
+
+### SIGN-OFF: the rows the clinical lead decided (decided 2026-10-12)
+
+**Decided.** The clinical lead decided every row below on 2026-10-12 on the sign-off page; the
+"Lead" column now gives each row's outcome (approved or struck), and "Clinical-lead sign-off
+(2026-10-12)" below gives the counts, the struck rows, the Part D answers and the follow-up answers.
+The list is kept as the lead saw it (rows numbered as in commit `cd34934`, sources and bases as they
+were then): a struck row is removed from `lexicon-delta-033.js`, the gold cases it affected are
+relabelled and the rubric is regenerated, and every approved draft row is marked `lead-approved` in
+the data. The sign-off is recorded in `LEXICON_DELTA_033.signOff` with its date, as the EMR sign-off
+was in release 0.4.4. Rows carrying the lead's own words or the lead's decision are listed for
+completeness and needed no sign-off. A phrase is shown in quotes with any boundary space it carries
+(`"has "`, `" negative"`).
+
+**A. Chart-reading cues and switches (`lexicon.clauses`, `lexicon.negation.cues`).** 280 rows: 268
+phrases (8 the lead's, 260 drafts), 4 appended negation cues (drafts), 7 draft switch values and the
+lead's red-flag decision. Review round 1 added rows 59-68 (`scopeEnd`) and 140-156 (`sections.read`)
+and gave rows 269-272 their own basis. Review round 2 added rows 13-23 (the sign "(+)" and the
+treatment-failure cues), 36 ("(-)"), 44-46 (post cues), 78-83 (masks), 95-99 (hedges), 102-103 (empty
+checkboxes) and 157-268 except row 177 (`clauses.redFlags`, 111 chart-register red-flag phrases),
+changed rows 274 (the notice text) and 275 (`examItems`, now empty) and removed the two `examItems`
+rows. Review round 3 added rows 37 (the deny cue "rather than"), 56-58 (the breaks "other than",
+"besides" and "apart from"), 69-75 (the new list `clauses.complement`) and 177 (`"slurred speech"`
+for `rf_focal`). Every row is numbered afresh after each round. The basis of each round-2 row starts
+with "(review round 2)" and of each round-3 row with "(review round 3)".
+
+| # | Where (lexicon) | Phrase | Source | Basis (`lexicon-delta-033.js` `basis`) | Lead |
+|---|---|---|---|---|---|
+| 1 | `clauses.affirm[0]` | `"endorses"` | lead | The clinical lead's request of 2026-10-11, verbatim: endorsement verbiage ("e.g. endorses, reports, has, yes") | the lead's own word (no sign-off needed) |
+| 2 | `clauses.affirm[1]` | `"reports"` | lead | The clinical lead's request of 2026-10-11, verbatim: endorsement verbiage ("e.g. endorses, reports, has, yes") | the lead's own word (no sign-off needed) |
+| 3 | `clauses.affirm[2]` | `"has "` | lead | The clinical lead's request of 2026-10-11, verbatim: endorsement verbiage ("e.g. endorses, reports, has, yes"); written with its boundary space so it never reads inside hash or chase | the lead's own word (no sign-off needed) |
+| 4 | `clauses.affirm[3]` | `"yes"` | lead | The clinical lead's request of 2026-10-11, verbatim: endorsement verbiage ("e.g. endorses, reports, has, yes"); a clauses cue matches as a whole word, so it never reads at the start of "yesterday" | the lead's own word (no sign-off needed) |
+| 5 | `clauses.affirm[4]` | `"endorsed"` | draft | the past-tense form of the lead's "endorses" | **approved** (2026-10-12) |
+| 6 | `clauses.affirm[5]` | `"reported"` | draft | the past-tense form of the lead's "reports" | **approved** (2026-10-12) |
+| 7 | `clauses.affirm[6]` | `"admits"` | draft | chart wording that endorses a finding, like the lead's "endorses" (catalogue LE2 "Admits to phonophobia") | **approved** (2026-10-12) |
+| 8 | `clauses.affirm[7]` | `"positive for"` | draft | review-of-systems wording that endorses a finding (catalogue WR2 "Positive for dizziness, tinnitus") | **approved** (2026-10-12) |
+| 9 | `clauses.affirm[8]` | `"complains of"` | draft | chart wording that endorses a finding, like the lead's "reports" | **approved** (2026-10-12) |
+| 10 | `clauses.affirm[9]` | `"c/o"` | draft | the chart abbreviation of "complains of" | **approved** (2026-10-12) |
+| 11 | `clauses.affirm[10]` | `"describes"` | draft | chart wording that endorses a finding, like the lead's "reports" | **approved** (2026-10-12) |
+| 12 | `clauses.affirm[11]` | `"presents with"` | draft | chart wording that endorses a finding (the H&P "who presents with") | **approved** (2026-10-12) |
+| 13 | `clauses.affirm[12]` | `"(+)"` | draft | (review round 2): the chart sign for a present finding, before it ("(+) nausea") or as its label answer ("Nausea: (+)", "Nausea (+)"), as the lead's "endorses" | **approved** (2026-10-12) |
+| 14 | `clauses.affirm[13]` | `"no improvement"` | draft | (review round 2): a failed treatment ("No improvement with antibiotics"): the treatment was given, so the cue affirms what it names and shields the deny cue "no " it holds; r_abx and r_surg no longer read "no" (held-out review) | **approved** (2026-10-12) |
+| 15 | `clauses.affirm[14]` | `"no relief"` | draft | (review round 2): a failed treatment ("No relief from steroid sprays"), as "no improvement" | **approved** (2026-10-12) |
+| 16 | `clauses.affirm[15]` | `"no response"` | draft | (review round 2): a failed treatment ("No response to amoxicillin"), as "no improvement" | **approved** (2026-10-12) |
+| 17 | `clauses.affirm[16]` | `"no benefit"` | draft | (review round 2): a failed treatment ("No benefit after sinus surgery"), as "no improvement" | **approved** (2026-10-12) |
+| 18 | `clauses.affirm[17]` | `"without improvement"` | draft | (review round 2): a failed treatment (held-out H18 "S/p septoplasty and bilateral FESS 2020 without improvement in facial pain"), as "no improvement"; it shields the cue "without" it holds | **approved** (2026-10-12) |
+| 19 | `clauses.affirm[18]` | `"without relief"` | draft | (review round 2): a failed treatment, as "without improvement" | **approved** (2026-10-12) |
+| 20 | `clauses.affirm[19]` | `"without benefit"` | draft | (review round 2): a failed treatment, as "without improvement" | **approved** (2026-10-12) |
+| 21 | `clauses.affirm[20]` | `"failed"` | draft | (review round 2): a failed treatment (held-out H08 "Failed 3 courses of antibiotics") affirms the treatment and ends a denial before it | **approved** (2026-10-12) |
+| 22 | `clauses.affirm[21]` | `"refractory to"` | draft | (review round 2): a failed treatment ("Refractory to two courses of antibiotics"), as "failed" | **approved** (2026-10-12) |
+| 23 | `clauses.affirm[22]` | `"despite"` | draft | (review round 2): a failed treatment (held-out H09 "despite 4 rounds of antibiotics"), as "failed" | **approved** (2026-10-12) |
+| 24 | `clauses.deny[0]` | `"denies"` | lead | The clinical lead's request of 2026-10-11, verbatim: denial verbiage ("e.g. denies, no, lacks, doesn't have") | the lead's own word (no sign-off needed) |
+| 25 | `clauses.deny[1]` | `"no "` | lead | The clinical lead's request of 2026-10-11, verbatim: denial verbiage ("e.g. denies, no, lacks, doesn't have"); written with its boundary space so it never reads inside a word | the lead's own word (no sign-off needed) |
+| 26 | `clauses.deny[2]` | `"lacks"` | lead | The clinical lead's request of 2026-10-11, verbatim: denial verbiage ("e.g. denies, no, lacks, doesn't have") | the lead's own word (no sign-off needed) |
+| 27 | `clauses.deny[3]` | `"doesn't have"` | lead | The clinical lead's request of 2026-10-11, verbatim: denial verbiage ("e.g. denies, no, lacks, doesn't have") | the lead's own word (no sign-off needed) |
+| 28 | `clauses.deny[4]` | `"denied"` | draft | the past-tense form of the lead's "denies" (catalogue LD4, MV3 "Patient denied nausea.") | **approved** (2026-10-12) |
+| 29 | `clauses.deny[5]` | `"negative for"` | draft | review-of-systems denial wording (catalogue WR2 "Negative for headache, nausea, vomiting"); already a negation cue of the lexicon, here also spread over its list | **approved** (2026-10-12) |
+| 30 | `clauses.deny[6]` | `"without"` | draft | chart denial wording (the H&P "EOMI without nystagmus"); already a negation cue of the lexicon, here also spread over its list | **approved** (2026-10-12) |
+| 31 | `clauses.deny[7]` | `"does not have"` | draft | the uncontracted form of the lead's "doesn't have" | **approved** (2026-10-12) |
+| 32 | `clauses.deny[8]` | `"don't have"` | draft | the first-person form of the lead's "doesn't have" (gold v023 "I don't have the world moving around me.") | **approved** (2026-10-12) |
+| 33 | `clauses.deny[9]` | `"do not have"` | draft | the uncontracted first-person form of the lead's "doesn't have" | **approved** (2026-10-12) |
+| 34 | `clauses.deny[10]` | `"haven't had"` | draft | the perfect-tense denial (gold u003 "I haven’t had any nausea."): under wordStart the cue "n't" no longer reads inside "haven't", and "haven't" alone falls outside the 14-character window there | **approved** (2026-10-12) |
+| 35 | `clauses.deny[11]` | `"hasn't had"` | draft | the third-person form of "haven't had" | **approved** (2026-10-12) |
+| 36 | `clauses.deny[12]` | `"(-)"` | draft | (review round 2): the chart sign for an absent finding before it ("(-) aura", held-out H01), a list denial as the lead's "denies"; right after a finding ("Aura: (-)", "Aura (-)") it answers that label only and opens no list (the post cue "(-)" denies it) | **approved** (2026-10-12) |
+| 37 | `clauses.deny[13]` | `"rather than"` | draft | (review round 3): a contrast that denies what follows it ("Hearing loss, abrupt rather than gradual." denies the safe answer "gradual", so the sudden-onset card keeps asking); a list denial as the lead's "denies" | **approved** (2026-10-12) |
+| 38 | `clauses.post[0]` | `" negative"` | draft | a finding followed by "negative" (catalogue PN3 "Positional testing negative."; open question Q2: a negative test then reads as a denial). Review round 1: a post cue denies only a mention right before it (a ":" or one word between, or a list it closes: "Nausea, photophobia: negative.") and only when it closes the item (punctuation or the clause end after it), so "Dizziness with negative Dix-Hallpike." and "Reports pulsatile tinnitus with negative CTA head and neck." no longer deny the finding | **approved** (2026-10-12) |
+| 39 | `clauses.post[1]` | `" denied"` | draft | a finding followed by "denied" ("Positional vertigo denied.") | **approved** (2026-10-12) |
+| 40 | `clauses.post[2]` | `" absent"` | draft | a finding followed by "absent" | **approved** (2026-10-12) |
+| 41 | `clauses.post[3]` | `" not present"` | draft | a finding followed by "not present" | **approved** (2026-10-12) |
+| 42 | `clauses.post[4]` | `": no"` | draft | a label answered no (catalogue PN4 "Photophobia: no."); it must end at a word end, so ": normal" and ": none" do not read as ": no", and it must close the item (review round 1), so "Photophobia: no change since last visit." is no denial | **approved** (2026-10-12) |
+| 43 | `clauses.post[5]` | `": none"` | draft | a label answered none | **approved** (2026-10-12) |
+| 44 | `clauses.post[6]` | `"(-)"` | draft | (review round 2): the chart sign for an absent finding after it ("Aura: (-)", "Aura (-)") | **approved** (2026-10-12) |
+| 45 | `clauses.post[7]` | `": denies"` | draft | (review round 2): a label answered with the lead's own "denies" ("Nausea: denies"); "Nausea: denied" is the post cue " denied" | **approved** (2026-10-12) |
+| 46 | `clauses.post[8]` | `" - no"` | draft | (review round 2): a label answered no after a dash ("Nausea - no") | **approved** (2026-10-12) |
+| 47 | `clauses.prefix[0]` | `"non-"` | draft | attribute negation glued to the phrase (the H&P "non-positional"; catalogue PN2): the mention is dropped, never recorded as a denial; a red-flag phrase so negated is not raised | **approved** (2026-10-12) |
+| 48 | `clauses.prefix[1]` | `"non "` | draft | the spaced form of "non-" (the H&P "Weber non lateralizing") | **approved** (2026-10-12) |
+| 49 | `clauses.breaks[0]` | `"but "` | draft | a contrast word ends the clause, so a denial before it does not reach past it (reference n01 "No nausea at all, but the light sensitivity is awful."; catalogue MX1) | **approved** (2026-10-12) |
+| 50 | `clauses.breaks[1]` | `"however"` | draft | a contrast word ends the clause, as "but" does | **approved** (2026-10-12) |
+| 51 | `clauses.breaks[2]` | `"although"` | draft | a contrast word ends the clause, as "but" does | **approved** (2026-10-12) |
+| 52 | `clauses.breaks[3]` | `"though "` | draft | a contrast word ends the clause, as "but" does | **approved** (2026-10-12) |
+| 53 | `clauses.breaks[4]` | `"except "` | draft | an exception ends the clause ("Denies all symptoms except tinnitus") | **approved** (2026-10-12) |
+| 54 | `clauses.breaks[5]` | `"whereas"` | draft | a contrast word ends the clause, as "but" does | **approved** (2026-10-12) |
+| 55 | `clauses.breaks[6]` | `" — "` | draft | a spaced dash ends the clause (reference n07 "It's not the weather, I checked — it's when I skip meals.") | **approved** (2026-10-12) |
+| 56 | `clauses.breaks[7]` | `"other than"` | draft | (review round 3): an exception ends the clause, as "except" does ("Denies complaints other than nosebleeds." and "Negative for everything other than fever." raise their flags) | **approved** (2026-10-12) |
+| 57 | `clauses.breaks[8]` | `"besides"` | draft | (review round 3): an exception ends the clause, as "except" does | **approved** (2026-10-12) |
+| 58 | `clauses.breaks[9]` | `"apart from"` | draft | (review round 3): an exception ends the clause, as "except" does | **approved** (2026-10-12) |
+| 59 | `clauses.scopeEnd[0]` | `"with"` | draft | (review round 1): a word that ends a list denial before the mention ("Vertigo without hearing loss, with double vision and slurred speech."; "Vertigo attacks without hearing loss, associated with nausea and photophobia."): a mention past it is set aside (no capture) and a red flag past it is raised | **approved** (2026-10-12) |
+| 60 | `clauses.scopeEnd[1]` | `"so"` | draft | (review round 1): a word that ends a list denial ("No interpreter available, so nausea, photophobia and tinnitus were not reviewed." records none of them as "no") | **approved** (2026-10-12) |
+| 61 | `clauses.scopeEnd[2]` | `"now"` | draft | (review round 1): a word that ends a list denial ("Migraine without aura, now with worst headache of her life." raises rf_thunderclap; "No relief with meclizine, now with pulsatile tinnitus." raises rf_pulsatile) | **approved** (2026-10-12) |
+| 62 | `clauses.scopeEnd[3]` | `"until"` | draft | (review round 1): a word that ends a list denial ("No hearing complaints until 2 weeks ago, now whooshing in right ear." raises rf_pulsatile) | **approved** (2026-10-12) |
+| 63 | `clauses.scopeEnd[4]` | `"is"` | draft | (review round 1): a verb after a denied list starts a new statement ("No change in hearing, tinnitus is pulsatile." no longer records v_aural "no") | **approved** (2026-10-12) |
+| 64 | `clauses.scopeEnd[5]` | `"are"` | draft | (review round 1): a verb after a denied list starts a new statement, as "is" | **approved** (2026-10-12) |
+| 65 | `clauses.scopeEnd[6]` | `"was"` | draft | (review round 1): a verb after a denied list starts a new statement, as "is" | **approved** (2026-10-12) |
+| 66 | `clauses.scopeEnd[7]` | `"were"` | draft | (review round 1): a verb after a denied list starts a new statement, as "is" | **approved** (2026-10-12) |
+| 67 | `clauses.scopeEnd[8]` | `"to"` | draft | (review round 1): a word that ends a list denial ("No time today to review nausea or photophobia." and "No prior audiogram, tinnitus status to be determined." record nothing) | **approved** (2026-10-12) |
+| 68 | `clauses.scopeEnd[9]` | `"from"` | draft | (review round 1): a word that ends a list denial ("Without records from the outside ENT, history of sinus surgery and antibiotic courses unknown." records neither r_surg nor r_abx as "no") | **approved** (2026-10-12) |
+| 69 | `clauses.complement[0]` | `"for"` | draft | (review round 3): a word after which a denial no longer governs the finding, because the denied word is something else ("No workup for pulsatile tinnitus.", "No steroids given for sudden hearing loss.", "No CT for diplopia."): a list denial does not reach past it (the mention is set aside) and no denial lowers a red flag past it; the lexicon's 14-character window still reaches past it for a yes/no item, as in release 0.4.6 | **approved** (2026-10-12) |
+| 70 | `clauses.complement[1]` | `"in"` | draft | (review round 3): as "for" ("No change in pulsatile tinnitus since last visit." raises rf_pulsatile and no longer records v_aural "no") | **approved** (2026-10-12) |
+| 71 | `clauses.complement[2]` | `"about"` | draft | (review round 3): as "for" ("No concerns raised about sudden hearing loss." raises rf_ssnhl) | **approved** (2026-10-12) |
+| 72 | `clauses.complement[3]` | `"after"` | draft | (review round 3): as "for" ("No imaging after the epistaxis." raises rf_mass) | **approved** (2026-10-12) |
+| 73 | `clauses.complement[4]` | `"since"` | draft | (review round 3): as "for" ("No follow-up since the double vision began." raises rf_focal) | **approved** (2026-10-12) |
+| 74 | `clauses.complement[5]` | `"on"` | draft | (review round 3): as "for" ("No comment on weight loss." raises rf_systemic) | **approved** (2026-10-12) |
+| 75 | `clauses.complement[6]` | `"none of"` | draft | (review round 3): a quantifier that presupposes what it counts ("None of her epistaxis episodes needed packing." affirms the epistaxis). "of" alone is not a row: "No history of malignancy." and "No episodes of vertigo." stay denials | **approved** (2026-10-12) |
+| 76 | `clauses.mask[0]` | `"aural"` | draft | "aura" (m_aura) inside "aural" is no hit (the H&P "aural fullness" captured m_aura; catalogue SB1) | **struck** (2026-10-12) |
+| 77 | `clauses.mask[1]` | `"number"` | draft | "numb" (n_burn) inside "number" is no hit ("number of episodes" would read as numbness) | **approved** (2026-10-12) |
+| 78 | `clauses.mask[2]` | `"ct showed"` | draft | (review round 2): the x_objective phrase "ct showed" names a test, not its result ("CT showed clear sinuses"): masked in chart text, it captures nothing by itself, and the pr_scan_detail card asks (cl_scan_report) | **approved** (2026-10-12) |
+| 79 | `clauses.mask[3]` | `"scope showed"` | draft | (review round 2): the x_objective phrase "scope showed" names a test, not its result: masked in chart text, as "ct showed" | **approved** (2026-10-12) |
+| 80 | `clauses.mask[4]` | `"lund-mackay"` | draft | (review round 2): the x_objective phrase "lund-mackay" names a score, not its value (held-out H09 "Lund-Mackay 0" was read as objective inflammation and set against "no polyps"): masked in chart text, as "ct showed" | **approved** (2026-10-12) |
+| 81 | `clauses.mask[5]` | `"audiogram showed"` | draft | (review round 2): the x_lowfreq phrase "audiogram showed" names a test, not its result: masked in chart text, it captures nothing by itself, and the pr_audiogram card asks (cl_audiogram_report) | **approved** (2026-10-12) |
+| 82 | `clauses.mask[6]` | `"hearing test showed"` | draft | (review round 2): the x_lowfreq phrase "hearing test showed" names a test, not its result: masked in chart text, as "audiogram showed" | **approved** (2026-10-12) |
+| 83 | `clauses.mask[7]` | `"hay fever"` | draft | (review round 2): the chart red-flag phrase "fever" (clauses.redFlags rf_systemic) inside "hay fever" (seasonal allergic rhinitis) is no hit | **approved** (2026-10-12) |
+| 84 | `clauses.hedge[0]` | `"reportedly"` | draft | hedged wording records nothing and asks (spec 0.4.7 §3.7; the H&P "Reportedly has known headaches."; catalogue HG1) | **approved** (2026-10-12) |
+| 85 | `clauses.hedge[1]` | `"possible"` | draft | hedging chart wording (spec example; catalogue HG2 "Possible visual aura") | **approved** (2026-10-12) |
+| 86 | `clauses.hedge[2]` | `"possibly"` | draft | hedging chart wording (spec example) | **approved** (2026-10-12) |
+| 87 | `clauses.hedge[3]` | `"probable"` | draft | hedging chart wording (inventory CL-H) | **approved** (2026-10-12) |
+| 88 | `clauses.hedge[4]` | `"questionable"` | draft | hedging chart wording (spec example) | **approved** (2026-10-12) |
+| 89 | `clauses.hedge[5]` | `"suspected"` | draft | hedging chart wording (inventory CL-H) | **approved** (2026-10-12) |
+| 90 | `clauses.hedge[6]` | `"unclear whether"` | draft | hedging chart wording (spec example; catalogue HG3) | **approved** (2026-10-12) |
+| 91 | `clauses.hedge[7]` | `"unclear if"` | draft | hedging chart wording, as "unclear whether" | **approved** (2026-10-12) |
+| 92 | `clauses.hedge[8]` | `"rule out"` | draft | a differential to rule out is not a finding (inventory CL-H) | **approved** (2026-10-12) |
+| 93 | `clauses.hedge[9]` | `"r/o"` | draft | the chart abbreviation of "rule out" | **approved** (2026-10-12) |
+| 94 | `clauses.hedge[10]` | `"?"` | draft | a question mark after a finding (spec example; inventory CL-H); in patient speech a question also hedges its clause (gold w019) | **approved** (2026-10-12) |
+| 95 | `clauses.hedge[11]` | `"maybe"` | draft | (review round 2): hedging chart wording (held-out H23 "Nausea maybe sometimes.") | **approved** (2026-10-12) |
+| 96 | `clauses.hedge[12]` | `"unsure"` | draft | (review round 2): hedging chart wording (held-out H23 "? aura - pt unsure") | **approved** (2026-10-12) |
+| 97 | `clauses.hedge[13]` | `"uncertain"` | draft | (review round 2): hedging chart wording, as "unsure" | **approved** (2026-10-12) |
+| 98 | `clauses.hedge[14]` | `"not sure"` | draft | (review round 2): hedging chart wording, as "unsure"; it shields the negation cue "not " it holds, so a hedged red flag ("not sure if pulsatile") is never lowered | **approved** (2026-10-12) |
+| 99 | `clauses.hedge[15]` | `"might"` | draft | (review round 2): hedging chart wording ("might have nausea") | **approved** (2026-10-12) |
+| 100 | `clauses.placeholder[0]` | `"***"` | draft | the Epic wildcard, unfilled template text (the H&P holds three; inventory CL-P1; catalogue PL1, PL2) | **approved** (2026-10-12) |
+| 101 | `clauses.placeholder[1]` | `"___"` | draft | a blank template line (inventory CL-P1) | **approved** (2026-10-12) |
+| 102 | `clauses.placeholder[2]` | `"[ ]"` | draft | (review round 2): an empty checkbox ("Nausea: [ ]", held-out H24): the line is unanswered, nothing is captured, and the template-text notice shows | **approved** (2026-10-12) |
+| 103 | `clauses.placeholder[3]` | `"[]"` | draft | (review round 2): an empty checkbox written without its space, as "[ ]" | **approved** (2026-10-12) |
+| 104 | `clauses.thirdParty[0]` | `"mother"` | draft | a relative named in chart wording (no "my"), added to the attribution gate (catalogue FH3 "Sister with vertigo and hearing loss.") | **approved** (2026-10-12) |
+| 105 | `clauses.thirdParty[1]` | `"father"` | draft | a relative named in chart wording (no "my"), added to the attribution gate (catalogue FH3 "Sister with vertigo and hearing loss.") | **approved** (2026-10-12) |
+| 106 | `clauses.thirdParty[2]` | `"mom "` | draft | a relative named in chart wording (no "my"), added to the attribution gate (catalogue FH3 "Sister with vertigo and hearing loss.") | **approved** (2026-10-12) |
+| 107 | `clauses.thirdParty[3]` | `"dad "` | draft | a relative named in chart wording (no "my"), added to the attribution gate (catalogue FH3 "Sister with vertigo and hearing loss.") | **approved** (2026-10-12) |
+| 108 | `clauses.thirdParty[4]` | `"sister"` | draft | a relative named in chart wording (no "my"), added to the attribution gate (catalogue FH3 "Sister with vertigo and hearing loss.") | **approved** (2026-10-12) |
+| 109 | `clauses.thirdParty[5]` | `"brother"` | draft | a relative named in chart wording (no "my"), added to the attribution gate (catalogue FH3 "Sister with vertigo and hearing loss.") | **approved** (2026-10-12) |
+| 110 | `clauses.thirdParty[6]` | `"daughter"` | draft | a relative named in chart wording (no "my"), added to the attribution gate (catalogue FH3 "Sister with vertigo and hearing loss.") | **approved** (2026-10-12) |
+| 111 | `clauses.thirdParty[7]` | `"son "` | draft | a relative named in chart wording (no "my"), added to the attribution gate (catalogue FH3 "Sister with vertigo and hearing loss.") | **approved** (2026-10-12) |
+| 112 | `clauses.thirdParty[8]` | `"parents"` | draft | a relative named in chart wording (no "my"), added to the attribution gate (catalogue FH3 "Sister with vertigo and hearing loss.") | **approved** (2026-10-12) |
+| 113 | `clauses.thirdParty[9]` | `"sibling"` | draft | a relative named in chart wording (no "my"), added to the attribution gate (catalogue FH3 "Sister with vertigo and hearing loss.") | **approved** (2026-10-12) |
+| 114 | `clauses.thirdParty[10]` | `"aunt"` | draft | a relative named in chart wording (no "my"), added to the attribution gate (catalogue FH3 "Sister with vertigo and hearing loss.") | **approved** (2026-10-12) |
+| 115 | `clauses.thirdParty[11]` | `"uncle "` | draft | a relative named in chart wording (no "my"), added to the attribution gate (catalogue FH3 "Sister with vertigo and hearing loss.") | **approved** (2026-10-12) |
+| 116 | `clauses.thirdParty[12]` | `"cousin"` | draft | a relative named in chart wording (no "my"), added to the attribution gate (catalogue FH3 "Sister with vertigo and hearing loss.") | **approved** (2026-10-12) |
+| 117 | `clauses.thirdParty[13]` | `"grandmother"` | draft | a relative named in chart wording (no "my"), added to the attribution gate (catalogue FH3 "Sister with vertigo and hearing loss.") | **approved** (2026-10-12) |
+| 118 | `clauses.thirdParty[14]` | `"grandfather"` | draft | a relative named in chart wording (no "my"), added to the attribution gate (catalogue FH3 "Sister with vertigo and hearing loss.") | **approved** (2026-10-12) |
+| 119 | `clauses.thirdParty[15]` | `"family history of"` | draft | chart wording about the family (the H&P "No family history of hearing loss."; inventory CL-04): added to the attribution gate | **approved** (2026-10-12) |
+| 120 | `clauses.thirdParty[16]` | `"family hx of"` | draft | the chart abbreviation of "family history of" | **approved** (2026-10-12) |
+| 121 | `clauses.chartIgnoreThirdParty[0]` | `"her "` | draft | in typed chart text the shipped attribution cue "her " names the patient when a finding follows it ("Her tinnitus is bilateral."), so it does not gate there; followed by anything else it gates as before (review round 1: "Her husband has tinnitus.", "Her friend has vertigo lasting hours." and "Her children have tinnitus." stay someone else's); spoken lines still read it, and a relative ("Her mother has …", a clauses.thirdParty cue) still gates | **approved** (2026-10-12) |
+| 122 | `clauses.chartIgnoreThirdParty[1]` | `"his "` | draft | in typed chart text the shipped attribution cue "his " names the patient when a finding follows it ("His dizziness is episodic."), so it does not gate there; followed by anything else it gates as before (review round 1: "His wife reports dizziness." stays hers); spoken lines still read it, and a relative ("His father has …") still gates | **approved** (2026-10-12) |
+| 123 | `clauses.sections.exam[0]` | `"physical exam"` | draft | an exam header (the H&P "PHYSICAL EXAM:"): only the examItems capture under it (none since review round 2: examItems is empty) (catalogue EX1 shows such a line without its header) | **approved** (2026-10-12) |
+| 124 | `clauses.sections.exam[1]` | `"physical examination"` | draft | an exam header, as "physical exam" | **approved** (2026-10-12) |
+| 125 | `clauses.sections.exam[2]` | `"exam"` | draft | an exam header, as "physical exam" | **approved** (2026-10-12) |
+| 126 | `clauses.sections.exam[3]` | `"examination"` | draft | an exam header, as "physical exam" | **approved** (2026-10-12) |
+| 127 | `clauses.sections.exam[4]` | `"otoscopic exam"` | draft | an exam header (the H&P "OTOSCOPIC EXAM", an all-capitals line that would otherwise end the exam section) | **approved** (2026-10-12) |
+| 128 | `clauses.sections.exam[5]` | `"otoscopy"` | draft | an exam header, as "physical exam" | **approved** (2026-10-12) |
+| 129 | `clauses.sections.exam[6]` | `"objective"` | draft | an exam header, as "physical exam" | **approved** (2026-10-12) |
+| 130 | `clauses.sections.exam[7]` | `"vital signs"` | draft | an exam header, as "physical exam" | **approved** (2026-10-12) |
+| 131 | `clauses.sections.family[0]` | `"family history"` | draft | a family-history header (the H&P "FAMILY HISTORY:"; catalogue WR4): every capture under it is third-party gated except a thirdPartyExempt entry (m_fhx) | **approved** (2026-10-12) |
+| 132 | `clauses.sections.family[1]` | `"family hx"` | draft | a family-history header, as "family history" | **approved** (2026-10-12) |
+| 133 | `clauses.sections.family[2]` | `"fhx"` | draft | a family-history header, as "family history" | **approved** (2026-10-12) |
+| 134 | `clauses.sections.skip[0]` | `"allergies"` | draft | an allergy list (the H&P "ALLERGIES:"; catalogue PH2 "ALLERGIES: penicillin, amoxicillin (rash)."): nothing captures under it | **approved** (2026-10-12) |
+| 135 | `clauses.sections.skip[1]` | `"allergy"` | draft | an allergy or medication list header, as "allergies" / "medications" | **approved** (2026-10-12) |
+| 136 | `clauses.sections.skip[2]` | `"medications"` | draft | a medication list (the H&P "Medications"): nothing captures under it (a listed drug is not a failed course) | **approved** (2026-10-12) |
+| 137 | `clauses.sections.skip[3]` | `"medication"` | draft | an allergy or medication list header, as "allergies" / "medications" | **approved** (2026-10-12) |
+| 138 | `clauses.sections.skip[4]` | `"meds"` | draft | an allergy or medication list header, as "allergies" / "medications" | **approved** (2026-10-12) |
+| 139 | `clauses.sections.skip[5]` | `"current medications"` | draft | an allergy or medication list header, as "allergies" / "medications" | **approved** (2026-10-12) |
+| 140 | `clauses.sections.read[0]` | `"hpi"` | draft | (review round 1): a history header, read normally; it ends an exam, family-history or skip section ("PHYSICAL EXAM: … HPI"), while an exam's own sub-labels ("HEENT:", "Neuro:") no longer end the exam | **approved** (2026-10-12) |
+| 141 | `clauses.sections.read[1]` | `"history of present illness"` | draft | (review round 1): a history header, read normally, as "hpi" | **approved** (2026-10-12) |
+| 142 | `clauses.sections.read[2]` | `"interval history"` | draft | (review round 1): a history header, read normally, as "hpi" | **approved** (2026-10-12) |
+| 143 | `clauses.sections.read[3]` | `"ros"` | draft | (review round 1): the review-of-systems header (the H&P "ROS:"), read normally, as "hpi" | **approved** (2026-10-12) |
+| 144 | `clauses.sections.read[4]` | `"review of systems"` | draft | (review round 1): the review-of-systems header, read normally, as "hpi" | **approved** (2026-10-12) |
+| 145 | `clauses.sections.read[5]` | `"past medical history"` | draft | (review round 1): the past-medical-history header (the H&P "PAST MEDICAL HISTORY:"), read normally, as "hpi" | **approved** (2026-10-12) |
+| 146 | `clauses.sections.read[6]` | `"pmh"` | draft | (review round 1): the past-medical-history abbreviation, read normally, as "hpi" | **approved** (2026-10-12) |
+| 147 | `clauses.sections.read[7]` | `"past surgical history"` | draft | (review round 1): the past-surgical-history header, read normally (a sinus surgery listed there is r_surg), as "hpi" | **approved** (2026-10-12) |
+| 148 | `clauses.sections.read[8]` | `"psh"` | draft | (review round 1): the past-surgical-history abbreviation, read normally, as "hpi" | **approved** (2026-10-12) |
+| 149 | `clauses.sections.read[9]` | `"social history"` | draft | (review round 1): the social-history header, read normally, as "hpi" | **approved** (2026-10-12) |
+| 150 | `clauses.sections.read[10]` | `"assessment"` | draft | (review round 1): an assessment header, read normally; after an exam it ends the exam ("PHYSICAL EXAM: … ASSESSMENT: Vestibular migraine with photophobia.") | **approved** (2026-10-12) |
+| 151 | `clauses.sections.read[11]` | `"plan"` | draft | (review round 1): a plan header, read normally, as "assessment" | **approved** (2026-10-12) |
+| 152 | `clauses.sections.read[12]` | `"assessment and plan"` | draft | (review round 1): an assessment-and-plan header, read normally, as "assessment" | **approved** (2026-10-12) |
+| 153 | `clauses.sections.read[13]` | `"assessment/plan"` | draft | (review round 1): an assessment-and-plan header ("Assessment/Plan:"), read normally, as "assessment" | **approved** (2026-10-12) |
+| 154 | `clauses.sections.read[14]` | `"a/p"` | draft | (review round 1): the assessment-and-plan abbreviation, read normally, as "assessment" | **approved** (2026-10-12) |
+| 155 | `clauses.sections.read[15]` | `"impression"` | draft | (review round 1): an impression header, read normally, as "assessment" | **approved** (2026-10-12) |
+| 156 | `clauses.sections.read[16]` | `"impression and plan"` | draft | (review round 1): an impression-and-plan header, read normally, as "assessment" | **approved** (2026-10-12) |
+| 157 | `clauses.redFlags.rf_thunderclap[0]` | `"sudden severe headache"` | draft | (review round 2): chart wording of rf_thunderclap, whose text is "Headache that reached maximum intensity within seconds to a minute"; read in typed chart text only | **approved** (2026-10-12) |
+| 158 | `clauses.redFlags.rf_thunderclap[1]` | `"sudden onset headache"` | draft | (review round 2): chart wording of rf_thunderclap, whose text is "Headache that reached maximum intensity within seconds to a minute"; read in typed chart text only | **struck** (2026-10-12) |
+| 159 | `clauses.redFlags.rf_thunderclap[2]` | `"sudden-onset headache"` | draft | (review round 2): chart wording of rf_thunderclap, whose text is "Headache that reached maximum intensity within seconds to a minute"; read in typed chart text only | **struck** (2026-10-12) |
+| 160 | `clauses.redFlags.rf_thunderclap[3]` | `"sudden onset severe headache"` | draft | (review round 2): chart wording of rf_thunderclap, whose text is "Headache that reached maximum intensity within seconds to a minute"; read in typed chart text only | **approved** (2026-10-12) |
+| 161 | `clauses.redFlags.rf_thunderclap[4]` | `"sudden-onset severe headache"` | draft | (review round 2): chart wording of rf_thunderclap, whose text is "Headache that reached maximum intensity within seconds to a minute"; read in typed chart text only | **approved** (2026-10-12) |
+| 162 | `clauses.redFlags.rf_thunderclap[5]` | `"maximal at onset"` | draft | (review round 2): chart wording of rf_thunderclap, whose text is "Headache that reached maximum intensity within seconds to a minute"; read in typed chart text only | **approved** (2026-10-12) |
+| 163 | `clauses.redFlags.rf_thunderclap[6]` | `"maximum intensity within"` | draft | (review round 2): chart wording of rf_thunderclap, whose text is "Headache that reached maximum intensity within seconds to a minute"; read in typed chart text only | **approved** (2026-10-12) |
+| 164 | `clauses.redFlags.rf_thunderclap[7]` | `"peak intensity within"` | draft | (review round 2): chart wording of rf_thunderclap, whose text is "Headache that reached maximum intensity within seconds to a minute"; read in typed chart text only | **approved** (2026-10-12) |
+| 165 | `clauses.redFlags.rf_focal[0]` | `"diplopia"` | draft | (review round 2): chart wording of rf_focal, whose text is "New focal deficit — weakness, numbness, speech or swallowing change, facial droop, or persistent double vision"; read in typed chart text only | **approved** (2026-10-12) |
+| 166 | `clauses.redFlags.rf_focal[1]` | `"facial droop"` | draft | (review round 2): chart wording of rf_focal, whose text is "New focal deficit — weakness, numbness, speech or swallowing change, facial droop, or persistent double vision"; the shipped phrase "droop" inside it is part of it, so "No vision loss, diplopia, facial droop, weakness, or slurred speech." still denies the flag; read in typed chart text only | **approved** (2026-10-12) |
+| 167 | `clauses.redFlags.rf_focal[2]` | `"facial weakness"` | draft | (review round 2): chart wording of rf_focal, whose text is "New focal deficit — weakness, numbness, speech or swallowing change, facial droop, or persistent double vision"; read in typed chart text only | **approved** (2026-10-12) |
+| 168 | `clauses.redFlags.rf_focal[3]` | `"facial numbness"` | draft | (review round 2): chart wording of rf_focal, whose text is "New focal deficit — weakness, numbness, speech or swallowing change, facial droop, or persistent double vision"; read in typed chart text only | **struck** (2026-10-12) |
+| 169 | `clauses.redFlags.rf_focal[4]` | `"dysarthria"` | draft | (review round 2): chart wording of rf_focal, whose text is "New focal deficit — weakness, numbness, speech or swallowing change, facial droop, or persistent double vision"; read in typed chart text only | **approved** (2026-10-12) |
+| 170 | `clauses.redFlags.rf_focal[5]` | `"aphasia"` | draft | (review round 2): chart wording of rf_focal, whose text is "New focal deficit — weakness, numbness, speech or swallowing change, facial droop, or persistent double vision"; read in typed chart text only | **struck** (2026-10-12) |
+| 171 | `clauses.redFlags.rf_focal[6]` | `"dysphagia"` | draft | (review round 2): chart wording of rf_focal, whose text is "New focal deficit — weakness, numbness, speech or swallowing change, facial droop, or persistent double vision"; read in typed chart text only | **approved** (2026-10-12) |
+| 172 | `clauses.redFlags.rf_focal[7]` | `"hemiparesis"` | draft | (review round 2): chart wording of rf_focal, whose text is "New focal deficit — weakness, numbness, speech or swallowing change, facial droop, or persistent double vision"; read in typed chart text only | **approved** (2026-10-12) |
+| 173 | `clauses.redFlags.rf_focal[8]` | `"unilateral weakness"` | draft | (review round 2): chart wording of rf_focal, whose text is "New focal deficit — weakness, numbness, speech or swallowing change, facial droop, or persistent double vision"; read in typed chart text only | **approved** (2026-10-12) |
+| 174 | `clauses.redFlags.rf_focal[9]` | `"focal weakness"` | draft | (review round 2): chart wording of rf_focal, whose text is "New focal deficit — weakness, numbness, speech or swallowing change, facial droop, or persistent double vision"; read in typed chart text only | **approved** (2026-10-12) |
+| 175 | `clauses.redFlags.rf_focal[10]` | `"focal deficit"` | draft | (review round 2): chart wording of rf_focal, whose text is "New focal deficit — weakness, numbness, speech or swallowing change, facial droop, or persistent double vision"; read in typed chart text only | **approved** (2026-10-12) |
+| 176 | `clauses.redFlags.rf_focal[11]` | `"focal neurologic deficit"` | draft | (review round 2): chart wording of rf_focal, whose text is "New focal deficit — weakness, numbness, speech or swallowing change, facial droop, or persistent double vision"; read in typed chart text only | **approved** (2026-10-12) |
+| 177 | `clauses.redFlags.rf_focal[12]` | `"slurred speech"` | draft | (review round 3): the flag's own ask ("Any new weakness, numbness, slurred speech, or double vision?"); one phrase, so a list of negatives ending "or slurred speech" denies it now that a later list item must be the bare flag phrase | **approved** (2026-10-12) |
+| 178 | `clauses.redFlags.rf_vision[0]` | `"vision loss"` | draft | (review round 2): chart wording of rf_vision, whose text is "Progressive vision loss, transient visual obscurations, or known papilloedema"; read in typed chart text only | **struck** (2026-10-12) |
+| 179 | `clauses.redFlags.rf_vision[1]` | `"visual loss"` | draft | (review round 2): chart wording of rf_vision, whose text is "Progressive vision loss, transient visual obscurations, or known papilloedema"; read in typed chart text only | **struck** (2026-10-12) |
+| 180 | `clauses.redFlags.rf_vision[2]` | `"loss of vision"` | draft | (review round 2): chart wording of rf_vision, whose text is "Progressive vision loss, transient visual obscurations, or known papilloedema"; read in typed chart text only | **approved** (2026-10-12) |
+| 181 | `clauses.redFlags.rf_vision[3]` | `"visual obscuration"` | draft | (review round 2): chart wording of rf_vision, whose text is "Progressive vision loss, transient visual obscurations, or known papilloedema"; read in typed chart text only | **struck** (2026-10-12) |
+| 182 | `clauses.redFlags.rf_vision[4]` | `"papilledema"` | draft | (review round 2): chart wording of rf_vision, whose text is "Progressive vision loss, transient visual obscurations, or known papilloedema"; read in typed chart text only | **approved** (2026-10-12) |
+| 183 | `clauses.redFlags.rf_vision[5]` | `"papilloedema"` | draft | (review round 2): chart wording of rf_vision, whose text is "Progressive vision loss, transient visual obscurations, or known papilloedema"; read in typed chart text only | **approved** (2026-10-12) |
+| 184 | `clauses.redFlags.rf_gca[0]` | `"scalp tenderness"` | draft | (review round 2): chart wording of rf_gca, whose text is "Age over 50 with scalp tenderness, jaw claudication, or visual symptoms" (held-out H20 "scalp tenderness when brushing her hair"); read in typed chart text only | **approved** (2026-10-12) |
+| 185 | `clauses.redFlags.rf_gca[1]` | `"jaw claudication"` | draft | (review round 2): chart wording of rf_gca, whose text is "Age over 50 with scalp tenderness, jaw claudication, or visual symptoms"; read in typed chart text only | **approved** (2026-10-12) |
+| 186 | `clauses.redFlags.rf_gca[2]` | `"jaw pain with chewing"` | draft | (review round 2): chart wording of rf_gca, whose text is "Age over 50 with scalp tenderness, jaw claudication, or visual symptoms"; read in typed chart text only | **struck** (2026-10-12) |
+| 187 | `clauses.redFlags.rf_gca[3]` | `"jaw pain when chewing"` | draft | (review round 2): chart wording of rf_gca, whose text is "Age over 50 with scalp tenderness, jaw claudication, or visual symptoms"; read in typed chart text only | **struck** (2026-10-12) |
+| 188 | `clauses.redFlags.rf_gca[4]` | `"jaw pain on chewing"` | draft | (review round 2): chart wording of rf_gca, whose text is "Age over 50 with scalp tenderness, jaw claudication, or visual symptoms"; read in typed chart text only | **struck** (2026-10-12) |
+| 189 | `clauses.redFlags.rf_gca[5]` | `"temporal artery tenderness"` | draft | (review round 2): chart wording of rf_gca, whose text is "Age over 50 with scalp tenderness, jaw claudication, or visual symptoms" (pr_temporal_artery's option "Tender or pulseless" raises the flag); read in typed chart text only | **approved** (2026-10-12) |
+| 190 | `clauses.redFlags.rf_orbital[0]` | `"periorbital swelling"` | draft | (review round 2): chart wording of rf_orbital, whose text is "Orbital or periorbital swelling, proptosis, eye pain, or restricted eye movement" (held-out H21 "Left periorbital swelling"); read in typed chart text only | **struck** (2026-10-12) |
+| 191 | `clauses.redFlags.rf_orbital[1]` | `"periorbital edema"` | draft | (review round 2): chart wording of rf_orbital, whose text is "Orbital or periorbital swelling, proptosis, eye pain, or restricted eye movement"; read in typed chart text only | **struck** (2026-10-12) |
+| 192 | `clauses.redFlags.rf_orbital[2]` | `"periorbital oedema"` | draft | (review round 2): chart wording of rf_orbital, whose text is "Orbital or periorbital swelling, proptosis, eye pain, or restricted eye movement"; read in typed chart text only | **struck** (2026-10-12) |
+| 193 | `clauses.redFlags.rf_orbital[3]` | `"orbital swelling"` | draft | (review round 2): chart wording of rf_orbital, whose text is "Orbital or periorbital swelling, proptosis, eye pain, or restricted eye movement"; read in typed chart text only | **struck** (2026-10-12) |
+| 194 | `clauses.redFlags.rf_orbital[4]` | `"proptosis"` | draft | (review round 2): chart wording of rf_orbital, whose text is "Orbital or periorbital swelling, proptosis, eye pain, or restricted eye movement"; read in typed chart text only | **approved** (2026-10-12) |
+| 195 | `clauses.redFlags.rf_orbital[5]` | `"eye pain"` | draft | (review round 2): chart wording of rf_orbital, whose text is "Orbital or periorbital swelling, proptosis, eye pain, or restricted eye movement"; the flag's own words ("eye pain"); it raises the flag on any undenied mention, for the lead to confirm; read in typed chart text only | **struck** (2026-10-12) |
+| 196 | `clauses.redFlags.rf_orbital[6]` | `"pain with eye movement"` | draft | (review round 2): chart wording of rf_orbital, whose text is "Orbital or periorbital swelling, proptosis, eye pain, or restricted eye movement"; read in typed chart text only | **struck** (2026-10-12) |
+| 197 | `clauses.redFlags.rf_orbital[7]` | `"pain on eye movement"` | draft | (review round 2): chart wording of rf_orbital, whose text is "Orbital or periorbital swelling, proptosis, eye pain, or restricted eye movement" (held-out H21 "pain on eye movement"); read in typed chart text only | **struck** (2026-10-12) |
+| 198 | `clauses.redFlags.rf_orbital[8]` | `"painful eye movement"` | draft | (review round 2): chart wording of rf_orbital, whose text is "Orbital or periorbital swelling, proptosis, eye pain, or restricted eye movement"; read in typed chart text only | **approved** (2026-10-12) |
+| 199 | `clauses.redFlags.rf_orbital[9]` | `"restricted eye movement"` | draft | (review round 2): chart wording of rf_orbital, whose text is "Orbital or periorbital swelling, proptosis, eye pain, or restricted eye movement"; read in typed chart text only | **approved** (2026-10-12) |
+| 200 | `clauses.redFlags.rf_orbital[10]` | `"ophthalmoplegia"` | draft | (review round 2): chart wording of rf_orbital, whose text is "Orbital or periorbital swelling, proptosis, eye pain, or restricted eye movement"; read in typed chart text only | **approved** (2026-10-12) |
+| 201 | `clauses.redFlags.rf_ssnhl[0]` | `"sudden hearing loss"` | draft | (review round 2): chart wording of rf_ssnhl, whose text is "Hearing dropped suddenly, over hours to a day, within the last 30 days" (held-out H11 "sudden hearing loss in the left ear"); read in typed chart text only | **approved** (2026-10-12) |
+| 202 | `clauses.redFlags.rf_ssnhl[1]` | `"sudden sensorineural"` | draft | (review round 2): chart wording of rf_ssnhl, whose text is "Hearing dropped suddenly, over hours to a day, within the last 30 days"; read in typed chart text only | **approved** (2026-10-12) |
+| 203 | `clauses.redFlags.rf_ssnhl[2]` | `"ssnhl"` | draft | (review round 2): chart wording of rf_ssnhl, whose text is "Hearing dropped suddenly, over hours to a day, within the last 30 days"; read in typed chart text only | **approved** (2026-10-12) |
+| 204 | `clauses.redFlags.rf_ssnhl[3]` | `"sudden snhl"` | draft | (review round 2): chart wording of rf_ssnhl, whose text is "Hearing dropped suddenly, over hours to a day, within the last 30 days"; read in typed chart text only | **approved** (2026-10-12) |
+| 205 | `clauses.redFlags.rf_ssnhl[4]` | `"sudden deafness"` | draft | (review round 2): chart wording of rf_ssnhl, whose text is "Hearing dropped suddenly, over hours to a day, within the last 30 days"; read in typed chart text only | **approved** (2026-10-12) |
+| 206 | `clauses.redFlags.rf_ssnhl[5]` | `"sudden onset hearing loss"` | draft | (review round 2): chart wording of rf_ssnhl, whose text is "Hearing dropped suddenly, over hours to a day, within the last 30 days"; read in typed chart text only | **approved** (2026-10-12) |
+| 207 | `clauses.redFlags.rf_ssnhl[6]` | `"sudden-onset hearing loss"` | draft | (review round 2): chart wording of rf_ssnhl, whose text is "Hearing dropped suddenly, over hours to a day, within the last 30 days"; read in typed chart text only | **approved** (2026-10-12) |
+| 208 | `clauses.redFlags.rf_ssnhl[7]` | `"sudden loss of hearing"` | draft | (review round 2): chart wording of rf_ssnhl, whose text is "Hearing dropped suddenly, over hours to a day, within the last 30 days"; read in typed chart text only | **approved** (2026-10-12) |
+| 209 | `clauses.redFlags.rf_ssnhl[8]` | `"sudden drop in hearing"` | draft | (review round 2): chart wording of rf_ssnhl, whose text is "Hearing dropped suddenly, over hours to a day, within the last 30 days"; read in typed chart text only | **approved** (2026-10-12) |
+| 210 | `clauses.redFlags.rf_ssnhl[9]` | `"sudden decrease in hearing"` | draft | (review round 2): chart wording of rf_ssnhl, whose text is "Hearing dropped suddenly, over hours to a day, within the last 30 days"; read in typed chart text only | **approved** (2026-10-12) |
+| 211 | `clauses.redFlags.rf_asym[0]` | `"unilateral hearing loss"` | draft | (review round 2): chart wording of rf_asym, whose text is "Hearing loss or tinnitus consistently in one ear only"; read in typed chart text only | **approved** (2026-10-12) |
+| 212 | `clauses.redFlags.rf_asym[1]` | `"unilateral tinnitus"` | draft | (review round 2): chart wording of rf_asym, whose text is "Hearing loss or tinnitus consistently in one ear only"; read in typed chart text only | **approved** (2026-10-12) |
+| 213 | `clauses.redFlags.rf_asym[2]` | `"unilateral snhl"` | draft | (review round 2): chart wording of rf_asym, whose text is "Hearing loss or tinnitus consistently in one ear only"; read in typed chart text only | **approved** (2026-10-12) |
+| 214 | `clauses.redFlags.rf_asym[3]` | `"unilateral sensorineural"` | draft | (review round 2): chart wording of rf_asym, whose text is "Hearing loss or tinnitus consistently in one ear only"; read in typed chart text only | **approved** (2026-10-12) |
+| 215 | `clauses.redFlags.rf_asym[4]` | `"asymmetric hearing"` | draft | (review round 2): chart wording of rf_asym, whose text is "Hearing loss or tinnitus consistently in one ear only"; read in typed chart text only | **approved** (2026-10-12) |
+| 216 | `clauses.redFlags.rf_asym[5]` | `"asymmetrical hearing"` | draft | (review round 2): chart wording of rf_asym, whose text is "Hearing loss or tinnitus consistently in one ear only"; read in typed chart text only | **approved** (2026-10-12) |
+| 217 | `clauses.redFlags.rf_asym[6]` | `"asymmetric snhl"` | draft | (review round 2): chart wording of rf_asym, whose text is "Hearing loss or tinnitus consistently in one ear only"; read in typed chart text only | **approved** (2026-10-12) |
+| 218 | `clauses.redFlags.rf_asym[7]` | `"asymmetric sensorineural"` | draft | (review round 2): chart wording of rf_asym, whose text is "Hearing loss or tinnitus consistently in one ear only"; read in typed chart text only | **approved** (2026-10-12) |
+| 219 | `clauses.redFlags.rf_pulsatile[0]` | `"pulse-synchronous"` | draft | (review round 2): chart wording of rf_pulsatile, whose text is "Tinnitus that pulses in time with the heartbeat"; read in typed chart text only | **approved** (2026-10-12) |
+| 220 | `clauses.redFlags.rf_pulsatile[1]` | `"pulse synchronous"` | draft | (review round 2): chart wording of rf_pulsatile, whose text is "Tinnitus that pulses in time with the heartbeat"; read in typed chart text only | **approved** (2026-10-12) |
+| 221 | `clauses.redFlags.rf_pulsatile[2]` | `"pulsing tinnitus"` | draft | (review round 2): chart wording of rf_pulsatile, whose text is "Tinnitus that pulses in time with the heartbeat"; read in typed chart text only | **approved** (2026-10-12) |
+| 222 | `clauses.redFlags.rf_pulsatile[3]` | `"pulsating tinnitus"` | draft | (review round 2): chart wording of rf_pulsatile, whose text is "Tinnitus that pulses in time with the heartbeat"; read in typed chart text only | **approved** (2026-10-12) |
+| 223 | `clauses.redFlags.rf_progressive[0]` | `"steadily worsening"` | draft | (review round 2): chart wording of rf_progressive, whose text is "Headache steadily worsening, or worse on waking, coughing, straining, or lying flat" (the flag's own words; held-out H27 "steadily worsening over 6 weeks"); read in typed chart text only | **approved** (2026-10-12) |
+| 224 | `clauses.redFlags.rf_progressive[1]` | `"worsening headache"` | draft | (review round 2): chart wording of rf_progressive, whose text is "Headache steadily worsening, or worse on waking, coughing, straining, or lying flat"; read in typed chart text only | **approved** (2026-10-12) |
+| 225 | `clauses.redFlags.rf_progressive[2]` | `"progressive headache"` | draft | (review round 2): chart wording of rf_progressive, whose text is "Headache steadily worsening, or worse on waking, coughing, straining, or lying flat"; read in typed chart text only | **approved** (2026-10-12) |
+| 226 | `clauses.redFlags.rf_progressive[3]` | `"worse on waking"` | draft | (review round 2): chart wording of rf_progressive, whose text is "Headache steadily worsening, or worse on waking, coughing, straining, or lying flat"; read in typed chart text only | **approved** (2026-10-12) |
+| 227 | `clauses.redFlags.rf_progressive[4]` | `"worse upon waking"` | draft | (review round 2): chart wording of rf_progressive, whose text is "Headache steadily worsening, or worse on waking, coughing, straining, or lying flat"; read in typed chart text only | **approved** (2026-10-12) |
+| 228 | `clauses.redFlags.rf_progressive[5]` | `"worse with cough"` | draft | (review round 2): chart wording of rf_progressive, whose text is "Headache steadily worsening, or worse on waking, coughing, straining, or lying flat" (held-out H27 "worse with coughing"; a stem, so "coughing" too); read in typed chart text only | **approved** (2026-10-12) |
+| 229 | `clauses.redFlags.rf_progressive[6]` | `"worse with valsalva"` | draft | (review round 2): chart wording of rf_progressive, whose text is "Headache steadily worsening, or worse on waking, coughing, straining, or lying flat"; read in typed chart text only | **approved** (2026-10-12) |
+| 230 | `clauses.redFlags.rf_progressive[7]` | `"worse with strain"` | draft | (review round 2): chart wording of rf_progressive, whose text is "Headache steadily worsening, or worse on waking, coughing, straining, or lying flat"; read in typed chart text only | **approved** (2026-10-12) |
+| 231 | `clauses.redFlags.rf_progressive[8]` | `"worse lying flat"` | draft | (review round 2): chart wording of rf_progressive, whose text is "Headache steadily worsening, or worse on waking, coughing, straining, or lying flat"; read in typed chart text only | **approved** (2026-10-12) |
+| 232 | `clauses.redFlags.rf_progressive[9]` | `"worse when lying flat"` | draft | (review round 2): chart wording of rf_progressive, whose text is "Headache steadily worsening, or worse on waking, coughing, straining, or lying flat"; read in typed chart text only | **approved** (2026-10-12) |
+| 233 | `clauses.redFlags.rf_progressive[10]` | `"worse when supine"` | draft | (review round 2): chart wording of rf_progressive, whose text is "Headache steadily worsening, or worse on waking, coughing, straining, or lying flat"; read in typed chart text only | **approved** (2026-10-12) |
+| 234 | `clauses.redFlags.rf_progressive[11]` | `"wakes from sleep"` | draft | (review round 2): chart wording of rf_progressive, whose text is "Headache steadily worsening, or worse on waking, coughing, straining, or lying flat"; read in typed chart text only | **approved** (2026-10-12) |
+| 235 | `clauses.redFlags.rf_progressive[12]` | `"waking from sleep"` | draft | (review round 2): chart wording of rf_progressive, whose text is "Headache steadily worsening, or worse on waking, coughing, straining, or lying flat"; read in typed chart text only | **approved** (2026-10-12) |
+| 236 | `clauses.redFlags.rf_progressive[13]` | `"wakes him from sleep"` | draft | (review round 2): chart wording of rf_progressive, whose text is "Headache steadily worsening, or worse on waking, coughing, straining, or lying flat"; read in typed chart text only | **approved** (2026-10-12) |
+| 237 | `clauses.redFlags.rf_progressive[14]` | `"wakes her from sleep"` | draft | (review round 2): chart wording of rf_progressive, whose text is "Headache steadily worsening, or worse on waking, coughing, straining, or lying flat"; read in typed chart text only | **approved** (2026-10-12) |
+| 238 | `clauses.redFlags.rf_progressive[15]` | `"waking him from sleep"` | draft | (review round 2): chart wording of rf_progressive, whose text is "Headache steadily worsening, or worse on waking, coughing, straining, or lying flat" (held-out H27 "now waking him from sleep"); read in typed chart text only | **approved** (2026-10-12) |
+| 239 | `clauses.redFlags.rf_progressive[16]` | `"waking her from sleep"` | draft | (review round 2): chart wording of rf_progressive, whose text is "Headache steadily worsening, or worse on waking, coughing, straining, or lying flat"; read in typed chart text only | **approved** (2026-10-12) |
+| 240 | `clauses.redFlags.rf_progressive[17]` | `"awakens from sleep"` | draft | (review round 2): chart wording of rf_progressive, whose text is "Headache steadily worsening, or worse on waking, coughing, straining, or lying flat"; read in typed chart text only | **approved** (2026-10-12) |
+| 241 | `clauses.redFlags.rf_new50[0]` | `"new headache over 50"` | draft | (review round 2): chart wording of rf_new50, whose text is "First-ever severe headache beginning after age 50" (the team's draft wording; the flag also needs the age, which no phrase can check); read in typed chart text only | **approved** (2026-10-12) |
+| 242 | `clauses.redFlags.rf_new50[1]` | `"new headache after 50"` | draft | (review round 2): chart wording of rf_new50, whose text is "First-ever severe headache beginning after age 50"; read in typed chart text only | **approved** (2026-10-12) |
+| 243 | `clauses.redFlags.rf_new50[2]` | `"new headache after age 50"` | draft | (review round 2): chart wording of rf_new50, whose text is "First-ever severe headache beginning after age 50"; read in typed chart text only | **approved** (2026-10-12) |
+| 244 | `clauses.redFlags.rf_new50[3]` | `"new onset headache after 50"` | draft | (review round 2): chart wording of rf_new50, whose text is "First-ever severe headache beginning after age 50"; read in typed chart text only | **approved** (2026-10-12) |
+| 245 | `clauses.redFlags.rf_new50[4]` | `"new-onset headache after 50"` | draft | (review round 2): chart wording of rf_new50, whose text is "First-ever severe headache beginning after age 50"; read in typed chart text only | **approved** (2026-10-12) |
+| 246 | `clauses.redFlags.rf_new50[5]` | `"new onset headache after age 50"` | draft | (review round 2): chart wording of rf_new50, whose text is "First-ever severe headache beginning after age 50"; read in typed chart text only | **approved** (2026-10-12) |
+| 247 | `clauses.redFlags.rf_new50[6]` | `"new-onset headache after age 50"` | draft | (review round 2): chart wording of rf_new50, whose text is "First-ever severe headache beginning after age 50"; read in typed chart text only | **approved** (2026-10-12) |
+| 248 | `clauses.redFlags.rf_new50[7]` | `"first-ever severe headache"` | draft | (review round 2): chart wording of rf_new50, whose text is "First-ever severe headache beginning after age 50"; read in typed chart text only | **approved** (2026-10-12) |
+| 249 | `clauses.redFlags.rf_new50[8]` | `"first ever severe headache"` | draft | (review round 2): chart wording of rf_new50, whose text is "First-ever severe headache beginning after age 50"; read in typed chart text only | **approved** (2026-10-12) |
+| 250 | `clauses.redFlags.rf_mass[0]` | `"epistaxis"` | draft | (review round 2): chart wording of rf_mass, whose text is "One-sided nasal obstruction with bleeding, a visible mass, or new facial numbness" (held-out H22 "recurrent right epistaxis"); read in typed chart text only | **approved** (2026-10-12) |
+| 251 | `clauses.redFlags.rf_mass[1]` | `"unilateral nasal obstruction"` | draft | (review round 2): chart wording of rf_mass, whose text is "One-sided nasal obstruction with bleeding, a visible mass, or new facial numbness"; read in typed chart text only | **approved** (2026-10-12) |
+| 252 | `clauses.redFlags.rf_mass[2]` | `"one-sided nasal obstruction"` | draft | (review round 2): chart wording of rf_mass, whose text is "One-sided nasal obstruction with bleeding, a visible mass, or new facial numbness"; read in typed chart text only | **approved** (2026-10-12) |
+| 253 | `clauses.redFlags.rf_mass[3]` | `"right-sided nasal obstruction"` | draft | (review round 2): chart wording of rf_mass, whose text is "One-sided nasal obstruction with bleeding, a visible mass, or new facial numbness" (held-out H22 "Progressive right-sided nasal obstruction"); read in typed chart text only | **approved** (2026-10-12) |
+| 254 | `clauses.redFlags.rf_mass[4]` | `"left-sided nasal obstruction"` | draft | (review round 2): chart wording of rf_mass, whose text is "One-sided nasal obstruction with bleeding, a visible mass, or new facial numbness"; read in typed chart text only | **approved** (2026-10-12) |
+| 255 | `clauses.redFlags.rf_mass[5]` | `"right nasal obstruction"` | draft | (review round 2): chart wording of rf_mass, whose text is "One-sided nasal obstruction with bleeding, a visible mass, or new facial numbness"; read in typed chart text only | **approved** (2026-10-12) |
+| 256 | `clauses.redFlags.rf_mass[6]` | `"left nasal obstruction"` | draft | (review round 2): chart wording of rf_mass, whose text is "One-sided nasal obstruction with bleeding, a visible mass, or new facial numbness"; read in typed chart text only | **approved** (2026-10-12) |
+| 257 | `clauses.redFlags.rf_mass[7]` | `"nasal mass"` | draft | (review round 2): chart wording of rf_mass, whose text is "One-sided nasal obstruction with bleeding, a visible mass, or new facial numbness"; read in typed chart text only | **approved** (2026-10-12) |
+| 258 | `clauses.redFlags.rf_mass[8]` | `"intranasal mass"` | draft | (review round 2): chart wording of rf_mass, whose text is "One-sided nasal obstruction with bleeding, a visible mass, or new facial numbness"; read in typed chart text only | **approved** (2026-10-12) |
+| 259 | `clauses.redFlags.rf_mass[9]` | `"sinonasal mass"` | draft | (review round 2): chart wording of rf_mass, whose text is "One-sided nasal obstruction with bleeding, a visible mass, or new facial numbness"; read in typed chart text only | **approved** (2026-10-12) |
+| 260 | `clauses.redFlags.rf_mass[10]` | `"nasal cavity mass"` | draft | (review round 2): chart wording of rf_mass, whose text is "One-sided nasal obstruction with bleeding, a visible mass, or new facial numbness"; read in typed chart text only | **approved** (2026-10-12) |
+| 261 | `clauses.redFlags.rf_mass[11]` | `"cheek numbness"` | draft | (review round 2): chart wording of rf_mass, whose text is "One-sided nasal obstruction with bleeding, a visible mass, or new facial numbness"; the chart form of the shipped "cheek is numb"; read in typed chart text only | **approved** (2026-10-12) |
+| 262 | `clauses.redFlags.rf_mass[12]` | `"v2 numbness"` | draft | (review round 2): chart wording of rf_mass, whose text is "One-sided nasal obstruction with bleeding, a visible mass, or new facial numbness"; read in typed chart text only | **approved** (2026-10-12) |
+| 263 | `clauses.redFlags.rf_systemic[0]` | `"fever"` | draft | (review round 2): chart wording of rf_systemic, whose text is "Fever, night sweats, unintended weight loss, immunosuppression, or known malignancy"; a stem ("fevers", "feverish"); never inside "afebrile" (word start, held-out H21) and masked inside "hay fever"; read in typed chart text only | **approved** (2026-10-12) |
+| 264 | `clauses.redFlags.rf_systemic[1]` | `"febrile"` | draft | (review round 2): chart wording of rf_systemic, whose text is "Fever, night sweats, unintended weight loss, immunosuppression, or known malignancy"; never inside "afebrile" (word start); read in typed chart text only | **approved** (2026-10-12) |
+| 265 | `clauses.redFlags.rf_systemic[2]` | `"weight loss"` | draft | (review round 2): chart wording of rf_systemic, whose text is "Fever, night sweats, unintended weight loss, immunosuppression, or known malignancy"; any undenied weight loss, intended or not, for the lead to confirm; read in typed chart text only | **approved** (2026-10-12) |
+| 266 | `clauses.redFlags.rf_systemic[3]` | `"immunosuppress"` | draft | (review round 2): chart wording of rf_systemic, whose text is "Fever, night sweats, unintended weight loss, immunosuppression, or known malignancy"; a stem (immunosuppressed, immunosuppression); read in typed chart text only | **approved** (2026-10-12) |
+| 267 | `clauses.redFlags.rf_systemic[4]` | `"immunocompromised"` | draft | (review round 2): chart wording of rf_systemic, whose text is "Fever, night sweats, unintended weight loss, immunosuppression, or known malignancy"; read in typed chart text only | **approved** (2026-10-12) |
+| 268 | `clauses.redFlags.rf_systemic[5]` | `"malignancy"` | draft | (review round 2): chart wording of rf_systemic, whose text is "Fever, night sweats, unintended weight loss, immunosuppression, or known malignancy"; "known malignancy" in the flag text; a mention to rule out also raises it (hedges never lower a flag); read in typed chart text only | **approved** (2026-10-12) |
+| 269 | `negation.cues[15]` (appended) | `"wasn't"` | draft | the negating contraction "wasn't" (appended; window-only, measured from its "n't" so it reaches as far as the 0.3.2 cue "n't" did; gold v025 "It wasn't as if the world was moving.") | **approved** (2026-10-12) |
+| 270 | `negation.cues[16]` (appended) | `"weren't"` | draft | the negating contraction "weren't" (appended; window-only, measured from its "n't") | **approved** (2026-10-12) |
+| 271 | `negation.cues[17]` (appended) | `"aren't"` | draft | the negating contraction "aren't" (appended; window-only, measured from its "n't") | **approved** (2026-10-12) |
+| 272 | `negation.cues[18]` (appended) | `"hadn't"` | draft | the negating contraction "hadn't" (appended; window-only, measured from its "n't") | **approved** (2026-10-12) |
+| 273 | `clauses.wordStart` | `true` | draft | (engine switch): every phrase and cue matches only at a word start ("stress" inside "distress", "fess" inside "professional", the attribution cue "her " inside "other" and "whether"; catalogue SB2, SB4, HG3); a contained word needs a mask | **approved** (2026-10-12) |
+| 274 | `clauses.placeholderAsk.text` | `"This line holds unfilled template text (***)."` | draft | engine-neutral wording of the one placeholder notice (review round 2: a notice with a Dismiss control, no longer a question with only Skip; the module has no wording for unfilled template text). It names "***", the Epic wildcard, and shows for the other placeholder cues too; the card quotes the line | **approved** (2026-10-12) |
+| 275 | `clauses.examItems` | `[]` (none) | draft | (review round 2): no item is captured inside an exam section (the default). r_normal and x_objective were removed: the lead's history and physical recorded r_normal from "lids, lashes and lacrimal glands within normal limits", and an office nasal exam line ("Nose: no polyps.") answered x_objective, which names endoscopy or CT; lead question in the CHANGELOG Part D | **approved** (2026-10-12) |
+| 276 | `clauses.strictConflict[0]` | `x_purulent` | draft | x_purulent is a rule-out item (Discriminators, w -8): a "yes" lowers the index, so a chart that affirms and denies it in different words records nothing and asks (a conflict card) rather than letting the affirmed mention win | **approved** (2026-10-12) |
+| 277 | `clauses.strictConflict[1]` | `x_objective` | draft | x_objective is a rule-out item (Discriminators, w -8): a "yes" lowers the index, so a chart that affirms and denies it in different words records nothing and asks (a conflict card) rather than letting the affirmed mention win | **approved** (2026-10-12) |
+| 278 | `clauses.strictConflict[2]` | `x_lowfreq` | draft | x_lowfreq is a rule-out item (Discriminators, w -8): a "yes" lowers the index, so a chart that affirms and denies it in different words records nothing and asks (a conflict card) rather than letting the affirmed mention win | **approved** (2026-10-12) |
+| 279 | `clauses.strictConflict[3]` | `x_anosmia` | draft | x_anosmia is a rule-out item (Discriminators, w -5): a "yes" lowers the index, so a chart that affirms and denies it in different words records nothing and asks (a conflict card) rather than letting the affirmed mention win | **approved** (2026-10-12) |
+| 280 | `clauses.redFlagNegation` | `true` | lead (decision) | The clinical lead's decision of 2026-10-11 (decisions.redFlags, "Don't raise, no listing"): a red flag whose every mention is denied is not raised and not listed | the lead's decision of 2026-10-11 (no sign-off needed) |
+
+**B. Clarification entries (`lexicon.clarify`).** 14 entries. Every trigger and qualifier list is a
+draft. Each question is the module's own, except the lead's rhinorrhea question. The answers are
+always the module's options, shown as written. Review round 2 added rows 293-294 (`cl_scan_report`,
+`cl_audiogram_report`: a report header asks what the report showed) and removed qualifiers from rows
+281-285 and 289: every qualifier of a safety entry that states the dangerous answer without raising
+its flag (left, right, unilateral, one ear, same ear, one side, one-sided, sudden, pulsing, pulses,
+heartbeat, bloody) and the test names audiogram, audiometry and hearing test. Review round 3 changed
+no entry; since then a qualifier resolves a card only when the text states it undenied (an engine
+rule: "not bilateral" asks the laterality question).
+
+| # | Entry | Triggers `ph` (draft) | Resolved by `unless` (draft) | Asks through | Question (source) | Answers (module) | Lead |
+|---|---|---|---|---|---|---|---|
+| 281 | `cl_rhinorrhea` (lead) | `"runny nose"`, `"rhinorrhea"`, `"rhinorrhoea"`, `"nasal discharge"`, `"nasal drainage"`, `"post-nasal drip"`, `"postnasal drip"`, `"post nasal drip"`, `"drippy nose"` | `"purulent"`, `"clear"`, `"watery"`, `"thin "`, `"thick"`, `"green"`, `"yellow"`, `"cloudy"`, `"discolored"`, `"discoloured"`, `"colored"`, `"coloured"`, `"culture"` | probe `pr_purulence` | "is the rhinorrhea clear or purulent?" (lead, verbatim, never re-cased) | Yes, purulent or culture-positive / Clear or no drainage | triggers and qualifiers: approve / strike each phrase; the question is the lead's; the lead's D8 answer (2026-10-12) removed the positive-answer qualifiers purulent, thick, green, yellow, cloudy, discolored, discoloured, colored, coloured, culture |
+| 282 | `cl_tinnitus_quality` (draft) | `"tinnitus"`, `"ringing"`, `"ear ring"`, `"ears ring"`, `"roaring"`, `"buzzing"`, `"hissing"` | `"pulsatile"`, `"whooshing"`, `"clicking"`, `"steady"` | probe `pr_tinnitus_quality` | "The ringing — has the quality changed at all? Does it pulse in time with your heartbeat, or click?" (module: the probe's say) | Pulses with heartbeat / Clicking / Steady tone, unchanged | **approved** (2026-10-12); the lead's D8 answer then removed the qualifier(s) clicking, steady |
+| 283 | `cl_laterality` (draft) | `"tinnitus"`, `"ringing"`, `"ear full"`, `"ears feel full"`, `"fullness in my ear"`, `"plugged"`, `"hearing loss"`, `"decreased hearing"` | `"bilateral"`, `"both ears"`, `"alternat"` | probe `pr_laterality` | "When the ringing or fullness happens, is it always the same ear?" (module: the probe's say) | Always the same ear / Both ears, or it moves | **approved** (2026-10-12) |
+| 284 | `cl_hearing_onset` (draft) | `"hearing loss"`, `"decreased hearing"`, `"muffled hearing"`, `"trouble hearing"`, `"hard of hearing"` | `"gradual"`, `"progressive"`, `"slowly"` | probe `pr_sudden_drop` | "Has your hearing ever dropped suddenly — over hours or a day — rather than gradually?" (module: the probe's say) | Yes, suddenly / Gradual, or no change | **approved** (2026-10-12); the lead's D8 answer then removed the qualifier(s) progressive |
+| 285 | `cl_audiogram` (draft) | `"hearing loss"`, `"decreased hearing"`, `"fluctuating hearing"` | `"low-frequency"`, `"low frequency"` | probe `pr_audiogram` | "Have you had two hearing tests at different times — did the low tones drop and then come back?" (module: the probe's say) | Yes, it fluctuates / Stable, or never tested twice | **approved** (2026-10-12); the lead's D8 answer then removed the qualifier(s) low-frequency, low frequency |
+| 286 | `cl_dizziness_kind` (draft) | `"dizziness"`, `"dizzy"` | `"vertigo"`, `"spinning"`, `"room spins"`, `"lightheaded"`, `"light-headed"`, `"imbalance"`, `"unsteady"`, `"off balance"`, `"rocking"`, `"swaying"`, `"bobbing"` | probe `pr_internal_vertigo` | "Does your head ever feel like it's bobbing, rocking, or swaying side to side — like still being on a boat after you've stepped off — even while you're sitting perfectly still?" (module: the probe's say) | Yes — rocking or bobbing / Yes, but only seconds at a time / No sensation of self-motion | **approved** (2026-10-12) |
+| 287 | `cl_otalgia` (draft) | `"ear pain"`, `"otalgia"`, `"ear hurts"`, `"ear discomfort"` | `"deep"` | item `n_otalgia` | "Any deep ear or throat pain, even when the ear looks normal?" (module: the item's ask) | Yes / No | **approved** (2026-10-12); the lead's D8 answer then removed the qualifier(s) deep |
+| 288 | `cl_smell` (draft) | `"hyposmia"`, `"anosmia"`, `"loss of smell"`, `"decreased smell"`, `"reduced smell"` | `"between episodes"`, `"between flares"`, `"persistent"`, `"constant"`, `"all the time"`, `"only during"` | probe `pr_smell` | "Between the bad episodes, is your sense of smell normal?" (module: the probe's say) | Reduced even between flares / Normal in between | **approved** (2026-10-12); the lead's D8 answer then removed the qualifier(s) between episodes, between flares, persistent, constant, all the time |
+| 289 | `cl_nasal_side` (draft) | `"nasal obstruction"`, `"nasal congestion"`, `"congestion"`, `"stuffy"`, `"blocked nose"`, `"stuffed up"` | `"bilateral"`, `"both sides"`, `"alternat"` | probe `pr_nasal_mass` | "Is one side of the nose blocked more than the other, with any bleeding or numbness of the cheek?" (module: the probe's say) | Yes, one-sided / Symmetric, no bleeding | **approved** (2026-10-12) |
+| 290 | `cl_hints` (draft) | `"hints negative"`, `"hints normal"`, `"hints positive"`, `"hints benign"` | `"saccade"`, `"skew"`, `"direction-changing"`, `"head impulse"` | probe `pr_head_impulse` | "Head impulse, and check for skew and direction-changing nystagmus." (module: the probe's say) | Normal impulse (points central) / Corrective saccade (peripheral) / Deferred | **approved** (2026-10-12) |
+| 291 | `cl_neck` (draft) | `"cervicalgia"`, `"neck pain"`, `"neck ache"`, `"neck stiffness"` | `"during"`, `"before"`, `"after"`, `"with the episodes"`, `"attack"` | probe `pr_neck` | "Does your neck ache or stiffen up as part of it — before, during, or after?" (module: the probe's say) | Yes, neck involved / No | **approved** (2026-10-12) |
+| 292 | `cl_viral_onset` (draft) | `"upper respiratory infection"`, `"respiratory infection"`, `"covid"`, `"influenza"`, `"viral"` | `"after"`, `"since"`, `"following"`, `"post"` | item `n_viral` | "Did this start after a viral illness or COVID?" (module: the item's ask) | Yes / No | **approved** (2026-10-12) |
+| 293 | `cl_scan_report` (draft) | `"ct showed"`, `"scope showed"`, `"lund-mackay"` | `"scan showed inflammation"`, `"opacification"`, `"mucosal thickening"`, `"polyps"` | probe `pr_scan_detail` | "What did the scan actually report — any mucosal thickening, opacification, or polyps?" (module: the probe's say) | Real inflammation reported / Genuinely clear | **approved** (2026-10-12); the lead's D8 answer then removed the qualifier(s) scan showed inflammation, opacification, mucosal thickening, polyps |
+| 294 | `cl_audiogram_report` (draft) | `"audiogram showed"`, `"hearing test showed"` | `"low frequency loss"`, `"hearing drops during"`, `"hearing comes back"` | probe `pr_audiogram` | "Have you had two hearing tests at different times — did the low tones drop and then come back?" (module: the probe's say) | Yes, it fluctuates / Stable, or never tested twice | **approved** (2026-10-12); the lead's D8 answer then removed the qualifier(s) low frequency loss, hearing drops during, hearing comes back |
+
+**C. Ambient Scribe wording (generic copy, not lexicon).** These strings name no module and live in
+`apps/Scribe.jsx`. They are drafted by the team and are listed here so the lead can approve or
+change them too.
+
+| # | Where | Text | Lead |
+|---|---|---|---|
+| C1 | the box's placeholder | "Type a patient statement or paste a chart note (H&P) — Ctrl+Enter to capture" | **approved** (2026-10-12) |
+| C2 | the box's accessible name | "Patient statement or chart note" | **approved** (2026-10-12) |
+| C3 | the Capture button's tooltip | "Capture (Ctrl+Enter)" | **approved** (2026-10-12) |
+| C4 | the section caption | "Clarify" | **approved** (2026-10-12) |
+| C5 | why a card is shown | "unclear" (trigger), "hedged", "stated both ways" (conflict), "template text" (placeholder) | **approved** (2026-10-12) |
+| C6 | a question card's dismiss button | "Skip" | **approved** (2026-10-12) |
+| C7 | the clarify tag on a transcript bubble | "clarify “<the words that triggered it>” · <the item's short label>" | **approved** (2026-10-12) |
+| C8 | the unsaved-work warning | "text not yet captured" | **approved** (2026-10-12) |
+| C9 | the section caption's text after "Clarify" (review round 1; it read " · the text names these without the detail the screen needs — ask, then record the answer; nothing is recorded until you do", wrong for hedge, conflict and placeholder cards) | " · the text leaves these open; nothing is recorded until you answer" | **approved** (2026-10-12) |
+| C10 | the word joining a conflict card's two quotes | "and" | **approved** (2026-10-12) |
+| C11 | the screen-reader status of the section (review round 1; not shown on screen; review round 2 counts the template notice apart) | "1 question to clarify" / "<n> questions to clarify", then ", 1 notice" / ", <n> notices" (empty with no card) | **approved** (2026-10-12) |
+| C12 | the template-text notice's one control (review round 2; the notice text itself is row 274) | "Dismiss" | **approved** (2026-10-12) |
+
+**D. Points for the lead: team design choices and known risks.** Decided 2026-10-12: the lead's
+answer to each question (D1-D19) is quoted under "Clinical-lead sign-off (2026-10-12)" below; the
+text here is as the lead read it. Each comes from the basis rows above or from a catalogue row of
+gold set 0.4.0. The first eight came with review round 3 (the last
+of them lists the lead items that round recorded), the next seven with review round 2.
+
+- **Red flags: exactly when a flag is lowered** (review round 3; this replaces the round-1 point,
+  which said the rule "never hides one the text affirms", and that was not true). With the lead's
+  decision ("Don't raise, no listing"), a flag phrase in typed chart text is lowered by exactly
+  these, and by nothing else:
+  1. a prefix glued to the phrase ("non-pulsatile tinnitus");
+  2. in the phrase's own list item, a negation cue within 14 characters, or a deny cue, before it,
+     with only plain words between: no ":", no other finding, no affirm cue or plus sign, no scopeEnd
+     word (rows 59-68) and no complement word (rows 69-75). Examples: "Denies pulsatile tinnitus",
+     "Tinnitus is not pulsatile", "No assoc. diplopia.";
+  3. a deny cue heading the list (in the clause, or a denial header on a line above), when the flag
+     sits in a later item that is the bare flag phrase: no other word, no affirm cue and no plus sign
+     in that item. Example: "No vision loss, diplopia, facial droop, weakness, or slurred speech.";
+  4. a closing post cue right after the phrase, with only findings between and no affirm cue before
+     the phrase in its item ("Pulsatile tinnitus denied.", "Diplopia: no.", "Aura (-)").
+
+  A label answer, an uncertain reading, a section, a hedge and a placeholder never lower a flag.
+  The `capture` suite's red-flag battery checks every red-flag phrase (181 phrases of 12 flags) in
+  21 templates that affirm it and 17 that clearly deny it.
+
+  Two kinds of lowering are still known, and each case below is lowered although a reader could take
+  the flag as present:
+  - Words after a governing denial that limit it in time are not read: "No diplopia until this
+    morning.", "No diplopia before today.", "Never had diplopia before this week." and "No diplopia
+    now, but had it last week." are lowered.
+  - A bare later item of a denied list is read as one more negative: "No nausea, diplopia." is
+    lowered.
+
+  No other affirmed flag is known to be lowered. In the other direction the rule over-raises on
+  purpose:
+  - a later item with any other word: "Denies fever, chills, or unintentional weight loss." raises
+    `rf_systemic`;
+  - any complement word: "No change in the whooshing" raises `rf_pulsatile`.
+
+  The lead may want to confirm the rule, or strike rows 69-75.
+- **"of" is not a complement word** (review round 3, rows 69-75). "No history of malignancy.", "No
+  episodes of vertigo." and "No hx of aura." stay denials. With "of" as a row, every "No history of
+  <flag>" would raise its flag. Only "none of" is a row, because it presupposes what it counts ("None
+  of her epistaxis episodes needed packing."). The lead may add "of" or strike any of these rows.
+- **A complement word does not stop the 14-character window for a yes/no item** (review round 3).
+  This keeps release 0.4.6's reach ("No hx of aura." reads no). So "No CT for tinnitus." still
+  records `v_aural` no, while "No workup for pulsatile tinnitus." (beyond the window) sets it aside.
+- **Later list items with other words are set aside** (review round 3). They are never "no", which
+  costs some pertinent negatives:
+  - "Nasal endoscopy: no septal deviation, polyps, or purulent drainage." no longer records
+    `x_purulent` no (gold k027), because "drainage" follows the phrase "purulent";
+  - "Denies nausea, new photophobia." records no photophobia.
+
+  The item is asked only when a clarification trigger names it.
+- **Abbreviations** (review round 3). A "." that a lower-case word follows ends nothing when the
+  word before it has at most six letters (or holds a dot), the clause opens with a capital and no
+  finding comes before it in the clause. So a sentence-cased note in which a new sentence starts in
+  lower case after a short word, with no finding before it, is read as one clause.
+- **Every denied qualifier asks** (review round 3). The engine does not know which probes are
+  safety probes, so a denied qualifier resolves no entry. Examples:
+  - "Rhinorrhea, not cloudy." asks the lead's rhinorrhea question;
+  - "Dizziness, no vertigo." asks the rocking question.
+
+  Asking is the safe side.
+- **Signs and the plus sign** (review round 3). These are engine rules, not rows.
+  - A sign with only spaces around it, between two findings, belongs to the finding after it.
+  - A plus sign before a word ("+photophobia", "+ night sweats") affirms it.
+  - "+/-" and "2+" are not read.
+- **Lead items recorded in review round 3, not fixed** (each needs the lead's words or decision):
+  - Common chart denials still read as "yes": "not associated with", "not accompanied by", the
+    review-of-systems "- x", "neg for" and "X: N". The red flags they deny are raised.
+  - Chart red-flag phrases match only the wording of earlier held-out cases. A fresh battery raises
+    24 of 42 affirmed chart red flags, and the corpus misses `rf_progressive` (with no card) and
+    `rf_asym`.
+  - In chart wording a spouse, partner or child is not gated as a third party: "Wife has vertigo
+    lasting hours." records the patient's vertigo duration.
+  - Chart wording sets the gap-rule markers: "PMH: anxiety" or "Stress test" sets `c_dismiss`, and
+    "past year" sets `c_dur` >12 mo, so the note prints a diagnostic-gap line.
+  - One hedge word drops every finding in its clause. In unpunctuated dictation a single "maybe" turns
+    a denial into a hedge card.
+  - The `cl_otalgia` qualifier "deep" hides the card when the extraction did not capture the ear
+    pain, so the ear pain is neither recorded nor asked.
+  - Clarify: "steady", "clicking" and "progressive" silence the safety card even when the same clause
+    states the danger in wording that has no flag phrase.
+  - Rule-out clarify qualifiers silence the card when the text states the positive answer, and
+    nothing captures it.
+
+- **Spoken lines: a decision for the lead** (review round 2). Chart reading now applies only to
+  typed chart text. Spoken and demo lines read exactly as in 0.4.6, so a spoken "No, I've never had
+  double vision" still raises `rf_focal` (the upstream rule), and a spoken denial still reaches only
+  14 characters. Should chart reading, and with it the lead's red-flag decision, apply to spoken
+  lines too? The team's default is no, until the lead decides: browser speech transcripts carry no
+  punctuation, so a reply opening with "no" would put every flag phrase after it under one denial.
+  Related: everything typed in the box is read as chart text, including a typed patient statement.
+- **Exam items: a question for the lead** (review round 2). May a normal exam answer `r_normal`
+  ("Exam or imaging is normal or minimal relative to symptom burden") or `x_objective` ("Objective
+  sinus inflammation on endoscopy or CT")? The default is no: nothing is captured inside an exam
+  section (row 275). With r_normal as an exam item, one normal-sounding exam line ("lacrimal glands
+  within normal limits") recorded it however abnormal the other exam lines were. With x_objective,
+  an office rhinoscopy line ("no polyps") answered the endoscopy or CT question. An exam section
+  still raises any red flag it states.
+- **Chart red-flag phrases** (review round 2, rows 157-268; review round 3 added row 177). Each raises its flag on any undenied
+  mention in typed text, whatever the context.
+  - Some are broad by design, being the flag's own words: "eye pain", "fever", "weight loss" (also
+    intended weight loss), "malignancy" (also "rule out malignancy": a hedge never lowers a flag),
+    "dysphagia" and "steadily worsening" (also of hearing).
+  - No phrase checks the flag's own conditions: age over 50 (`rf_gca`, `rf_new50`), one side
+    (`rf_mass`: "epistaxis" alone raises it, as the shipped "nosebleed" does), or within 30 days
+    (`rf_ssnhl`).
+  - The lead may strike any row.
+- **A safety card beside a raised flag** (review round 2). With the dangerous qualifiers removed, a
+  safety card can show while its flag is already raised: "Sudden hearing loss in the right ear."
+  raises `rf_ssnhl` and still asks which ear and how fast. That errs toward asking.
+- **Treatment-failure cues** (review round 2, rows 14-23). They affirm what they name, so "No relief
+  of nausea" records nausea yes (it persists). A denial before them ends there ("Denies nausea,
+  refractory to antibiotics." records `m_nausea` no, `r_abx` yes).
+- **Label answers** (review round 2, narrowed in review round 3). "Nausea: denies, photophobia" still
+  reads photophobia no (the window of the lexicon's own cue "denies" reaches it), while "Aura: (-),
+  nausea" reads nausea yes (the sign opens no list). Since review round 3 a cue answers a label only
+  when it closes the item, and never against a denial in the label's own item ("No nausea - reports
+  good appetite." reads no; "Denies photophobia: endorses." reads no). Charts that mix forms may read
+  differently from the writer's intent; the lead may want examples tested.
+- **The template notice** (review round 2, row 274) names "***" even when the line holds "___" or
+  "[ ]". The card quotes the line itself.
+- **The conflict rule** (the fixes before review). A conflict needs one finding said both ways;
+  different phrases of an item that disagree record yes (n07 keeps its yes). A chart that says one
+  finding both ways in different words ("Denies tinnitus. Ringing in both ears.") therefore records
+  yes, not a conflict card. The rule-out items stay strict (`strictConflict`, rows 276-279): any
+  mixed mentions record nothing and are asked, so a mixed chart never lowers the index.
+- **A negative test reads as a denial** (open question Q2), narrowed in review round 1. The draft post
+  cue `" negative"` still makes "Positional testing negative." record `v_head` no (catalogue PN3:
+  one word between the finding and a cue that closes the item). It no longer reads "Dizziness with
+  negative Dix-Hallpike." or "Photophobia with negative MRI brain." as a denial: the cue must close
+  the mention's item right after it.
+- **Mentions set aside** (review round 1). A mention that a list denial earlier in its clause does not
+  reach (a scopeEnd word between, or after it in a later item: "No interpreter available, so nausea
+  … were not reviewed.") is recorded neither yes nor no, and no card asks about it. The scopeEnd list
+  (rows 59-68) is short: other wording can still let a denial run on. Since review round 3 a
+  complement word (rows 69-75) also ends it, and a later list item that holds any other word is set
+  aside too ("No nausea, tinnitus reported."), by a list denial or by the window across the
+  separator; a clarification trigger set aside this way still asks.
+- **Lists under a denying line** (review round 1). Under "Patient denies:", "Negative for:" or a bare
+  "Denies", every bullet or deeper-indented line, and under a header every plain line of at most four
+  words with no cue, is read as denied until a blank line or a header. Since review round 3 a line
+  opening with "+" or holding an affirm cue ends the list, a plain line after the bullets ends it,
+  plain item lines are never one wrapped line, and an item that holds more than the finding is set
+  aside (a flag in it stays raised).
+- **Sections** (review round 1). An exam's sub-labels keep the exam; the exam ends only at a section
+  word (rows 140-156 are read normally and end it). Text after an exam under any other header (for
+  example "DISPOSITION:") is read as exam text and captures nothing but the exam items. A section word as an inline label holds for its line only, so a
+  medication list continued on unindented lines below "Medications: …" is read as history
+  ("Augmentin" there records `r_abx` yes, as in 0.4.6).
+- **A list denial reaches the plain symptom.** "Denies pulsatile tinnitus" records `v_aural` no as
+  well as not raising `rf_pulsatile` (catalogue RF2).
+- **Whole-word cues** (the fixes before review). "yes" no longer reads in "yesterday". A
+  `clauses` cue now also needs a word end, so a plural relative no longer gates: "Sisters with
+  vertigo." or "Two cousins have tinnitus." are read as the patient's ("parents" is a cue of its
+  own). Plural forms would be new draft rows for the lead.
+- **Pronouns in chart text** (the fixes before review, narrowed in review round 1). In typed chart
+  text "her " and "his " name the patient when a finding follows them (rows 121-122): "Her tinnitus is
+  bilateral." Before any other word they gate as in speech, so "Her husband has tinnitus." is not
+  the patient's, and neither is "Her symptoms include tinnitus." (nothing recorded, as in 0.4.6).
+  The cue "they get" still gates there: in a chart note "they" usually names the symptoms or someone
+  else. Spoken lines read every cue as before.
+- **Typed text never carries** (review round 1, stated). The Scribe reads typed text as chart text,
+  and `extractInContext` with `opts.chart` never carries a reply into an open slot, for any module,
+  with or without chart reading: "Usually for a few hours." typed after a spoken "I get dizzy."
+  records no duration.
+- **Exam text needs a header.** Without an exam header an exam line is read as history:
+  "within normal limits" records `r_normal` yes and "light touch" records `n_allo` yes (catalogue
+  PN5, EX1). A past-medical-history header is read as normal text (catalogue WR3; since review round
+  1 it is a `read` header, row 145).
+- **Engine limits.** A history cue after the phrase ("as a teenager") is not read (catalogue PH1). A
+  duration in the clause after `;` is not the cue's (catalogue W2: `v_vertigo` stays heard).
+- **Contractions.** can't, couldn't, won't, wouldn't and cannot are not negation cues: in symptom
+  talk they usually affirm ("can't stand loud sounds", "won't go away"). "history of" is not a
+  history cue (spec). Since review round 1 the contractions that are cues ("didn't", "doesn't",
+  "isn't", "hasn't", "haven't", "don't" and rows 269-272) reach exactly as far as "n't" did in 0.3.2,
+  so "I didn't have any nausea." records no again.
+
+**E. Not landed: proposals with no row in the data.** Each would need the lead's words or approval
+(the sign-off of 2026-10-12 landed none of these; its additions came from Part D):
+
+- the vocabulary for "aural fullness" (`v_aural`; catalogue LE1, SB1), "phonophobia" (LE2),
+  "imbalance" and "unsteadiness" (`v_vertigo`; MX2; in 0.3.2 the lead approved narrower forms only),
+  and "mother has migraines" or "migraine(s)" for `m_fhx` (FH2, PH1, WR3, WR4). ("sudden hearing
+  loss" for `rf_ssnhl`, RF3, is a draft row since review round 2: row 201);
+- the held-out review's other recall and precision gaps (review round 2 left them for the lead):
+  chart forms of durations, counts and frequencies ("x 3 years", ">20 lifetime episodes", "15 days
+  per month"), "thick green nasal discharge" and "no purulence" for `x_purulent`, "low-frequency
+  SNHL that fluctuates" for `x_lowfreq`, "sense of smell intact" for `x_anosmia`, `v_aural` from
+  tinnitus not tied to the episodes, `v_head` from a headache's "bending over" (held-out H27),
+  `m_head` "Occasional" from one acute headache, and "negative for numbness" writing `n_burn` no;
+- a phrase that infers a flag from context: `rf_asym` from a side stated once ("SNHL left, right
+  normal"), `rf_new50` from an age (the laterality card now asks in held-out H04, H11 and H12);
+- the clarification triggers of the inventory left out: CL-07 (the episode duration, already a
+  heard card), CL-08 (headache frequency: an unhedged headache records its fallback, Occasional,
+  and no card asks, RF5; a hedged one is asked through the hedge card), CL-09 (headache attack duration), CL-11 (an aural symptom tied to the episodes), CL-14 (antibiotic
+  courses), CL-15 (sinus procedure outcome), CL-16 (a vague duration; PL1), CL-17 (allergies: no
+  target), a card for one-sided or new facial numbness (`rf_focal` has no probe; CL4) and a card for
+  empty template sections (CL-P2).
+
+### Clinical-lead sign-off (2026-10-12)
+
+**The sign-off.** On 2026-10-12 the user, who is the project's clinical lead, decided every row of the
+sign-off list on the sign-off page (306 rows, read from commit `cd34934`: the 280 cue rows and
+switches of part A, the 14 clarification entries of part B and the 12 Scribe wording rows of part
+C), answered the 19 Part D questions there, answered two follow-up questions on D8 and one on the
+struck mask "aural" in chat, and wrote in chat:
+
+> done, re-rest and upload 0.4.7
+
+The decisions are final and are applied exactly: a struck row is gone, an approved row is as it was
+(its source now `lead-approved`, its basis still the drafting record), the rows the lead approved in
+the answers are added in the wording the options quoted, and nothing is worded that the lead did not
+approve. `LEXICON_DELTA_033.signOff` (`app/tests/harness/lexicon-delta-033.js`) records the outcome of
+every row, the struck rows with the basis they had, every answer verbatim and what was applied; the
+`values` suite and the extractor check that the record is complete and applied (no plain draft left,
+every struck row absent, every approved row present).
+
+**Outcome by list.**
+
+| List | Rows | Approved | Struck | The lead's own words or decision |
+|---|---|---|---|---|
+| `clauses.affirm` | 23 | 19 | 0 | 4 |
+| `clauses.deny` | 14 | 10 | 0 | 4 |
+| `clauses.post` | 9 | 9 | 0 | 0 |
+| `clauses.prefix` | 2 | 2 | 0 | 0 |
+| `clauses.breaks` | 10 | 10 | 0 | 0 |
+| `clauses.scopeEnd` | 10 | 10 | 0 | 0 |
+| `clauses.complement` | 7 | 7 | 0 | 0 |
+| `clauses.mask` | 8 | 7 | 1 | 0 |
+| `clauses.hedge` | 16 | 16 | 0 | 0 |
+| `clauses.placeholder` | 4 | 4 | 0 | 0 |
+| `clauses.thirdParty` | 17 | 17 | 0 | 0 |
+| `clauses.chartIgnoreThirdParty` | 2 | 2 | 0 | 0 |
+| `clauses.sections.exam` | 8 | 8 | 0 | 0 |
+| `clauses.sections.family` | 3 | 3 | 0 | 0 |
+| `clauses.sections.skip` | 6 | 6 | 0 | 0 |
+| `clauses.sections.read` | 17 | 17 | 0 | 0 |
+| `clauses.redFlags.rf_thunderclap` | 8 | 6 | 2 | 0 |
+| `clauses.redFlags.rf_focal` | 13 | 11 | 2 | 0 |
+| `clauses.redFlags.rf_vision` | 6 | 3 | 3 | 0 |
+| `clauses.redFlags.rf_gca` | 6 | 3 | 3 | 0 |
+| `clauses.redFlags.rf_orbital` | 11 | 4 | 7 | 0 |
+| `clauses.redFlags.rf_ssnhl` | 10 | 10 | 0 | 0 |
+| `clauses.redFlags.rf_asym` | 8 | 8 | 0 | 0 |
+| `clauses.redFlags.rf_pulsatile` | 4 | 4 | 0 | 0 |
+| `clauses.redFlags.rf_progressive` | 18 | 18 | 0 | 0 |
+| `clauses.redFlags.rf_new50` | 9 | 9 | 0 | 0 |
+| `clauses.redFlags.rf_mass` | 13 | 13 | 0 | 0 |
+| `clauses.redFlags.rf_systemic` | 6 | 6 | 0 | 0 |
+| `negation.cues (appended)` | 4 | 4 | 0 | 0 |
+| `switch` | 8 | 7 | 0 | 1 |
+| `clarify` | 14 | 13 | 0 | 1 |
+| `apps/Scribe.jsx` | 12 | 12 | 0 | 0 |
+| **All** | **306** | **278** | **18** | **10** |
+
+The 12 Scribe wording rows (part C) were all approved; their text in `apps/Scribe.jsx` is unchanged.
+
+**The 18 struck rows.**
+
+| Row | Where (as listed) | Phrase | Effect |
+|---|---|---|---|
+| 76 | `clauses.mask[0]` | `"aural"` | "aural fullness" reads the aura phrase again: k001 states and denies aura (a conflict card), k006 and k037 record `m_aura` yes |
+| 158 | `clauses.redFlags.rf_thunderclap[1]` | `"sudden onset headache"` | no flag from these words ("sudden severe headache", "sudden onset severe headache" and "maximal at onset" remain) |
+| 159 | `clauses.redFlags.rf_thunderclap[2]` | `"sudden-onset headache"` | as row 158 |
+| 168 | `clauses.redFlags.rf_focal[3]` | `"facial numbness"` | no flag; "numbness" alone is `n_burn` (k004: set aside in a later list item) |
+| 170 | `clauses.redFlags.rf_focal[5]` | `"aphasia"` | no flag |
+| 178 | `clauses.redFlags.rf_vision[0]` | `"vision loss"` | no flag (k223); "loss of vision" remains |
+| 179 | `clauses.redFlags.rf_vision[1]` | `"visual loss"` | no flag; "loss of vision" remains |
+| 181 | `clauses.redFlags.rf_vision[3]` | `"visual obscuration"` | no flag (k166) |
+| 186 | `clauses.redFlags.rf_gca[2]` | `"jaw pain with chewing"` | no flag; "jaw claudication" remains |
+| 187 | `clauses.redFlags.rf_gca[3]` | `"jaw pain when chewing"` | as row 186 |
+| 188 | `clauses.redFlags.rf_gca[4]` | `"jaw pain on chewing"` | as row 186 |
+| 190 | `clauses.redFlags.rf_orbital[0]` | `"periorbital swelling"` | no flag (k126, the held-out H21); "proptosis", "painful eye movement", "restricted eye movement" and "ophthalmoplegia" remain, and the module's own "swelling around my eye" |
+| 191 | `clauses.redFlags.rf_orbital[1]` | `"periorbital edema"` | as row 190 |
+| 192 | `clauses.redFlags.rf_orbital[2]` | `"periorbital oedema"` | as row 190 |
+| 193 | `clauses.redFlags.rf_orbital[3]` | `"orbital swelling"` | as row 190 |
+| 195 | `clauses.redFlags.rf_orbital[5]` | `"eye pain"` | no flag from the flag's own words "eye pain" |
+| 196 | `clauses.redFlags.rf_orbital[6]` | `"pain with eye movement"` | as row 190 (k126) |
+| 197 | `clauses.redFlags.rf_orbital[7]` | `"pain on eye movement"` | as row 190 (k126) |
+
+**The mask "aural": the lead's confirmation (chat, 2026-10-12).** Asked after the strike:
+
+> You struck the mask "aural". Without it, "aural fullness" matches the aura phrase, so your H&P would read aura as stated (or as stated both ways, since it also says "denies auras"). Keep it struck?
+>
+> - Restore the mask (Recommended)
+> - Keep it struck
+
+The lead's answer (verbatim): "Keep it struck".
+
+The mask stays struck. On the lead's history and physical, "aural fullness" now reads the aura phrase
+("aura" at a word start), and the note also says "denies auras": one finding said both ways is not
+recorded, so `m_aura` (no until the sign-off) is left for a conflict card.
+
+**Part D: the 19 answers.**
+
+| Part D | Title | Question (verbatim) | The lead's answer (verbatim) | Applied |
+|---|---|---|---|---|
+| D1 | Red flags: exactly when a flag is lowered | Confirm the rule for lowering a red flag in typed chart text (the four conditions), or change it? | "Confirm the four conditions (recommended)" | no change: the four conditions stand for typed chart text |
+| D2 | "of" is not a complement word | Should "of" be a complement word? | "Keep "of" out (recommended)" | no change |
+| D3 | A complement word does not stop the 14-character window for a yes/no item | Should a complement word also stop the lexicon's 14-character window for yes/no items? | "No, keep release 0.4.6's reach (recommended)" | no change |
+| D4 | Later list items with other words are set aside | Accept that a later list item holding any other word is left unrecorded (never "no")? | "Accept (recommended)" | no change |
+| D5 | Abbreviations | Accept the abbreviation rule (a short or dotted token before a lower-case word ends no clause in a capitalised clause with no finding yet)? | "Accept (recommended)" | no change |
+| D6 | Every denied qualifier asks | Should a denied qualifier keep every clarification card asking, or only the safety cards? | "Every card (recommended)" | no change |
+| D7 | Signs and the plus sign | Accept the engine notation rules (a spaced sign belongs to the next finding; "+" before a word affirms; "+/-" not read)? | "Treat "+/-" as a hedge (a new draft row)" | applied: `"+/-"` is a `clauses.hedge` row (lead-approved); the engine reads it as any hedge (k260, k261) |
+| D8 | Lead items recorded in review round 3, not fixed | For each of the eight recorded items: supply wording (new draft rows) or leave as known limits? | "Supply or approve wording for some items before upload" | applied: the follow-up questions below |
+| D9 | Spoken lines: a decision for the lead | Should chart reading, and with it the red-flag decision, apply to spoken lines too? | "Yes" | applied: chart reading and the red-flag rule read spoken and demo lines too (engine "Spoken lines"); carry-over as before; the pronoun exception (D19) and clarification stay typed only; a reply word lowers no flag in speech |
+| D10 | Exam items: a question for the lead | May a normal exam answer r_normal or x_objective? | "No: nothing is captured inside an exam section (recommended)" | no change (`examItems` stays empty) |
+| D11 | Chart red-flag phrases | Approve the chart-register red-flag phrases (rows 157-268), or strike some? | "Approve all (recommended)" | recorded verbatim; the lead's row-by-row strikes on the sign-off page (07:16-07:24 UTC, after this answer at 06:43 UTC) are applied: 17 chart red-flag phrases struck, every other one approved |
+| D12 | A safety card beside a raised flag | Accept that a safety card can show while its flag is already raised? | "Accept (recommended)" | no change |
+| D13 | Treatment-failure cues | Approve the treatment-failure affirm cues (rows 14-23)? | "Approve (recommended)" | no change (rows 14-23 approved) |
+| D14 | Label answers | Accept how label answers read mixed chart forms, or ask for more examples tested? | "Accept (recommended)" | no change |
+| D15 | The template notice | Approve the notice text (row 274), which names "***" for every placeholder? | "Approve (recommended)" | no change (row 274 approved) |
+| D16 | The conflict rule | Accept that different phrases of an item said both ways record yes, except for the strict rule-out items? | "Accept (recommended)" | no change |
+| D17 | A negative test reads as a denial | Keep the post cue " negative" ("Positional testing negative." records v_head no)? | "Keep (recommended)" | no change (row 38 " negative" approved) |
+| D18 | Whole-word cues | Add plural relatives ("sisters", "cousins") as draft attribution rows? | "No for 0.4.7 (recommended)" | no change |
+| D19 | Pronouns in chart text | Accept that "her"/"his" name the patient only before a finding in typed chart text? | "Accept (recommended)" | no change: the pronoun exception stays with typed chart text, also under D9 |
+
+**D8: the follow-up questions and answers (chat, 2026-10-12).** Part 1:
+
+> D8 part 1 — which of these new-wording fixes should go into 0.4.7? (each adds draft rows you are approving here)
+>
+> - **More chart denials**: Add denial cues "not associated with", "not accompanied by", "neg for". (The ROS "- fever" dash form stays a known limit: a dash is usually a bullet.)
+> - **Spouse/partner/child**: Add as someone else's history: wife, husband, spouse, partner, son, daughter, child, children, friend. "Wife has vertigo" stops counting as the patient's.
+> - **Progressive & one-ear**: Add red-flag phrases: rf_progressive "progressively worse", "progressively worsening", "worse each week"; rf_asym "unilateral tinnitus", "left-sided hearing loss", "right-sided hearing loss", "asymmetric hearing loss".
+> - **No gap markers from charts**: Typed chart text no longer sets the gap-rule context markers ("PMH: anxiety", "stress test", "past year"); the clinician sets them.
+
+The lead's answer (verbatim): "More chart denials,Progressive & one-ear,No gap markers from charts".
+
+Part 2:
+
+> D8 part 2 — which of these rule fixes should go into 0.4.7? (they remove qualifiers or narrow a rule; no new clinical words)
+>
+> - **Hedge = nearest finding**: A hedge word (maybe, possibly…) covers only the finding next to it, not every finding in the sentence.
+> - **Ear-pain card stays**: Remove "deep" from the ear-pain card's qualifiers, so ear pain that wasn't captured is still asked about.
+> - **Safety cards stay**: Remove "steady", "clicking", "progressive" from the safety cards' qualifiers, so a stated danger without a flag phrase still gets asked.
+> - **Rule-out cards stay**: Remove positive-answer qualifiers from the rule-out cards, so a stated positive that wasn't captured is still asked and recorded.
+
+The lead's answer (verbatim): "Ear-pain card stays,Safety cards stay,Rule-out cards stay".
+
+Applied as answered:
+- **"More chart denials":** the deny cues "not associated with", "not accompanied by" and "neg for"
+  (lead-approved; gold k262-k264). The ROS dash form "- fever" stays a known limit, as the option
+  said.
+- **"Progressive & one-ear":** the `rf_progressive` phrases "progressively worse", "progressively
+  worsening" and "worse each week", and the `rf_asym` phrases "left-sided hearing loss",
+  "right-sided hearing loss" and "asymmetric hearing loss" (lead-approved; k265-k267). The option's
+  "unilateral tinnitus" was already a row (row 212, approved on the page), so it is not listed twice.
+- **"No gap markers from charts":** typed chart text captures no context marker (`c_dismiss`, `c_dur`,
+  `c_clin`: no capture of kind ctx); the clinician sets them. Spoken lines still capture them. This is
+  an engine rule, with no word list (k268; k035 and k243 relabelled).
+- **"Ear-pain card stays":** `cl_otalgia` loses its one qualifier, "deep" (k269).
+- **"Safety cards stay":** `cl_tinnitus_quality` loses "clicking" and "steady", and
+  `cl_hearing_onset` loses "progressive" (k271, k272).
+- **"Rule-out cards stay":** every rule-out entry loses the qualifiers that state the positive (the
+  rule-out "yes") answer, so a stated positive that nothing captured is still asked and recorded:
+  - `cl_rhinorrhea` (`pr_purulence`, "Yes, purulent or culture-positive"): purulent, thick, green,
+    yellow, cloudy, discolored, discoloured, colored, coloured, culture; clear, watery and thin stay;
+  - `cl_audiogram` (`pr_audiogram`, "Yes, it fluctuates"): low-frequency, low frequency; none left;
+  - `cl_smell` (`pr_smell`, "Reduced even between flares"): between episodes, between flares,
+    persistent, constant, all the time; only during stays;
+  - `cl_scan_report` (`pr_scan_detail`, "Real inflammation reported"): scan showed inflammation,
+    opacification, mucosal thickening, polyps; none left;
+  - `cl_audiogram_report` (`pr_audiogram`): low frequency loss, hearing drops during, hearing comes
+    back; none left.
+  (k270; k162 relabelled.)
+- **Not picked, so still known limits:** "Spouse/partner/child" (a wife, husband, partner or child in
+  chart wording is not gated as a third party) and "Hedge = nearest finding" (one hedge word drops
+  every finding of its clause; in speech too, gold t007).
+
+**D7 and D9: what changed in the engine.**
+- **D7.** `"+/-"` is a `clauses.hedge` row (lead-approved). The engine needed no new rule: a hedge cue
+  whose ends are no letters is matched unbounded, and the plus-sign rule already skips a "+" before
+  "/". A clause holding "+/-" records nothing and asks (k260), and a hedge never lowers a red flag
+  (k261).
+- **D9.** Chart reading (clause segmentation, list-scope denial, post and prefix negation, sections,
+  word-start matching, masks, hedges, the chart red-flag phrases) and the red-flag rule read spoken and
+  demo lines too (`engine/extraction.js`, "Spoken lines"). Kept for speech as before: carry-over (heard
+  slots, `carryRefuse`, `yieldTo`, and a heard entry's duration taken from the whole utterance, as
+  release 0.4.6 chose it), the attribution cues "her" and "his" (the pronoun exception stays with typed
+  chart text, D19), and no clarification (the Clarify section reads typed text only). One rule is new
+  for speech, because a speech transcript has no punctuation: a deny cue that opens its clause before
+  a word starting no finding, with no list separator before the next finding, answers the clinician's
+  question and lowers no red flag ("no it's more of a whooshing with my heartbeat" raises
+  `rf_pulsatile`). A direct denial ("No, I've never had double vision.", "no double vision") and a
+  list of negatives still lower one. Typed chart text keeps D1's four conditions, so typed "no I hear
+  a whooshing" still lowers it.
+- In the gold sets D9 changes five spoken-register outputs (the supersede table, under "Gold set
+  0.4.0") and no dialogue step; the module's demo transcript reads as before.
+
+**Decided after the final review (2026-10-12, before the upload).** The final review of the sign-off
+found two points the lead had not decided. The main session put both to the lead in chat the same
+day; both answers keep what was built, so nothing in the data, the engine or the tests changed
+(`signOff.followUp` records them):
+- **Row 281, `cl_rhinorrhea`.** The sign-off page had listed the row as the lead's own words (for
+  the lead's question), so it offered no approve or strike for the drafted triggers and qualifiers.
+  Question: "Your rhinorrhea question ("is the rhinorrhea clear or purulent?") is triggered by drafted words you never approved: runny nose, rhinorrhea, rhinorrhoea, nasal discharge, nasal drainage, post-nasal drip / postnasal drip / post nasal drip, drippy nose. A mention that already says "clear", "watery" or "thin" does not ask. Approve?" Answer: **Approve all (Recommended)**. The eight drafted triggers and the qualifiers "clear",
+  "watery" and "thin " are lead-approved, so the rubric's change-log note ("every trigger and
+  qualifier is lead-approved") holds.
+- **The reply-word rule applied with D9** (the team's rule until then). Question: "Spoken lines (your D9): a reply that opens with "no" and then names something — e.g. "no it's more of a whooshing with my heartbeat" — should it lower a red flag named later in the reply?" Answer:
+  **Don't lower (Recommended)**. So a spoken reply that opens with "no" lowers no red flag named later in the reply
+  ("no it's more of a whooshing with my heartbeat" raises `rf_pulsatile`); the cost the question
+  named stays: "no I haven't noticed any slurred speech" also raises `rf_focal`, and the clinician
+  clears it. Typed text keeps D1's four conditions.
+
+**The lead's history and physical after the sign-off** (gold k001; `includeSuppressed` shows why a
+mention is set aside):
+- **Typed** (pasted into the box, as the Scribe reads it): recorded `m_photo` yes, `v_aural` yes, `x_purulent` no, `x_anosmia` no and `v_vertigo` heard (no duration in its clause); set aside `rf_pulsatile` ("not pulsatile": denied, not raised, not listed), `m_aura` (stated and denied: a conflict, since the strike of "aural"), `v_head` ("non-positional"), `n_allo` and `r_normal` (the exam section), and `m_head` (hedged); no red flag raised; eleven Clarify cards in text order: which ear (`cl_laterality`), ear pain (`cl_otalgia`), the template notice, sudden hearing drop (`cl_hearing_onset`), audiogram (`cl_audiogram`), aura stated both ways (`m_aura`, conflict, new), headache (`m_head`, hedge), tinnitus quality (`cl_tinnitus_quality`), kind of dizziness (`cl_dizziness_kind`), neck (`cl_neck`), HINTS (`cl_hints`).
+- **Spoken** (the same text read as one spoken line, D9): the same captures and set-asides, except `v_vertigo` 2 ("5 min – 72 h"): a spoken line keeps release 0.4.6's band choice, which takes "minutes to hours" from elsewhere in the note; no red flag raised; no Clarify card (clarification reads typed text only); no carry-over slot opens.
+- **Release 0.4.6** (lexicon 0.3.2): `rf_pulsatile` raised; `m_photo`, `m_aura`, `v_aural`, `v_head`, `n_allo`, `r_normal`, `x_purulent` and `x_anosmia` yes; `m_head` 1; `v_vertigo` 2; no card.
+
+**The records and tests of the sign-off.**
+- `lexicon-delta-033.js`: the 18 rows removed, every basis re-indexed, 257 source tags turned
+  `lead-approved`, the 10 added rows with their basis, the clarification qualifiers removed, the
+  `signOff` record, the header and the change-log note (dated 2026-10-12). The rubric is regenerated.
+- `engine/extraction.js`: chart reading for every line under `clauses` (D9) with the reply-word rule
+  for spoken lines, no context marker from typed chart text (D8), `clarifyCues` typed only;
+  `engine/contract.js` and `engine/validate.js` accept the source `lead-approved`;
+  `apps/RubricEditor.jsx` counts the source tags in its read-only summary lines; `apps/Scribe.jsx`
+  comments only.
+- Gold set 0.4.0: ten chart labels relabelled, k260-k273 added, five superseded labels; both pins
+  re-taken.
+- `extraction`: block 4 is now the speech-mode audit (lexicon 0.3.2 vs 0.3.3 on spoken lines under
+  AD18, the dialogues' slots and carry results compared strictly, the 0.3.2 side still checked against
+  the frozen 0.4.6 engine) with 15 explicit speech red-flag tests; AD18 audits spoken comparisons too
+  (rules P and the new X stay typed only), with self-checks. `capture`: each fixture chart case also
+  read the other way (typed or spoken), the reply-word and context-marker cases, nine spoken MASQUE
+  lines with explicit expectations, the round-2 and round-3 texts' spoken readings audited under
+  AD18, the H&P's eleven cards. `values`: the sign-off record, complete and applied, and its
+  mutations refused. `render-scribe`: the H&P's eleven cards, `m_aura` not recorded.
 
 ### Release 0.4.7
 
 `APP_VERSION` (`app/src/engine/policy.js`) and the test harness's `NEW_RELEASE` move together to
-0.4.7, with the AD4 text, and the pages' loader URL reads `?v=0.4.7`. 0.4.6 is the release the
-lead approved for upload, and every printed export carries the release, so code that differs from
-it must not print the same number. Lineage: the rubric and the logic are release 0.4.6's, so a
-0.4.6 derivation or download-all zip should verify unchanged. The files, the deploy list and the
-AD rows: `docs/refactor/02-app-divergences.md` ("screenAIr 0.4.7").
+0.4.7, with the AD4 text. 0.4.6 is the deployed release, and every printed export carries the
+release, so the two must not print the same number.
+
+**Lineage.** `lexiconHash` changes. A derivation saved on 0.4.6 therefore no longer verifies against
+the built-in module: lineage reports the root record's `lexiconVersion` and `lexiconHash`, and a
+`goldSet` mismatch is V53 when the root is supplied. This is inherent to any built-in lexicon
+update; re-derive edits made before 0.4.7 from the current built-in module. `instrumentHash` and
+`scoringHash` are unchanged, so calibration still applies. A 0.4.6 download-all zip holding the
+built-in rubric no longer matches it byte for byte, so its rubric is offered as "Load as derived".
+Neither was tested separately in this release.
+
+**Rubric Editor.** It has no control for `clauses` or `clarify`. They are not editable and are kept
+byte for byte in every derived lexicon (the `editor` suite checks this). Since the fixes before
+review each has a lock row and a read-only summary line in the lexicon section, as `carryRefuse` and
+`normalize` have. Since review round 1 the lock reason and the summary line say the rows are lexicon
+configuration, each tagged with its source, never "approved"; since the sign-off the tags are lead,
+lead-approved, module or draft, and the summary line counts each tag.
+
+### Verification (2026-10-12, after the records fixes)
+
+The final review of the sign-off found records that still said the 0.4.7 rows await the lead's
+sign-off (the version-axes paragraph at the top of this file, the `APP_VERSION` comment in
+`policy.js`, the comment over the entry box and Clarify wording in `Scribe.jsx`, and the
+`changelog[14]` row of `SOURCES.md`), a README sentence that kept "+/-" to typed text (since D9 the
+hedge row is read in every line), and statements in this entry that D9 superseded (r02, the scope
+of chart reading). They are corrected. The two points the lead had not decided were then decided
+in chat ("Decided after the final review", above). No data, engine rule, gold label or
+user-facing text changed: `policy.js` and `Scribe.jsx` change in comments only, and the rubric is
+not regenerated. Regression tests: `values` checks that, while the sign-off is recorded, the
+deployed records and source comments hold none of those statements and the README does not keep
+"+/-" to typed text (each detector first catches the statement as it shipped); `capture` reads
+"+/-" in two spoken lines with explicit expectations (11 spoken MASQUE lines in all).
+
+Run of 12 October 2026 on branch `claude/release-0.4.7`, after these records, in the in-app browser:
+
+- `extract-rubric.html` reports "Identical" to the committed rubric: SHA-256
+  `b2943f8ac3dd6c045220bb8da43448571391a4a4c221fcbedd30c7dd2ba13819`, 167 checks passed, 180,587
+  bytes (unchanged).
+- The full suite at `?seed=1296126801`: **23/23 PASS, 0 fail, 0 invalid**, 1,596,236 checks
+  (1,596,196 after the sign-off): values 3,886 → 3,918 and capture 293,863 → 293,871; every other
+  suite has the same count. Gold set 0.4.0 and its pins (`99dff3ac…`, `EXPECTED_BENCHMARK_040`) are
+  unchanged.
+- The lead's history and physical reads as recorded under "Clinical-lead sign-off (2026-10-12)":
+  typed, `m_photo` yes, `v_aural` yes, `x_purulent` no, `x_anosmia` no and `v_vertigo` heard, with
+  `rf_pulsatile`, `m_aura`, `v_head`, `n_allo` and `r_normal` set aside, no red flag and eleven Clarify
+  cards; spoken, the same captures and set-asides with `v_vertigo` 2, no red flag and no card.
+
+### Verification (2026-10-12, after the clinical lead's sign-off)
+
+Run of 12 October 2026 on branch `claude/release-0.4.7`, after the sign-off and these records, in the
+headless Edge browser (the in-app browser could not open a tab).
+
+- `extract-rubric.html` reports "Identical" to the committed rubric: SHA-256
+  `b2943f8ac3dd6c045220bb8da43448571391a4a4c221fcbedd30c7dd2ba13819`, 167 checks passed (ten for the 0.3.3 delta: the tenth is the sign-off
+  record), 180,587 bytes (after review round 3: `5e899364…`, 166 checks, 177,796 bytes).
+  `scoringHash` (`32cc4f44…`) and `instrumentHash` are unchanged.
+- The full suite at `?seed=1296126801`: **23/23 PASS, 0 fail, 0 invalid**, 1,596,196 checks (1,575,855 after review
+  round 3). The suites whose count moved: values 3,928 → 3,886 (the sign-off record's checks added; the provenance leaves of the struck rows and removed qualifiers gone), extraction 311,445 → 331,727, capture 293,763 → 293,863 and render-scribe 404 → 405; every other suite has the same count.
+- `extraction` block 4 (the speech-mode audit): 591 named texts × 7 option sets, and 2,263 cue texts and 5,000 synthetic utterances × 2: 18,663 comparisons of the frozen 0.4.6 engine and this one on lexicon 0.3.2, all identical, and 18,663 of lexicon 0.3.2 vs 0.3.3 as spoken lines under AD18 (16,346 differ raw, all explained); 95 dialogues, 220 `extractInContext` steps: identical to release 0.4.6 on lexicon 0.3.2, the 0.3.3 captures audited (126 steps differ, all explained), the slot and carry results identical; 15 explicit speech red-flag texts through `extract` and `extractInContext`, all as expected.
+- `extraction` block 3: 125,663 comparisons of lexicon 0.3.2 vs 0.3.3 (120,591 without `opts.chart`, read as spoken lines since D9); 98,220 differ raw and AD18 explains all of them; of the first 4,000 with captures, 1,742 keep a capture compared strictly; 35 AD18 self-checks. Blocks 1 (35,364 strict comparisons on lexicon 0.3.1) and 2 (132,039 comparisons of 0.3.1 vs 0.3.2 under AD13) are unchanged.
+- `capture` block 5: gold set 0.4.0 on lexicon 0.3.3: 535 cases (273 chart) and 93 dialogues; tp 470, fp 0, fn 0; 5 superseded labels, and exactly those 5 cases (no dialogue step) change against lexicon 0.3.2; catalogue agreement 32 of 50. The 68 round-3 and 40 round-2 chart texts pass, each spoken reading audited under AD18; the 9 spoken MASQUE lines pass; the red-flag battery: 170 phrases of 12 flags × 21 affirming and 17 denying templates (6,460 texts), every affirmed flag raised and no clearly denied one. `GOLD_0_4_0_SHA256` (`99dff3ac…`) and `EXPECTED_BENCHMARK_040` were re-taken from this run; `GOLD_0_3_0_SHA256` (`729492ef…`) and `EXPECTED_BENCHMARK` are unchanged.
+- The built-in module validates with 0 errors and the one V12 warning it had before.
+
+### Verification (2026-10-11)
+
+After review round 3 and these records (before the sign-off):
+
+- `extract-rubric.html` reports "Identical" to the committed rubric: SHA-256
+  `5e8993646a577ba5da95b88671e2ee6490af5a5c511368de4e029227eb95a2b5`, 166 checks passed (nine for
+  the 0.3.3 delta), 177,796 bytes. Earlier hashes:
+
+  | Build | SHA-256 | Bytes |
+  |---|---|---|
+  | after review round 2 | `27dbda77…` | 175,785 |
+  | after review round 1 | `2db1e0ec…` | 160,506 |
+  | after the fixes before review | `6ebfe3f0…` | 156,482 |
+  | first 0.4.7 build | `dfa669b0…` | 155,468 |
+  | release 0.4.6 (157 checks) | `173f28b9…` | 138,226 |
+
+  `scoringHash` (`32cc4f44…`) and `instrumentHash` are unchanged.
+- The full suite at `?seed=1296126801`: **23/23 PASS**, 0 fail, 0 invalid, 1,575,855 checks. Earlier
+  totals were 1,570,551 after review round 2, 1,547,839 after review round 1, 1,541,059 after the
+  fixes before review, 1,530,336 in the first 0.4.7 build and 1,407,588 in release 0.4.6. The suites
+  whose count moved in review round 3:
+
+  | Suite | Checks | After review round 2 |
+  |---|---|---|
+  | extraction | 311,445 | 307,323 |
+  | capture | 293,763 | 292,623 |
+  | values | 3,928 | 3,889 |
+  | validate | 471 | 469 |
+  | render-scribe | 404 | 403 |
+
+  Every other suite has the same count (editor 301, static 1,040, golden 412).
+- `extraction`:
+  - **Block 4:** the frozen 0.4.6 engine on lexicon 0.3.2 against this engine on lexicon 0.3.3
+    without `opts.chart`. All 18,342 extract comparisons and 220 `extractInContext` steps (95
+    dialogues) are identical.
+  - **Block 3:** 124,860 comparisons of lexicon 0.3.2 vs 0.3.3. The 119,934 without `opts.chart`
+    are all identical. The 4,716 that differ raw are typed chart text, and AD18 explains all of
+    them. Of the first 4,000 with captures, 1,766 keep a capture that no AD18 rule touches, compared
+    strictly. 29 AD18 self-checks.
+  - **Blocks 1 and 2:** block 1 (35,364 strict comparisons on lexicon 0.3.1) and block 2 (132,039
+    comparisons of 0.3.1 vs 0.3.2 under AD13) are unchanged.
+- `capture` block 5:
+  - Gold set 0.4.0 on lexicon 0.3.3: 521 cases (259 chart) and 93 dialogues; tp 466, fp 0, fn 0.
+  - No label is superseded, and no output changes against lexicon 0.3.2. The catalogue agrees on 32
+    of 50 rows.
+  - 68 round-3 and 40 round-2 chart texts with explicit expectations pass, and each reads as
+    lexicon 0.3.2 when spoken.
+  - The red-flag battery: 181 phrases of 12 flags, 6,878 texts; every affirmed flag is raised and no
+    clearly denied flag is.
+- The built-in module validates with 0 errors and the one V12 warning it had before.
+- The app page (`app/tests/dev/scribe.html`): typed the review's sentences through the real box; the
+  console stayed clean.
+- The lead's history and physical, and the held-out corpus, are given under "Review round 3" above.
+- The files, the deploy list and the AD rows: `docs/refactor/02-app-divergences.md` ("screenAIr
+  0.4.7"). The design: `docs/refactor/06-chart-capture.md` (§13 for review round 3).
+
+## 2026-10-12: release 0.4.8, the clinical lead's three fixes and two follow-up requests
+
+Release screenAIr 0.4.8 (0.4.7 → 0.4.8) makes the three fixes the clinical lead asked for on
+12 October 2026 and, in a follow-up the same day, the lead's plan line for the EMR Friendly Template
+and the Ambient Scribe's Question review (below). Instrument 0.2, lexicon 0.3.3, probe set 1.0.0 and
+gold set 0.4.0 are unchanged, and `masque.logic.js` is not touched (`logicSha256` unchanged). In the
+rubric only one item's clinician question (`ask`), the EMR template's new plan line
+(`emrTemplate.planAdvice`) and the change log change: `instrumentHash` (`b06dfaad…`), `scoringHash`
+(`32cc4f44…`, so the illustrative calibration still applies) and `lexiconHash` (`90edcfd5…`) do not
+move, because `ask` and `emrTemplate` are outside their projections; `contentHash` (`523df8a1…`) and
+the rubric's bytes change. Derivations saved on 0.4.7 still verify against the built-in module (a changed built-in
+rubric alone is reported, not refused). Everything else is engine, app and shell code, the
+module's media and its registry entry.
+
+### The requests (verbatim, 2026-10-12, chat)
+
+The user, who is the project's clinical lead, wrote:
+
+> Fix 1: For the Spanish patient companion, the print out in the end should print findings in both spanish and English so an English speaking clinician can analyze it as well.
+>
+> Fix 2: Question: recalcitrance
+> How long has this been going on?
+> Is a yes/no, if phrasing it as such it should ask "Have symptoms persisted over 3 months despite trials of medical management?"
+>
+> Fix 3: Add the attached video above the patient companion instructions, make it a collapsible/hideable iframe. Feel free to compress it if needed.
+
+The same message also asked for a methodology brief (a Word document on how the data-set results
+were obtained); that is not part of this release and changes nothing here.
+
+### Fix 2: the clinician question of item `r_dur`
+
+"Question: recalcitrance" is the Ambient Scribe's Ask-next card of item `r_dur`: its tag is the
+domain label lowercased ("recalcitrance"), its question the item's `ask`, and its answers the
+boolean item's Yes / No. The question asked for a duration while the answers are Yes / No; it is now
+the lead's sentence, stored and shown exactly as written.
+
+The rubric's change-log entry, verbatim:
+
+- **question** (`/domains/0/items/0/ask`): Clinician question of item r_dur, recorded in release 0.4.8 from the clinical lead's request in chat of 2026-10-12 ("Fix 2: Question: recalcitrance / How long has this been going on? / Is a yes/no, if phrasing it as such it should ask "Have symptoms persisted over 3 months despite trials of medical management?""): the item's ask "How long has this been going on?" becomes the lead's sentence, verbatim, "Have symptoms persisted over 3 months despite trials of medical management?". Its answers stay Yes / No. The item's statement, weight, short label and patient wording, and the patient context question c_dur, are unchanged; ask is outside instrumentHash and scoringHash, so instrument 0.2 and the calibration stand; contentHash changes. Lexicon 0.3.3, probe set 1.0.0 and gold set 0.4.0 unchanged.
+
+- **How it lands.** Through a delta, like the earlier clinical-lead changes:
+  `app/tests/harness/question-delta-048.js` (the request verbatim, the one changed row
+  `{path: "/domains/0/items/0/ask", item: "r_dur", from, to}`, its basis and the change-log entry),
+  applied last by `extract-rubric.js` with `applyQuestionDelta` and proven by `revertQuestionDelta`
+  (`app/tests/harness/diff.js`). The extractor's six new checks (173 in all) and the `values` suite
+  pin it (`SOURCES.md`, "Clinician question for item r_dur (release 0.4.8)").
+- **Where the question is shown.** Wherever an item's clinician question is shown: the Scribe's
+  Ask-next card and heard card (`scribe.js` `itemSuggestion`: `ask = item.ask ?? item.text`), a
+  Clarify item card that names the item (no clarify entry names `r_dur`), the Rubric Editor's
+  `ask` field and the rubric in every download. The Clinician Screener's item card shows the item's
+  statement (`text`, "Symptoms have persisted or recurred for more than 3 months"), never `ask`, so
+  it is unchanged; the FHIR Questionnaire, the bundle, the CDS documents and the EMR template do not
+  print `ask`. No locale carries an item `ask` for `r_dur` and the clinician surfaces are English, so
+  there is no Spanish counterpart. The patient context question `c_dur` also reads "How long has
+  this been going on?", but it offers three durations (not Yes / No) and is untouched.
+- **Instrument identity.** `engine/hash.js` projects an item as `id, w, text, ref, scale` for
+  `instrumentHash` and `id, w, scale` for `scoringHash`; `ask` is in `contentHash` only. So the
+  instrument is the same published instrument (design 03 D8: version and `instrumentHash` determine
+  each other; Q11: copy edits keep the version), instrument 0.2 stays, and no decision is needed.
+- **For the lead.** The new question is narrower than the scored statement it asks about: the
+  statement reads "persisted or recurred for more than 3 months", the question "persisted over 3
+  months despite trials of medical management". A patient whose symptoms recur, or who has not tried
+  medical management, may now be answered No where the statement would read Yes (the separate item
+  `r_abx` asks about failed antibiotic or steroid courses). If the statement itself should change to
+  match, that is an instrument change: `instrumentHash` moves and the lead must name a new instrument
+  version (D8), with the calibration then no longer applying.
+- **Tests.** `values` (the ASK pin reads the reverted rubric; the record, the item, refusals, the
+  change-log position, the sweep exemption), `rules` (rankSuggestions under the new allowed
+  difference AD19, expected on 1,722 of 1,722 suggestion lists that hold `r_dur`; AD19 self-checks),
+  `render-scribe` (`r_dur`'s Ask-next card reads the lead's sentence under "recalcitrance" with Yes /
+  No, and the old question is printed nowhere).
+
+### Fix 3: the introduction video above the instructions
+
+**The video.** The lead's file, as supplied: an MP4 of 60.04 s, 1280 × 720 H.264 with AAC audio,
+14,783,849 bytes, SHA-256 `3ce9088b6c26bcb4d3c370c8d20f0269d8d7a973d8f4be3ab2d745eb89800a28`, the
+index (moov) at the front, so it streams. It is not re-encoded (no encoder here, and none was
+needed: it loads only when the viewer presses play). Viewed frame by frame before it was added (0,
+5, 10, 15, 20, 23, 26, 30, 35, 40, 45, 50, 55 and 59 s): a hand-drawn, grey-pencil animated
+explainer with English captions burned in (the audio was not listened to). A woman holds her face by
+a rainy window with tablets and a nasal spray ("Ever get sinus headaches", "No antibiotic",
+"makes it go away?"); a dizzy man at home and a clinician with pill bottles; a crowd in which many
+figures turn red ("Surprisingly, up to eighty", "percent with sinus headaches", "dizziness actually
+have migraine,"); a head-and-brain diagram with a sinus picture and a pill chart; a body diagram with
+nerve paths and crossed-out tablets ("how do you know?"); a bandaged man with germ and brain icons
+("Maybe ear or sinus", "Even mild allergies or"); a timeline of calendars from 2014 to 2025 ("On
+average, people wait", "to spotlight it, bringing", "relief sooner, without surgery."), ending with
+the woman relieved. Its people are drawings; it shows no patient identifier, no score, band or
+probability and no research capture, so it does not conflict with the Patient Companion's rules.
+It does carry population claims of its own ("up to eighty percent", an average wait): they are the
+lead's content, shown as supplied and not checked by the team (below).
+
+**Where it lives.** It is the built-in module's own media, not engine content:
+`app/modules/masque/media/` holds the MP4, a poster (`patient-companion-intro-poster.jpg`, the frame
+at 0.5 s, 1280 × 720 JPEG, 78,113 bytes, SHA-256 `d3c0a2c2…`) and the frame page
+`patient-companion-intro.html` (no script, `noindex, nofollow`, the English prototype marker as a
+corner badge, one `<video controls preload="none" playsinline>` with the poster and the MP4, no
+autoplay, no loop). `modules/registry.json` names it on the built-in's entry
+(`"patientVideo": "./modules/masque/media/patient-companion-intro.html"`); `shell/registry.js`
+(`patientVideoPath`) keeps only an `.html` page under `./modules/<folder>/`. The shell's Patient tab,
+patient mode and `patient.html` pass it to the companion; an uploaded or derived module never
+carries one, so a module about something else never shows this video. `.htaccess` declares
+`video/mp4`.
+
+**The panel.** On the Patient Companion's first step, right above the instructions card ("Before
+your appointment"): a button and, while shown, a 16:9 frame of the page. Shown by default; "Hide the
+video" collapses it (the frame is removed, so a playing video stops), "Watch a 1-minute introduction"
+shows it again. The button carries `aria-expanded` and `aria-controls`; the frame is titled
+"Introduction video"; the video's own controls are the browser's (keyboard accessible, full screen
+allowed). The frame is sandboxed without scripts (`sandbox="allow-same-origin"`, as the clinician
+apps' EMR template frame; the in-app browser refuses a frame with an opaque origin). Nothing plays
+or downloads until the viewer presses play; there is no animation, so reduced motion has nothing to
+stop. The collapsed state is remembered for the browser tab only (`sessionStorage`, inside
+try/catch; design D20 keeps `localStorage` for modules and drafts). It is `noprint` and hidden by the
+print stylesheet, never in the `.txt` or `.html`. At 375 px it fills the width with no horizontal
+scroll. In Spanish the button reads "Ver una introducción de 1 minuto (video en inglés)" / "Ocultar
+el video" and the frame "Video de introducción (en inglés)": the captions are English.
+
+**Tests.** `render-patient` (the panel above the instructions on the first step only, en and es; the
+button, the frame and its sandbox and title; hide, remembered across a remount, show; the es DOM
+scan; no panel without a video; the print rule; the frame page; the MP4 and the poster served by
+size), `omissions` (the panel on the Patient tab, in patient mode by Hand to patient and by address,
+and on `patient.html` for the built-in, never for the upload or the derivation; never in an export),
+`upload` (the registry entry; `patientVideoPath` accepts and refuses), `values` (the chrome keys).
+
+### Fix 1: the findings in English in a Spanish printout
+
+When the companion runs in Spanish, the summary keeps its Spanish findings and adds, after them, an
+**English version of the same findings**, titled "Versión en inglés, para un médico de habla
+inglesa" and "English version, for an English-speaking clinician". Its content is the English
+summary of the same answers, context and flags, exactly as the English companion shows it: the
+flags with what to say, the opening line, what the patient wants to describe and to ask, the
+not-sure questions and "For my clinician" with its lede and the items' English clinician lines
+(`patientClin`, with the English option label). Right under its title it repeats, in English, the
+caveat lines English mode prints for the same questionnaire: for an uploaded or locally changed
+questionnaire the provenance line ("This questionnaire was loaded from a file and has not been
+reviewed." / "This version of the questionnaire was changed locally and has not been reviewed."),
+and when the English wording itself was edited locally, "Wording in this language was edited
+locally and has not been reviewed."; the built-in module has none. It is on the screen (a section
+tagged `lang="en"` after the Spanish clinician block), in the printed page, in the `.txt` (between
+rules, before the Spanish footer, its headings upper-cased) and in the `.html` (one
+`<section lang="en">` before the disclaimer). In print its title is kept whole and on the same page
+as the block under it. No score, band, probability or research capture is added, and English output
+(the `.txt`, the `.html` and the screen) is unchanged byte for byte from release 0.4.7 apart from
+the release number and the date.
+
+- **Engine.** `buildPatientSummary` attaches `english` (the English summary) to a non-English
+  summary; if the English summary is withheld, so is the Spanish one (its error is returned), so no
+  bilingual summary is handed over without its English part. `summaryText` and `summaryHtml` render
+  it; the findings of both languages come from one function each (`summaryTextBody`,
+  `summaryHtmlBody`), and on screen from one component (`SummaryBody`). The English caveat lines are
+  `englishVersionNotices` (exactly what English output prints for the view; the strings already in
+  `policy.js` `CAVEATS`, no new wording); the English version's styles (`ENVER_CSS`) are added to an
+  `.html` only when it holds that section, so an English `.html` keeps release 0.4.7's stylesheet.
+- **Parity.** The baseline's Spanish output had no English lines, so a new allowed difference,
+  **AD20**, excuses exactly the English version: in a `.txt` the block `ad20Block` builds (the two
+  titles and the English findings, `ad20EnglishBody` of the English `.txt` of the same answers)
+  right before the footer rule; on screen the section's text right before the disclaimer. It applies
+  only where the comparison's locale is Spanish, never in English; it is listed right after AD4, so
+  AD14, AD10 and AD16 then see the Spanish output as before. Its `.txt` block includes the English
+  caveat lines (`ad20EnglishNotices` of the English `.txt`) and a blank line after them when the view
+  has any; the built-in module, which the parity suites compare, has none. The English part is checked on its own
+  against the baseline's English summary and `.txt` of the same answers (`patient`, 10,160 Spanish
+  summaries), against the English export of the same screen (`golden`), and on screen against the
+  English findings rendered by the companion's own `SummaryBody` (`render-patient`, innerHTML
+  equal).
+- **Tests.** `patient` (the twin, AD20 expected on every es export, a full bilingual export checked
+  line by line and block by block, withheld together, AD20 self-checks; the English caveat lines on
+  four views; the `.html` stylesheets), `golden`, `render-patient` (the section, AD20 on every es
+  summary, the clinician lines' tags, the scans; the English caveat lines against English mode's for
+  the upload and the derivation; the print rules), `omissions` (the section's tags in the `.html`;
+  the English caveat lines inside it and the Spanish ones outside it; the es DOM scans allow the
+  section's own `lang="en"`).
+
+### Final review (2026-10-12): four findings, fixed
+
+A final review of the release found four minor defects, each fixed at its cause with a regression
+test that fails on the unfixed code:
+
+1. **The English version's title could end a printed page alone** (screen print and the `.html`).
+   Nothing kept the title with the block under it (and keeping it there alone, with `break-after`,
+   let its two lines, Spanish and English, part across pages). Now the title carries the section's
+   dashed rule and, in print, is kept whole
+   and with the block under it (`break-inside: avoid; break-after: avoid`); in the companion the
+   English version's urgent box is kept whole too (the `.html` already did). Checked through the CSSOM
+   (`patient`, `render-patient`) and by printing the review's four reproductions (seeds 56433, 88109,
+   103947, 111866 of its driver) to PDF in headless Edge: the whole title now opens the next page with
+   the English findings.
+2. **The English version left out the English caveats** for an uploaded or locally changed
+   questionnaire: they were printed in Spanish only, so an English-speaking clinician reading the
+   English part was not told, in English, that the questionnaire was uploaded or changed and
+   unreviewed, or that its English wording had been edited. It now repeats the lines English output
+   prints for the same view (above). Tests: `patient` (built-in, upload, derivation with an edited
+   English, derivation of an upload with an edited English and a stale Spanish; `.txt` and `.html`),
+   `render-patient`, `omissions`, AD20 self-checks.
+3. **The English `.html` had gained four unused CSS rules** while the records said English output was
+   unchanged byte for byte. The rules are now added only where the section is; the `patient` suite
+   pins the English stylesheet to release 0.4.7's (SHA-256 `74440b2f…`).
+4. **The records quoted a `contentHash` the rubric never had** (`58745f31…`; it was then `7674bf7d…`). The
+   extractor had reported the hashes of the rubric before its calibration's `scoringHash` was stored
+   (`contentHash` covers it); it now reports the written rubric's hashes and shows `contentHash` and
+   `lexiconHash` too, and the `values` suite checks every hash this entry quotes against the shipped
+   rubric. The rubric itself is unchanged (Identical, `57a8445d…`).
+
+### Follow-up (2026-10-12): the lead's two new requests
+
+After the three fixes the clinical lead wrote (verbatim, 2026-10-12, chat):
+
+> The ambient scribe feature should also have a Question Review section (to the right of "Ask Next") where a clinician can double check all responses and modify them if needed to adjust the screener/produced note.
+>
+> Also recommendations in the plan should also add "recommend a trial of migraine abortives if not contra-indicated due to other conditions." so that a primary doctor can offer this as an option to the patient for relief in the interim.
+
+and answered two questions (verbatim, 2026-10-12, AskUserQuestion; the label of the option chosen,
+then its description as shown):
+
+- "When should the plan print "recommend a trial of migraine abortives if not contra-indicated due
+  to other conditions."?" — **"With the treatment refs, no red flag (Recommended)"**: "In the EMR
+  note's plan, beside the empiric-treatment references, whenever they print and no red flag is open
+  (screen points to a migrainous driver)."
+- "Which outputs should carry it?" — **"EMR template note (Recommended)"**: "The EMR Friendly
+  Template plan, on both the Screener and the Scribe." (So not the Scribe's encounter note and not
+  the Screener's result cards.)
+
+#### The plan line (EMR Friendly Template)
+
+The EMR template's plan now prints the lead's sentence, verbatim (lower-case first word, final full
+stop, never re-cased), as a plan line right after the empiric-treatment reference lines and before
+the "treatment offered today" placeholders:
+
+```
+Empiric treatment references (for use before specialist review):
+- Migraine prevention guideline — AAN/AHS (endorsed by AAFP), 2026: …
+- …
+- recommend a trial of migraine abortives if not contra-indicated due to other conditions.
+Acute (abortive) treatment offered today: [agent, dose - or not offered, reason]
+```
+
+It prints wherever those references print with no red flag open: the referral gate open (decision
+D4), on the Screener and the Scribe, for every phenotype (the references without `showFor` print for
+all three). It never prints under an open red flag, not even in the screen-based block under the
+heading "Screen-based referral and references (the FHIR bundle withholds the referral while a red
+flag is open):", which keeps the references (release 0.4.6); nor at the lowest band, on an
+unscorable screen, before the Scribe's red-flag review is recorded or after a module rule error
+(where the references do not print either); nor in the Scribe's encounter note, the FHIR bundle or
+the Screener's result cards.
+
+The rubric's change-log entry, verbatim:
+
+- **emr-plan** (`/emrTemplate/planAdvice`): Plan advice of the EMR Friendly Template, recorded in release 0.4.8 from the clinical lead's request in chat of 2026-10-12 ("Also recommendations in the plan should also add "recommend a trial of migraine abortives if not contra-indicated due to other conditions." so that a primary doctor can offer this as an option to the patient for relief in the interim.") and the lead's answers of the same day (when: "With the treatment refs, no red flag (Recommended)"; outputs: "EMR template note (Recommended)"): emrTemplate.planAdvice holds the lead's sentence, verbatim, "recommend a trial of migraine abortives if not contra-indicated due to other conditions.", with its source and date. The EMR template's plan prints it right after the empiric-treatment reference lines, before the treatment-offered placeholders, only where those references print and no red flag is open; never under an open red flag's screen-based block, and never in the encounter note, the FHIR bundle or the Screener's result cards. The signed-off emrTemplate block of release 0.4.3 and the 0.4.6 additions are unchanged. Recorded in tests/harness/emr-plan-delta-048.js. Instrument 0.2, lexicon 0.3.3, probe set 1.0.0 and gold set 0.4.0 are unchanged; only contentHash changes.
+
+- **Data, not engine copy.** The sentence is module data, `emrTemplate.planAdvice`
+  (`[{text, source: "lead", decided: "2026-10-12"}]`); `engine/emr.js` prints each line's `text`
+  ("- " and the text) on the no-flag path only and names no condition. `source` and `decided` are
+  the line's record and are not printed. A module without the key prints no line.
+- **How it lands.** Through a delta, like the earlier clinical-lead changes:
+  `app/tests/harness/emr-plan-delta-048.js` (the request and the two answers verbatim, the one added
+  row, its basis and the change-log entry), applied last by `extract-rubric.js` with the 0.4.6
+  answers' `applyEmrDecisionsDelta` and proven by `revertEmrDecisionsDelta`. The extractor's eight
+  new checks (181 in all) and the `values` suite pin it (`SOURCES.md`, "Plan line of the EMR
+  template (release 0.4.8, follow-up)"). The signed-off `emrTemplate` block of release 0.4.3 still
+  hashes `fb63a2b9…` under every delta, and the block of release 0.4.6 `0152cfd8…` under this one;
+  the shipped block now hashes `5f740853…`.
+- **Validator.** V61 knows the key: a list of `{text, source, decided}`, `text` a non-empty string
+  without `[ ] { }`, `source` a non-empty string and `decided` a real YYYY-MM-DD date (errors); any
+  other field is never read (warning). Seven new mutation generators.
+- **Tests.** `emr` (line-exact placement for every phenotype and the Scribe's derived picture on
+  both surfaces; absent under each red flag alone with each Scribe capture source, both tiers, a
+  probe-raised flag and an unrecorded review, where the references still print; absent at the
+  lowest band, unscorable, unreviewed and after routing and derive rule errors; absent from the
+  bundle and the encounter note; no app or other engine file reads the key; a module without the
+  key prints the same template minus the line; V61; and the oracle expects the line from the data in
+  every state of the matrix, the red flags and the fuzz), `values` (record, line, hashes, change-log
+  position, sweep exemption), `validate` (the generators).
+
+#### Question review (Ambient Scribe)
+
+The Ambient Scribe's view switch gains a **Question review** tab right of Ask next: Safety, Ask next,
+Question review, Note, FHIR (the lead's placement, "to the right of "Ask Next""). The view switch is
+now a tab list (`role="tablist"`, each view a `tab` with `aria-selected` and `aria-controls`, one
+`tabpanel`; only the selected tab is in the tab order, and the arrow keys, Home and End move between
+tabs and select them). The default view is unchanged (Safety, the red-flag review first, as since the
+baseline); Question review never opens by itself.
+
+- **What it lists.** Every scored item of the module, once, by domain (the domain order, each domain
+  headed by its label), with the item's clinician question and short label as Ask next shows them
+  (for `r_dur`, the lead's question of Fix 2), its current answer and where this encounter recorded
+  it. An absent answer (or "unsure") reads **"not answered"**, never no; an unanswered item skipped in
+  Ask next adds "skipped in Ask next", also when a review edit is on record (review fix, below).
+  Context items, information prompts and red flags are not listed (the Safety tab
+  holds the flags). New engine helper: `questionReview` (`engine/scribe.js`), with the source names
+  `REVIEW_SOURCE`.
+- **Sources.** heard in encounter (a spoken line: the microphone or the demo transcript), typed chart
+  text, probe (an Ask next probe option that wrote the item), Clarify card, Ask next (a suggestion or
+  a heard card), question review edit. The Scribe keeps the record for the session only (display
+  only: no score, note, bundle or export reads it).
+- **Editing.** Each row offers the item's own answers (its scale labels, or Yes / No) and **Clear
+  answer**. An answer goes through the same path as an Ask next card, so the score, the coverage, the
+  suggestions, the probes, the Clarify cards, the encounter note, the FHIR bundle and the EMR
+  template follow at once; choosing the current answer changes nothing. Clearing deletes the answer
+  (and its skip, so Ask next can ask it again): the item is unanswered, back in the attainable
+  range, never a no. A row whose current answer came from the review carries an **edited** chip and,
+  when there was an answer before, "First recorded: <answer> · <source>". The notes keep their
+  format (they do not mark edits). Changing or clearing an answer that a probe wrote retracts that
+  probe's answer (review fix, below): its note leaves the encounter note's supporting features and
+  the EMR template's probe notes, its probe-keyed EMR checklist entry leaves, the history and
+  review-of-systems rows lose their "recorded by clinician via probe" label, and the probe can be
+  asked again while it is live; the row keeps "First recorded: <answer> · probe".
+- **Reset and unsaved work.** Reset clears the record; the module switch's unsaved-work summary
+  counts the answers as before, and a review edit that cleared the only answer still counts as a
+  screen in progress.
+- **Chrome.** English, generic, no module id: the tab label "Question review", the line "Every
+  scored item, with its current answer and where it came from. Change or clear an answer here: the
+  score, coverage, suggestions, encounter note and EMR template follow. Not answered is never a
+  no.", "not answered", "skipped in Ask next", "Clear answer", "edited", "First recorded:", the
+  tab list's name "Encounter views", and the source names above. The Patient Companion is untouched
+  (it still shows no score, band, probability or research capture).
+- **Parity.** The baseline Scribe has no such tab, so a new allowed difference, **AD21**, excuses
+  exactly its text in the right card's Safety, Ask-next and Note views: the tab's own text, once,
+  right after the Ask next tab's text and right before the Note tab's. The review view itself is
+  never part of a parity comparison.
+- **Tests.** `render-scribe` (the tab list, its order, roles and keys, the default view; every scored
+  item once by domain, each row a group named by its question; a fresh Scribe all "not answered";
+  the demo's answers with "heard in encounter"; an edit moving the published answers, the readout,
+  the encounter note and the EMR template (equal to `buildEmrTemplate` of the edited answers), with
+  the edited chip and what was first recorded; a clear returning the item to unanswered with
+  coverage down; a typed chart answer corrected the same way; the Ask next, skip, probe and Clarify
+  sources; no Ask next card inside the review; the dirty summary; Reset; AD21 self-checks and AD21
+  expected at every compared snapshot; after the review fixes, also: the cleared item shown again in
+  Ask next, a skip after a review clear, and a probe-written item changed and cleared), `shape` (the
+  fixture's review: every item once, each answered row from Ask next), `capture` (after the review
+  fixes: `retractProbeAnswers` and `probeNoteList`), the foundations export list.
+
+#### Review of the follow-up (2026-10-12): eight findings, fixed
+
+A review of the follow-up found one major and seven minor defects. Each is fixed at its cause; the
+code fixes carry a regression test that fails on the unfixed code (proven by putting the old code
+back, then restoring it):
+
+1. **Major: a corrected probe answer left the probe's note and checklist entry stating the old
+   finding.** The review rewrote only the answer; the probe answer that first wrote the item stayed
+   on record, and the probe's note (the encounter note's "SUPPORTING FEATURES AND EXAM", the EMR
+   template's "Probe notes (recorded by clinician):") and its probe-keyed EMR checklist entry come
+   from the probe answer, not from the item. So after the patient's nausea was corrected to yes, the
+   note still said "Head-motion dizziness without nausea — does not qualify as a Bárány vestibular
+   symptom"; after a scan result "Genuinely clear" was corrected or cleared, the checklist still
+   ticked "recorded by clinician via probe: Genuinely clear". Before this release nothing could
+   change an item after a probe wrote it, and this entry's own sentence said the opposite. Now a
+   review change or clear retracts every probe answer whose chosen option wrote that item (new
+   engine helper `retractProbeAnswers`), and the encounter note's probe notes are derived from the
+   probe answers on record (`probeNoteList`), no longer an append-only list, so the note goes with
+   its answer; the probe can be asked again while it is live. The other items the option wrote keep
+   their answers (and their review rows still say "probe"), without the EMR template's probe label,
+   which would quote the option the clinician corrected; a red flag it raised stays raised. Tests: `render-scribe` (a rescue probe's
+   option with a note, cleared and then changed in the review: the note gone from the encounter
+   note, the EMR template equal to `buildEmrTemplate` with no probe answer, the rail as `liveProbes`
+   gives it; a probe-keyed checklist signal, made live by one review answer, gone after a change
+   and after a clear; the EMR expectation now takes the probe answers, which it had always left
+   empty), `capture` (the two helpers on crafted probe answers). The sentence above is corrected.
+2. **A skip after a review clear never showed on the row.** A cleared item that came back to Ask next
+   and was skipped there still read "question review edit". An unanswered skipped item now reads
+   "skipped in Ask next" whatever source is recorded (the edited chip and the first answer stay).
+   Test: `render-scribe` (review answer, clear, the skip dropped, skipped again in Ask next).
+3. **The `shape` suite's probe-rail check could not fail**: it ran after the Question review was
+   opened, and the rail is shown only in the Ask next view. It now runs in the Ask next view, before
+   the review, and requires that view.
+4. **The "cleared item returns to Ask next" check passed without checking**: it passed whenever the
+   item was not shown, and in the seed-1296126801 run it was not (the Ask next source check was then
+   skipped). The edited item is now one Ask next shows once its answer is cleared (computed with the
+   engine), the shown suggestions must equal `rankSuggestions` for the published answers, and the
+   item must be shown and answered from its card. A review clear that kept a skip now fails it.
+5. **AD21's row fell outside its table** in `docs/refactor/02-app-divergences.md` (a blank line ended
+   the table before it); removed.
+6. **`SOURCES.md` listed every rubric change-log entry but this follow-up's** (and the table stopped
+   at `changelog[14]`): the paragraph now ends with the `emr-plan` entry, and the table has rows for
+   `changelog[15]` (`question`) and `changelog[16]` (`emr-plan`).
+7. **The Rubric Editor's lock reason for `/emrTemplate` did not know the plan line**: it called the
+   block cited content signed off on 2026-10-07 with additions of 2026-10-10, including the lead's
+   uncited line of 2026-10-12. It now reads "The EMR template data is clinical content (the built-in
+   module's was signed off by the clinical lead on 2026-10-07, with the lead's additions of 2026-10-10
+   and 2026-10-12; all of it cited except the 2026-10-12 plan line, the lead's own recommendation);
+   not editable in the Rubric Editor." (`engine/derive.js`, which joins the deploy list); `editor`
+   pins it, probes `/emrTemplate/planAdvice` and edits the plan line.
+8. **`policy.js`'s release comment described 0.4.8 as the three fixes only**; it now names the two
+   follow-up requests too.
+
+#### For the lead (follow-up)
+
+1. **Where the tab sits.** "To the right of "Ask Next"" is read as the Scribe's view switch: the
+   review is its own tab right of Ask next, and the default view stays Safety. If a tab inside the
+   Ask next view was meant instead, say so.
+2. **When the plan line prints.** With the references, which print for every picture once the
+   referral gate opens (the vestibular rows only for otologic and both), so the line prints for the
+   sinonasal picture too; your chosen option's description says "(screen points to a migrainous
+   driver)". It never prints under an open red flag.
+3. **A corrected probe answer is retracted, not annotated.** When the review changes or clears an
+   answer a probe wrote, the probe's answer (and so its note and checklist entry) is withdrawn and the
+   probe may be asked again; the review row still shows what the probe first recorded. Keeping the
+   probe's observation and marking it as superseded is the other option, if the clinician's original
+   observation should stay in the note.
+
+### New strings (AI translation, unreviewed)
+
+Engine chrome (`PATIENT_CHROME`, `app/src/engine/patient.js`), recorded with a basis each in
+`app/tests/harness/patient-chrome-048.js`. The English was written by the team as interface labels
+(not clinical content); the Spanish is an AI translation (Claude), not reviewed by a qualified
+medical translator or a bilingual clinician, like the 0.4.2 Spanish. `locales.es.reviewed` stays
+false and the "Traducción sin revisar" banner stays.
+
+| Key | English | Spanish |
+|---|---|---|
+| `videoShow` | Watch a 1-minute introduction | Ver una introducción de 1 minuto (video en inglés) |
+| `videoHide` | Hide the video | Ocultar el video |
+| `videoTitle` | Introduction video | Video de introducción (en inglés) |
+| `englishVersion` | English version, for an English-speaking clinician | Versión en inglés, para un médico de habla inglesa |
+
+### For the lead
+
+1. **`r_dur`'s question and statement** differ in scope (Fix 2, above). Keeping the statement keeps
+   instrument 0.2; changing it is an instrument change with a new version.
+2. **The video's claims** ("up to eighty percent" of people with "sinus headaches" or dizziness
+   "actually have migraine"; an average wait) are shown as supplied. The project's invariant "say
+   what a number is" asks for a source; none is recorded.
+3. **The video is English-only.** In Spanish the button and title say so; a Spanish-captioned
+   version would need a new file from the lead.
+4. **The Spanish strings** above await the bilingual reviewer with the 0.4.2 Spanish.
+5. **Deployment.** The MP4 adds 14.8 MB; the host must serve it as `video/mp4` with range requests
+   (Apache does). `.jsx` files have been served stale after earlier uploads (`Scribe.jsx` changes in
+   the follow-up: confirm the Question review tab after upload).
+
+### Verification
+
+Run of 12 October 2026 on branch `claude/release-0.4.8`, in the in-app browser.
+
+- `extract-rubric.html` reports "Identical" to the committed rubric (again after the review of the
+  follow-up, which changes no rubric byte): SHA-256
+  `371b875cc8c4eaa8677f16ae8dbe7e927951b44c8f9455eca183c7bc5ba6644e`, 181 checks passed (six for the
+  question delta, eight for the follow-up's plan line), 183,194 bytes. `instrumentHash` `b06dfaad…`,
+  `scoringHash` `32cc4f44…` and `lexiconHash` `90edcfd5…` unchanged; `contentHash` `523df8a1…`
+  (before the follow-up: 181,583 bytes, `57a8445d…`, 173 checks).
+- The suites at `app/tests/index.html?seed=1296126801` (no filter), after the review of the
+  follow-up and these records: **23/23 PASS, 0 fail, 0 invalid**, 1,650,669 checks (after the
+  follow-up, before its review: 1,650,620; after the final review's fixes, before the follow-up:
+  1,647,342; release 0.4.7: 1,596,236). The suites whose count moved:
+
+  | Suite | Checks | Before the follow-up's review | Before the follow-up | Release 0.4.7 |
+  |---|---|---|---|---|
+  | patient | 354,233 | 354,233 | 354,233 | 303,615 |
+  | capture | 293,888 | 293,871 | 293,871 | 293,871 |
+  | rules | 221,866 | 221,866 | 221,866 | 221,845 |
+  | emr | 128,196 | 128,196 | 125,013 | 125,013 |
+  | shape | 77,610 | 77,610 | 77,608 | 77,608 |
+  | omissions | 20,508 | 20,508 | 20,508 | 20,480 |
+  | render-patient | 9,306 | 9,306 | 9,306 | 8,964 |
+  | values | 3,976 | 3,976 | 3,958 | 3,918 |
+  | static | 1,074 | 1,074 | 1,058 | 1,040 |
+  | validate | 478 | 478 | 471 | 471 |
+  | render-scribe | 491 | 462 | 410 | 405 |
+  | golden | 442 | 442 | 442 | 412 |
+  | editor | 304 | 301 | 301 | 301 |
+  | upload | 91 | 91 | 91 | 87 |
+
+  Every other suite has the same count (integrity 78, sweep 104,273, extraction 331,727, probes
+  100,049, cohort-gen 10, render-screener 1,290, research 160, research-parity 436, roundtrip 183).
+- Review of the follow-up, each code fix proven by revert: with `Scribe.jsx` as it was before the
+  review (commit ce27797) `render-scribe` fails 16 checks (the skip after a review clear; the probe
+  note left in the encounter note and the EMR template after a clear and after a change; the probe
+  rail; the probe-keyed checklist entry after a change and after a clear); with `reviewClear` keeping
+  a skip instead of dropping it, 9 (the cleared item missing from the suggestions, which no longer
+  equal `rankSuggestions`, its card, the skip still on the row); with the probe rail rendered
+  unconditionally, `shape` fails `/render/scribe/probeRail`, which the old placement let pass. In `screenair.html` the review's two
+  reproductions now hold: after "No nausea" (`pr_headmotion_nausea`) and the nausea corrected to Yes
+  in the Question review, the encounter note lists nausea and no longer prints "Head-motion dizziness
+  without nausea — does not qualify as a Bárány vestibular symptom"; after "Genuinely clear"
+  (`pr_scan_detail`) and the finding corrected to Yes, the EMR template's checklist reads "recorded
+  on screen: Objective sinus inflammation on endoscopy/CT when symptomatic" with no "via probe:
+  Genuinely clear", and after "Clear answer" the row is "[ ] … not recorded" and the probe is back on
+  the rail. The console of a fresh tab stayed clean.
+- Follow-up, the plan line: printing it under an open red flag too (the engine changed on purpose,
+  then restored) fails the `emr` suite (400 differences, in the matrix's flag states and every
+  red flag), so the gating is tested. AD21 observed at every compared `render-scribe` snapshot.
+- Follow-up, `screenair.html`: the Screener's "Sample: dizziness" (otologic, no flag) EMR template
+  prints, in the plan, the six reference entries and then "- recommend a trial of migraine abortives
+  if not contra-indicated due to other conditions." right before "Acute (abortive) treatment offered
+  today: [agent, dose - or not offered, reason]"; "Sample: red flag" prints the references under
+  "Screen-based referral and references (the FHIR bundle withholds the referral while a red flag is
+  open):" and no plan line. In the Scribe, a chart note typed into the box ("Her tinnitus is
+  bilateral. Endorses photophobia.", Ctrl+Enter) and six demo lines: the Question review tab right of
+  Ask next lists all 30 scored items, the typed answers as "typed chart text" and the demo's as
+  "heard in encounter"; changing the typed tinnitus answer to No moved the index range (0–97 →
+  0–93) and the vestibular domain (4/25 → 0/25), showed "edited" and "First recorded: Yes · typed
+  chart text", and the EMR template then read "Answered no: Fluctuating aural fullness or tinnitus
+  with episodes"; clearing the typed photophobia answer returned it to "not answered" (coverage 20%
+  → 17%), and the encounter note and the EMR template dropped it. Keyboard: from Ask next,
+  ArrowRight selects and focuses Question review, Tab moves to the first row's first answer button,
+  Shift+Tab back to the selected tab; only the selected tab is in the tab order. At 375 px no
+  horizontal scroll (the review 309 px wide). The console of a fresh tab stayed clean through the
+  Scribe and the Screener.
+- AD19 observed on 1,722 of 1,722 baseline suggestion lists holding `r_dur` (`rules`); AD20 on
+  10,160 of 10,160 es exports (`patient`, each English twin equal to the baseline's English summary
+  and `.txt`), on every es screen of `golden` and on 95 of 95 es summary checkpoints
+  (`render-patient`).
+- `screenair.html`: the Scribe's Ask-next card for `r_dur` reads "Have symptoms persisted over 3
+  months despite trials of medical management?" under "recalcitrance" with Yes / No; the Screener's
+  item card still shows the statement ("Symptoms have persisted or recurred for more than 3 months")
+  and neither question; patient mode in English and Spanish shows the video panel right above the
+  instructions ("Hide the video" / "Ocultar el video"), the video plays, hides and shows; a Spanish
+  run to the summary shows the English version on screen, and its `.txt` and `.html` carry both
+  languages (one English section; the Spanish footer and dated marker last); at 375 px the page
+  has no horizontal scroll (frame 343 px); the console of a fresh tab stayed clean. `patient.html`
+  the same.
+- The video was viewed before it was added (frames at 0 to 59 s; description above).
+- Final review fixes, beyond the suites (headless Edge 155): the review's four reproductions (its
+  driver's seeds 56433, 88109, 103947 and 111866, Spanish, with and without red flags) printed to PDF
+  from patient mode, and the `.html` export of 111866: the English version's whole title opens page 3
+  together with its first block (the urgent box, or "What I want to describe"); before the fix the
+  title ended page 2 (in 111866 its English line moved to page 3 even with `break-after` alone, so
+  the title is also kept whole). Twenty answer sets (five fixed patterns with and without red flags, ten
+  random) driven through release 0.4.7 (b516872, served from a `git archive`) and this release in
+  patient mode: in English the `.txt`, the `.html` and the screen text are identical once the release
+  and the date are normalised; in Spanish the same holds once the English version (and, in the
+  `.html`, its styles) is removed.
+- No cloud Playwright run (no Node on this machine).
 
 ## Logic (`masque.logic.js`)
 

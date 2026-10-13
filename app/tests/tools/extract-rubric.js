@@ -59,21 +59,61 @@
 // entry, and its changelog entry is the last, right after the release 0.4.5 referral entry.
 // Nothing of it is typed here.
 //
-// extractRubric(env) → {rubric, text, sha256, sources, checks, committed}
+// Release 0.4.7: the lexicon change 0.3.2 → 0.3.3 (tests/harness/lexicon-delta-033.js: lexicon.clauses,
+// lexicon.clarify, four negation cues and the gold-set reference, from the clinical lead's request and
+// decisions of 2026-10-11) is applied right after the 0.3.2 delta with applyLexiconDelta, proven by
+// revertLexiconDelta and, for the whole chain, revertLexiconChain. The lead's request and answers
+// must be recorded verbatim; the lead-sourced rows must be exactly the verbs the request names and
+// the rhinorrhea question verbatim; every clarify entry names one probe of the logic or one item; there
+// is one basis per row, switch, entry and appended negation cue; gold set 0.4.0 must pin the reference
+// file and gold set 0.3.0 (its SHA-256); and its change-log entry is the last. The clinical lead signed
+// the delta off on 2026-10-12 (LEXICON_DELTA_033.signOff): the record must be complete and applied
+// (lexicon033SignOffProblems of tests/harness/diff.js): no row is left a plain draft (every row the
+// team drafted is "lead-approved", its basis still saying "Draft"), every struck row is absent, every
+// approved row present, the rows added and the qualifiers removed at the sign-off in place, and the
+// 19 Part D answers and the D8 follow-up answers recorded among their options. Nothing of it is typed
+// here.
+//
+// Release 0.4.8: the clinical lead's question for item r_dur (tests/harness/question-delta-048.js,
+// requested in chat on 2026-10-12) is applied last, with applyQuestionDelta: the item's clinician
+// question (`ask`) changes from the baseline Scribe ASK it must still show to the lead's quoted
+// sentence, verbatim; nothing else changes. revertQuestionDelta must give back the rubric without it
+// exactly; the request must be recorded as written and quote both questions, the item must be the yes
+// / no item the request names by its card tag, instrumentHash, scoringHash and lexiconHash must not
+// move (ask is outside their projections), there is one basis per row, and its changelog entry
+// follows the release 0.4.7 lexicon entry. Nothing of it is typed here.
+//
+// Release 0.4.8, follow-up: the clinical lead's plan line for the EMR template
+// (tests/harness/emr-plan-delta-048.js, requested and answered in chat on 2026-10-12) is applied last,
+// with applyEmrDecisionsDelta (the shape of the 0.4.6 answers): one key, planAdvice, is added at the
+// end of /emrTemplate, nothing existing changes. revertEmrDecisionsDelta must give back the rubric
+// without it exactly; the request must quote the line, the line must be that sentence verbatim (never
+// re-cased or re-punctuated), the two answers must be recorded, its source and date must be the
+// request's, instrumentHash, scoringHash and lexiconHash must not move (emrTemplate is outside their
+// projections), there is one basis per line, and its changelog entry is the last, right after the
+// question entry. Nothing of it is typed here.
+//
+// extractRubric(env) → {rubric, text, sha256, hashes, sources, checks, committed}
 //   text     JSON.stringify(rubric, null, 2) + "\n" (UTF-8, LF, no \u escapes)
+//   hashes   rubricHashes of the rubric as written, after its calibration's scoringHash is stored
+//            (release 0.4.8 final review: they had been taken before, so their contentHash, which
+//            covers research, was not the committed rubric's, and the 0.4.8 records quoted it)
 //   sources  [{path, file, lines, how}] — the field → baseline file:lines map behind SOURCES.md
 //   checks   [{ok, what}] — every cross-check the extraction ran (all must be ok)
 //   committed {sha256, identical} — the committed modules/masque/masque.rubric.json, compared byte for byte
 import { createOracles } from "../harness/oracles.js";
 import {
-  applyEmrDecisionsDelta, applyEmrDelta, applyLexiconDelta, applyLocaleDelta, applyReferralDelta, emrSignOffComplete, revertEmrDecisionsDelta,
-  revertEmrDelta, revertLexiconDelta, revertLocaleDelta, revertReferralDelta,
+  applyEmrDecisionsDelta, applyEmrDelta, applyLexiconDelta, applyLocaleDelta, applyQuestionDelta, applyReferralDelta, emrSignOffComplete, lexicon033SignOffProblems, revertEmrDecisionsDelta,
+  revertEmrDelta, revertLexiconChain, revertLexiconDelta, revertLocaleDelta, revertQuestionDelta, revertReferralDelta,
 } from "../harness/diff.js";
 import { LEXICON_DELTA } from "../harness/lexicon-delta.js";
+import { LEXICON_DELTA_033 } from "../harness/lexicon-delta-033.js";
 import { LOCALE_DELTA } from "../harness/locale-delta.js";
 import { EMR_DELTA } from "../harness/emr-delta.js";
 import { REFERRAL_DELTA } from "../harness/referral-delta.js";
 import { EMR_DECISIONS_DELTA } from "../harness/emr-decisions-delta.js";
+import { QUESTION_DELTA } from "../harness/question-delta-048.js";
+import { EMR_PLAN_DELTA } from "../harness/emr-plan-delta-048.js";
 import { PATIENT_CHROME } from "../../src/engine/patient.js";
 import { rubricHashes, sha256Hex } from "../../src/engine/hash.js";
 import { FORMAT, CONTRACT_VERSION } from "../../src/engine/contract.js";
@@ -182,6 +222,7 @@ function deepEqual(a, b) {
 
 /** A JSON round trip: plain data only, key order kept. */
 const plain = (x) => JSON.parse(JSON.stringify(x));
+const arr = (x) => (Array.isArray(x) ? x : []);
 
 function render(template, vars) {
   return template.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
@@ -661,16 +702,105 @@ export async function extractRubric(env) {
   const idRows = [...LEXICON_DELTA.appended, ...LEXICON_DELTA.fields].filter((r) => r.entryId !== undefined);
   check(idRows.length > 0 && idRows.every((r) => entryIdAt(lexicon031, r.path) === r.entryId),
     "lexicon delta: every appended[].entryId and fields[].entryId names the entry at its 0.3.1 position");
-  const lexicon = applyLexiconDelta(lexicon031, LEXICON_DELTA);
-  check(lexicon.version === LEXICON_DELTA.to && deepEqual(revertLexiconDelta(lexicon, LEXICON_DELTA), lexicon031),
+  const lexicon032 = applyLexiconDelta(lexicon031, LEXICON_DELTA);
+  check(lexicon032.version === LEXICON_DELTA.to && deepEqual(revertLexiconDelta(lexicon032, LEXICON_DELTA), lexicon031),
     `lexicon delta: ${LEXICON_DELTA.from} → ${LEXICON_DELTA.to} applied, and revertLexiconDelta gives back the baseline lexicon exactly (key order included)`);
-  const gold030Res = await fetch(new URL("tests/fixtures/goldset/" + lexicon.goldSet.file, env.appBase).href, { cache: "no-cache" });
-  if (!gold030Res.ok) fail(`gold set ${lexicon.goldSet.file}: HTTP ${gold030Res.status}`);
-  const gold030 = await gold030Res.json();
-  check(gold030 && gold030._meta && gold030._meta.version === lexicon.goldSet.version && gold030._meta.lexiconVersion === lexicon.goldSet.lexiconVersion
+  const gold030Res = await fetch(new URL("tests/fixtures/goldset/" + lexicon032.goldSet.file, env.appBase).href, { cache: "no-cache" });
+  if (!gold030Res.ok) fail(`gold set ${lexicon032.goldSet.file}: HTTP ${gold030Res.status}`);
+  const gold030Bytes = new Uint8Array(await gold030Res.arrayBuffer());
+  const gold030 = JSON.parse(new TextDecoder().decode(gold030Bytes));
+  check(gold030 && gold030._meta && gold030._meta.version === lexicon032.goldSet.version && gold030._meta.lexiconVersion === lexicon032.goldSet.lexiconVersion
     && gold030._meta.basedOn && gold030._meta.basedOn.sha256 === goldPin && gold030._meta.basedOn.cases === gold.cases.length,
-    `gold set ${lexicon.goldSet.version} (tests/fixtures/goldset): _meta version and lexiconVersion equal lexicon.goldSet; basedOn pins the reference ${gold._meta.version} file and its ${gold.cases.length} cases`);
-  src("/lexicon", "Ext", [24, 166], `LEXICON_VERSION L24, NEGATION, THIRD_PARTY, HISTORICAL, BOOL_EX, CTX_EX, SCALE_EX, MULTI_EX, RF_PHRASES (keys renamed only); lang = Voice L47 VOICE_LANG; goldSet.version = reference/MASQUE_v0.3.1/masque_extraction_goldset.json _meta.version + tests/harness/lexicon-delta.js (clinical-lead approval ${LEXICON_DELTA.approved.date})`);
+    `gold set ${lexicon032.goldSet.version} (tests/fixtures/goldset): _meta version and lexiconVersion equal the 0.3.2 lexicon's goldSet; basedOn pins the reference ${gold._meta.version} file and its ${gold.cases.length} cases`);
+
+  // Release 0.4.7: the 0.3.2 → 0.3.3 delta (tests/harness/lexicon-delta-033.js), applied after the
+  // 0.3.2 delta and proven by revert, the whole chain too. The lead's own words are checked here against
+  // the lead's request verbatim; every other row was drafted by the team and approved by the lead on
+  // 2026-10-12 ("lead-approved"), and the sign-off record is complete and applied.
+  const D3 = LEXICON_DELTA_033;
+  const lexicon = applyLexiconDelta(lexicon032, D3);
+  check(lexicon.version === D3.to && D3.from === LEXICON_DELTA.to && deepEqual(revertLexiconDelta(lexicon, D3), lexicon032)
+      && deepEqual(revertLexiconChain(lexicon, [LEXICON_DELTA, D3]), lexicon031)
+      && deepEqual(Object.keys(lexicon), [...Object.keys(lexicon032).filter((k) => k !== "goldSet"), "clauses", "clarify", "goldSet"]),
+    `lexicon delta 033: ${D3.from} → ${D3.to} applied after the 0.3.2 delta; revertLexiconDelta gives back the 0.3.2 lexicon and revertLexiconChain the baseline lexicon exactly (key order included); clauses and clarify are inserted just before goldSet`);
+  {
+    const req = arr(D3.request && D3.request.text).join("\n");
+    const dec = D3.decisions || {};
+    const rowsOf = (cl) => {
+      const out = [];
+      for (const k of ["affirm", "deny", "post", "prefix", "breaks", "scopeEnd", "complement", "mask", "hedge", "placeholder", "thirdParty", "chartIgnoreThirdParty"]) arr(cl[k]).forEach((r, i) => out.push([`/clauses/${k}/${i}`, r]));
+      for (const k of ["exam", "family", "skip", "read"]) arr(cl.sections && cl.sections[k]).forEach((r, i) => out.push([`/clauses/sections/${k}/${i}`, r]));
+      // Review round 2: the chart-register red-flag phrases, by flag id.
+      for (const [k, list] of Object.entries(cl.redFlags || {})) arr(list).forEach((r, i) => out.push([`/clauses/redFlags/${k}/${i}`, r]));
+      return out;
+    };
+    const cl = lexicon.clauses || {};
+    const rows = rowsOf(cl);
+    check(D3.release === "0.4.7" && D3.request && D3.request.date === "2026-10-11" && D3.request.by === "clinical lead"
+        && req.includes("Make the patient capture statement a large textbook that is scrollable.") && req.includes("\"is the rhinorrhea clear or purulent?\"")
+        && ["redFlags", "answers", "wording"].every((k) => dec[k] && dec[k].date === "2026-10-11" && typeof dec[k].question === "string" && typeof dec[k].answer === "string")
+        && dec.redFlags.answer === "Don't raise, no listing" && dec.answers.answer === "Clickable answers (Recommended)" && dec.wording.answer === "Draft, you sign off (Recommended)"
+        && !!D3.signOff && D3.signOff.date === "2026-10-12" && D3.signOff.by === "clinical lead",
+      "lexicon delta 033: the lead's request and three answers of 2026-10-11 recorded (release 0.4.7); signed off by the clinical lead on 2026-10-12");
+    const soProblems = lexicon033SignOffProblems(D3, lexicon);
+    const so = D3.signOff || {};
+    check(soProblems.length === 0,
+      `lexicon delta 033: the sign-off record of 2026-10-12 is complete and applied (${so.totals ? `${so.totals.approved} approved, ${so.totals.struck} struck, ${so.totals.leadOwnWords} the lead's own words of ${so.totals.rows} rows` : "no totals"}; ${(so.partD || []).length} Part D answers and the D8 follow-up answers among their options): no plain draft left, every struck row absent, every approved row lead-approved, the sign-off's added rows and removed qualifiers in place${soProblems.length ? ` — ${soProblems.join("; ")}` : ""}`);
+    // The lead's own words: exactly the endorsement and denial verbs the request names (has and no
+    // with their boundary space), and the rhinorrhea question verbatim; every other row lead-approved.
+    const LEAD_AFFIRM = ["endorses", "reports", "has ", "yes"], LEAD_DENY = ["denies", "no ", "lacks", "doesn't have"];
+    const leadRows = rows.filter(([, r]) => r.source === "lead").map(([p, r]) => `${p.split("/")[2]}:${r.ph}`);
+    check(deepEqual(leadRows, [...LEAD_AFFIRM.map((w) => `affirm:${w}`), ...LEAD_DENY.map((w) => `deny:${w}`)])
+        && [...LEAD_AFFIRM, ...LEAD_DENY].every((w) => req.includes(w.trim()))
+        && rows.every(([, r]) => r.source === "lead" || r.source === "lead-approved"),
+      `lexicon delta 033: the lead-sourced clauses rows are exactly the verbs the request names (affirm ${LEAD_AFFIRM.join(", ")}; deny ${LEAD_DENY.join(", ")}), every other row lead-approved (${rows.length} rows)`);
+    const clar = arr(lexicon.clarify);
+    const rhin = clar.filter((e) => e.ask && e.ask.source === "lead");
+    check(rhin.length === 1 && rhin[0].ask.text === "is the rhinorrhea clear or purulent?" && req.includes(`"${rhin[0].ask.text}"`) && rhin[0].source === "lead"
+        && clar.every((e) => e === rhin[0] || (e.source === "lead-approved" && e.ask === undefined)),
+      "lexicon delta 033: the one lead-sourced clarify entry asks the lead's question verbatim, never re-cased; every other entry is lead-approved and asks the module's own question");
+    const logicNs3 = await env.loader.importModule(new URL("modules/masque/masque.logic.js", env.appBase).href);
+    const probes3 = ((logicNs3.default || {}).probes || {}).list || [];
+    const probeIds = new Set(probes3.map((p) => p.id));
+    const itemIds = new Set(allIds);
+    const strayClar = clar.filter((e) => (e.probe !== undefined) === (e.item !== undefined) || (e.probe !== undefined && !probeIds.has(e.probe)) || (e.item !== undefined && !itemIds.has(e.item)));
+    // The review fixes of release 0.4.7: chartIgnoreThirdParty names only the lexicon's own attribution
+    // cues, and strictConflict is exactly the yes/no entries of the negative (rule-out) domains.
+    const tpCues = arr(lexicon.thirdParty && lexicon.thirdParty.cues);
+    const ruleOut = domains.filter((d) => d.negative === true).flatMap((d) => d.items.map((i) => i.id)).filter((id) => arr(lexicon.bool).some((e) => e.id === id));
+    const ignoreOk = arr(cl.chartIgnoreThirdParty).length > 0 && arr(cl.chartIgnoreThirdParty).every((r) => tpCues.includes(r.ph));
+    const flagIdSet = new Set(redFlags.map((f) => f.id));
+    const strayFlags = Object.keys(cl.redFlags || {}).filter((k) => !flagIdSet.has(k));
+    check(clar.length > 0 && !strayClar.length && arr(cl.examItems).every((id) => itemIds.has(id)) && cl.redFlagNegation === true && cl.wordStart === true
+        && ignoreOk && deepEqual(arr(cl.strictConflict), ruleOut) && !strayFlags.length && Object.keys(cl.redFlags || {}).length === flagIdSet.size,
+      `lexicon delta 033: every clarify entry names exactly one probe of the logic or item (${clar.length} entries), every examItems id is an item, redFlagNegation (the lead's decision) and wordStart are on; every chartIgnoreThirdParty cue is a thirdParty cue of the lexicon, and strictConflict is exactly the yes/no entries of the negative domains (${ruleOut.join(", ")}); clauses.redFlags (review round 2) names every red flag of the module and nothing else${strayFlags.length ? ` — stray flags: ${strayFlags.join(", ")}` : ""}${strayClar.length ? ` — stray: ${strayClar.map((e) => e.id).join(", ")}` : ""}`);
+    // examItems is empty since review round 2: its one basis is the switch's.
+    const examEntries = arr(cl.examItems).length ? arr(cl.examItems).map((_, i) => `/clauses/examItems/${i}`) : ["/clauses/examItems"];
+    const entries = [...rows.map(([p]) => p), "/clauses/wordStart", "/clauses/placeholderAsk", ...examEntries,
+      ...arr(cl.strictConflict).map((_, i) => `/clauses/strictConflict/${i}`),
+      "/clauses/redFlagNegation", ...clar.map((_, i) => `/clarify/${i}`),
+      // The appended negation cues (review round 1: each has its basis too), at their 0.3.3 indices.
+      ...arr(D3.appended).flatMap((row) => arr(row.phrases).map((ph) => `${row.path}/${arr(lexicon.negation && lexicon.negation.cues).indexOf(ph)}`))];
+    const basis = D3.basis || {};
+    const noBasis = entries.filter((p) => typeof basis[p] !== "string" || !basis[p].trim());
+    const strayBasis = Object.keys(basis).filter((p) => !entries.includes(p));
+    // A lead row's basis cites the lead; a row the team drafted keeps its drafting record ("Draft …"),
+    // the lead's approval being the row's source and the sign-off record.
+    const badTag = rows.filter(([p, r]) => !String(basis[p] || "").startsWith(r.source === "lead" ? "The clinical lead" : "Draft"));
+    check(!noBasis.length && !strayBasis.length && !badTag.length && basis["/clauses/redFlagNegation"].startsWith("The clinical lead's decision of 2026-10-11"),
+      `lexicon delta 033: one basis per clauses row, switch, clarify entry and appended negation cue (${entries.length}); a lead row's basis cites the lead, a lead-approved row's keeps its drafting record (Draft …)${noBasis.length ? ` — missing: ${noBasis.join(", ")}` : ""}${strayBasis.length ? ` — stray: ${strayBasis.join(", ")}` : ""}${badTag.length ? ` — tag: ${badTag.map(([p]) => p).join(", ")}` : ""}`);
+    check(arr(D3.appended).length === 1 && D3.appended[0].path === "/negation/cues" && D3.appended[0].source === "lead-approved",
+      "lexicon delta 033: the one appended row (negation cues) is lead-approved");
+  }
+  const gold040Res = await fetch(new URL("tests/fixtures/goldset/" + lexicon.goldSet.file, env.appBase).href, { cache: "no-cache" });
+  if (!gold040Res.ok) fail(`gold set ${lexicon.goldSet.file}: HTTP ${gold040Res.status}`);
+  const gold040 = await gold040Res.json();
+  const inc = gold040 && gold040._meta ? gold040._meta.includes || {} : {};
+  check(gold040 && gold040._meta && gold040._meta.version === lexicon.goldSet.version && gold040._meta.lexiconVersion === lexicon.goldSet.lexiconVersion
+    && gold040._meta.basedOn && gold040._meta.basedOn.sha256 === goldPin && gold040._meta.basedOn.cases === gold.cases.length
+    && inc.version === lexicon032.goldSet.version && inc.sha256 === (await sha256Hex(gold030Bytes)) && inc.cases === gold030.cases.length && inc.dialogues === gold030.dialogues.length,
+    `gold set ${lexicon.goldSet.version} (tests/fixtures/goldset): _meta version and lexiconVersion equal lexicon.goldSet; basedOn pins the reference ${gold._meta.version} file and its ${gold.cases.length} cases; includes pins gold set ${lexicon032.goldSet.version} (its SHA-256, ${gold030.cases.length} cases, ${gold030.dialogues.length} dialogues)`);
+  src("/lexicon", "Ext", [24, 166], `LEXICON_VERSION L24, NEGATION, THIRD_PARTY, HISTORICAL, BOOL_EX, CTX_EX, SCALE_EX, MULTI_EX, RF_PHRASES (keys renamed only); lang = Voice L47 VOICE_LANG; goldSet.version = reference/MASQUE_v0.3.1/masque_extraction_goldset.json _meta.version + tests/harness/lexicon-delta.js (clinical-lead approval ${LEXICON_DELTA.approved.date}) + tests/harness/lexicon-delta-033.js (release ${LEXICON_DELTA_033.release}: clauses, clarify, negation cues; the lead's request and decisions of ${LEXICON_DELTA_033.request.date}; signed off by the clinical lead on ${LEXICON_DELTA_033.signOff ? LEXICON_DELTA_033.signOff.date : "(not signed off)"})`);
 
   // --- locales ----------------------------------------------------------------------------------
   check(deepEqual(Object.keys(pat.P), allIds), "Patient P key order = item order");
@@ -1051,8 +1181,14 @@ export async function extractRubric(env) {
       ...(EMR_DELTA.signOffChangelog ? [{ date: EMR_DELTA.signOffChangelog.date, kind: EMR_DELTA.signOffChangelog.kind, note: EMR_DELTA.signOffChangelog.note, paths: plain(EMR_DELTA.signOffChangelog.paths) }] : []),
       // the clinical-lead referral rule for dizziness cases (release 0.4.5)
       { date: REFERRAL_DELTA.changelog.date, kind: REFERRAL_DELTA.changelog.kind, note: REFERRAL_DELTA.changelog.note, paths: plain(REFERRAL_DELTA.changelog.paths) },
-      // the clinical lead's answers on the EMR template's open items (release 0.4.6), last
+      // the clinical lead's answers on the EMR template's open items (release 0.4.6)
       { date: EMR_DECISIONS_DELTA.changelog.date, kind: EMR_DECISIONS_DELTA.changelog.kind, note: EMR_DECISIONS_DELTA.changelog.note, paths: plain(EMR_DECISIONS_DELTA.changelog.paths) },
+      // the lexicon change 0.3.2 → 0.3.3 (release 0.4.7: chart text and clarification)
+      { date: LEXICON_DELTA_033.changelog.date, kind: LEXICON_DELTA_033.changelog.kind, note: LEXICON_DELTA_033.changelog.note, paths: plain(LEXICON_DELTA_033.changelog.paths) },
+      // the clinical lead's question for item r_dur (release 0.4.8)
+      { date: QUESTION_DELTA.changelog.date, kind: QUESTION_DELTA.changelog.kind, note: QUESTION_DELTA.changelog.note, paths: plain(QUESTION_DELTA.changelog.paths) },
+      // the clinical lead's plan line for the EMR template (release 0.4.8, follow-up), last
+      { date: EMR_PLAN_DELTA.changelog.date, kind: EMR_PLAN_DELTA.changelog.kind, note: EMR_PLAN_DELTA.changelog.note, paths: plain(EMR_PLAN_DELTA.changelog.paths) },
     ],
   };
 
@@ -1071,17 +1207,21 @@ export async function extractRubric(env) {
   {
     // The sign-off entry: present exactly when the delta is signed off, kind sign-off, dated as the
     // signOff, naming /emrTemplate, right after the emr-template one, and followed only by the
-    // release 0.4.5 referral entry and the release 0.4.6 emr-decisions entry (whose places, the
-    // referral and decisions checks below assert).
+    // release 0.4.5 referral entry, the release 0.4.6 emr-decisions entry, the release 0.4.7
+    // lexicon entry and the release 0.4.8 question and emr-plan entries (whose places the referral,
+    // decisions, lexicon, question and plan checks assert).
     const soLog = EMR_DELTA.signOffChangelog;
-    const beforeReferral = rubric0.changelog.slice(0, -2);
+    const beforeReferral = rubric0.changelog.slice(0, -5);
     const last2 = beforeReferral.slice(-2).map((e) => e.kind);
-    check(rubric0.changelog[rubric0.changelog.length - 2].kind === REFERRAL_DELTA.changelog.kind
-      && rubric0.changelog[rubric0.changelog.length - 1].kind === EMR_DECISIONS_DELTA.changelog.kind && (emrReviewed === true
+    check(rubric0.changelog[rubric0.changelog.length - 5].kind === REFERRAL_DELTA.changelog.kind
+      && rubric0.changelog[rubric0.changelog.length - 4].kind === EMR_DECISIONS_DELTA.changelog.kind
+      && rubric0.changelog[rubric0.changelog.length - 3].kind === LEXICON_DELTA_033.changelog.kind
+      && rubric0.changelog[rubric0.changelog.length - 2].kind === QUESTION_DELTA.changelog.kind
+      && rubric0.changelog[rubric0.changelog.length - 1].kind === EMR_PLAN_DELTA.changelog.kind && (emrReviewed === true
         ? !!soLog && !!so && soLog.kind === "sign-off" && soLog.date === so.date && typeof soLog.note === "string" && soLog.note.includes(so.date)
           && deepEqual(plain(soLog.paths), [EMR_DELTA.path]) && deepEqual(last2, [EMR_DELTA.changelog.kind, "sign-off"])
         : soLog === undefined && beforeReferral[beforeReferral.length - 1].kind === EMR_DELTA.changelog.kind),
-      "emr delta: the sign-off change-log entry (kind sign-off, dated as the signOff, paths [/emrTemplate]) is present exactly when the delta is signed off, right after the emr-template entry and followed only by the release 0.4.5 referral entry and the release 0.4.6 emr-decisions entry");
+      "emr delta: the sign-off change-log entry (kind sign-off, dated as the signOff, paths [/emrTemplate]) is present exactly when the delta is signed off, right after the emr-template entry and followed only by the release 0.4.5 referral entry, the release 0.4.6 emr-decisions entry, the release 0.4.7 lexicon entry and the release 0.4.8 question and emr-plan entries");
   }
   const rubricEmr = applyEmrDelta(rubric0, EMR_DELTA);
   check(deepEqual(revertEmrDelta(rubricEmr, EMR_DELTA), rubric0) && deepEqual(Object.keys(rubricEmr).filter((k) => k !== emrKey), Object.keys(rubric0)),
@@ -1285,10 +1425,11 @@ export async function extractRubric(env) {
     check(noBasis.length === 0 && strayBasis.length === 0,
       `referral delta: one basis per changed destination, per added byPhenotype row and per field of each clinician rule (${entries.length})${noBasis.length ? ` — missing: ${noBasis.join(", ")}` : ""}${strayBasis.length ? ` — stray: ${strayBasis.join(", ")}` : ""}`);
     const log = rubricRef.changelog;
-    const rl = log[log.length - 2];
+    const rl = log[log.length - 5];
     check(rl.kind === "referral" && rl.date === dates[dates.length - 1] && deepEqual(rl.paths, [...RD.changed.map((row) => row.path), ...RD.added.map((row) => row.path)])
-        && log[log.length - 3].kind === "sign-off" && log[log.length - 1].kind === EMR_DECISIONS_DELTA.changelog.kind,
-      "referral delta: its change-log entry (kind referral, dated as the last decision, paths = the changed and added paths) comes right after the 0.4.4 sign-off entry and is followed only by the 0.4.6 emr-decisions entry");
+        && log[log.length - 6].kind === "sign-off" && log[log.length - 4].kind === EMR_DECISIONS_DELTA.changelog.kind && log[log.length - 3].kind === LEXICON_DELTA_033.changelog.kind
+        && log[log.length - 2].kind === QUESTION_DELTA.changelog.kind && log[log.length - 1].kind === EMR_PLAN_DELTA.changelog.kind,
+      "referral delta: its change-log entry (kind referral, dated as the last decision, paths = the changed and added paths) comes right after the 0.4.4 sign-off entry and is followed only by the 0.4.6 emr-decisions entry, the 0.4.7 lexicon entry and the 0.4.8 question and emr-plan entries");
   }
   src("/phenotypes/referral/byPhenotype/otologic/specialty", "—", "tests/harness/referral-delta.js", `REFERRAL_DELTA.changed (release ${REFERRAL_DELTA.release}; the clinical lead's referral rule, chat, ${REFERRAL_DELTA.quotes.referral.date}): was the baseline value (Scr L1456), which applyReferralDelta requires; proven by revertReferralDelta`);
   src("/phenotypes/referral/byPhenotype/both", "—", "tests/harness/referral-delta.js", `REFERRAL_DELTA.added (release ${REFERRAL_DELTA.release}; the clinical lead, chat, ${REFERRAL_DELTA.quotes.both.date}: both cases follow the dizziness rule): specialty Neurology with the reason the default gave both; added last in byPhenotype with applyReferralDelta, proven by revertReferralDelta`);
@@ -1298,12 +1439,12 @@ export async function extractRubric(env) {
   // tests/harness/emr-decisions-delta.js). applyEmrDecisionsDelta throws when an added key already
   // exists or its parent is missing; revertEmrDecisionsDelta proves the addition exact.
   const ED = EMR_DECISIONS_DELTA;
-  const rubric = applyEmrDecisionsDelta(rubricRef, ED);
+  const rubricDec = applyEmrDecisionsDelta(rubricRef, ED);
   {
     const ed0 = rubricRef.emrTemplate;
-    const ed = rubric.emrTemplate;
+    const ed = rubricDec.emrTemplate;
     const HINTS_ROW = 14;
-    check(deepEqual(revertEmrDecisionsDelta(rubric, ED), rubricRef) && deepEqual(Object.keys(rubric), Object.keys(rubricRef))
+    check(deepEqual(revertEmrDecisionsDelta(rubricDec, ED), rubricRef) && deepEqual(Object.keys(rubricDec), Object.keys(rubricRef))
         && deepEqual(Object.keys(ed), [...Object.keys(ed0), "pastHistory"])
         && deepEqual(Object.keys(ed.examRows[HINTS_ROW]), [...Object.keys(ed0.examRows[HINTS_ROW]), "optionPlaceholders"])
         && deepEqual(ed0, EMR_DELTA.value),
@@ -1356,26 +1497,134 @@ export async function extractRubric(env) {
     const strayBasis = Object.keys(ED.basis).filter((p) => !entries.includes(p));
     check(noBasis.length === 0 && strayBasis.length === 0,
       `emr decisions delta: one basis per past-history row and per option placeholder (${entries.length})${noBasis.length ? ` — missing: ${noBasis.join(", ")}` : ""}${strayBasis.length ? ` — stray: ${strayBasis.join(", ")}` : ""}`);
-    const log = rubric.changelog;
-    const dl = log[log.length - 1];
-    check(dl.kind === "emr-decisions" && dl.date === dec.date && deepEqual(dl.paths, ED.added.map((row) => row.path)) && log[log.length - 2].kind === "referral",
-      "emr decisions delta: its change-log entry (kind emr-decisions, dated as the decision, paths = the added paths) is the last, right after the 0.4.5 referral entry");
+    const log = rubricDec.changelog;
+    const dl = log[log.length - 4];
+    check(dl.kind === "emr-decisions" && dl.date === dec.date && deepEqual(dl.paths, ED.added.map((row) => row.path)) && log[log.length - 5].kind === "referral",
+      "emr decisions delta: its change-log entry (kind emr-decisions, dated as the decision, paths = the added paths) comes right after the 0.4.5 referral entry and is followed only by the 0.4.7 lexicon entry and the 0.4.8 question and emr-plan entries");
+    // Release 0.4.7: the lexicon 0.3.2 → 0.3.3 entry, dated as the lead's sign-off (2026-10-12),
+    // naming exactly the paths the delta touches; since release 0.4.8 the question and emr-plan
+    // entries follow it.
+    const ll = log[log.length - 3];
+    const d3paths = [...new Set([...LEXICON_DELTA_033.fields.map((row) => `/lexicon${row.path}`), ...LEXICON_DELTA_033.appended.map((row) => `/lexicon${row.path}`)])];
+    check(ll.kind === "lexicon" && !!LEXICON_DELTA_033.signOff && ll.date === LEXICON_DELTA_033.signOff.date && deepEqual(ll.paths.slice().sort(), d3paths.slice().sort()) && ll.note === LEXICON_DELTA_033.changelog.note
+        && ll.note.includes("signed off by the clinical lead on 2026-10-12") && !ll.note.includes("DRAFT") && ll.note.includes("\"is the rhinorrhea clear or purulent?\""),
+      "lexicon delta 033: its change-log entry (kind lexicon, dated as the lead's sign-off of 2026-10-12, paths = exactly the paths the delta touches, the note saying the lead signed it off and quoting the lead's question) is followed only by the 0.4.8 question and emr-plan entries");
   }
   src("/emrTemplate/pastHistory", "—", "tests/harness/emr-decisions-delta.js", `EMR_DECISIONS_DELTA.added (release ${EMR_DECISIONS_DELTA.release}; the clinical lead's answer, chat, ${EMR_DECISIONS_DELTA.decided.date}: add back the modifying-conditions row, in the wording the chosen option quotes, and the family-history-of-migraine line); added last in emrTemplate with applyEmrDecisionsDelta, proven by revertEmrDecisionsDelta; one basis per row in EMR_DECISIONS_DELTA.basis`);
   src("/emrTemplate/examRows/14/optionPlaceholders", "—", "tests/harness/emr-decisions-delta.js", `EMR_DECISIONS_DELTA.added (release ${EMR_DECISIONS_DELTA.release}; the clinical lead's answer, chat, ${EMR_DECISIONS_DELTA.decided.date}: a clinician line under the HINTS row when a central pattern is recorded, in the words the chosen option quotes); added last in the HINTS exam row with applyEmrDecisionsDelta, proven by revertEmrDecisionsDelta`);
+
+  // The clinical lead's question for item r_dur (release 0.4.8; tests/harness/question-delta-048.js).
+  // applyQuestionDelta throws when an item at a row's path is not the row's item or its ask is not
+  // the row's `from` (the baseline-extracted value); revertQuestionDelta proves the change exact.
+  const QD = QUESTION_DELTA;
+  const rubricQ = applyQuestionDelta(rubricDec, QD);
+  {
+    const rubric = rubricQ;
+    check(deepEqual(revertQuestionDelta(rubric, QD), rubricDec) && deepEqual(Object.keys(rubric), Object.keys(rubricDec)),
+      `question delta: ${QD.changed.length} item question changed from its baseline value, nothing else; revertQuestionDelta gives back the rubric without it exactly (key order included)`);
+    const req = Array.isArray(QD.request) ? QD.request.join("\n") : "";
+    const rq = QD.requested || {};
+    check(QD.release === "0.4.8" && rq.by === "clinical lead" && rq.channel === "chat" && emrSignOffComplete({ by: rq.by, scope: "question", channel: rq.channel, date: rq.date })
+        && rq.date === "2026-10-12" && req.startsWith("Fix 2: Question: recalcitrance\n"),
+      `question delta: release 0.4.8, requested by the clinical lead in chat on a real calendar date (${rq.date}), the request recorded as written`);
+    // Each new question is a sentence the lead quoted, verbatim (never re-cased or re-punctuated);
+    // each old one is the baseline Scribe's ASK, which the lead's request also quotes; the item is the
+    // one the request names by its card tag (its domain label, lowercased) and it is a yes / no item.
+    const itemByIdQ = Object.fromEntries(rubric.domains.flatMap((d) => d.items.map((it) => [it.id, { it, d }])));
+    const badRows = QD.changed.filter((row) => {
+      const hit = itemByIdQ[row.item];
+      return !hit || !req.includes(`"${row.to}"`) || !req.includes(row.from) || hit.it.ask !== row.to || hit.it.scale !== undefined
+        || !req.includes(`Question: ${String(hit.d.label).toLowerCase()}`) || scb.ASK[row.item] !== row.from;
+    });
+    check(badRows.length === 0,
+      `question delta: each new question is the lead's quoted sentence, verbatim, on the yes / no item the request names by its card tag; each old one the baseline Scribe ASK the request quotes${badRows.length ? ` — not: ${badRows.map((row) => row.path).join(", ")}` : ""}`);
+    // Outside the instrument: ask is not in the instrumentHash or scoringHash projections, so neither
+    // hash and no version axis moves (Q11; engine/hash.js).
+    const [hq, hd] = await Promise.all([rubricHashes(rubric), rubricHashes(rubricDec)]);
+    check(hq.instrumentHash === hd.instrumentHash && hq.scoringHash === hd.scoringHash && hq.lexiconHash === hd.lexiconHash && hq.contentHash !== hd.contentHash
+        && rubric.instrumentVersion === rubricDec.instrumentVersion && deepEqual(rubric.lexicon, rubricDec.lexicon),
+      "question delta: instrumentHash, scoringHash and lexiconHash unchanged (ask is outside their projections), contentHash changed; instrument and lexicon versions unchanged");
+    const entries = QD.changed.map((row) => row.path);
+    const noBasis = entries.filter((p) => typeof QD.basis[p] !== "string" || !QD.basis[p].trim());
+    const strayBasis = Object.keys(QD.basis).filter((p) => !entries.includes(p));
+    check(noBasis.length === 0 && strayBasis.length === 0,
+      `question delta: one basis per changed question (${entries.length})${noBasis.length ? ` — missing: ${noBasis.join(", ")}` : ""}${strayBasis.length ? ` — stray: ${strayBasis.join(", ")}` : ""}`);
+    const log = rubric.changelog;
+    const ql = log[log.length - 2];
+    check(ql.kind === "question" && ql.date === rq.date && deepEqual(ql.paths, entries) && log[log.length - 3].kind === "lexicon"
+        && QD.changed.every((row) => ql.note.includes(`"${row.to}"`)),
+      "question delta: its change-log entry (kind question, dated as the request, paths = the changed paths, quoting the new question) comes right after the 0.4.7 lexicon entry and is followed only by the 0.4.8 emr-plan entry");
+  }
+  for (const row of QUESTION_DELTA.changed) {
+    src(row.path, "—", "tests/harness/question-delta-048.js", `QUESTION_DELTA.changed (release ${QUESTION_DELTA.release}; the clinical lead's question for ${row.item}, chat, ${QUESTION_DELTA.requested.date}, verbatim): was the baseline Scribe ASK.${row.item}, which applyQuestionDelta requires; proven by revertQuestionDelta`);
+  }
+
+  // The clinical lead's plan line for the EMR template (release 0.4.8, follow-up;
+  // tests/harness/emr-plan-delta-048.js), applied with the 0.4.6 answers' functions:
+  // applyEmrDecisionsDelta throws when the added key already exists or its parent is missing;
+  // revertEmrDecisionsDelta proves the addition exact.
+  const PD = EMR_PLAN_DELTA;
+  const rubric = applyEmrDecisionsDelta(rubricQ, PD);
+  {
+    const e0 = rubricQ.emrTemplate;
+    const e1 = rubric.emrTemplate;
+    check(deepEqual(revertEmrDecisionsDelta(rubric, PD), rubricQ) && deepEqual(Object.keys(rubric), Object.keys(rubricQ))
+        && deepEqual(Object.keys(e1), [...Object.keys(e0), "planAdvice"]) && deepEqual(PD.added.map((row) => row.path), ["/emrTemplate/planAdvice"]),
+      "emr plan delta: emrTemplate.planAdvice added last in emrTemplate, nothing else; revertEmrDecisionsDelta gives back the rubric without it exactly (key order included)");
+    const req = Array.isArray(PD.request) ? PD.request.join("\n") : "";
+    const rq = PD.requested || {};
+    const q = PD.quotes || {};
+    check(PD.release === "0.4.8" && rq.by === "clinical lead" && rq.channel === "chat" && emrSignOffComplete({ by: rq.by, scope: "emr plan", channel: rq.channel, date: rq.date })
+        && rq.date === "2026-10-12" && req.startsWith("Also recommendations in the plan should also add \""),
+      `emr plan delta: release 0.4.8, requested by the clinical lead in chat on a real calendar date (${rq.date}), the request recorded as written`);
+    // The answers: the line prints beside the treatment references with no red flag open, in the EMR
+    // template only (the chosen options' labels and descriptions as the lead saw them).
+    check(Object.keys(q).length === 2 && Object.values(q).every((x) => x && x.date === rq.date && typeof x.question === "string" && x.question.trim()
+          && typeof x.answer === "string" && x.answer.trim() && typeof x.answerDescription === "string" && x.answerDescription.trim())
+        && !!q.when && q.when.answer === "With the treatment refs, no red flag (Recommended)" && !!q.outputs && q.outputs.answer === "EMR template note (Recommended)",
+      "emr plan delta: the two answers of 2026-10-12 recorded with their questions and the chosen options' descriptions (when: with the treatment refs, no red flag; outputs: the EMR template note)");
+    // The line is the sentence the lead quoted, verbatim (never re-cased or re-punctuated), with its
+    // record: source "lead", decided on the request's date; the question about it quotes it too.
+    const rows = Array.isArray(e1.planAdvice) ? e1.planAdvice : [];
+    check(rows.length === 1 && rows.every((r) => r && Object.keys(r).join() === "text,source,decided" && typeof r.text === "string" && req.includes(`"${r.text}"`)
+          && !!q.when && q.when.question.includes(`"${r.text}"`) && r.source === "lead" && r.decided === rq.date),
+      `emr plan delta: planAdvice is exactly one line, the sentence the lead quoted, verbatim (${JSON.stringify(rows[0] && rows[0].text)}), with source "lead" and decided ${rq.date}`);
+    const strings = [];
+    const walkS = (x) => { if (typeof x === "string") strings.push(x); else if (Array.isArray(x)) x.forEach(walkS); else if (x && typeof x === "object") Object.values(x).forEach(walkS); };
+    walkS(PD.added.map((row) => row.value));
+    check(strings.length > 0 && strings.every((x) => x.trim() && !/[[\]{}]/.test(x)), "emr plan delta: every added string is non-empty and carries no [ ] { } (placeholders are the engine's)");
+    // Outside the instrument: emrTemplate is in no projection but contentHash's.
+    const [hp, hq] = await Promise.all([rubricHashes(rubric), rubricHashes(rubricQ)]);
+    check(hp.instrumentHash === hq.instrumentHash && hp.scoringHash === hq.scoringHash && hp.lexiconHash === hq.lexiconHash && hp.contentHash !== hq.contentHash
+        && rubric.instrumentVersion === rubricQ.instrumentVersion && deepEqual(rubric.lexicon, rubricQ.lexicon),
+      "emr plan delta: instrumentHash, scoringHash and lexiconHash unchanged (emrTemplate is outside their projections), contentHash changed; instrument and lexicon versions unchanged");
+    const entries = rows.map((_, i) => `/planAdvice/${i}`);
+    const noBasis = entries.filter((p) => typeof PD.basis[p] !== "string" || !PD.basis[p].trim());
+    const strayBasis = Object.keys(PD.basis).filter((p) => !entries.includes(p));
+    check(entries.length > 0 && noBasis.length === 0 && strayBasis.length === 0,
+      `emr plan delta: one basis per plan-advice line (${entries.length})${noBasis.length ? ` — missing: ${noBasis.join(", ")}` : ""}${strayBasis.length ? ` — stray: ${strayBasis.join(", ")}` : ""}`);
+    const log = rubric.changelog;
+    const pl = log[log.length - 1];
+    check(pl.kind === "emr-plan" && pl.date === rq.date && deepEqual(pl.paths, PD.added.map((row) => row.path)) && log[log.length - 2].kind === "question"
+        && rows.every((r) => pl.note.includes(`"${r.text}"`)),
+      "emr plan delta: its change-log entry (kind emr-plan, dated as the request, paths = the added path, quoting the line) is the last, right after the 0.4.8 question entry");
+  }
+  src("/emrTemplate/planAdvice", "—", "tests/harness/emr-plan-delta-048.js", `EMR_PLAN_DELTA.added (release ${EMR_PLAN_DELTA.release}; the clinical lead's request and answers, chat, ${EMR_PLAN_DELTA.requested.date}: the lead's sentence, verbatim, printed beside the empiric-treatment references with no red flag open, in the EMR template only); added last in emrTemplate with applyEmrDecisionsDelta, proven by revertEmrDecisionsDelta; one basis per line in EMR_PLAN_DELTA.basis`);
 
   check(scaleMaxComputed === 100, "Σ positive domain max = 100");
   for (const d of rubric.domains) check(Math.abs(d.items.reduce((s, i) => s + i.w, 0) - d.max) < 1e-9, `domain ${d.key}: Σw = max`);
   src("/{format,contractVersion}", "—", "engine/contract.js", "FORMAT.rubric, CONTRACT_VERSION");
   src("/{id,label,name,icon}", "—", "hand-written", "design §9.2 item 6 (label: user requirement 2026-10-02, Q1)");
   src("/logicBinding", "—", "hand-written", "{moduleId: id}; the registry pairs the files, no SHA pin (§3.8)");
-  src("/changelog", "—", "hand-written", "reconciliation, extraction and open-question notes (§3.8); then LEXICON_DELTA.changelog from tests/harness/lexicon-delta.js (design 05 §6.3); then LOCALE_DELTA.changelog from tests/harness/locale-delta.js (release 0.4.2); then EMR_DELTA.changelog from tests/harness/emr-delta.js (release 0.4.3); then EMR_DELTA.signOffChangelog from the same file (release 0.4.4, the clinical-lead sign-off); then REFERRAL_DELTA.changelog from tests/harness/referral-delta.js (release 0.4.5, the clinical-lead referral rule, dated as its last decision); the last entry is EMR_DECISIONS_DELTA.changelog from tests/harness/emr-decisions-delta.js (release 0.4.6, the clinical lead's answers on the EMR template's open items)");
+  src("/changelog", "—", "hand-written", "reconciliation, extraction and open-question notes (§3.8); then LEXICON_DELTA.changelog from tests/harness/lexicon-delta.js (design 05 §6.3); then LOCALE_DELTA.changelog from tests/harness/locale-delta.js (release 0.4.2); then EMR_DELTA.changelog from tests/harness/emr-delta.js (release 0.4.3); then EMR_DELTA.signOffChangelog from the same file (release 0.4.4, the clinical-lead sign-off); then REFERRAL_DELTA.changelog from tests/harness/referral-delta.js (release 0.4.5, the clinical-lead referral rule, dated as its last decision); then EMR_DECISIONS_DELTA.changelog from tests/harness/emr-decisions-delta.js (release 0.4.6, the clinical lead's answers on the EMR template's open items); then LEXICON_DELTA_033.changelog from tests/harness/lexicon-delta-033.js (release 0.4.7, lexicon 0.3.3: chart text and clarification, signed off by the clinical lead on 2026-10-12); then QUESTION_DELTA.changelog from tests/harness/question-delta-048.js (release 0.4.8, the clinical lead's question for item r_dur, 2026-10-12); the last entry is EMR_PLAN_DELTA.changelog from tests/harness/emr-plan-delta-048.js (release 0.4.8, the clinical lead's plan line for the EMR template, 2026-10-12)");
 
-  // scoring hash with WP0's rubricHashes (the binder's implementation)
+  // scoring hash with WP0's rubricHashes (the binder's implementation); the hashes returned are those
+  // of the rubric as written, with that scoringHash stored (contentHash covers research).
+  const unstored = await rubricHashes(rubric);
+  rubric.research.calibration.appliesTo.scoringHash = unstored.scoringHash;
+  check(/^[0-9a-f]{64}$/.test(unstored.scoringHash), "scoringHash is 64-hex");
   const hashes = await rubricHashes(rubric);
-  rubric.research.calibration.appliesTo.scoringHash = hashes.scoringHash;
-  check(/^[0-9a-f]{64}$/.test(hashes.scoringHash), "scoringHash is 64-hex");
-  check((await rubricHashes(rubric)).scoringHash === hashes.scoringHash, "scoringHash is independent of research (stable after storing it)");
+  check(hashes.scoringHash === unstored.scoringHash, "scoringHash is independent of research (stable after storing it)");
 
   // --- serialise and compare with the committed file ---------------------------------------------
   const text = JSON.stringify(rubric, null, 2) + "\n";

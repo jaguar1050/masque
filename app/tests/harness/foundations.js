@@ -29,7 +29,7 @@ async function rejects(promise, label) {
 function hex(buf) { return [...new Uint8Array(buf)].map((x) => x.toString(16).padStart(2, "0")).join(""); }
 
 const ENGINE_EXPORTS = {
-  'contract.js': ['CONTRACT_VERSION', 'FORMAT', 'SUPPORTED_LOCALES', 'LOGIC_PATHS', 'IDENTITY_TEMPLATE_FIELDS', 'KIN_FIELDS', 'RUBRIC_KEYS', 'COPY_SLOTS', 'LEXICON_CARRY_MAX', 'LEXICON_SCALE_KEYS', 'LEXICON_NORMALIZE_KEYS'],
+  'contract.js': ['CONTRACT_VERSION', 'FORMAT', 'SUPPORTED_LOCALES', 'LOGIC_PATHS', 'IDENTITY_TEMPLATE_FIELDS', 'KIN_FIELDS', 'RUBRIC_KEYS', 'COPY_SLOTS', 'LEXICON_CARRY_MAX', 'LEXICON_SCALE_KEYS', 'LEXICON_NORMALIZE_KEYS', 'LEXICON_CLAUSES_KEYS', 'LEXICON_CLAUSE_LISTS', 'LEXICON_SECTION_KINDS', 'LEXICON_SOURCES', 'LEXICON_ASK_SOURCES', 'LEXICON_CLARIFY_KEYS'],
   'vocab.js': ['BANDS', 'LOWEST_BAND', 'HIGHEST_BAND', 'INDETERMINATE', 'BAND_INTERP', 'TIERS', 'TIER_RANK', 'ANSWER', 'CAPTURE_KIND', 'PROBE_KIND', 'PROBE_KIND_ORDER', 'STEP_KIND', 'isAnswered', 'normalizeAnswer'],
   'policy.js': ['APP_VERSION', 'SITE', 'CAVEATS', 'LIMITS', 'LOCALE_NAMES', 'OMISSION_PATTERNS'],
   'hash.js': ['sha256Hex', 'sha256HexSync', 'canonicalJson', 'utf8Bytes', 'djb2', 'hashProjections', 'rubricHashes'],
@@ -46,9 +46,9 @@ const ENGINE_EXPORTS = {
   'validate.js': ['validateModule', 'validateRubricShape', 'formatReport'],
   'fhir.js': ['buildQuestionnaire', 'buildCdsHooks', 'buildDataDictionary', 'buildBundle'],
   'cohort.js': ['CANONICAL_FIELDS', 'subjectPseudonym', 'screenToCohortRow', 'rowsToCsv', 'cohortColumnsCsv', 'makeCohort'],
-  'extraction.js': ['EXTRACTOR_KIND', 'EXTRACTOR_FEATURES', 'createExtractor', 'extract', 'extractInContext', 'firstHit', 'allHits', 'cueBefore', 'faersToUtterances'],
+  'extraction.js': ['EXTRACTOR_KIND', 'EXTRACTOR_FEATURES', 'createExtractor', 'extract', 'extractInContext', 'clarifyCues', 'firstHit', 'allHits', 'cueBefore', 'faersToUtterances'],
   'probes.js': ['liveProbes', 'validateProbes', 'truncateProbes'],
-  'scribe.js': ['ingestCaptures', 'rankSuggestions', 'heardPrompts', 'askNextSections', 'captureLabel', 'heardLabel', 'itemShort', 'buildNote'],
+  'scribe.js': ['ingestCaptures', 'rankSuggestions', 'heardPrompts', 'clarifyPrompts', 'askNextSections', 'REVIEW_SOURCE', 'questionReview', 'retractProbeAnswers', 'probeNoteList', 'captureLabel', 'heardLabel', 'clarifyLabel', 'itemShort', 'buildNote'],
   'patient.js': ['PATIENT_CHROME', 'TIER_DISPLAY', 'GRAMMAR', 'projectForPatient', 'localeText', 'buildPatientSummary', 'askForm', 'joinList', 'summaryText', 'summaryHtml', 'richText'],
   'derive.js': ['createDraft', 'diffRubrics', 'classifyChanges', 'lockedPaths', 'acknowledgePaths', 'proposeIdentity', 'deriveRubric'],
   'zip.js': ['crc32', 'zipStore', 'unzip'],

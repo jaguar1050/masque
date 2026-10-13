@@ -127,7 +127,8 @@ async function loadModule(env, params) {
     });
     return { module, validation: null };
   }
-  return { module: entry.module, validation: entry.validation };
+  // Release 0.4.8: the built-in's introduction video (its registry entry's patientVideo).
+  return { module: entry.module, validation: entry.validation, video: entry.patientVideo || null };
 }
 
 export default function MountPatient({ env }) {
@@ -191,6 +192,7 @@ export default function MountPatient({ env }) {
         <CaveatStrip lines={view.provenanceLines} />
         <main role="tabpanel" className="sa-panel" data-testid="dev-patient-panel">
           <PatientCompanion key={mountKey} view={view} appVersion={APP_VERSION}
+            video={loaded.video ? new URL(loaded.video, env.appBase).href : null}
             onDirty={onDirty} onModuleError={onModuleError} onPrintContext={onPrintContext} />
         </main>
       </PrintFrame>

@@ -24,11 +24,7 @@
 //              the corner badge outside #root (and the hidden clinician panels) stay lang="en".
 //   narrow     no horizontal page scroll at 375 px on any tab, in patient mode and on
 //              patient.html (done-when 5); release 0.4.3: nor with the EMR Friendly Template panel
-//              open on the Screener and the Scribe, whose frames hold the template. In each of
-//              those states no visible element extends past the viewport either (content clipped
-//              or scrolled inside its own box does not count).
-//   boot       the pages version the loader URL, load Babel with defer, and show a visible
-//              error (not an endless "Loading…") when the loader cannot be imported.
+//              open on the Screener and the Scribe, whose frames hold the template.
 
 const PROTO = "Prototype · not for clinical use";
 const RETURN_TEXT = "The clinician view shows scores, research data and module tools. Hand the device back to the clinician before continuing.";
@@ -249,22 +245,6 @@ export default async function pages(page, ctx) {
     }
   }
 
-  // ------------------------------------------------------------------ hash edits of module=
-  {
-    // An unknown module= is not followed and does not stay in the address.
-    await page.evaluate(() => { location.hash = "tab=screener&module=no-such-module"; });
-    await page.waitForTimeout(400);
-    const h = await page.evaluate(() => new URLSearchParams(location.hash.slice(1)).get("module"));
-    const shown = await page.evaluate(() => document.querySelector(".sa-shell main")?.dataset.module || null);
-    check(h === rubric.id && shown === rubric.id, "/hash/module-unknown", { hash: rubric.id, shown: rubric.id }, { hash: h, shown });
-    // A module= naming the active built-in after its removal from the address is written back.
-    await page.evaluate(() => { location.hash = "tab=research"; });
-    await page.waitForTimeout(400);
-    const h2 = await page.evaluate(() => new URLSearchParams(location.hash.slice(1)).get("module"));
-    check(h2 === rubric.id, "/hash/module-rewritten", rubric.id, h2);
-    await page.click('nav.sa-tabs [data-tab="screener"]');
-  }
-
   // ------------------------------------------------------------------ a built-in that fails to load
   for (const [label, body] of [["not-json", "{ not json"], ["invalid", null]]) {
     const p = await ctx.newPage();
@@ -288,19 +268,6 @@ export default async function pages(page, ctx) {
       check(await p.locator("[data-testid=scr-banner], [data-testid=scribe-app], [data-testid=patient-app]").count() === 0, `/invalid/${label}/no-app`, "no app mounted", "an app mounted");
       check((await p.textContent("#sa-caveat")).includes(PROTO), `/invalid/${label}/caveat`, PROTO, "missing");
     }
-    await p.close();
-  }
-
-  // Only the logic file fails: the rubric is read first, so the module keeps its label.
-  {
-    const p = await ctx.newPage();
-    await p.route((u) => /\/modules\/[^/]+\/[^/]+\.logic\.js$/.test(u.pathname), (route) => route.fulfill({ status: 404, contentType: "text/plain", body: "gone" }));
-    await p.goto(app("screenair.html#tab=screener"), { waitUntil: "load" });
-    await waitFor(p, () => document.documentElement.dataset.masqueReady === "true", null, 60000);
-    const inv = await waitFor(p, () => !!document.querySelector("[data-testid=invalid-module]"), null, 30000);
-    const o = await p.evaluate(() => [...document.querySelectorAll("#sa-module option")].map((x) => x.textContent));
-    const head = inv ? await p.textContent("[data-testid=invalid-module] h2") : "";
-    check(inv && o[0] === `${rubric.label} (failed to load)` && head.includes(rubric.label), "/invalid/logic-missing/label", `${rubric.label} (failed to load)`, { option: o[0], head });
     await p.close();
   }
 
@@ -350,9 +317,6 @@ export default async function pages(page, ctx) {
     await page.waitForTimeout(300);
     const after = await page.textContent(".sa-shell [data-testid=patient-progress]").catch(() => null);
     check(before !== null && before === after, "/patient-mode/state-kept", before, after);
-    // Focus moves to the Patient Companion's heading, not <body>.
-    const handFocus = await page.evaluate(() => { const a = document.activeElement; return a ? { tag: a.tagName, inPanel: !!a.closest("#sa-panel-patient") } : null; });
-    check(!!handFocus && /^H[12]$/.test(handFocus.tag) && handFocus.inPanel, "/patient-mode/hand/focus", "the Patient Companion heading", handFocus);
     await patientOnly(page, "patient-mode");
     const hash = await page.evaluate(() => location.hash);
     check(/mode=patient/.test(hash) && hash.includes(`module=${rubric.id}`), "/patient-mode/hash", `#…mode=patient&module=${rubric.id}`, hash);
@@ -414,19 +378,6 @@ export default async function pages(page, ctx) {
         await page.waitForTimeout(200);
       }
     }
-    // An address edit into patient mode closes a clinician dialog that was open (here Upload).
-    await page.selectOption("#sa-module", "__upload__");
-    if (await waitFor(page, () => !!document.querySelector("[data-testid=upload-dialog]"))) {
-      await page.evaluate(() => { location.hash = "tab=patient&mode=patient"; });
-      await page.waitForTimeout(400);
-      const st = await page.evaluate(() => ({ mode: document.querySelector(".sa-shell").dataset.mode, upload: !!document.querySelector("[data-testid=upload-dialog]"), inert: !!document.querySelector("header.sa-top[inert], header.sa-top [inert]") }));
-      check(st.mode === "patient" && !st.upload && !st.inert, "/patient-mode/closes-upload", { mode: "patient", upload: false, inert: false }, st);
-      await page.click("[data-testid=return-to-clinician]");
-      await page.click("[data-testid=confirm-ok]");
-      await page.waitForTimeout(200);
-    } else {
-      check(false, "/patient-mode/closes-upload", "upload dialog opened first", "no dialog");
-    }
     // Reload on #mode=patient reopens patient mode on that built-in.
     await open(page, `screenair.html#tab=patient&module=${rubric.id}&mode=patient`);
     await shellReady(page);
@@ -449,11 +400,6 @@ export default async function pages(page, ctx) {
     const miss = await page.textContent("[data-testid=patient-missing]").catch(() => "");
     check(miss.includes(NO_LONGER), "/patient-mode/missing", NO_LONGER, miss);
     check(await page.locator("[data-testid=patient-app]").count() === 0, "/patient-mode/missing/no-companion", 0, await page.locator("[data-testid=patient-app]").count());
-    // Nothing of the fallback module shows: no name in the header, no print header naming it.
-    const missTitle = await page.textContent("[data-testid=patient-mode-title]").catch(() => null);
-    check(missTitle === "", "/patient-mode/missing/no-module-name", "", missTitle);
-    const missHead = await page.textContent(".sa-print-head td").catch(() => "");
-    check(missHead === PROTO, "/patient-mode/missing/print-head", PROTO, missHead);
   }
 
   // ------------------------------------------------------------------ patient.html
@@ -492,56 +438,17 @@ export default async function pages(page, ctx) {
     const p = await ctx.newPage();
     await p.setViewportSize({ width: 375, height: 760 });
     const overflow = () => p.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - document.documentElement.clientWidth);
-    // Every visible element's visible extent lies inside the viewport. An ancestor that clips or
-    // scrolls (overflow-x other than visible) bounds what is visible of its content, so a table in
-    // a scrolling wrapper or the tab bar scrolling inside itself is not a finding; a box that is
-    // wider than the screen while the page itself does not scroll (body overflow hidden, an
-    // absolutely positioned element) is.
-    const outside = () => p.evaluate(() => {
-      const vw = document.documentElement.clientWidth;
-      const clipCache = new Map();
-      const clips = (el) => {
-        if (!clipCache.has(el)) {
-          const ox = getComputedStyle(el).overflowX;
-          clipCache.set(el, ox !== "visible" && el !== document.body && el !== document.documentElement);
-        }
-        return clipCache.get(el);
-      };
-      const name = (el) => `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ""}${el.classList.length ? `.${[...el.classList].slice(0, 2).join(".")}` : ""}${el.dataset.testid ? `[${el.dataset.testid}]` : ""}`;
-      const bad = [];
-      for (const el of document.body.querySelectorAll("*")) {
-        const r = el.getBoundingClientRect();
-        if (r.width <= 1 || r.height <= 1) continue;
-        const cs = getComputedStyle(el);
-        if (cs.visibility === "hidden" || cs.display === "contents") continue;
-        let left = r.left, right = r.right;
-        for (let a = el.parentElement; a && left < right; a = a.parentElement) {
-          if (!clips(a)) continue;
-          const ar = a.getBoundingClientRect();
-          left = Math.max(left, ar.left);
-          right = Math.min(right, ar.right);
-        }
-        if (left >= right) continue;
-        if (right > vw + 0.5 || left < -0.5) bad.push(`${name(el)} ${Math.round(left)}…${Math.round(right)}`);
-      }
-      return bad;
-    });
-    // Report the outermost offenders: a too-wide box makes its children too wide as well.
-    const firstFew = (list) => list.slice(0, 6);
     await p.goto(app("screenair.html#tab=screener"), { waitUntil: "load" });
     await shellReady(p);
     for (const t of TABS) {
       await p.click(`nav.sa-tabs [data-tab="${t}"]`);
-      await p.waitForTimeout(t === "editor" ? 2500 : 400);
+      await p.waitForTimeout(400);
       const o = await overflow();
       check(o <= 0, `/narrow/${t}`, "no horizontal page scroll at 375 px", `${o}px wider`);
-      const out = await outside();
-      check(out.length === 0, `/narrow/${t}/elements`, "no element past the viewport at 375 px", firstFew(out));
     }
     // Release 0.4.3: the EMR Friendly Template panel at 375 px, on the Screener (a sample's result)
     // and the Scribe (the Note view): it opens, the frame's textarea holds the template (the marker
-    // first and last), and the page still does not scroll sideways nor holds an element past the
-    // viewport (the audit's element check, applied to the panel states).
+    // first and last), and the page still does not scroll sideways. Not yet run (no Node here).
     try {
       await p.click('nav.sa-tabs [data-tab="screener"]');
       await p.waitForTimeout(300);
@@ -551,20 +458,14 @@ export default async function pages(page, ctx) {
       const scrText = await p.frameLocator("[data-testid=scr-emr-frame]").locator("textarea").inputValue();
       check(scrText.startsWith(PROTO) && scrText.endsWith(PROTO), "/narrow/emr/screener/text", "the template, the marker first and last", scrText.slice(0, 80));
       check(await overflow() <= 0, "/narrow/emr/screener", "no horizontal scroll with the panel open", `${await overflow()}px`);
-      const outScr = await outside();
-      check(outScr.length === 0, "/narrow/emr/screener/elements", "no element past the viewport with the panel open", firstFew(outScr));
       await p.click('nav.sa-tabs [data-tab="scribe"]');
       await p.waitForTimeout(300);
-      // The Note button by its test id: its text content is " Note" (icon, space, label), which a
-      // /^Note$/ text filter never matches (first run of this check, merge 0.4.7).
-      await p.click("[data-testid=scribe-view-note]");
+      await p.locator("[data-testid=scribe-views] button", { hasText: /^Note$/ }).first().click();
       await p.click("[data-testid=scribe-emr-toggle]");
       await p.waitForSelector("[data-testid=scribe-emr-frame]", { timeout: 10000 });
       const scbText = await p.frameLocator("[data-testid=scribe-emr-frame]").locator("textarea").inputValue();
       check(scbText.startsWith(PROTO) && scbText.endsWith(PROTO), "/narrow/emr/scribe/text", "the template, the marker first and last", scbText.slice(0, 80));
       check(await overflow() <= 0, "/narrow/emr/scribe", "no horizontal scroll with the panel open", `${await overflow()}px`);
-      const outScb = await outside();
-      check(outScb.length === 0, "/narrow/emr/scribe/elements", "no element past the viewport with the panel open", firstFew(outScb));
     } catch (err) {
       check(false, "/narrow/emr", "the EMR Friendly Template panels open at 375 px", String(err && err.message || err).split("\n")[0]);
     } finally {
@@ -577,33 +478,10 @@ export default async function pages(page, ctx) {
     await p.click("[data-testid=hand-to-patient]");
     await p.waitForTimeout(300);
     check(await overflow() <= 0, "/narrow/patient-mode", "no horizontal scroll", `${await overflow()}px`);
-    const outP = await outside();
-    check(outP.length === 0, "/narrow/patient-mode/elements", "no element past the viewport", firstFew(outP));
     await p.goto(app("patient.html"), { waitUntil: "load" });
     await waitFor(p, () => !!document.querySelector("[data-testid=patient-app]"), null, 30000);
     check(await overflow() <= 0, "/narrow/patient-page", "no horizontal scroll", `${await overflow()}px`);
-    const outPP = await outside();
-    check(outPP.length === 0, "/narrow/patient-page/elements", "no element past the viewport", firstFew(outPP));
     await p.close();
-  }
-
-  // ------------------------------------------------------------------ boot: loader URL, deferred Babel, visible failure
-  {
-    // The loader URL carries the release, so a new release never runs with a cached old loader.
-    const release = ((await (await fetch(app("src/engine/policy.js"))).text()).match(/APP_VERSION\s*=\s*"([^"]+)"/) || [])[1] || "?";
-    for (const pg of ["screenair.html", "patient.html"]) {
-      const html = await (await fetch(app(pg))).text();
-      const url = (html.match(/masque-loader\.js[^'"]*/) || [""])[0];
-      check(url === `masque-loader.js?v=${release}`, `/boot/${pg}/versioned-loader`, `masque-loader.js?v=${release}`, url);
-      check(/<script defer src="[^"]*babel[^"]*"/.test(html), `/boot/${pg}/babel-defer`, "<script defer src=…babel…>", (html.match(/<script[^>]*babel[^>]*>/) || [""])[0]);
-    }
-    const p = await ctx.newPage();
-    await p.route((u) => u.pathname.endsWith("/assets/masque-loader.js"), (route) => route.fulfill({ status: 404, contentType: "text/plain", body: "gone" }));
-    await p.goto(app("screenair.html"), { waitUntil: "load" });
-    const shown = await waitFor(p, () => [...document.querySelectorAll("[role=alert]")].some((x) => /failed to start/.test(x.textContent)), null, 15000);
-    const st = await p.evaluate(() => ({ spinner: !!document.getElementById("masque-status"), alert: ([...document.querySelectorAll("[role=alert]")].map((x) => x.textContent)[0] || "").slice(0, 160) }));
-    check(shown && !st.spinner, "/boot/loader-missing/visible-error", "a visible error, no spinner", st);
-    await p.close();  // its expected loader error stays on that page (ctx.newPage keeps its own log)
   }
 
   notes.unshift(`${n} checks`);

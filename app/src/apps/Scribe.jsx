@@ -2,13 +2,13 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import {
   Mic, Square, Play, Pause, RotateCcw, ArrowRight, Stethoscope,
   Activity, ShieldCheck, TriangleAlert, HelpCircle, Check, Copy, FileJson,
-  FileText, Sparkles, User, MessageSquare, ChevronDown, Info, Plus, Download, ClipboardList
+  FileText, Sparkles, User, MessageSquare, ChevronDown, Info, Plus, Download, ClipboardList, ListChecks
 } from "lucide-react";
 import { createVoiceCapture, isVoiceSupported, isSecureForMicrophone, VOICE_ENGINE, VOICE_LANG, VOICE_ERRORS } from "../MASQUE_Voice.js";
 import { computeScore } from "../engine/scoring.js";
 import { createExtractor } from "../engine/extraction.js";
 import { liveProbes, truncateProbes } from "../engine/probes.js";
-import { ingestCaptures, rankSuggestions, captureLabel, itemShort, buildNote, heardPrompts, askNextSections } from "../engine/scribe.js";
+import { ingestCaptures, rankSuggestions, captureLabel, itemShort, buildNote, heardPrompts, askNextSections, clarifyPrompts, clarifyLabel, questionReview, REVIEW_SOURCE, retractProbeAnswers, probeNoteList } from "../engine/scribe.js";
 import { derivePhenotype, activeFlagsOf, buildRoutingState, routingRecs, gapSignals } from "../engine/rules.js";
 import { routingGate, signGate } from "../engine/gates.js";
 import { buildBundle, buildQuestionnaire, buildCdsHooks, buildDataDictionary } from "../engine/fhir.js";
@@ -19,7 +19,7 @@ import { scopeCss } from "../engine/css.js";
 import { richText } from "../engine/patient.js";
 import { PROBE_KIND, LOWEST_BAND, INDETERMINATE, CAPTURE_KIND } from "../engine/vocab.js";
 import { APP_VERSION, SITE } from "../engine/policy.js";
-import { ProvenanceBadge, TabNote, useOptionalSession } from "../ui/common.jsx";
+import { ProvenanceBadge, TabNote } from "../ui/common.jsx";
 
 /*  apps/Scribe.jsx — the generic Ambient Scribe (design 03 §5.4, §9.9). Owner: WP8.
 
@@ -67,6 +67,49 @@ import { ProvenanceBadge, TabNote, useOptionalSession } from "../ui/common.jsx";
     is carried into it (a skipped item is never carried). A heard capture for an item already
     answered is dropped before storing.
     The heard list is derived from the transcript; Reset and a module change clear the slot.
+
+    Typed text and Clarify (release 0.4.7, spec 0.4.7 §3.8, §5). The entry box is a textarea
+    that takes a statement or a whole pasted chart note: Enter is a newline, Ctrl/Cmd+Enter
+    captures (never while an IME is composing), and the bubble keeps the note's line breaks.
+    Typed text is clinician/chart text: it is read with { chart: true }, so it never consumes,
+    carries into or arms the carry-over slot (voice and demo lines keep the path above), an
+    attribution cue the lexicon lists in clauses.chartIgnoreThirdParty (a pronoun that names the
+    patient in a chart note) attributes nothing, and no context marker is captured from it (the
+    clinical lead's D8 answer of 2026-10-12: the clinician sets them). Since the lead's decision D9
+    of 2026-10-12 voice and demo lines are read with the lexicon's chart reading too (the extractor's
+    "Spoken lines"); they keep the carry-over path above and are never read for clarification. Its clarification cues (extractor.clarifyCues,
+    also { chart: true }) are stored on its transcript line, shown as clarify tags on the bubble
+    (never a captag: nothing was recorded) and as cards in the Clarify section under the box,
+    built by clarifyPrompts over every typed line in transcript
+    order (one card per target, the earliest open one first). A card shows the clause quoted,
+    the question and one button per answer option: a probe card answers through answerProbe
+    (flags raise-only, the EMR template's "recorded by clinician via probe" label unchanged), an
+    item card through answerPrompt; Skip dismisses the card and records nothing. The template-text
+    card (a placeholder cue, review round 2) is a notice, not a question: it quotes the line and the
+    lexicon's notice text, with one Dismiss control and no answers. A card leaves once answered,
+    skipped or dismissed, and Reset clears them. While a card is open, its probe leaves the
+    Ask next rail and its item leaves the suggestions and the heard cards, so nothing is asked
+    twice. The Clarify chrome is generic: every question and answer label is module data.
+
+    Question review (release 0.4.8, follow-up: the clinical lead's request of 2026-10-12). The view
+    switch is a tab list (role tablist / tab / tabpanel, the selected tab in the tab order, the arrow
+    keys, Home and End move between tabs): Safety, Ask next, Question review, Note, FHIR. The default
+    view is unchanged (Safety); Question review sits right of Ask next and never opens by itself. It
+    lists every scored item once, by domain (questionReview), with its question and short label as
+    Ask next shows them, its current answer ("not answered" when absent or unsure, never no) and the
+    source this session recorded for that answer (answerSrc, REVIEW_SOURCE: heard in encounter,
+    typed chart text, probe, Clarify card, Ask next, question review edit; a skipped item says it was
+    skipped). Each row offers the item's own answers and "Clear answer". An answer goes through
+    answerPrompt, the path of the Ask next cards, so the score, coverage, suggestions, probes, Clarify
+    cards, the encounter note, the bundle and the EMR template follow; clearing deletes the answer
+    (and its skip, so Ask next can ask it again): the item is unanswered, never no. A change or a
+    clear also retracts the probe answer whose option wrote the item (retractProbeAnswers, review
+    fix): the probe notes are derived from the probe answers on record (probeNoteList), so neither
+    the encounter note nor the EMR template keeps a probe's note or checklist entry that contradicts
+    the corrected answer, and the probe can be asked again while it is live. A row whose current
+    answer came from the review carries an "edited" chip and what was first recorded; an unanswered
+    row the clinician then skipped in Ask next says so, whatever source was recorded (review fix);
+    the notes keep their format. Reset clears the record; the dirty summary counts its edits.
 
     Never names a module id, item, flag, context id, phenotype value or brand (t-ids).
 */
@@ -201,26 +244,49 @@ details.about[open] .chev{transform:rotate(180deg)}.chev{transition:.2s}
 `;
 
 // New chrome only (non-clinical): the panel link card, the lexicon / secure-context
-// notices, the probe evaluation-error tag and the heard tag and card (design 05 §2.2).
-// Classes carry the sa-scribe- prefix. The grid override lets the two cards shrink below
-// their content's min-content width (minmax(0,1fr), min-width:0), so a long FHIR line scrolls
-// inside its <pre> instead of widening the card past the panel. (The scroll boxes take
-// keyboard focus; the baseline :focus-visible ring covers them.)
+// notices, the probe evaluation-error tag and the heard tag and card (design 05 §2.2), the
+// entry textarea, the patient bubble's line breaks, the clarify tag and the Clarify section
+// (release 0.4.7). Classes carry the sa-scribe- prefix.
 const SCRIBE_EXTRA_CSS = `
 .sa-scribe-link{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:14px}
 .sa-scribe-link .sa-scribe-linktext{flex:1 1 260px;font-size:12.5px;color:#33474A}
 .sa-scribe-notice{display:flex;gap:7px;align-items:flex-start;font-size:12px;color:#6B4A18;background:var(--amberbg);border:1px solid #E4C88E;border-radius:10px;padding:9px 11px;margin:0 0 12px}
 .sa-scribe-evalerr{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:#8E3520;background:var(--coralbg);border-radius:5px;padding:2px 6px;margin-left:6px}
 .sa-scribe-prov{margin-bottom:10px}
-.grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-.grid>*{min-width:0}
-@media (max-width:820px){.grid{grid-template-columns:minmax(0,1fr)}}
 .sa-scribe-heardtag{background:#fff;border:1px dashed var(--amber);border-radius:6px;padding:2px 6px;color:#7A4E12}
 .sa-scribe-heardtag.pending{opacity:.72}
 .prompt.sa-scribe-heard{border-left-style:dashed}
 .sa-scribe-emr{margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:11px;background:#F7FAF9}
 .sa-scribe-emr-hint{margin:0 0 8px;font-size:11.5px;color:var(--muted);line-height:1.45}
 .sa-scribe-emr-frame{display:block;box-sizing:border-box;width:100%;height:380px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.entry.sa-scribe-entry{flex-direction:column;align-items:stretch}
+.sa-scribe-entry textarea{display:block;width:100%;min-height:200px;max-height:60vh;resize:vertical;overflow:auto;font:inherit;font-size:13px;line-height:1.45;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4}
+.sa-scribe-entry textarea:focus{outline:2px solid var(--petrol2);outline-offset:1px}
+.sa-scribe-entry .mini{align-self:flex-end}
+.row.pt .bub{white-space:pre-wrap;overflow-wrap:anywhere}
+.sa-scribe-clarifytag{background:#fff;border:1px dotted var(--amber);border-radius:6px;padding:2px 6px;color:#7A4E12}
+.sa-scribe-clarify{margin-top:12px}
+.sa-scribe-clarify .sa-scribe-clarify-cap{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--amber);font-weight:700;margin:0 0 4px}
+.prompt.sa-scribe-clarify-card{border-left-style:dotted;margin-top:7px}
+.sa-scribe-clarify-card .sa-scribe-clarify-tag{text-transform:none;letter-spacing:0}
+.sa-scribe-clarify-quote{margin:0 0 6px;padding:4px 8px;border-left:2px solid var(--line);font-size:12px;color:#33474A;white-space:pre-wrap;overflow-wrap:anywhere}
+.sa-scribe-clarify-quote .sa-scribe-clarify-and{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-right:4px}
+.sa-scribe-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.sa-scribe-qr-domain{margin-top:12px}
+.sa-scribe-qr-dlabel{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--petrol);font-weight:700;margin:0 0 2px}
+.sa-scribe-qr-row{border:1px solid var(--line);border-left:3px solid var(--line);border-radius:0 11px 11px 0;background:#fff;padding:9px 12px;margin-top:7px}
+.sa-scribe-qr-row.on{border-left-color:var(--petrol2)}
+.sa-scribe-qr-row.edited{border-left-color:var(--amber)}
+.sa-scribe-qr-tag{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;color:var(--muted);margin-bottom:2px;overflow-wrap:anywhere}
+.sa-scribe-qr-q{font-size:13px;font-weight:560;margin-bottom:5px;overflow-wrap:anywhere}
+.sa-scribe-qr-state{font-size:12px;color:#33474A;margin-bottom:7px;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center}
+.sa-scribe-qr-answer{font-weight:650}
+.sa-scribe-qr-answer.none{font-weight:500;font-style:italic;color:var(--muted)}
+.sa-scribe-qr-src{color:var(--muted)}
+.sa-scribe-qr-edited{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;background:var(--amberbg);color:#7A4E12;border-radius:5px;padding:2px 6px}
+.sa-scribe-qr-first{font-size:11.5px;color:var(--muted);margin:-3px 0 7px;overflow-wrap:anywhere}
+.sa-scribe-qr-row .pbtn.sa-scribe-qr-on{background:var(--petrol);color:#fff;border-color:var(--petrol)}
+.sa-scribe-qr-row .pbtn:disabled{opacity:.45;cursor:not-allowed}
 `;
 
 const CSS = scopeCss(SCRIBE_CSS, ".sa-scribe") + scopeCss(SCRIBE_EXTRA_CSS, ".sa-scribe");
@@ -232,6 +298,36 @@ const LIVE_STATES = ["starting", "listening", "restarting"];
 // The Ask next group of items the patient named without a value (design 05 §2.1).
 const HEARD_LABEL = "Heard";
 const HEARD_CAPTION = " · named by the patient, value not stated — nothing is recorded until it is answered";
+// The entry box and the Clarify section (release 0.4.7; generic wording, approved by the clinical
+// lead on 2026-10-12 with the 0.4.7 sign-off list, part C). The hint lives in attributes only: no
+// new text node in the encounter card while Clarify is empty.
+const INPUT_PLACEHOLDER = "Type a patient statement or paste a chart note (H&P) — Ctrl+Enter to capture";
+const INPUT_LABEL = "Patient statement or chart note";
+const CAPTURE_TITLE = "Capture (Ctrl+Enter)";
+const CLARIFY_LABEL = "Clarify";
+// Review round 1: worded to hold for every card reason (unclear, hedged, stated both ways, template text).
+const CLARIFY_CAPTION = " · the text leaves these open; nothing is recorded until you answer";
+// The always-mounted status a screen reader announces when cards appear or leave (review round 1);
+// review round 2: a template-text notice is counted as a notice, not a question.
+const clarifyStatus = (q, n) => [q > 0 ? `${q} ${q === 1 ? "question" : "questions"} to clarify` : "", n > 0 ? `${n} ${n === 1 ? "notice" : "notices"}` : ""]
+  .filter(Boolean).join(", ");
+// The template-text notice's one control (review round 2: a notice with Dismiss, no answers, no Skip).
+const DISMISS_LABEL = "Dismiss";
+// Why a card is shown (clarifyCues reason), in the card's tag line.
+const CLARIFY_REASON = { trigger: "unclear", hedge: "hedged", conflict: "stated both ways", placeholder: "template text" };
+const CLARIFY_AND = "and";
+// The Question review (release 0.4.8, follow-up; English UI chrome, non-clinical): the view's tab
+// label, its explanation line, and the words of a row. The source names are the engine's
+// (REVIEW_SOURCE). The view switch's tab order: the review sits right of Ask next.
+const VIEWS = ["safety", "prompts", "review", "note", "fhir"];
+const VIEWS_LABEL = "Encounter views";
+const REVIEW_LABEL = "Question review";
+const REVIEW_INTRO = "Every scored item, with its current answer and where it came from. Change or clear an answer here: the score, coverage, suggestions, encounter note and EMR template follow. Not answered is never a no.";
+const REVIEW_NOT_ANSWERED = "not answered";
+const REVIEW_SKIPPED = "skipped in Ask next";
+const REVIEW_CLEAR = "Clear answer";
+const REVIEW_EDITED = "edited";
+const REVIEW_FIRST = "First recorded:";
 
 const BAND_META = {
   low: { c: "var(--green)", bg: "var(--greenbg)", l: "Low" },
@@ -256,6 +352,29 @@ function toTag(c) {
     return { id: c.id, value: c.value, kind: CAPTURE_KIND.ITEM, via: "carry", fromCueText: c.carriedFrom ? c.carriedFrom.cueText : undefined };
   }
   return { id: c.id, value: c.value, kind: c.kind };
+}
+
+/**
+ * The clarification cue stored on a typed line (release 0.4.7): the clarifyCues record as
+ * returned (kind "clarify", id, reason, probe | item, evidence, clause, cueIndex, cueText,
+ * against), copied so the line never shares objects with the engine.
+ */
+function toClarifyTag(q) {
+  const out = { kind: q.kind, id: q.id, reason: q.reason, evidence: q.evidence, clause: q.clause ? { ...q.clause } : undefined, cueIndex: q.cueIndex, cueText: q.cueText };
+  if (typeof q.probe === "string") out.probe = q.probe;
+  if (typeof q.item === "string") out.item = q.item;
+  if (q.against) out.against = { ...q.against, clause: q.against.clause ? { ...q.against.clause } : undefined };
+  return out;
+}
+
+/**
+ * A Clarify answer button's class, as the same question's button in Ask next: a probe option that
+ * raises a flag " n"; an item card's Yes " y" and No " n"; a scale option or any other "".
+ */
+function clarifyButtonClass(cl, o) {
+  if (o.rf) return " n";
+  if (cl.kind === "item" && !Array.isArray(cl.scale)) return o.value === "yes" ? " y" : o.value === "no" ? " n" : "";
+  return "";
 }
 
 /** `**bold**` (the only markup in module data) as React nodes. */
@@ -283,7 +402,7 @@ export default function Scribe({
   const copy = module.copy || {};
   const scribeCopy = copy.scribe || {};
 
-  const [transcript, setTranscript] = useState([]);   // {id, role, text, src, caps:[toTag(capture)]}
+  const [transcript, setTranscript] = useState([]);   // {id, role, text, src, caps:[toTag(capture)], clar:[toClarifyTag(cue)]}
   const [cursor, setCursor] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [answers, setAnswers] = useState({});
@@ -295,15 +414,29 @@ export default function Scribe({
   const [rf, setRf] = useState({});                    // id -> "nlp" | "md" | "probe"
   const [safetyReviewed, setSafetyReviewed] = useState(false);
   const [probeAns, setProbeAns] = useState({});   // probe id -> chosen option index
-  const [probeNotes, setProbeNotes] = useState([]);
+  // The notes of the probe answers on record (release 0.4.8, follow-up; review fix): derived from
+  // probeAns in the order answered, so a probe answer the Question review retracts takes its note
+  // with it (it was an append-only list).
+  const probeNotes = useMemo(() => probeNoteList(module, probeAns), [module, probeAns]);
   const [input, setInput] = useState("");
+  const [clarifyDismissed, setClarifyDismissed] = useState({}); // clarify card id -> true (Skip: nothing recorded)
+  // Question review (release 0.4.8, follow-up): where this session recorded each item's current
+  // answer, item id -> {src: REVIEW_SOURCE key, first?: {value, src}} (first: the answer and source
+  // before the first review edit). Display only: no score, note or bundle reads it.
+  const [answerSrc, setAnswerSrc] = useState({});
+  const reviewUid = React.useId();
+  const viewUid = React.useId();
+  const tabRefs = useRef({});
+  // Clarify focus (review round 1): after a card is answered or skipped, focus moves to the card now
+  // at its place (else the one before it), or back to the text box when none is left.
+  const clarifyUid = React.useId();
+  const clarifyRef = useRef(null);
+  const inputRef = useRef(null);
+  const clarifyFocusRef = useRef(null);
   const [view, setView] = useState("safety");          // safety | prompts | note | fhir
   const [showEmr, setShowEmr] = useState(false);       // the EMR Friendly Template panel (0.4.3)
   const [toast, setToast] = useState("");
   const scrollRef = useRef(null);
-  // The session store (the shell's SessionProvider), when there is one: captured rows are
-  // mirrored there through onCapture, and Reset clears them there too.
-  const session = useOptionalSession();
 
   // Carry-over (design 05 §3.1, §3.4): the one pending slot, a ref because it never renders by
   // itself, and synchronous mirrors of the answers and skips, so back-to-back voice finals read
@@ -383,14 +516,21 @@ export default function Scribe({
   }
 
   // ingest one utterance: run extraction, update state, return captures.
-  // src records where the utterance came from — demo | typed | voice — for the transcript only;
-  // capture rules are identical for all three. A patient line is read in the context of the
+  // src records where the utterance came from — demo | typed | voice — for the transcript; voice and
+  // demo lines are read alike (spoken lines), typed text as chart text (below). A patient line is read in the context of the
   // pending slot; a physician line never reaches the extractor and leaves the slot untouched.
+  // Typed text (release 0.4.7) is clinician/chart text: it is read with { chart: true }, which
+  // returns the slot unchanged (nothing consumed, carried into or armed) and lets a pronoun the
+  // lexicon marks as the patient's in chart text attribute nothing, and its clarification cues
+  // (read the same way) are kept on its line for the Clarify section.
   function ingest(role, text, src = "demo") {
     let caps = [];
+    let clar = [];
     if (role === "pt" && extractor) {
       const { slot, opts } = pendingCall();
-      const r = extractor.extractInContext(text, slot, opts);
+      const chart = src === "typed";
+      const r = extractor.extractInContext(text, slot, chart ? { ...opts, chart: true } : opts);
+      if (chart) clar = extractor.clarifyCues(text, { chart: true }).map(toClarifyTag);
       // A heard capture for an item already answered is dropped: "not stated" beside an answer
       // on the record would mislead. The returned slot is kept even when its item is answered
       // or skipped, so a yield it holds lasts the rest of its window; it never carries a value
@@ -402,6 +542,12 @@ export default function Scribe({
     if (caps.some(c => c.kind !== CAPTURE_KIND.HEARD)) {
       const touched = [...new Set(ingestCaptures({}, caps).touchedDomainItemIds.map(id => module.itemById[id]?.domain).filter(Boolean))];
       if (touched.length) setPulse({ domains: touched, at: Date.now() });
+      // The Question review's record (release 0.4.8, follow-up): the items this line answered (first
+      // write wins, so only items unanswered before it), as heard (spoken) or typed chart text.
+      const before = answersRef.current;
+      const after = ingestCaptures({ answers: before }, caps).answers;
+      const fresh = Object.keys(after).filter(k => before[k] === undefined && after[k] !== undefined);
+      if (fresh.length) recordSource(fresh, src === "typed" ? "typed" : "heard");
       // Items first-wins; context overwrites; red flags only ever raised and marked as heard —
       // a clinician decision already on the record is not downgraded by a later phrase match.
       setAnswers(a => ingestCaptures({ answers: a }, caps).answers);
@@ -410,7 +556,7 @@ export default function Scribe({
       // The synchronous mirror, read by the next ingest before React re-renders.
       answersRef.current = ingestCaptures({ answers: answersRef.current }, caps).answers;
     }
-    setTranscript(t => [...t, { id: t.length, role, text, src, caps: caps.map(toTag) }]);
+    setTranscript(t => [...t, { id: t.length, role, text, src, caps: caps.map(toTag), clar }]);
   }
   ingestRef.current = ingest;
 
@@ -472,16 +618,21 @@ export default function Scribe({
     stopVoice(); setInterim(""); setVoiceErr(null);
     setTranscript([]); setCursor(0); setPlaying(false); setAnswers({}); setCtx({});
     setVmp({}); setAsked({}); setSkipped({}); setRf({}); setSafetyReviewed(false); setView("safety");
-    setProbeAns({}); setProbeNotes([]); setCohort([]); setShowEmr(false);
+    setProbeAns({}); setCohort([]); setShowEmr(false);
+    setClarifyDismissed({}); setInput(""); setAnswerSrc({});
     pendingRef.current = null; answersRef.current = {}; skippedRef.current = {};
-    // The captured rows leave the session as well: Research and the module-switch
-    // confirmation must not keep listing rows this tab has cleared.
-    if (session && typeof session.clearRows === "function") session.clearRows("scribe");
     setToast("Encounter cleared");
   }
   function submitInput() {
     const v = input.trim(); if (!v) return;
     ingest("pt", v, "typed"); setInput("");
+  }
+  // Enter is a newline; Ctrl+Enter or Cmd+Enter captures, never while an IME is composing.
+  function onInputKeyDown(e) {
+    if (e.key !== "Enter" || !(e.ctrlKey || e.metaKey)) return;
+    if ((e.nativeEvent && e.nativeEvent.isComposing) || e.keyCode === 229) return;
+    e.preventDefault();
+    submitInput();
   }
 
   // Phenotype (complaint). A derive error is a routing error: "" here is for display and the
@@ -498,17 +649,64 @@ export default function Scribe({
         if (c.kind === CAPTURE_KIND.HEARD && !seen.has(c.id)) { seen.add(c.id); out.push({ id: c.id, cueText: c.cueText }); }
     return out;
   }, [transcript]);
-  const heardPromptList = useMemo(() => heardPrompts(module, { heard: heardItems, answers, skipped }), [module, heardItems, answers, skipped]);
-  const heardIds = useMemo(() => heardPromptList.map(s => s.id), [heardPromptList]);
+  // Clarify (release 0.4.7): the cues of every typed line, line by line in transcript order and in
+  // text order within a line (each line's cueIndex is offset past the lines before it, so
+  // clarifyPrompts' text order runs line by line and its one-card-per-target rule keeps the
+  // earliest open card). A card leaves once its probe or item is answered, its item skipped, or
+  // the card itself skipped (clarifyDismissed); the bubble's clarify tags stay with their line.
+  const clarifyCueList = useMemo(() => {
+    const out = [];
+    let base = 0;
+    for (const m of transcript) {
+      if (!Array.isArray(m.clar) || !m.clar.length) continue;
+      for (const q of m.clar) out.push({ ...q, cueIndex: base + (typeof q.cueIndex === "number" ? q.cueIndex : 0) });
+      base += m.text.length + 1;
+    }
+    return out;
+  }, [transcript]);
+  // rf too: a probe card is shown only while its probe is live, as on the rail (review round 1).
+  const clarifyList = useMemo(() => clarifyPrompts(module, clarifyCueList, { answers, probeAns, skipped, dismissed: clarifyDismissed, rf }),
+    [module, clarifyCueList, answers, probeAns, skipped, clarifyDismissed, rf]);
+  useEffect(() => {
+    const at = clarifyFocusRef.current;
+    if (at === null) return;
+    clarifyFocusRef.current = null;
+    const cards = clarifyRef.current ? clarifyRef.current.querySelectorAll(".sa-scribe-clarify-card") : [];
+    const target = cards.length ? cards[Math.min(at, cards.length - 1)].querySelector("button") : inputRef.current;
+    if (target && typeof target.focus === "function") target.focus();
+  }, [clarifyList]);
+  const probeById = useMemo(() => {
+    const list = (module.logic && module.logic.probes && module.logic.probes.list) || [];
+    return new Map(list.filter(p => p && typeof p === "object").map(p => [p.id, p]));
+  }, [module]);
+  // What an open card stands for in Ask next: its probe (off the rail while the card is open), and
+  // its item, an item card's target or a probe card's item (its target, or the item a rescue probe
+  // re-asks), off the suggestions, the heard cards and the rail's other probes for that item, so the
+  // same question is never asked in two places (review round 1: rescue items and rule-out probes).
+  const probeItemOf = (pr) => (pr && typeof pr.target === "string" ? pr.target : pr && typeof pr.rescues === "string" ? pr.rescues : null);
+  const clarifyProbeIds = useMemo(() => new Set(clarifyList.filter(cl => cl.kind === "probe").map(cl => cl.target)), [clarifyList]);
+  const clarifyItemIds = useMemo(() => {
+    const s = new Set();
+    for (const cl of clarifyList) {
+      if (cl.kind === "item") s.add(cl.target);
+      else if (cl.kind === "probe") { const it = probeItemOf(probeById.get(cl.target)); if (it !== null) s.add(it); }
+    }
+    return s;
+  }, [clarifyList, probeById]);
+
+  const heardAll = useMemo(() => heardPrompts(module, { heard: heardItems, answers, skipped }), [module, heardItems, answers, skipped]);
+  const heardPromptList = useMemo(() => (clarifyItemIds.size ? heardAll.filter(s => !clarifyItemIds.has(s.id)) : heardAll), [heardAll, clarifyItemIds]);
+  const heardIds = useMemo(() => heardAll.map(s => s.id), [heardAll]);
+  const suggestExclude = useMemo(() => (clarifyItemIds.size ? [...heardIds, ...clarifyItemIds] : heardIds), [heardIds, clarifyItemIds]);
 
   // suggested questions: unanswered items, prioritized by active pathway + weight.
   // While the screen is unscorable the pool widens to every unanswered item —
   // otherwise headroom parked in an inactive domain could hold the screen
   // indeterminate with nothing left on screen to resolve it. An item shown as a heard
-  // prompt is left out here, so it appears once.
+  // prompt (or behind an open Clarify card) is left out here, so it appears once.
   const { list: suggestions, error: activationError } = useMemo(
-    () => rankSuggestions(module, { answers, complaint, phenotypeError, vmp, scorable, skipped, exclude: heardIds }),
-    [module, answers, complaint, phenotypeError, vmp, scorable, skipped, heardIds]);
+    () => rankSuggestions(module, { answers, complaint, phenotypeError, vmp, scorable, skipped, exclude: suggestExclude }),
+    [module, answers, complaint, phenotypeError, vmp, scorable, skipped, suggestExclude]);
   const askNextCount = suggestions.length + heardPromptList.length;
 
   /*  Contextual probes — what to ask or do next, ranked by what the answer could change,
@@ -524,23 +722,55 @@ export default function Scribe({
     });
     return { probes: live, probeErrors: errs };
   }, [module, answers, rf, probeAns]);
-  const probeGroups = useMemo(() => truncateProbes(probes), [probes]);
+  // A probe asked by an open Clarify card leaves the rail until the card is answered or skipped, as
+  // does a probe for the item an open card stands for.
+  const probeGroups = useMemo(() => truncateProbes(clarifyProbeIds.size || clarifyItemIds.size
+    ? probes.filter(p => !clarifyProbeIds.has(p.id) && !clarifyItemIds.has(probeItemOf(p))) : probes), [probes, clarifyProbeIds, clarifyItemIds]);
   const probeErrorIds = useMemo(() => new Set(probeErrors.map(e => e.ruleId)), [probeErrors]);
   // Ask next, most urgent first: Safety probes, then the Heard group, then Re-ask and the rest.
   const askSections = useMemo(() => askNextSections(probeGroups, heardPromptList), [probeGroups, heardPromptList]);
 
-  function answerProbe(p, idx) {
+  /** The Question review's record: these items' current answers came from `src` (a REVIEW_SOURCE key). */
+  function recordSource(ids, src) {
+    setAnswerSrc(v => {
+      const n = { ...v };
+      for (const id of ids) n[id] = v[id] && v[id].first ? { src, first: v[id].first } : { src };
+      return n;
+    });
+  }
+
+  // `via` (release 0.4.8, follow-up): where the answer came from, for the Question review only.
+  function answerProbe(p, idx, via = "probe") {
     const o = p.opts[idx];
     setProbeAns(v => ({ ...v, [p.id]: idx }));
     // A probe may only ever RAISE a red flag, never clear one — same rule as ambient capture.
     if (o.rf) setRf(v => (v[o.rf] ? v : { ...v, [o.rf]: "probe" }));
-    if (o.a) { setAnswers(a2 => ({ ...a2, ...o.a })); setAsked(k => ({ ...k, ...Object.fromEntries(Object.keys(o.a).map(x => [x, true])) })); }
-    if (o.note) setProbeNotes(n => [...n, o.note]);
+    if (o.a) { setAnswers(a2 => ({ ...a2, ...o.a })); setAsked(k => ({ ...k, ...Object.fromEntries(Object.keys(o.a).map(x => [x, true])) })); recordSource(Object.keys(o.a), via); }
   }
 
-  function answerPrompt(s, value) {
+  function answerPrompt(s, value, via = "askNext") {
     if (s.kind === "info") { setVmp(v => ({ ...v, [s.id]: value })); }
-    else { setAnswers(a => ({ ...a, [s.id]: value })); setAsked(k => ({ ...k, [s.id]: true })); }
+    else { setAnswers(a => ({ ...a, [s.id]: value })); setAsked(k => ({ ...k, [s.id]: true })); recordSource([s.id], via); }
+  }
+  // Question review (release 0.4.8, follow-up): an answer goes the way an Ask next card's goes
+  // (answerPrompt); the first edit keeps what was recorded before it. Choosing the current answer
+  // changes nothing. A change or a clear retracts the probe answer that wrote the item
+  // (retractProbeAnswers; review fix), so that probe's note and EMR checklist entry never contradict
+  // the corrected answer, and the probe can be asked again while it is live.
+  function reviewAnswer(row, value) {
+    if (row.answered && row.value === value) return;
+    setProbeAns(v => retractProbeAnswers(module, v, row.id));
+    setAnswerSrc(v => ({ ...v, [row.id]: { src: "review", first: v[row.id] && v[row.id].first ? v[row.id].first : { value: row.answered ? row.value : undefined, src: v[row.id] ? v[row.id].src : null } } }));
+    setAnswers(a => ({ ...a, [row.id]: value })); setAsked(k => ({ ...k, [row.id]: true }));
+  }
+  // Clearing deletes the answer and its skip: the item is unanswered again (never no), back in the
+  // attainable range and in Ask next.
+  function reviewClear(row) {
+    if (!row.answered && answers[row.id] === undefined) return;
+    setProbeAns(v => retractProbeAnswers(module, v, row.id));
+    setAnswerSrc(v => ({ ...v, [row.id]: { src: "review", first: v[row.id] && v[row.id].first ? v[row.id].first : { value: row.answered ? row.value : undefined, src: v[row.id] ? v[row.id].src : null } } }));
+    setAnswers(a => { const n = { ...a }; delete n[row.id]; return n; });
+    setSkipped(k => { if (!k[row.id]) return k; const n = { ...k }; delete n[row.id]; return n; });
   }
   // Skipping a prompt hides it; it never writes an answer. A skipped item stays
   // unanswered — it keeps its headroom in the attainable range, is not counted toward
@@ -551,6 +781,47 @@ export default function Scribe({
     if (s.kind === "info") setVmp(v => ({ ...v, [s.id]: "skip" }));
     else setSkipped(k => ({ ...k, [s.id]: true }));
   }
+  // A Clarify card's answer goes the way the same question goes in Ask next: a probe card through
+  // answerProbe (option index), an item card through answerPrompt (scale index or yes / no).
+  function answerClarify(cl, idx) {
+    const o = cl.opts[idx];
+    if (!o) return;
+    clarifyFocusRef.current = Math.max(0, clarifyList.indexOf(cl));
+    if (cl.kind === "probe") { const pr = probeById.get(cl.target); if (pr) answerProbe(pr, o.value, "clarify"); }
+    else if (cl.kind === "item") answerPrompt({ id: cl.target, kind: "scored" }, o.value, "clarify");
+  }
+  // Skip on a Clarify card hides that card only; it records nothing (not even a skipped item).
+  function skipClarify(cl) { clarifyFocusRef.current = Math.max(0, clarifyList.indexOf(cl)); setClarifyDismissed(d => ({ ...d, [cl.id]: true })); }
+
+  // The Question review's rows (release 0.4.8, follow-up), from the engine.
+  const reviewSources = useMemo(() => Object.fromEntries(Object.entries(answerSrc).map(([k, v]) => [k, v.src])), [answerSrc]);
+  const reviewGroups = useMemo(() => questionReview(module, { answers, sources: reviewSources }), [module, answers, reviewSources]);
+  const reviewEdits = useMemo(() => Object.values(answerSrc).filter(v => v.src === "review").length, [answerSrc]);
+  /** An answer value as its row shows it: the option label, or "not answered". */
+  const reviewValueLabel = (row, value) => {
+    if (value === undefined || value === "unsure") return REVIEW_NOT_ANSWERED;
+    const o = row.options.find(x => x.value === value);
+    return o ? o.label : String(value);
+  };
+  // The view switch's tabs (release 0.4.8, follow-up): arrow keys, Home and End move between tabs
+  // and select them; only the selected tab is in the tab order.
+  function onViewKeyDown(e) {
+    const i = VIEWS.indexOf(view);
+    let j = null;
+    if (e.key === "ArrowRight") j = (i + 1) % VIEWS.length;
+    else if (e.key === "ArrowLeft") j = (i - 1 + VIEWS.length) % VIEWS.length;
+    else if (e.key === "Home") j = 0;
+    else if (e.key === "End") j = VIEWS.length - 1;
+    if (j === null) return;
+    e.preventDefault();
+    setView(VIEWS[j]);
+    const el = tabRefs.current[VIEWS[j]];
+    if (el && typeof el.focus === "function") el.focus();
+  }
+  const tabProps = (v) => ({
+    role: "tab", id: `${viewUid}-tab-${v}`, "aria-selected": view === v, "aria-controls": `${viewUid}-panel`,
+    tabIndex: view === v ? 0 : -1, onKeyDown: onViewKeyDown, ref: (el) => { tabRefs.current[v] = el; },
+  });
 
   const bandMeta = BAND_META[band] || BAND_META[INDETERMINATE];
 
@@ -623,19 +894,22 @@ export default function Scribe({
   }, [module, score, complaint, activeFlags, safetyReviewed, routingCleared, answers, ctx]); // eslint-disable-line
 
   const answeredCount = Object.keys(answers).length;
-  // Captured rows as the session holds them (what Research lists and a module switch would
-  // drop); this tab's own list off the shell (no session).
-  const rowCount = session ? session.cohorts.scribe.length : cohort.length;
+  // Text typed or pasted into the box but not captured yet (release 0.4.7): a whole chart note can
+  // sit there, so a module switch asks before discarding it.
+  const hasDraft = input.trim().length > 0;
   const dirtySummary = useMemo(() => {
     const parts = [];
     if (transcript.length) parts.push(`transcript (${plural(transcript.length, "line", "lines")})`);
     if (answeredCount) parts.push(plural(answeredCount, "answer", "answers"));
     const flagCount = Object.keys(rf).length;
     if (flagCount) parts.push(plural(flagCount, "red flag", "red flags"));
-    if (rowCount) parts.push(plural(rowCount, "captured row", "captured rows"));
-    if (!parts.length && (safetyReviewed || Object.keys(ctx).length || Object.keys(vmp).length || probeNotes.length)) parts.push("screen in progress");
+    if (cohort.length) parts.push(plural(cohort.length, "captured row", "captured rows"));
+    // A Question review edit counts like an answer (release 0.4.8, follow-up): one that cleared the
+    // only answer still leaves a screen in progress.
+    if (!parts.length && (safetyReviewed || Object.keys(ctx).length || Object.keys(vmp).length || probeNotes.length || reviewEdits)) parts.push("screen in progress");
+    if (hasDraft) parts.push("text not yet captured");
     return parts.length ? parts.join(", ") : null;
-  }, [transcript.length, answeredCount, rf, rowCount, safetyReviewed, ctx, vmp, probeNotes.length]);
+  }, [transcript.length, answeredCount, rf, cohort.length, hasDraft, safetyReviewed, ctx, vmp, probeNotes.length, reviewEdits]);
   useEffect(() => { if (cb.current.onDirty) cb.current.onDirty("scribe", dirtySummary); }, [dirtySummary]);
 
   const hasContent = transcript.length > 0;
@@ -647,7 +921,7 @@ export default function Scribe({
   const aboutLines = Array.isArray(scribeCopy.about) ? scribeCopy.about : [];
   const benchmark = versions.goldSet
     ? ` — benchmarked in-sample only, see EXTRACTION_BENCHMARK${versions.goldSetLexicon && versions.goldSetLexicon !== versions.lexicon ? ` (benchmarked on lexicon ${versions.goldSetLexicon}; not re-run)` : ""}`
-    : " · gold set — (not benchmarked)";
+    : " — gold set — (not benchmarked)";
 
   return (
     <div className="sa-app sa-scribe" data-testid="scribe-app">
@@ -726,7 +1000,7 @@ export default function Scribe({
               </div>
             )}
 
-            <div className="tsc" ref={scrollRef} data-testid="scribe-transcript" tabIndex={0} role="region" aria-label="Encounter transcript">
+            <div className="tsc" ref={scrollRef} data-testid="scribe-transcript">
               {hasLexicon && !hasContent && !interim && <div className="empty">
                 {voiceSupported && secure ? <>Press <b>Listen</b> to capture the encounter from the microphone, </> : <>Press </>}
                 {hasScript ? <><b>Play demo visit</b> to watch a scripted one — or type what the patient says below.</> : <>or type what the patient says below.</>}</div>}
@@ -736,13 +1010,15 @@ export default function Scribe({
                     <div style={{maxWidth:"82%"}}>
                       <div className="who" style={{textAlign: m.role === "md" ? "right" : "left"}}>{m.role === "md" ? "Physician" : "Patient"}{m.src === "voice" ? " · voice" : ""}</div>
                       <div className="bub">{m.text}</div>
-                      {m.caps.length > 0 && (
+                      {(m.caps.length > 0 || (m.clar && m.clar.length > 0)) && (
                         <div className="cap">
                           {/* a heard tag is not a captag: nothing was added to the record */}
                           {m.caps.map((c, i) => c.kind === CAPTURE_KIND.HEARD
                             ? <span className="sa-scribe-heardtag" key={i} data-heard={c.id}
                                     title={module.itemById && module.itemById[c.id] ? module.itemById[c.id].text : undefined}>{captureLabel(module, c)}</span>
                             : <span className="captag" key={i}>+ {captureLabel(module, c)}</span>)}
+                          {/* nor is a clarify tag: the text asks a question, it answers nothing */}
+                          {(m.clar || []).map((q, i) => <span className="sa-scribe-clarifytag" key={`q${i}`} data-clarify={q.id}>{clarifyLabel(module, q)}</span>)}
                         </div>
                       )}
                     </div>
@@ -767,11 +1043,45 @@ export default function Scribe({
             </div>
 
             {hasLexicon && (
-              <div className="entry">
-                <input value={input} placeholder="Type a patient statement…" onChange={e => setInput(e.target.value)}
-                       onKeyDown={e => e.key === "Enter" && submitInput()} data-testid="scribe-input" />
-                <button className="mini" onClick={submitInput} data-testid="scribe-capture"><Plus size={14} /> Capture</button>
+              <div className="entry sa-scribe-entry">
+                <textarea ref={inputRef} value={input} rows={8} spellCheck={false} placeholder={INPUT_PLACEHOLDER}
+                          aria-label={INPUT_LABEL} aria-keyshortcuts="Control+Enter Meta+Enter"
+                          onChange={e => setInput(e.target.value)} onKeyDown={onInputKeyDown} data-testid="scribe-input" />
+                <button className="mini" onClick={submitInput} title={CAPTURE_TITLE} data-testid="scribe-capture"><Plus size={14} /> Capture</button>
               </div>
+            )}
+            {hasLexicon && clarifyList.length > 0 && (
+              <div className="sa-scribe-clarify" data-testid="scribe-clarify" role="region" aria-labelledby={`${clarifyUid}-cap`} ref={clarifyRef}>
+                <div className="sa-scribe-clarify-cap"><span id={`${clarifyUid}-cap`}>{CLARIFY_LABEL}</span>{CLARIFY_CAPTION}</div>
+                {clarifyList.map((cl, ci) => (
+                  <div className="prompt sa-scribe-clarify-card" key={`${cl.id}|${cl.target ?? ""}`} data-clarify={cl.id}
+                       data-clarify-kind={cl.kind} data-target={cl.target ?? undefined} data-reason={cl.reason}
+                       role={cl.kind === "note" ? "note" : "group"} aria-labelledby={`${clarifyUid}-q${ci}`}
+                       style={cl.probeKind && PROBE_KIND[cl.probeKind] ? { borderLeftColor: PROBE_KIND[cl.probeKind].c } : undefined}>
+                    <div className="qtag sa-scribe-clarify-tag"><HelpCircle size={11} /> {cl.tag ? `${cl.tag} · ` : ""}{CLARIFY_REASON[cl.reason] || CLARIFY_LABEL}{typeof cl.cueText === "string" ? ` “${cl.cueText}”` : ""}</div>
+                    <div className="sa-scribe-clarify-quote" data-testid="scribe-clarify-quote">“{cl.evidence}”
+                      {cl.against && typeof cl.against.evidence === "string" && <><br /><span className="sa-scribe-clarify-and">{CLARIFY_AND}</span>“{cl.against.evidence}”</>}
+                    </div>
+                    <div className="qq" id={`${clarifyUid}-q${ci}`}>{cl.ask}</div>
+                    {cl.kind === "note" ? (
+                      <div className="prow">
+                        <button className="pbtn skip" onClick={() => skipClarify(cl)} data-testid="scribe-clarify-dismiss">{DISMISS_LABEL}</button>
+                      </div>
+                    ) : (
+                      <div className="prow">
+                        {cl.opts.map((o, i) => (
+                          <button key={i} className={"pbtn" + clarifyButtonClass(cl, o)} onClick={() => answerClarify(cl, i)}>{o.label}</button>
+                        ))}
+                        <button className="pbtn skip" onClick={() => skipClarify(cl)} data-testid="scribe-clarify-skip">Skip</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Always mounted, so a screen reader announces the first cards too (review round 1). */}
+            {hasLexicon && (
+              <div className="sa-scribe-sr" role="status" aria-live="polite" aria-atomic="true" data-testid="scribe-clarify-status">{clarifyStatus(clarifyList.filter(cl => cl.kind !== "note").length, clarifyList.filter(cl => cl.kind === "note").length)}</div>
             )}
             {hasLexicon && (
               <div className="notew"><Info size={13} style={{flex:"0 0 auto",marginTop:1}} /><span>
@@ -843,15 +1153,18 @@ export default function Scribe({
               </div>
             )}
 
-            {/* view switch */}
-            <div className="btnrow" style={{marginTop:14}} data-testid="scribe-views">
-              <button className={"act" + (view === "safety" ? "" : " ghost")} onClick={() => setView("safety")} data-testid="scribe-view-safety">
+            {/* view switch: a tab list (release 0.4.8, follow-up); Question review right of Ask next */}
+            <div className="btnrow" style={{marginTop:14}} data-testid="scribe-views" role="tablist" aria-label={VIEWS_LABEL}>
+              <button className={"act" + (view === "safety" ? "" : " ghost")} onClick={() => setView("safety")} data-testid="scribe-view-safety" {...tabProps("safety")}>
                 {override ? <TriangleAlert size={15} /> : <ShieldCheck size={15} />} Safety {override ? `(${activeFlags.length})` : safetyReviewed ? "✓" : "!"}
               </button>
-              <button className={"act" + (view === "prompts" ? "" : " ghost")} onClick={() => setView("prompts")} data-testid="scribe-view-prompts"><HelpCircle size={15} /> Ask next {askNextCount ? `(${askNextCount})` : ""}</button>
-              <button className={"act" + (view === "note" ? "" : " ghost")} onClick={() => setView("note")} data-testid="scribe-view-note"><FileText size={15} /> Note</button>
-              <button className={"act" + (view === "fhir" ? "" : " ghost")} onClick={() => setView("fhir")} data-testid="scribe-view-fhir"><FileJson size={15} /> FHIR</button>
+              <button className={"act" + (view === "prompts" ? "" : " ghost")} onClick={() => setView("prompts")} data-testid="scribe-view-prompts" {...tabProps("prompts")}><HelpCircle size={15} /> Ask next {askNextCount ? `(${askNextCount})` : ""}</button>
+              <button className={"act" + (view === "review" ? "" : " ghost")} onClick={() => setView("review")} data-testid="scribe-view-review" {...tabProps("review")}><ListChecks size={15} /> {REVIEW_LABEL}</button>
+              <button className={"act" + (view === "note" ? "" : " ghost")} onClick={() => setView("note")} data-testid="scribe-view-note" {...tabProps("note")}><FileText size={15} /> Note</button>
+              <button className={"act" + (view === "fhir" ? "" : " ghost")} onClick={() => setView("fhir")} data-testid="scribe-view-fhir" {...tabProps("fhir")}><FileJson size={15} /> FHIR</button>
             </div>
+
+            <div role="tabpanel" id={`${viewUid}-panel`} aria-labelledby={`${viewUid}-tab-${view}`} data-testid="scribe-view-panel">
 
             {view === "safety" && (
               <div style={{marginTop:6}} data-testid="scribe-safety">
@@ -980,9 +1293,51 @@ export default function Scribe({
               </div>
             )}
 
+            {view === "review" && (
+              <div style={{marginTop:6}} data-testid="scribe-review-list">
+                <div className="notew" style={{marginTop:0}}><Info size={13} style={{flex:"0 0 auto",marginTop:1}} /><span>{REVIEW_INTRO}</span></div>
+                {reviewGroups.map(g => (
+                  <div className="sa-scribe-qr-domain" key={g.key} role="group" aria-labelledby={`${reviewUid}-d-${g.key}`} data-review-domain={g.key}>
+                    <div className="sa-scribe-qr-dlabel" id={`${reviewUid}-d-${g.key}`}>{g.label}</div>
+                    {g.items.map(r => {
+                      const rec = answerSrc[r.id];
+                      const edited = !!rec && rec.src === "review";
+                      // A skip after a review clear is the latest thing done to the row (review fix).
+                      const skippedNow = !r.answered && !!skipped[r.id];
+                      const first = edited && rec.first && rec.first.value !== undefined ? rec.first : null;
+                      const qid = `${reviewUid}-q-${r.id}`;
+                      return (
+                        <div className={"sa-scribe-qr-row" + (edited ? " edited" : r.answered ? " on" : "")} key={r.id} role="group" aria-labelledby={qid}
+                             data-review-item={r.id} data-answered={r.answered ? "true" : "false"} data-source={r.source || ""}>
+                          <div className="sa-scribe-qr-tag">{r.tag} · {r.short}</div>
+                          <div className="sa-scribe-qr-q" id={qid}>{r.ask}</div>
+                          <div className="sa-scribe-qr-state" data-testid="scribe-review-state">
+                            <span className={"sa-scribe-qr-answer" + (r.answered ? "" : " none")}>{r.answered ? r.answerLabel : REVIEW_NOT_ANSWERED}</span>
+                            {skippedNow
+                              ? <>{" "}<span className="sa-scribe-qr-src">· {REVIEW_SKIPPED}</span></>
+                              : r.source ? <>{" "}<span className="sa-scribe-qr-src">· {REVIEW_SOURCE[r.source]}</span></> : null}
+                            {edited && <>{" "}<span className="sa-scribe-qr-edited" data-testid="scribe-review-edited">{REVIEW_EDITED}</span></>}
+                          </div>
+                          {first && <div className="sa-scribe-qr-first">{REVIEW_FIRST} {reviewValueLabel(r, first.value)}{first.src && REVIEW_SOURCE[first.src] ? ` · ${REVIEW_SOURCE[first.src]}` : ""}</div>}
+                          <div className="prow">
+                            {r.options.map(o => {
+                              const on = r.answered && r.value === o.value;
+                              return <button key={String(o.value)} type="button" className={"pbtn" + (on ? " sa-scribe-qr-on" : "")} aria-pressed={on}
+                                onClick={() => reviewAnswer(r, o.value)}>{o.label}</button>;
+                            })}
+                            <button type="button" className="pbtn skip" disabled={!r.answered} onClick={() => reviewClear(r)} data-testid="scribe-review-clear">{REVIEW_CLEAR}</button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {view === "note" && (
               <div style={{marginTop:8}}>
-                <div className="note" data-testid="scribe-note" tabIndex={0} role="region" aria-label="Draft note">{note}</div>
+                <div className="note" data-testid="scribe-note">{note}</div>
                 <div className="btnrow">
                   <button className="act ghost" onClick={() => { try { navigator.clipboard.writeText(note); } catch(_){} setToast("Note copied"); }}><Copy size={14} /> Copy note</button>
                   <button className="act" disabled={!canSign} data-testid="scribe-sign"
@@ -1006,13 +1361,14 @@ export default function Scribe({
                 <button className="act ghost" onClick={()=>downloadJsonFile(`${filePrefix}-data-dictionary-v${instrument}.json`, buildDataDictionary(module, { appVersion }))}><Download size={14}/> Dictionary</button>
               </div>
               <div style={{marginTop:8}}>
-                <pre className="code" data-testid="scribe-bundle" tabIndex={0} role="region" aria-label="FHIR bundle" dangerouslySetInnerHTML={{ __html: fhirHtml(bundle) }} />
+                <pre className="code" data-testid="scribe-bundle" dangerouslySetInnerHTML={{ __html: fhirHtml(bundle) }} />
                 <div className="btnrow">
                   <button className="act ghost" onClick={() => { try { navigator.clipboard.writeText(JSON.stringify(bundle,null,2)); } catch(_){} setToast("FHIR bundle copied"); }}><Copy size={14} /> Copy bundle</button>
                   <button className="act" onClick={() => setToast("Posted to FHIR server (simulated)")}><FileJson size={14} /> Post bundle</button>
                 </div>
               </div>
             </>)}
+            </div>
 
             {scribeCopy.vmpathiDisclaimer && <div className="notew"><ShieldCheck size={13} style={{flex:"0 0 auto",marginTop:1}} /><span>{scribeCopy.vmpathiDisclaimer}</span></div>}
           </div>
@@ -1030,7 +1386,7 @@ export default function Scribe({
         {/* The readiness panel moved to the Research tab (AD8). */}
         <div className="card sa-scribe-link" data-testid="scribe-research-link">
           <div className="sa-scribe-linktext">
-            Research readiness for this screen — calibration, validation, fairness and the model card — is in the <b>Research</b> tab. Captured this session: <span className="num">{rowCount}</span>.
+            Research readiness for this screen — calibration, validation, fairness and the model card — is in the <b>Research</b> tab. Captured this session: <span className="num">{cohort.length}</span>.
           </div>
           {onOpenTab && <button className="act ghost" onClick={() => cb.current.onOpenTab && cb.current.onOpenTab("research")} data-testid="scribe-open-research"><ArrowRight size={14} /> Open Research</button>}
         </div>

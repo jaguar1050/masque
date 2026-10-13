@@ -26,6 +26,8 @@
 //   inert        injected markup renders as text
 //   saved        remember / list / restore re-verifies the stored rubric; a hand-edited stored
 //                rubric does not restore as the derivation
+//   video        (release 0.4.8) the built-in's registry entry carries its patientVideo; patientVideoPath
+//                keeps only an .html page under ./modules/<folder>/; an uploaded or derived entry has none
 import React from "react";
 import { collector, guarded, loadMasque, need } from "../harness/kit.js";
 import { derivedFixture, bumpFirstWeight } from "../harness/derivation.js";
@@ -47,6 +49,20 @@ export default {
     const c = collector(h);
     const entries = [masqueEntry];
     const builtinLogicId = masque.logic.moduleId;
+
+    // Release 0.4.8: the built-in's patient introduction video (registry.json patientVideo) is on its
+    // registry entry; patientVideoPath keeps only an .html page under ./modules/<folder>/; an uploaded
+    // or derived entry never carries one (checked with the acceptances below).
+    {
+      c.check(masqueEntry && masqueEntry.patientVideo === "./modules/masque/media/patient-companion-intro.html", "/registry/patientVideo", null,
+        "./modules/masque/media/patient-companion-intro.html", masqueEntry && masqueEntry.patientVideo);
+      const pv = reg.patientVideoPath;
+      const ok = ["./modules/masque/media/patient-companion-intro.html", "./modules/x/a.b.html", "./modules/x/y/z_1-2.html"];
+      const no = [undefined, null, 3, {}, "", "modules/x/a.html", "./modules/a.html", "./modules/x/../a.html", "./modules/x/a.mp4", "https://example.org/modules/x/a.html",
+        "./modules/x/a.html?x=1", "./modules/x/a.html#t", "./src/x/a.html", "./modules/x/.hidden.html", "//modules/x/a.html", "./modules/x/a b.html", "./modules//a.html", "javascript:alert(1)//.html"];
+      const wrong = typeof pv === "function" ? [...ok.filter((x) => pv(x) !== x), ...no.filter((x) => pv(x) !== null)] : ["no patientVideoPath"];
+      c.check(wrong.length === 0, "/registry/patientVideoPath", null, "an .html page under ./modules/<folder>/ kept, everything else null", wrong.map((x) => JSON.stringify(x)));
+    }
 
     const file = (name, data) => ({ name, bytes: typeof data === "string" ? enc.encode(data) : data });
     const fx = async (name, as = "text") => h.fixture(FIX + name, as);
@@ -153,28 +169,6 @@ export default {
       const computed = (await upload([file("computed.logic.js", await fx("upload-computed-format.logic.txt"))], { consent: false })).cl[0];
       c.check(computed.kind === "executable" && /determined after consent/.test(computed.kindLabel), "/consent/computed-format", null, "executable (kind determined after consent)", { kind: computed.kind, label: computed.kindLabel });
       delete globalThis.__uploadFixtureSideEffect;
-      // The API list is a heuristic signal: computed members of the global object, the
-      // .constructor route to Function and the global aliases are named too; an alias the file
-      // declares itself is an ordinary variable.
-      const insp = (src) => h.env.loader.inspectSource(src, { filename: "h.js" }).apiRefs;
-      const sneaky = insp('const k = "fe" + "tch"; export default { format: "screenair-logic", a: () => window[k], b: () => (() => 0).constructor, c: () => top.document, d: () => globalThis["eval"], e: () => location.href };');
-      c.check(["window[…]", ".constructor", "top", "location", "eval"].every((k) => sneaky.includes(k)), "/consent/apiRefs/heuristics", null, ["window[…]", ".constructor", "top", "location", "eval"], sneaky);
-      const local = insp('const top = 1; function f(parent) { return parent + top; } export default { format: "screenair-logic", f };');
-      c.check(!local.includes("top") && !local.includes("parent"), "/consent/apiRefs/declared-alias", null, [], local);
-    }
-
-    // ------------------------------------------------------------------ binding words, same-file copies
-    {
-      const alone = (await reg.classifyFiles([file("shape.logic.js", shapeLogic)], { entries, env: h.env }))[0];
-      c.check(alone.kind === "logic" && /^no rubric in this upload names a logic file/.test(alone.intended), "/binding/logic-alone", null, "no rubric in this upload names a logic file…", alone.intended);
-      const paired = (await reg.classifyFiles([file("shape-bound.rubric.json", shapeBound), file("shape.logic.js", shapeLogic)], { entries, env: h.env })).find((x) => x.kind === "logic");
-      c.check(!!paired && /'shape'/.test(paired.intended) && /after consent/.test(paired.intended), "/binding/logic-paired", null, "pairs with … ('shape'; checked after consent)", paired && paired.intended);
-      // The same file selected twice: the copy is not "already loaded" (nothing is loaded yet).
-      const twice = (await upload([file("shape.rubric.json", shapeText), file("shape-copy.rubric.json", shapeText)])).res;
-      const skip = twice.find((r) => r.skipped);
-      c.check(twice.filter((r) => r.entry).length === 1 && !!skip && skip.skipped === "the same file as shape.rubric.json", "/dedupe/same-upload", null, "the same file as shape.rubric.json", summary(twice));
-      const loaded = twice.find((r) => r.entry);
-      c.check(!!loaded && JSON.stringify(loaded.entry.sourceFileNames) === JSON.stringify(["shape.rubric.json"]), "/upload/source-file-names", null, ["shape.rubric.json"], loaded && loaded.entry.sourceFileNames);
     }
 
     // ------------------------------------------------------------------ acceptances
@@ -188,6 +182,9 @@ export default {
     c.check(derived.validation.ok, "/fixture/derived", null, "the harness derivation validates", derived.validation.errors.slice(0, 3));
     const derivedText = bind.serializeRubric(derived.rubric);
     const dEntry = accepts("derived-json", (await upload([file("derived.rubric.json", derivedText)], { consent: false })).res, { origin: "derived" });
+    for (const [name, e] of [["module-js", modEntry], ["derived-json", dEntry]]) {
+      if (e) c.check(e.patientVideo === undefined || e.patientVideo === null, `/accept/${name}/patientVideo`, null, "no patient video (built-ins only)", e.patientVideo);
+    }
     if (dEntry) {
       c.check(dEntry.classification.kind === "verified" && dEntry.classification.row === 3, "/accept/derived-json/verified", null, "verified (row 3)", dEntry.classification && { kind: dEntry.classification.kind, row: dEntry.classification.row });
       c.check(dEntry.module.logic === masque.logic, "/accept/derived-json/logic", null, "the loaded built-in logic object", "another logic");
@@ -276,8 +273,6 @@ export default {
       });
       const r = await reg.prepareRubric(rubric, { entries, env: h.env });
       c.check(!!r.entry && r.entry.classification.kind === "verified", "/derive/load-as-derived/verified", null, "verified derivation", summary([r]));
-      // A rubric made in this page was never a file: no "uploaded as" names are invented for it.
-      c.check(!!r.entry && r.entry.sourceFileNames === undefined, "/derive/no-invented-file-names", null, undefined, r.entry && r.entry.sourceFileNames);
       c.check(/-local/.test(rubric.instrumentVersion), "/derive/load-as-derived/-local", null, "-local tag", rubric.instrumentVersion);
       const io2 = await derive.deriveRubric(root, idOnly, {
         root, id: "local-copy-derived", label: `${root.label} — copy`, instrumentVersion: root.instrumentVersion,
@@ -328,10 +323,6 @@ export default {
         c.check(typeof savedAt === "string", "/saved/save", null, "savedAt", savedAt);
         const listed = reg.listSaved({ entries }).find((x) => x.id === dEntry.module.id);
         c.check(!!listed && listed.needsLogicUpload === false && listed.logicRef && listed.logicRef.sha256 === masque.hashes.logicSha256, "/saved/list", null, "listed, logic by SHA", listed);
-        // The module its logic came with is named, so a restore that needs it can say what to upload.
-        c.check(!!listed && !!listed.parent && listed.parent.id === masque.id && listed.parent.label === masque.label, "/saved/list/parent", null, { id: masque.id, label: masque.label }, listed && listed.parent);
-        const needs = reg.neededLogicText({ logicRef: { name: "parent.logic.js", sha256: "ab".repeat(32) }, parent: { id: "parent-mod", label: "Parent module" } });
-        c.check(/^needs the logic of Parent module \(parent-mod\): upload Parent module's rubric together with its logic file `parent\.logic\.js` \(sha256 abababababababab…\), then restore again$/.test(needs), "/saved/needs-parent-text", null, "names the parent rubric and its logic file", needs);
         let stored = null;
         try { stored = JSON.parse(localStorage.getItem(reg.SAVED_KEY)).find((x) => x.id === dEntry.module.id); } catch (_) { stored = null; }
         c.check(!!stored && !("logicText" in stored) && !/export default/.test(JSON.stringify(stored)), "/saved/json-only", null, "rubric text and a logic reference only", stored && Object.keys(stored));

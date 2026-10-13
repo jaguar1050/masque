@@ -38,8 +38,41 @@
 //          by the withheld entry's yield-only slot or cleared; the multi-carry sequences show that no
 //          reply is then carried into the entry whose slot ended, and pin the disclosed effects: an
 //          entry that yields to it, and the chain to an entry that yields to a third (F-3D-4).
-// Block 2  MASQUE gold set 0.3.0 (tests/fixtures/goldset/, SHA-256 pinned; it includes the 44 cases
-//          of the reference set 0.2.0 by reference, which is pinned too): every case through
+//          Chart reading (release 0.4.7, lexicon.clauses) on the fixture with a neutral clauses and
+//          clarify block: segmentation (sentence ends, line ends, wrapped lines, breaks, headers and
+//          labels), the clipped window, list-scope denial with affirm cues, post and prefix cues,
+//          every mention of a yes/no entry in text order and the conflict (one finding said both
+//          ways; different phrases that disagree record yes; a strictConflict entry whatever the
+//          phrases), word starts, whole-word clauses cues ("yes" not in "yesterday"), masks, the
+//          clauses.thirdParty gate, the chartIgnoreThirdParty pronoun read only with opts.chart
+//          (in extract and clarifyCues; a relative still gates), hedges, placeholders, the three
+//          section kinds, red-flag negation on and off, text-order cue choice and clause-only heard bands, clause evidence
+//          and offsets, opts.chart (the slot never consumed or armed), clarifyCues (trigger, unless,
+//          negated, gated, hedge, conflict, placeholder, text order, and the triggers of a lexicon
+//          with clarify only) and purity; the default-off proof also requires clarifyCues to return
+//          [] and opts.chart (extract, extractInContext with no slot, clarifyCues) to change nothing
+//          on a lexicon without the new fields. Review round 2: chart reading applies to typed chart
+//          text only, so every chart case is read with opts.chart and each text is also read without
+//          it, identical to the fixture without the chart block; new cases for shielded cues (a cue
+//          inside a longer affirm or hedge cue), label answers, chart-register red-flag phrases
+//          (clauses.redFlags, a hit inside a longer hit of the flag) and unmasked clarification
+//          triggers. Review round 3: signs between findings with only spaces (each the prefix of the
+//          finding after it), abbreviations inside a sentence, a later or carried list item that holds
+//          more than the finding (set aside; a flag stays raised; a plus sign affirms), complement words
+//          (clauses.complement), the end of a list under a denial ("+" lines, a plain line after
+//          bullets, plain item lines never wrapped), label answers that close their label (a denial in
+//          the label's own item stands), a second label on a line, the "/" rule, and clarification
+//          qualifiers that the text denies (they resolve nothing) and triggers set aside (they ask).
+//          Sign-off (the clinical lead's decisions of 2026-10-12): chart reading reads spoken lines too
+//          (D9), so each case is also read the other way (typed or spoken) and must read the same except
+//          where a rule of one register applies (OTHER_READING: the chart pronoun, release 0.4.6's heard
+//          band choice for a spoken line, the spoken reply word that lowers no flag, typed chart text's
+//          missing context markers); new cases for the reply word and for typed chart text setting no
+//          context marker (D8).
+// Block 2  MASQUE gold set 0.3.0 on the 0.3.2-equivalent lexicon (release 0.4.7: revertLexiconDelta of
+//          the shipped lexicon by tests/harness/lexicon-delta-033.js, the only oracle of 0.3.2
+//          behaviour; the gold-set metadata read from it), tests/fixtures/goldset/, SHA-256 pinned; it
+//          includes the 44 cases of the reference set 0.2.0 by reference, which is pinned too: every case through
 //          extract(lexicon, text, {includeHeard: true}), unsuppressed; every dialogue run as the
 //          Scribe runs it (physician turns passed over, one pending slot kept, {carry: false} while
 //          the pending item is answered); the 44 reference cases give the same output under the
@@ -55,14 +88,45 @@
 //          notes in the shape of the CHANGELOG.md block.
 // Block 3  Scribe engine helpers: ingestCaptures with heard and carry captures, heardPrompts,
 //          askNextSections, rankSuggestions with exclude, and the §2.1 strings of captureLabel and
-//          heardLabel for MASQUE, exactly.
-// Block 4  The F4 property, generated from the shipped lexicon's yieldTo data: target cue × entry
+//          heardLabel for MASQUE, exactly; clarifyPrompts and clarifyLabel (release 0.4.7) on crafted
+//          clarification cues: text order, one card per target (a probe's target item included),
+//          answered / probe-answered / skipped / dismissed cards dropped, a rescue probe kept while
+//          its item reads negative, the entry's ask and placeholderAsk taken from the lexicon, never
+//          a "RED FLAG" label, and a clarification cue ignored by ingestCaptures. Release 0.4.8,
+//          follow-up (review fix): retractProbeAnswers and probeNoteList on crafted probe answers.
+// Block 4  The F4 property (on the 0.3.2-equivalent lexicon since release 0.4.7: its hand oracle is the
+//          window rule), generated from the lexicon's yieldTo data: target cue × entry
 //          cue × entry band phrase × {no anchor, each anchor, each anchor negated with "not "} ×
 //          {plain, "my mother ", "used to "}. The yielding entry is captured iff its cue opens, the
 //          gates pass and (no target is named or an anchor is present unnegated); the target's own
 //          captures equal those of the same lexicon without yieldTo/anchor, and, on every utterance
 //          that holds no phrase appended by the lexicon delta, those of the 0.3.1-equivalent lexicon
 //          (approved vocabulary legitimately changes the target elsewhere).
+// Block 5  (release 0.4.7) MASQUE gold set 0.4.0 on the shipped lexicon 0.3.3 (SHA-256 pinned): its
+//          metadata (the lexicon's goldSet; basedOn the reference; includes gold set 0.3.0 by its
+//          SHA-256), the 0.3.0 cases and dialogues verbatim, the supersede table (each `was` still the
+//          file's label; scoring uses `now`), every reference and 0.3.0 case through
+//          extract(lexicon, text, {includeHeard: true}) and every chart case through
+//          extract(lexicon, text, {includeHeard: true, chart: true}), typed chart text as the Scribe
+//          reads it (chart cases also: expectAbsent, expectClarify from clarifyCues(lexicon, text,
+//          {chart: true}), expectEvidence, every capture's evidence its clause), every dialogue as
+//          the Scribe runs it; the outputs that change against the 0.3.2-equivalent lexicon are
+//          exactly the superseded ones; the lead's history and physical (k001) asserted rule by rule
+//          (spec 0.4.7 §6) with its clarification cards (clarifyPrompts) and the lead's runny-nose
+//          example; and the 0.4.0 benchmark (with the catalogue agreement count). The supersede table
+//          holds the five 0.2.0 / 0.3.0 case outputs the lead's decision D9 (2026-10-12: chart reading
+//          for spoken lines too) changes, each citing it; 40 chart texts with explicit expectations
+//          (held-out cases, the unless rule, treatment failure, notation, hedges, report headers, the
+//          exam section) and a guard that no safety clarification entry keeps a removed qualifier.
+//          Review round 3: the round-3 review's texts with explicit expectations (signs, abbreviations,
+//          later list items, complement words, lists under a denial, denied qualifiers, label answers);
+//          each round-2 and round-3 text is also read as a spoken line, its lexicon 0.3.2 and 0.3.3
+//          readings audited under AD18 (D9); and a red-flag battery: every red-flag phrase of the
+//          shipped lexicon (lexicon.redFlags and clauses.redFlags) in templates that affirm it (it must
+//          be raised) and in templates that clearly deny it (it must not be). Sign-off (2026-10-12):
+//          spoken MASQUE lines with explicit expectations (SPOKEN_CASES: the reply word, a direct denial,
+//          the pronoun, hedges and context markers in speech; since the records fixes after the sign-off,
+//          "+/-" in speech).
 //
 // Pins (design 05 §11.8, lead decision D6). GOLD_0_3_0_SHA256 and EXPECTED_BENCHMARK are pinned from
 // the lead's browser run. While either reads "PIN_AFTER_RUN" the verdict is INVALID, never PASS, and
@@ -70,12 +134,17 @@
 // of 2026-10-05 (seed 1296126801). Round 3 changed the gold set and the extractor, so both pins read
 // "PIN_AFTER_RUN" again until the lead re-runs and re-pins (design 05 §13.8); round 3b changed both
 // again (§13.10). Both pins were re-taken from the lead's browser run after round 3b (seed
-// 1296126801), which reported no difference.
+// 1296126801), which reported no difference. Release 0.4.7: GOLD_0_4_0_SHA256 and EXPECTED_BENCHMARK_040
+// pin gold set 0.4.0 the same way; both were taken from the team's browser run after review round 3
+// (seed 1296126801; earlier from the runs after review rounds 2 and 1, the review fixes and the data
+// stage). After the clinical lead's sign-off of 2026-10-12 both were re-taken from the final run of that
+// day (seed 1296126801) in the headless Edge browser (the in-app browser could not open a tab).
 import { collector, guarded, loadMasque, need, validationNote } from "../harness/kit.js";
 import { pick } from "../harness/matrix.js";
 import { AD13_NUMBER_WORDS, ad13Explain, allowedDifference, heardBandChoiceMayDiffer, normalizeRewrites, numberProbeLexicon,
-  revertLexiconDelta } from "../harness/diff.js";
+  revertLexiconChain, revertLexiconDelta } from "../harness/diff.js";
 import { LEXICON_DELTA } from "../harness/lexicon-delta.js";
+import { LEXICON_DELTA_033 } from "../harness/lexicon-delta-033.js";
 
 // ------------------------------------------------------------------------------------------ pins
 
@@ -85,20 +154,30 @@ const PIN_AFTER_RUN = "PIN_AFTER_RUN";
 const GOLD_0_3_0_SHA256 = "729492ef21c13824970478e86203e2e93e48a97660db9d7e66fa73fc28de1566";
 /** {tp, fp, fn, dialoguesApplied, dialoguesRefused} of the lead's run (an object once pinned). */
 const EXPECTED_BENCHMARK = { tp: 192, fp: 0, fn: 0, dialoguesApplied: 93, dialoguesRefused: 93 };
+/** SHA-256 of tests/fixtures/goldset/masque_extraction_goldset_0.4.0.json (release 0.4.7). */
+const GOLD_0_4_0_SHA256 = "99dff3ac7f50885c7faacd913c8a537951e67ab1437350c242d8f55f1d1111b5";
+/** {tp, fp, fn, dialoguesApplied, dialoguesRefused, chartCases, chartAgree, superseded} of gold set 0.4.0 on lexicon 0.3.3. */
+const EXPECTED_BENCHMARK_040 = { tp: 470, fp: 0, fn: 0, dialoguesApplied: 93, dialoguesRefused: 93, chartCases: 273, chartAgree: 32, superseded: 5 };
 
 // ------------------------------------------------------------------------------------- constants
 
 const GOLD_0_3_0_FIXTURE = "goldset/masque_extraction_goldset_0.3.0.json";
+const GOLD_0_4_0_FIXTURE = "goldset/masque_extraction_goldset_0.4.0.json";
+/** The clarification cards of the lead's history and physical (gold 0.4.0 k001), nothing answered, in order. */
+// Since the lead struck the mask "aural" (2026-10-12), "aural fullness" states aura and "denies auras"
+// denies it: the conflict card m_aura asks (eleven cards).
+const HP_CARD_IDS = ["cl_laterality", "cl_otalgia", "@placeholder", "cl_hearing_onset", "cl_audiogram", "m_aura", "m_head", "cl_tinnitus_quality", "cl_dizziness_kind",
+  "cl_neck", "cl_hints"];
 const REFERENCE_GOLD_PATH = "../reference/MASQUE_v0.3.1/masque_extraction_goldset.json";
 const REFERENCE_GOLD_SHA256 = "e1d6573695e554e57dd44cfab3de6699dccc6518c42f2b28afa32d9ddcab6cb2";
 const REFERENCE_CASES = 44;
 /** The capabilities design 05 §3.2, §11.6 and §12.3 add; EXTRACTOR_FEATURES must name every one. */
 const FEATURES = ["scale.heard", "scale.carry", "scale.carryExclude", "scale.yieldTo", "scale.anchor", "carryRefuse",
-  "normalize.apostrophes", "normalize.numbers"];
+  "normalize.apostrophes", "normalize.numbers", "clauses", "clarify"];
 const REFUSALS = ["answered", "own-cue", "other-entry", "question", "refuse-phrase", "no-band", "negated",
   "ambiguous", "third-party", "historical"];
 const NEW_SCALE_FIELDS = ["heard", "carry", "carryExclude", "yieldTo", "anchor"];
-const NEW_TOP_FIELDS = ["carryRefuse", "normalize"];
+const NEW_TOP_FIELDS = ["carryRefuse", "normalize", "clauses", "clarify"];
 const DEFAULT_OFF_UTTERANCES = { full: 2000, quick: 500 };
 const F4_STRIDE = { full: 1, quick: 9 };
 const F4_PREFIXES = ["", "my mother ", "used to "];
@@ -236,7 +315,10 @@ function newFieldsOf(lex) {
 /**
  * The default-off proof on one lexicon without the new fields: extract(lex, t) deep-equals
  * extract(lex, t, {includeHeard: true, pendingIds: []}), and extractInContext(lex, t, null) is
- * {captures: extract(lex, t), pending: null, carry: {applied: false, refused: null}}.
+ * {captures: extract(lex, t), pending: null, carry: {applied: false, refused: null}}, with and
+ * without opts.chart (release 0.4.7); extract(lex, t, {chart: true}) deep-equals extract(lex, t);
+ * clarifyCues(lex, t) is [], with and without opts.chart. (With a slot open, opts.chart never
+ * carries, whatever the lexicon: the lexicon 0.3.2 block pins that, review round 1.)
  */
 async function defaultOff(c, x, lex, texts, where) {
   let i = 0;
@@ -246,6 +328,10 @@ async function defaultOff(c, x, lex, texts, where) {
       const base = x.extract(lex, text);
       same(c, base, x.extract(lex, text, { includeHeard: true, pendingIds: [] }), `${at}/extract`, { text });
       same(c, { captures: base, pending: null, carry: { applied: false, refused: null } }, x.extractInContext(lex, text, null), `${at}/extractInContext`, { text });
+      same(c, { captures: base, pending: null, carry: { applied: false, refused: null } }, x.extractInContext(lex, text, null, { chart: true }), `${at}/extractInContext/chart`, { text });
+      same(c, [], x.clarifyCues(lex, text), `${at}/clarifyCues`, { text });
+      same(c, base, x.extract(lex, text, { chart: true }), `${at}/extract/chart`, { text });
+      same(c, [], x.clarifyCues(lex, text, { chart: true }), `${at}/clarifyCues/chart`, { text });
     });
     i += 1;
     if (i % 500 === 0) await tick();
@@ -924,6 +1010,435 @@ const PURITY_TEXTS = ["I feel alpha today", "for a long span", "the gamma alpha 
   "alpha for a long span ago", "a brief span", "it persists for a long span", "alpha. a brief span", "a short span, not 20 units",
   "alpha, not really a brief span", "20 units, a long span"];
 
+// ------------------------------------------------------------- block 1: chart reading (0.4.7)
+
+/** The neutral clauses and clarify block of the chart cases (placeholder words, all "draft"). */
+const CHART_CLAUSES = {
+  wordStart: true,
+  affirm: [{ ph: "endorses", source: "draft" }, { ph: "has ", source: "draft" }, { ph: "yes", source: "draft" },
+    { ph: "(+)", source: "draft" }, { ph: "no relief", source: "draft" }],
+  deny: [{ ph: "denies", source: "draft" }, { ph: "no ", source: "draft" }, { ph: "(-)", source: "draft" }],
+  post: [{ ph: " negative", source: "draft" }, { ph: ": no", source: "draft" }, { ph: "(-)", source: "draft" }, { ph: ": denies", source: "draft" }],
+  prefix: [{ ph: "non-", source: "draft" }],
+  breaks: [{ ph: "but ", source: "draft" }],
+  scopeEnd: [{ ph: "with", source: "draft" }, { ph: "so", source: "draft" }, { ph: "now", source: "draft" }, { ph: "is", source: "draft" }],
+  complement: [{ ph: "for", source: "draft" }],
+  mask: [{ ph: "gamma signal", source: "draft" }],
+  hedge: [{ ph: "possibly", source: "draft" }, { ph: "?", source: "draft" }, { ph: "not sure", source: "draft" }],
+  placeholder: [{ ph: "***", source: "draft" }],
+  placeholderAsk: { text: "Example placeholder question?", source: "draft" },
+  thirdParty: [{ ph: "cousin", source: "draft" }],
+  chartIgnoreThirdParty: [{ ph: "her ", source: "draft" }],
+  sections: { exam: [{ ph: "exam", source: "draft" }], family: [{ ph: "family history", source: "draft" }], skip: [{ ph: "allergies", source: "draft" }],
+    read: [{ ph: "hpi", source: "draft" }] },
+  examItems: ["b_mu"],
+  strictConflict: ["b_rho"],
+  redFlags: { f_omega: [{ ph: "omega sign", source: "draft" }, { ph: "big omega event", source: "draft" }] },
+  redFlagNegation: true,
+};
+const CHART_CLARIFY = [
+  { id: "cl_delta", ph: ["vague delta"], unless: ["clear delta"], probe: "pr_x", source: "draft" },
+  { id: "cl_kappa", ph: ["kappa-ish"], item: "b_kappa", source: "draft" },
+  { id: "cl_gamma", ph: ["gamma signal"], probe: "pr_x", source: "draft" },
+];
+/**
+ * The fixture with more yes/no entries (b_kappa; b_mu, the exam item; b_lambda, two phrases that can
+ * overlap; b_rho, the strictConflict item) and the chart block.
+ */
+const chartFixture = (mutate) => fixture((lex) => {
+  lex.bool.push({ id: "b_kappa", ph: ["kappa sign"] }, { id: "b_mu", ph: ["mu finding"] }, { id: "b_lambda", ph: ["lambda sign", "sign mark"] },
+    { id: "b_rho", ph: ["rho sign", "rho mark"] });
+  lex.clauses = clone(CHART_CLAUSES);
+  lex.clarify = clone(CHART_CLARIFY);
+  if (mutate) mutate(lex);
+});
+const SUP = { includeHeard: true, includeSuppressed: true };
+const HEARD_ON = { includeHeard: true };
+const CHART_SUP = { ...SUP, chart: true };
+/** A chart case read as a spoken line (review round 2: chartReading reads every other case with opts.chart). */
+const SPOKEN_SUP = { ...SUP, chart: false };
+
+// [label, text, opts, expected capture tags] on chartFixture(). Review round 2: chart reading applies to
+// typed chart text only, so each case is read with opts.chart (an opts.chart false marks the one read as
+// a spoken line), and every text is also checked to read, without opts.chart, exactly as on the fixture
+// without the chart block.
+const CHART_CASES = [
+  ["scope/list", "Denies gamma sign, kappa sign, omega event.", HEARD_ON, ["b_gamma=no", "b_kappa=no"]],
+  ["window/clipped-to-the-clause", "Not this. Gamma sign.", HEARD_ON, ["b_gamma=yes"]],
+  ["break/ends-the-clause", "Denies kappa sign but endorses gamma sign.", HEARD_ON, ["b_gamma=yes", "b_kappa=no"]],
+  ["affirm/ends-a-denial", "Denies kappa sign, has gamma sign.", HEARD_ON, ["b_gamma=yes", "b_kappa=no"]],
+  ["affirm/nearer-denial-wins", "Endorses kappa sign, no gamma sign.", HEARD_ON, ["b_gamma=no", "b_kappa=yes"]],
+  ["post/same-list-item", "Gamma sign negative, kappa sign.", HEARD_ON, ["b_gamma=no", "b_kappa=yes"]],
+  ["post/label-value", "Gamma sign: no. Kappa sign: yes.", HEARD_ON, ["b_gamma=no", "b_kappa=yes"]],
+  ["prefix/attribute-dropped", "The non-gamma sign today.", HEARD_ON, []],
+  ["prefix/includeSuppressed", "The non-gamma sign today.", SUP, ["b_gamma=yes [attribute]"]],
+  ["mentions/conflict", "Gamma sign present. Denies gamma sign.", HEARD_ON, []],
+  ["mentions/conflict/includeSuppressed", "Gamma sign present. Denies gamma sign.", SUP, ["b_gamma=yes [conflict]"]],
+  ["mentions/affirmed-only", "Gamma sign. Gamma sign again.", HEARD_ON, ["b_gamma=yes"]],
+  ["wordStart/inside-a-word", "The omegagamma sign.", HEARD_ON, []],
+  ["mask/inside-a-mask-word", "A gamma signal.", HEARD_ON, []],
+  ["wordStart/attribution-cue-inside-a-word", "The other kappa sign.", HEARD_ON, ["b_kappa=yes"]],
+  ["thirdParty/clauses-cue", "Cousin has kappa sign.", HEARD_ON, []],
+  ["thirdParty/clauses-cue/includeSuppressed", "Cousin has kappa sign.", SUP, ["b_kappa=yes [third-party]"]],
+  ["hedge/cue", "Possibly kappa sign.", HEARD_ON, []],
+  ["hedge/includeSuppressed", "Possibly kappa sign.", SUP, ["b_kappa=yes [hedge]"]],
+  ["hedge/question-mark", "Kappa sign?", HEARD_ON, []],
+  ["placeholder/label-unfilled", "Kappa sign: ***", HEARD_ON, []],
+  ["placeholder/includeSuppressed", "Kappa sign: ***", SUP, ["b_kappa=yes [placeholder]"]],
+  ["section/skip", "ALLERGIES:\nkappa sign", SUP, ["b_kappa=yes [section]"]],
+  ["section/exam-items-only", "EXAM:\n  Kappa sign. Mu finding.", SUP, ["b_kappa=yes [section]", "b_mu=yes"]],
+  ["section/read-header-ends-exam", "EXAM:\nMu finding.\nHPI\nKappa sign.", HEARD_ON, ["b_kappa=yes", "b_mu=yes"]],
+  ["section/family", "FAMILY HISTORY:\nkappa sign", SUP, ["b_kappa=yes [third-party]"]],
+  ["wrap/trailing-comma", "Denies gamma sign,\nkappa sign.", HEARD_ON, ["b_gamma=no", "b_kappa=no"]],
+  ["wrap/lower-case-line-and-line-break-as-space", "No\nkappa sign.", HEARD_ON, ["b_kappa=no"]],
+  ["wrap/not-a-wrap", "Denies gamma sign\nKappa sign.", HEARD_ON, ["b_gamma=no", "b_kappa=yes"]],
+  ["redflag/denied-not-raised", "Denies omega event.", HEARD_ON, []],
+  ["redflag/denied/includeSuppressed", "Denies omega event.", SUP, ["f_omega=true [negated]"]],
+  ["redflag/one-affirmed-mention-raises", "Denies gamma sign. Omega event today.", HEARD_ON, ["f_omega=true", "b_gamma=no"]],
+  ["scale/text-order-not-list-order", "No alpha.\nEndorses omicron for a long span.", HEARD_ON, ["s_alpha=2"]],
+  ["scale/heard-band-from-the-cue-clause-only", "Alpha today. It lasts a long span.", HEARD_ON, ["s_alpha=heard"]],
+  // A spoken line (D9, 2026-10-12) takes a context marker's first undenied mention; typed chart text sets
+  // none (the lead's D8 answer: the clinician sets them).
+  ["ctx/first-unnegated-mention", "No delta note. Delta note again.", { ...HEARD_ON, chart: false }, ["c_delta=yes"]],
+  ["ctx/typed-chart-text-sets-none", "No delta note. Delta note again.", HEARD_ON, []],
+  ["ctx/typed-chart-text-sets-none/includeSuppressed", "Delta note today.", SUP, ["c_delta=yes [chart-context]"]],
+  // Review fixes of release 0.4.7. (1) Chart pronouns: a chartIgnoreThirdParty cue gates no capture in
+  // typed chart text (opts.chart) and still gates a spoken line; a relative and every other cue still gate.
+  ["chart/pronoun-names-the-patient", "Her kappa sign today.", CHART_SUP, ["b_kappa=yes"]],
+  ["chart/pronoun-spoken-still-gates", "Her kappa sign today.", SPOKEN_SUP, ["b_kappa=yes [third-party]"]],
+  ["chart/relative-still-gates", "Her cousin has kappa sign.", CHART_SUP, ["b_kappa=yes [third-party]"]],
+  ["chart/lexicon-cue-not-listed-still-gates", "My cousin has kappa sign.", CHART_SUP, ["b_kappa=yes [third-party]"]],
+  // (2) Conflicts: one finding said both ways (the same phrase, or overlapping spans of two phrases) is
+  // a conflict; different phrases of one entry that disagree record "yes"; a strictConflict entry is
+  // a conflict whenever it is affirmed and denied, whatever the phrases.
+  ["mentions/different-phrases-affirmed-wins", "Lambda sign present. Denies sign mark.", SUP, ["b_lambda=yes"]],
+  ["mentions/different-phrases-denied-first", "Denies lambda sign. Sign mark present.", SUP, ["b_lambda=yes"]],
+  ["mentions/overlapping-spans-conflict", "Not the long lambda sign mark.", SUP, ["b_lambda=yes [conflict]"]],
+  ["mentions/same-phrase-among-others-conflict", "Lambda sign present. Sign mark present. Denies lambda sign.", SUP, ["b_lambda=yes [conflict]"]],
+  ["mentions/strict-different-phrases-conflict", "Rho sign present. Denies rho mark.", SUP, ["b_rho=yes [conflict]"]],
+  ["mentions/strict-affirmed-only", "Rho sign present. Rho mark too.", SUP, ["b_rho=yes"]],
+  ["mentions/strict-denied-only", "Denies rho sign, rho mark.", SUP, ["b_rho=no"]],
+  // (3) Whole-word clauses cues: "yes" is no cue inside "yesterday" (the denial runs on), a whole
+  // "yes" ends it; a clauses.thirdParty cue needs a word end too; phrases keep matching as stems.
+  ["wholeWord/yes-inside-yesterday", "Denies yesterday's kappa sign.", HEARD_ON, ["b_kappa=no"]],
+  ["wholeWord/yes-as-a-word", "Denies gamma sign, yes kappa sign.", HEARD_ON, ["b_gamma=no", "b_kappa=yes"]],
+  ["wholeWord/label-yes", "Kappa sign: yes.", HEARD_ON, ["b_kappa=yes"]],
+  ["wholeWord/thirdParty-cue-needs-a-word-end", "Cousins kappa sign.", HEARD_ON, ["b_kappa=yes"]],
+  ["wholeWord/deny-cue-needs-a-word-end", "Deniesx kappa sign.", HEARD_ON, ["b_kappa=yes"]],
+  ["wholeWord/phrases-stay-stems", "Kappa signs today.", HEARD_ON, ["b_kappa=yes"]],
+  // Review round 1. (1) Red flags are lowered only by a denial that governs the flag phrase directly:
+  // never by a list scope reaching past a scopeEnd word or a non-finding item, by a window cue
+  // across a comma or over another finding, or by a distant or non-closing post cue.
+  ["redflag/list-of-findings-denies", "Denies gamma sign, omega event.", HEARD_ON, ["b_gamma=no"]],
+  ["redflag/scopeEnd-raises", "Denies gamma sign, now with omega event.", HEARD_ON, ["f_omega=true", "b_gamma=no"]],
+  ["redflag/scopeEnd-raises/includeSuppressed", "No gamma sign, with omega event.", SUP, ["f_omega=true", "b_gamma=no"]],
+  ["redflag/pertinent-negatives-deny", "No fever, chills, omega event.", HEARD_ON, []],
+  ["redflag/words-after-it-raise", "No gamma sign, omega event this morning at rest.", HEARD_ON, ["f_omega=true", "b_gamma=no"]],
+  ["redflag/window-across-a-comma-raises", "Not this, omega event.", HEARD_ON, ["f_omega=true"]],
+  ["redflag/finding-between-raises", "Denies gamma sign omega event.", HEARD_ON, ["f_omega=true", "b_gamma=no"]],
+  ["redflag/distant-post-raises", "Omega event with negative scan.", HEARD_ON, ["f_omega=true"]],
+  ["redflag/post-not-closing-raises", "Omega event negative at rest.", HEARD_ON, ["f_omega=true"]],
+  ["redflag/adjacent-post-denies", "Omega event negative.", HEARD_ON, []],
+  ["redflag/wrapped-line-raises", "denies gamma sign\nomega event for a week", HEARD_ON, ["f_omega=true", "b_gamma=no"]],
+  // (2) A denial heading a list of lines reaches its items (bullets, indented lines, and plain short
+  // lines under a header), until a blank line, a header or a line that is no item.
+  ["list/header-denies-bullets", "Denies:\n- gamma sign\n- kappa sign", HEARD_ON, ["b_gamma=no", "b_kappa=no"]],
+  ["list/header-denies-plain-lines", "Denies:\nGamma sign\nKappa sign", HEARD_ON, ["b_gamma=no", "b_kappa=no"]],
+  ["list/bare-denial-line-bullets", "Denies\n- gamma sign\n- kappa sign", HEARD_ON, ["b_gamma=no", "b_kappa=no"]],
+  ["list/header-denies-a-flag", "Denies:\n- gamma sign\n- omega event", HEARD_ON, ["b_gamma=no"]],
+  ["list/blank-line-ends-the-list", "Denies:\n- gamma sign\n\nKappa sign.", HEARD_ON, ["b_gamma=no", "b_kappa=yes"]],
+  ["list/own-affirm-wins", "Denies:\n- gamma sign\n- endorses kappa sign", HEARD_ON, ["b_gamma=no", "b_kappa=yes"]],
+  ["list/sentence-is-no-item", "Denies:\nGamma sign\nThe kappa sign is there today.", HEARD_ON, ["b_gamma=no", "b_kappa=yes"]],
+  ["list/header-with-a-finding-opens-none", "Denies gamma sign:\n- kappa sign", HEARD_ON, ["b_gamma=no", "b_kappa=yes"]],
+  // (3)(4) A post cue denies the mention right before it (or one word between, or a list it closes) and
+  // only when it closes the item; an affirm cue governing the mention keeps it; a later bare affirm
+  // cue takes the denial back (set aside).
+  ["post/closes-a-list", "Gamma sign, kappa sign: negative.", HEARD_ON, ["b_gamma=no", "b_kappa=no"]],
+  ["post/closes-an-and-list", "Gamma sign and kappa sign negative.", HEARD_ON, ["b_gamma=no", "b_kappa=no"]],
+  ["post/one-qualifying-word", "Kappa sign testing negative.", HEARD_ON, ["b_kappa=no"]],
+  ["post/not-closing", "Kappa sign: no change today.", HEARD_ON, ["b_kappa=yes"]],
+  ["post/distant-is-no-denial", "Kappa sign with negative scan.", HEARD_ON, ["b_kappa=yes"]],
+  ["post/affirm-governs", "Endorses kappa sign, scan negative.", HEARD_ON, ["b_kappa=yes"]],
+  ["post/taken-back", "Kappa sign earlier negative, endorses it now.", SUP, ["b_kappa=yes [scope]"]],
+  // (10) A list denial ends at a scopeEnd word, before the mention or after it in a later item: the
+  // mention is set aside (no capture), never "no".
+  ["scope/scopeEnd-sets-aside", "No time, so kappa sign was not reviewed.", SUP, ["b_kappa=yes [scope]"]],
+  ["scope/scopeEnd-after-a-later-item", "No gamma sign, kappa sign is pending.", SUP, ["b_gamma=no", "b_kappa=yes [scope]"]],
+  ["scope/later-item-with-a-word-set-aside", "No gamma sign, kappa sign today.", SUP, ["b_gamma=no", "b_kappa=yes [scope]"]],
+  // (5)(7)(12) Sections: an exam's sub-labels keep the exam; a section word as an inline label holds
+  // for its line; any header ends a skip or family section; a label inside one keeps it.
+  ["section/sub-label-keeps-exam", "EXAM:\nHEENT: normal.\nNEURO: kappa sign.", SUP, ["b_kappa=yes [section]"]],
+  ["section/mixed-sub-label-keeps-exam", "EXAM:\nNeuro:\n  kappa sign", SUP, ["b_kappa=yes [section]"]],
+  ["section/inline-skip-label-holds-for-its-line", "Allergies: gamma sign\nKappa sign.", SUP, ["b_gamma=yes [section]", "b_kappa=yes"]],
+  ["section/inline-family-label-holds-for-its-line", "Family history: gamma sign\nKappa sign.", SUP, ["b_gamma=yes [third-party]", "b_kappa=yes"]],
+  ["section/mixed-header-ends-skip", "ALLERGIES:\ngamma sign\nReview:\nKappa sign.", SUP, ["b_gamma=yes [section]", "b_kappa=yes"]],
+  ["section/label-inside-skip-keeps-it", "ALLERGIES:\nPenicillin: kappa sign", SUP, ["b_kappa=yes [section]"]],
+  // (11) A chart pronoun names the patient only when a finding follows it.
+  ["chart/pronoun-before-a-person-gates", "Her friend has kappa sign.", CHART_SUP, ["b_kappa=yes [third-party]"]],
+  // (26) A "?" opening a clause hedges the words after it.
+  ["hedge/leading-question-mark", "Gamma sign. ? kappa sign today.", SUP, ["b_gamma=yes", "b_kappa=yes [hedge]"]],
+  // Review round 2. Shielded cues: a negation, deny, post or prefix cue inside a longer affirm or hedge
+  // cue is no cue (a failed treatment: "no relief" holds "no "; "not sure" holds "not ").
+  ["round2/shield/affirm-holds-the-deny-cue", "No relief with kappa sign.", HEARD_ON, ["b_kappa=yes"]],
+  ["round2/shield/affirm-ends-an-earlier-denial", "Denies gamma sign, no relief with kappa sign.", HEARD_ON, ["b_gamma=no", "b_kappa=yes"]],
+  ["round2/shield/hedge-holds-the-negation-cue", "Not sure about kappa sign.", SUP, ["b_kappa=yes [hedge]"]],
+  ["round2/shield/hedged-flag-raised", "Not sure omega event.", HEARD_ON, ["f_omega=true"]],
+  // Label answers: an affirm cue right after a finding (a ":" between, or nothing before a sign)
+  // affirms it; a deny cue so placed answers its label only and opens no list; signs before a finding.
+  ["round2/label/affirm-after-a-colon", "Denies gamma sign, kappa sign: yes.", HEARD_ON, ["b_gamma=no", "b_kappa=yes"]],
+  ["round2/label/window-overridden", "Not gamma, kappa sign: (+)", HEARD_ON, ["b_kappa=yes"]],
+  ["round2/label/signs-after-findings", "Gamma sign (-), kappa sign (+).", HEARD_ON, ["b_gamma=no", "b_kappa=yes"]],
+  ["round2/label/deny-answers-its-label-only", "Gamma sign: (-), kappa sign.", HEARD_ON, ["b_gamma=no", "b_kappa=yes"]],
+  ["round2/label/sign-before-opens-a-list", "(-) gamma sign, kappa sign.", HEARD_ON, ["b_gamma=no", "b_kappa=no"]],
+  ["round2/label/denies-as-a-label-answer", "Kappa sign: denies.", HEARD_ON, ["b_kappa=no"]],
+  ["round2/label/denies-answer-opens-no-list", "Kappa sign: denies, gamma sign: endorses.", HEARD_ON, ["b_gamma=yes", "b_kappa=no"]],
+  ["round2/label/word-cue-without-colon-still-opens", "Kappa sign denies gamma sign.", HEARD_ON, ["b_gamma=no", "b_kappa=yes"]],
+  ["round2/label/flag-affirmed-by-its-label", "Denies gamma sign, omega event: (+)", HEARD_ON, ["f_omega=true", "b_gamma=no"]],
+  // Chart-register red-flag phrases (clauses.redFlags): read in typed chart text only; a hit inside a
+  // longer hit of the same flag is part of it.
+  ["round2/redflags/chart-phrase-raises", "Omega sign today.", HEARD_ON, ["f_omega=true"]],
+  ["round2/redflags/chart-phrase-denied", "Denies omega sign.", HEARD_ON, []],
+  ["round2/redflags/inner-hit-is-part-of-the-longer", "No gamma sign, big omega event.", HEARD_ON, ["b_gamma=no"]],
+  // D9 (2026-10-12): a spoken line reads the chart-register phrases too (review round 2 read none).
+  ["round2/redflags/spoken-reads-the-chart-phrase", "Omega sign today.", SPOKEN_SUP, ["f_omega=true"]],
+  // Review round 3. (1) Signs between findings with only spaces: each is the prefix of the finding after
+  // it (a sign answers the finding before it as a label only when it closes the item).
+  ["round3/signs/minus-then-plus", "(-) gamma sign (+) kappa sign", HEARD_ON, ["b_gamma=no", "b_kappa=yes"]],
+  ["round3/signs/plus-then-minus", "(+) gamma sign (-) kappa sign", HEARD_ON, ["b_gamma=yes", "b_kappa=no"]],
+  ["round3/signs/minus-minus", "(-) gamma sign (-) kappa sign", HEARD_ON, ["b_gamma=no", "b_kappa=no"]],
+  ["round3/signs/flag-denied-by-its-own-sign", "(-) gamma sign (-) omega event", SUP, ["f_omega=true [negated]", "b_gamma=no"]],
+  ["round3/signs/plus-belongs-to-the-next", "(-) omega event (+) kappa sign", SUP, ["f_omega=true [negated]", "b_kappa=yes"]],
+  // (2) Abbreviations: a "." after a short token, before a lower-case word, in a clause that opens with a
+  // capital and names no finding before it, ends nothing; otherwise it ends the clause as before.
+  ["round3/abbrev/inside-a-sentence", "No assoc. kappa sign.", HEARD_ON, ["b_kappa=no"]],
+  ["round3/abbrev/dotted", "Denies e.g. kappa sign or gamma sign.", HEARD_ON, ["b_gamma=no", "b_kappa=no"]],
+  ["round3/abbrev/flag", "No assoc. omega event.", SUP, ["f_omega=true [negated]"]],
+  ["round3/abbrev/after-a-finding-ends", "No gamma sign. kappa sign today.", HEARD_ON, ["b_gamma=no", "b_kappa=yes"]],
+  ["round3/abbrev/lower-case-writer-ends", "no gamma. kappa sign today.", HEARD_ON, ["b_kappa=yes"]],
+  ["round3/abbrev/capital-after-ends", "No assoc. Kappa sign today.", HEARD_ON, ["b_kappa=yes"]],
+  // (3) A later list item that holds more than the flag phrase keeps the flag raised; a plus sign affirms.
+  ["round3/redflag/later-item-word-after-raises", "No gamma sign, omega event reported.", HEARD_ON, ["f_omega=true", "b_gamma=no"]],
+  ["round3/redflag/plus-sign-raises", "No gamma sign, +omega event.", HEARD_ON, ["f_omega=true", "b_gamma=no"]],
+  ["round3/redflag/word-before-raises", "No gamma sign, then omega event.", HEARD_ON, ["f_omega=true", "b_gamma=no"]],
+  // (4) Complement words: past one no denial lowers a flag and a list denial reaches no item.
+  ["round3/complement/flag-raises", "No workup for omega event.", HEARD_ON, ["f_omega=true"]],
+  ["round3/complement/item-set-aside", "No further workup for kappa sign.", SUP, ["b_kappa=yes [scope]"]],
+  ["round3/complement/plain-word-still-denies", "Denies further omega event.", SUP, ["f_omega=true [negated]"]],
+  // (5) A list under a denial ends at a "+" line, and after bullets at a plain line; plain item lines
+  // under a header are items, never one wrapped line; a carried item with another word is set aside.
+  ["round3/list/plus-line-ends-the-list", "Denies:\n- gamma sign\n+ omega event", HEARD_ON, ["f_omega=true", "b_gamma=no"]],
+  ["round3/list/plain-line-after-bullets-ends-it", "Denies:\n- gamma sign\nKappa sign", HEARD_ON, ["b_gamma=no", "b_kappa=yes"]],
+  ["round3/list/lower-case-item-lines-are-items", "Denies:\ngamma sign\nkappa sign", HEARD_ON, ["b_gamma=no", "b_kappa=no"]],
+  ["round3/list/carried-item-with-a-word-raises", "Denies:\n- gamma sign\n- new omega event", HEARD_ON, ["f_omega=true", "b_gamma=no"]],
+  ["round3/list/carried-item-with-a-word-set-aside", "Denies:\n- gamma sign\n- kappa sign today", SUP, ["b_gamma=no", "b_kappa=yes [scope]"]],
+  // (7) A later item with another word is set aside, never "no", by a window cue as by a list denial.
+  ["round3/items/window-later-item-with-a-word", "No gamma, kappa sign reported.", SUP, ["b_kappa=yes [scope]"]],
+  ["round3/items/later-item-with-words-set-aside", "Denies gamma sign, seen yesterday for kappa sign.", SUP, ["b_gamma=no", "b_kappa=yes [scope]"]],
+  ["round3/items/bare-later-item-denied", "No gamma sign, kappa sign.", HEARD_ON, ["b_gamma=no", "b_kappa=no"]],
+  ["round3/plus/affirms-a-later-item", "No gamma sign, +kappa sign.", HEARD_ON, ["b_gamma=no", "b_kappa=yes"]],
+  // (9)(10) A label answer closes its label; a denial in the label's own item stands; a deny cue
+  // followed by findings opens its list; a second label on a line starts a clause.
+  ["round3/label/cue-with-more-words-is-no-label", "No kappa sign - has been fine.", HEARD_ON, ["b_kappa=no"]],
+  ["round3/label/denial-in-the-item-stands", "No kappa sign: yes.", HEARD_ON, ["b_kappa=no"]],
+  ["round3/label/prefix-stands", "Non-kappa sign: yes.", SUP, ["b_kappa=yes [attribute]"]],
+  ["round3/label/flag-denial-stands", "Denies omega event - has other things.", SUP, ["f_omega=true [negated]"]],
+  ["round3/label/flag-prefix-stands", "Non-omega event: yes.", SUP, ["f_omega=true [negated]"]],
+  ["round3/label/deny-with-findings-opens-a-list", "Gamma sign: denies kappa sign, omega event.", SUP, ["f_omega=true [negated]", "b_gamma=yes", "b_kappa=no"]],
+  ["round3/label/second-label-on-a-line", "Gamma sign: no Kappa sign: yes", HEARD_ON, ["b_gamma=no", "b_kappa=yes"]],
+  // The "/" rule: next to a finding it separates list items; between two other words it joins them.
+  ["round3/slash/between-findings-separates", "Denies gamma sign/omega event.", SUP, ["f_omega=true [negated]", "b_gamma=no"]],
+  ["round3/slash/between-words-joins", "Denies big/new kappa sign.", HEARD_ON, ["b_kappa=no"]],
+  // Sign-off (D9, 2026-10-12): in a spoken line a deny cue that opens its clause before a word starting no
+  // finding, with no list separator before the next finding, is a reply word: it lowers no red flag
+  // (typed chart text keeps D1's rule and lowers it). A direct denial, and a list of negatives, still do.
+  ["d9/reply-word-raises", "no I hear an omega event", SPOKEN_SUP, ["f_omega=true"]],
+  ["d9/reply-word-typed-lowers", "no I hear an omega event", CHART_SUP, ["f_omega=true [negated]"]],
+  ["d9/reply-word-still-denies-an-item", "no I have the kappa sign", SPOKEN_SUP, ["b_kappa=no"]],
+  ["d9/direct-denial-lowers", "no omega event", SPOKEN_SUP, ["f_omega=true [negated]"]],
+  ["d9/second-denial-lowers", "no I hear it no omega event though", SPOKEN_SUP, ["f_omega=true [negated]"]],
+  ["d9/list-of-negatives-is-no-reply", "No fever, chills, omega event.", SPOKEN_SUP, ["f_omega=true [negated]"]],
+  ["d9/window-cue-direct", "no I never had the omega event", SPOKEN_SUP, ["f_omega=true [negated]"]],
+];
+// D9 (2026-10-12): each case is also read the other way (typed chart text for a spoken case, a spoken line
+// for a typed one) and reads the same, except here, where a rule of one register applies: the chart
+// pronoun (typed only, D19), release 0.4.6's heard band choice (spoken), the reply word (spoken), and the
+// context markers (typed chart text sets none, D8). [label] → the other reading's capture tags.
+const OTHER_READING = {
+  "scale/heard-band-from-the-cue-clause-only": ["s_alpha=2"],
+  "ctx/first-unnegated-mention": [],
+  "ctx/typed-chart-text-sets-none": ["c_delta=yes"],
+  "ctx/typed-chart-text-sets-none/includeSuppressed": ["c_delta=yes"],
+  "chart/pronoun-names-the-patient": ["b_kappa=yes [third-party]"],
+  "chart/pronoun-spoken-still-gates": ["b_kappa=yes"],
+  "round3/abbrev/flag": ["f_omega=true"],
+  "round3/complement/plain-word-still-denies": ["f_omega=true"],
+  "d9/reply-word-raises": ["f_omega=true [negated]"],
+  "d9/reply-word-typed-lowers": ["f_omega=true"],
+};
+// The same texts without the chart block (the fixture plus the two entries): what each case changes.
+const CHART_BASELINE = {
+  "window/clipped-to-the-clause": ["b_gamma=no"],
+  "wordStart/attribution-cue-inside-a-word": [],
+  "scale/text-order-not-list-order": [],
+  "ctx/first-unnegated-mention": [],
+  "redflag/denied-not-raised": ["f_omega=true"],
+};
+const cueTag = (q) => (isObj(q) ? `${q.reason}:${q.id}:${q.probe || q.item || "-"}@${q.cueIndex}` : `not a cue: ${JSON.stringify(q)}`);
+const spokenSpokenNote = (n) => `${n} of them also read the other way (typed or spoken, D9), each as the case reads except ${Object.keys(OTHER_READING).length} where a rule of one register applies (OTHER_READING)`;
+// [label, text, expected cue tags] of clarifyCues on chartFixture() (with opts.chart, as the Scribe reads typed text).
+const CLARIFY_CASES = [
+  ["trigger", "Endorses vague delta.", ["trigger:cl_delta:pr_x@9"]],
+  ["trigger/resolved-by-unless", "Endorses vague delta, clear delta.", []],
+  ["trigger/negated", "Denies vague delta.", []],
+  ["trigger/exam-never-gates", "EXAM:\nvague delta", ["trigger:cl_delta:pr_x@6"]],
+  ["trigger/family-gates", "FAMILY HISTORY:\nvague delta", []],
+  ["trigger/item-entry", "Some kappa-ish thing.", ["trigger:cl_kappa:b_kappa@5"]],
+  ["hedge/takes-the-item-entry-id", "Possibly kappa sign.", ["hedge:cl_kappa:b_kappa@9"]],
+  ["hedge/not-when-captured-elsewhere", "Possibly kappa sign. Endorses kappa sign.", []],
+  ["conflict", "Gamma sign present. Denies gamma sign.", ["conflict:b_gamma:b_gamma@0"]],
+  ["placeholder", "Kappa sign: ***", ["placeholder:@placeholder:-@12"]],
+  ["text-order", "Possibly kappa sign. Endorses vague delta.", ["hedge:cl_kappa:b_kappa@9", "trigger:cl_delta:pr_x@30"]],
+  // Review fixes of release 0.4.7: no conflict card when different phrases disagree; a strictConflict
+  // entry's card whatever the phrases.
+  ["conflict/different-phrases-none", "Lambda sign present. Denies sign mark.", []],
+  ["conflict/strict-different-phrases", "Rho sign present. Denies rho mark.", ["conflict:b_rho:b_rho@0"]],
+  ["conflict/overlapping-spans", "Not the long lambda sign mark.", ["conflict:b_lambda:b_lambda@13"]],
+  // Review round 2: a trigger is matched without the mask (a mask hides a phrase from capture only).
+  ["trigger/unmasked", "A gamma signal.", ["trigger:cl_gamma:pr_x@2"]],
+  // Review round 3: a qualifier the text denies resolves nothing (it states the other answer); a trigger
+  // set aside as uncertain still asks.
+  ["trigger/denied-qualifier-resolves-nothing", "Endorses vague delta, not clear delta.", ["trigger:cl_delta:pr_x@9"]],
+  ["trigger/uncertain-still-asks", "No gamma sign, vague delta today.", ["trigger:cl_delta:pr_x@15"]],
+];
+// [label, text, opts, expected cue tags] of clarifyCues on chartFixture() with options: the pronoun
+// gates a trigger in a spoken line and not in typed chart text (a clarification trigger phrase counts
+// as the finding that follows it, review round 1).
+const CLARIFY_OPT_CASES = [
+  ["chart/pronoun-trigger", "Her vague delta.", { chart: true }, ["trigger:cl_delta:pr_x@4"]],
+  ["chart/pronoun-trigger-spoken", "Her vague delta.", {}, []],
+  ["chart/relative-gates-the-trigger", "Her cousin has vague delta.", { chart: true }, []],
+];
+
+function chartReading(c, x) {
+  const at = (p) => `/block1/chart${p}`;
+  const CH = chartFixture();
+  const BASE = fixture((lex) => { lex.bool.push({ id: "b_kappa", ph: ["kappa sign"] }, { id: "b_mu", ph: ["mu finding"] }); });
+  // The fixture with chartFixture's entries and without its chart block (review round 2: a spoken line).
+  const BARE = chartFixture((lex) => { delete lex.clauses; delete lex.clarify; });
+  const without = (o) => { const r = { ...o }; delete r.chart; return r; };
+  let spokenSame = 0;
+  for (const [label, text, opts0, want] of CHART_CASES) {
+    const opts = opts0.chart === false ? without(opts0) : { ...opts0, chart: true };
+    const got = attempt(c, at(`/extract/${label}`), { text, opts }, () => x.extract(CH, text, opts));
+    if (got !== undefined) c.diff(want, tags(got), { at: at(`/extract/${label}`), input: { text, opts } });
+    // D9 (2026-10-12): the other reading (a spoken line for a typed case, typed chart text for a spoken one)
+    // reads the same, except where a rule of one register applies (OTHER_READING).
+    const other = opts0.chart === false ? { ...without(opts0), chart: true } : without(opts);
+    const sp = attempt(c, at(`/other-reading/${label}`), { text, opts: other }, () => x.extract(CH, text, other));
+    if (sp !== undefined) {
+      c.diff(Object.prototype.hasOwnProperty.call(OTHER_READING, label) ? OTHER_READING[label] : want, tags(sp), { at: at(`/other-reading/${label}`), input: { text, opts: other } });
+      spokenSame++;
+    }
+    if (Object.prototype.hasOwnProperty.call(CHART_BASELINE, label)) {
+      const b = attempt(c, at(`/baseline/${label}`), { text, opts }, () => x.extract(BASE, text, opts));
+      if (b !== undefined) c.diff(CHART_BASELINE[label], tags(b), { at: at(`/baseline/${label}`), input: { text, opts } });
+    }
+  }
+  // redFlagNegation off: red flags as without chart reading (never gated).
+  const off = chartFixture((lex) => { lex.clauses.redFlagNegation = false; });
+  const rf = attempt(c, at("/extract/redflag/switch-off"), null, () => x.extract(off, "Denies omega event.", { ...HEARD_ON, chart: true }));
+  if (rf !== undefined) c.diff(["f_omega=true"], tags(rf), { at: at("/extract/redflag/switch-off") });
+  // Evidence: the clause's text, clause offsets added last; every other key in its place.
+  const text = "Denies kappa sign but endorses gamma sign.";
+  const ev = attempt(c, at("/evidence"), { text }, () => x.extract(CH, text, { chart: true }));
+  if (ev !== undefined) {
+    c.diff([
+      { id: "b_gamma", value: "yes", kind: "item", evidence: "but endorses gamma sign.", cueIndex: 31, clause: { start: 18, end: 42 } },
+      { id: "b_kappa", value: "no", kind: "item", evidence: "Denies kappa sign", cueIndex: 7, clause: { start: 0, end: 17 } },
+    ], ev, { at: at("/evidence"), input: { text }, keyOrder: true });
+  }
+  const hd = attempt(c, at("/evidence/heard"), null, () => x.extract(CH, "Alpha today. It lasts a long span.", { ...HEARD_ON, chart: true }));
+  if (hd !== undefined) {
+    c.diff([{ id: "s_alpha", kind: "heard", evidence: "Alpha today.", cueIndex: 0, cue: "alpha", cueText: "Alpha", clause: { start: 0, end: 12 } }], hd,
+      { at: at("/evidence/heard"), keyOrder: true });
+  }
+  // opts.chart: typed chart text never consumes, refuses, carries into or arms a slot.
+  const chartArm = attempt(c, at("/chart-option/no-arming"), null, () => x.extractInContext(CH, "I feel alpha today", null, { chart: true }));
+  if (chartArm !== undefined) c.diff({ captures: ["s_alpha=heard"], pending: null, applied: false, refused: null }, brief(chartArm), { at: at("/chart-option/no-arming") });
+  const voiceArm = attempt(c, at("/chart-option/voice-arms"), null, () => x.extractInContext(CH, "I feel alpha today", null));
+  if (voiceArm !== undefined) c.diff({ captures: ["s_alpha=heard"], pending: ["s_alpha", 2], applied: false, refused: null }, brief(voiceArm), { at: at("/chart-option/voice-arms") });
+  const kept = attempt(c, at("/chart-option/slot-unchanged"), null, () => x.extractInContext(CH, "for a long span", P0, { chart: true }));
+  if (kept !== undefined) {
+    c.check(kept.pending === P0, at("/chart-option/slot-unchanged/same-object"), null, "the slot passed in", kept.pending);
+    c.diff({ captures: [], pending: ["s_alpha", 2], applied: false, refused: null }, brief(kept), { at: at("/chart-option/slot-unchanged") });
+  }
+  // D9 (2026-10-12): a spoken line is read with chart reading (clause evidence), but keeps release 0.4.6's
+  // carry-over: extractInContext without opts.chart returns what the fixture without the chart block
+  // returns, evidence and clause aside (a band stated in another sentence is the 0.4.6 reading), and
+  // typed chart text never arms a slot.
+  const ALPHA = "Alpha today. It lasts a long span.";
+  const noEv = (r) => (isObj(r) ? { ...r, captures: arr(r.captures).map((q) => { const y = { ...q }; delete y.evidence; delete y.clause; return y; }) } : r);
+  const elsewhere = attempt(c, at("/spoken-extractInContext-carry-as-0.4.6"), null, () => ({ ch: x.extractInContext(CH, ALPHA, null), bare: x.extractInContext(BARE, ALPHA, null) }));
+  if (elsewhere !== undefined) same(c, noEv(elsewhere.bare), noEv(elsewhere.ch), at("/spoken-extractInContext-carry-as-0.4.6"), { text: ALPHA });
+  const typedAlpha = attempt(c, at("/band-elsewhere/typed"), null, () => x.extractInContext(CH, ALPHA, null, { chart: true }));
+  if (typedAlpha !== undefined) c.diff({ captures: ["s_alpha=heard"], pending: null, applied: false, refused: null }, brief(typedAlpha), { at: at("/band-elsewhere/typed") });
+  const carried = attempt(c, at("/chart-option/voice-carries"), null, () => x.extractInContext(CH, "for a long span", P0));
+  if (carried !== undefined) c.diff({ captures: ["s_alpha=2 via carry"], pending: null, applied: true, refused: null }, brief(carried), { at: at("/chart-option/voice-carries") });
+  if (carried !== undefined) {
+    // A spoken reply's carried capture keeps the whole reply as its evidence and has no clause (release 0.4.6).
+    const cp = arr(carried.captures).find((q) => isObj(q) && q.via === "carry");
+    c.diff({ evidence: "for a long span", clause: false }, cp ? { evidence: cp.evidence, clause: Object.prototype.hasOwnProperty.call(cp, "clause") } : null,
+      { at: at("/chart-option/voice-carries/no-clause") });
+  }
+  // clarifyCues.
+  for (const [label, t, want] of CLARIFY_CASES) {
+    const got = attempt(c, at(`/clarifyCues/${label}`), { text: t }, () => x.clarifyCues(CH, t, { chart: true }));
+    if (got !== undefined) c.diff(want, arr(got).map(cueTag), { at: at(`/clarifyCues/${label}`), input: { text: t } });
+  }
+  for (const [label, t, o, want] of CLARIFY_OPT_CASES) {
+    const got = attempt(c, at(`/clarifyCues/${label}`), { text: t, opts: o }, () => x.clarifyCues(CH, t, o));
+    if (got !== undefined) c.diff(want, arr(got).map(cueTag), { at: at(`/clarifyCues/${label}`), input: { text: t, opts: o } });
+  }
+  const full = attempt(c, at("/clarifyCues/shape"), null, () => x.clarifyCues(CH, "Gamma sign present. Denies gamma sign.", { chart: true }));
+  if (full !== undefined) {
+    c.diff([{ kind: "clarify", id: "b_gamma", reason: "conflict", item: "b_gamma", evidence: "Gamma sign present.", clause: { start: 0, end: 19 },
+      cueIndex: 0, cueText: "Gamma sign", against: { evidence: "Denies gamma sign.", clause: { start: 20, end: 38 }, cueIndex: 27, cueText: "gamma sign" } }],
+    full, { at: at("/clarifyCues/shape"), keyOrder: true });
+  }
+  // clarify without clauses: the structural clauses, the clipped window, no word-start rule.
+  const only = fixture((lex) => { lex.clarify = clone(CHART_CLARIFY); });
+  for (const [label, t, want] of [["negated", "Not vague delta.", []], ["trigger", "Vague delta.", ["trigger:cl_delta:pr_x@0"]],
+    ["window-clipped", "Not now. Vague delta.", ["trigger:cl_delta:pr_x@9"]]]) {
+    const got = attempt(c, at(`/clarifyCues/clarify-only/${label}`), { text: t }, () => x.clarifyCues(only, t));
+    if (got !== undefined) c.diff(want, arr(got).map(cueTag), { at: at(`/clarifyCues/clarify-only/${label}`), input: { text: t } });
+    const caps = attempt(c, at(`/clarifyCues/clarify-only/${label}/extract-unchanged`), { text: t }, () => x.extract(only, t, SUP));
+    const bare = attempt(c, at(`/clarifyCues/clarify-only/${label}/extract-bare`), { text: t }, () => x.extract(FIXTURE, t, SUP));
+    if (caps !== undefined && bare !== undefined) same(c, bare, caps, at(`/clarifyCues/clarify-only/${label}/extract-unchanged`), { text: t });
+  }
+  // Review round 1 (17): a negation cue holding another at its end ("didn't" holds "n't") is measured
+  // from it, so the window keeps the reach "n't" had before word starts were required.
+  const CN = chartFixture((lex) => { lex.negation.cues.push("didn't"); });
+  for (const [label, t, want] of [["contraction-reach", "I didn't have any gamma sign.", ["b_gamma=no"]],
+    ["contraction-reach-limit", "I didn't have any of the gamma sign.", ["b_gamma=yes"]]]) {
+    const got = attempt(c, at(`/extract/window/${label}`), { text: t }, () => x.extract(CN, t, { ...HEARD_ON, chart: true }));
+    if (got !== undefined) c.diff(want, tags(got), { at: at(`/extract/window/${label}`), input: { text: t } });
+  }
+  // Review round 1 (8): a character whose lowercase is longer (U+0130) shifts no offset.
+  const dotted = "\u0130\u0130 Denies kappa sign. Endorses gamma sign.";
+  const dt = attempt(c, at("/offsets/length-changing-lowercase"), { text: dotted }, () => x.extract(CH, dotted, { ...HEARD_ON, chart: true }));
+  if (dt !== undefined) {
+    c.diff([["b_gamma", "yes", "gamma sign", "Endorses gamma sign."], ["b_kappa", "no", "kappa sign", "\u0130\u0130 Denies kappa sign."]],
+      arr(dt).map((q) => [q.id, q.value, dotted.slice(q.cueIndex, q.cueIndex + 10), q.evidence]), { at: at("/offsets/length-changing-lowercase"), input: { text: dotted } });
+  }
+  // Purity: deep-frozen inputs, unchanged.
+  const frozen = deepFreeze(chartFixture());
+  for (const [label, t] of [["list", "Denies gamma sign, kappa sign."], ["sections", "EXAM:\n  Kappa sign. Mu finding."], ["clarify", "Possibly kappa sign. Endorses vague delta."]]) {
+    const a = attempt(c, at(`/purity/${label}`), { text: t }, () => ({ caps: x.extract(frozen, t, CHART_SUP), cues: x.clarifyCues(frozen, t, { chart: true }) }));
+    if (a !== undefined) same(c, { caps: x.extract(CH, t, CHART_SUP), cues: x.clarifyCues(CH, t, { chart: true }) }, a, at(`/purity/${label}`), { text: t });
+  }
+  c.note(`block 1, chart reading: ${CHART_CASES.length + 4} extract cases read as typed chart text (${Object.keys(CHART_BASELINE).length} against the same texts without clauses; ${spokenSpokenNote(spokenSame)}), evidence and clause offsets, opts.chart, ${CLARIFY_CASES.length + CLARIFY_OPT_CASES.length + 4} clarifyCues cases`);
+}
+
 async function block1(c, h, x, carryMax) {
   const at = (p) => `/block1${p}`;
   const L = fixture();
@@ -1193,6 +1708,7 @@ async function block1(c, h, x, carryMax) {
   const n = h.quick ? DEFAULT_OFF_UTTERANCES.quick : DEFAULT_OFF_UTTERANCES.full;
   const bare = withoutNewFields(FIXTURE);
   const done = await defaultOff(c, x, bare, utterances(rng, bare, n), at("/default-off/fixture"));
+  chartReading(c, x);
   c.note(`block 1: ${EXTRACT_CASES.length + BAND_CHOICE_CASES.length + VARIANT_CASES.length + HEARD_SHAPES.length} extract cases (${BAND_CHOICE_CASES.length} on band choice and the onset guard), ${CONTEXT_CASES.length} extractInContext cases (refusal codes seen: ${[...seen].join(", ")}), ${CARRY_OFF_CASES.length} with {carry: false}, ${YIELD_ONLY_CASES.length} yield-only slot cases (rounds 3b-3d), ${CARRY_EXCLUDE_CASES.length} carryExclude utterances, ${SEQUENCES.length} sequences, expiry for carry 1-${carryMax}, ${NORMALIZE_CASES.length + NORMALIZE_SHAPES.length + NORMALIZED_CONTEXT.length + FOLDED_ONLY_CASES.length + FOLDED_ONLY_CONTEXT.length} normalize cases; default-off: ${done} seeded utterances on the fixture without the new fields`);
   await roundThreePlus(c, h, x);
 }
@@ -1704,9 +2220,9 @@ function ad13SelfChecks(c, x, lex, at, corpus) {
   c.note(`block 2: AD13 self-checks: ${AD13_PAIRS.length} crafted capture pairs (${AD13_PAIRS.filter((p) => !p[4]).length} that must not be excused), ${AD13_RULE_H.length} rule-H texts, the number rule on ${crafted} crafted texts (${spelled} spelled) and ${checked} corpus texts without a literal number word, ${SPELLED_INTEGERS.length} number words`);
 }
 
-async function block2(c, h, x, module, lex031, out) {
+async function block2(c, h, x, module, lex, lex031, out) {
   const at = (p) => `/block2${p}`;
-  const lex = module.lexicon;
+  // lex: the 0.3.2-equivalent lexicon (release 0.4.7), the only oracle of 0.3.2 behaviour.
 
   // The reference set 0.2.0 (44 cases), pinned: a mismatch is INVALID.
   let reference = null;
@@ -1880,6 +2396,7 @@ async function block2(c, h, x, module, lex031, out) {
     ? `no-regression: the ${refCases.length} cases of ${refVersion} give the same output under lexicon ${lex.version} as under ${lex031.version}: ${unchanged}/${refCases.length}`
     : `no-regression: not run (no ${LEXICON_DELTA.from}-equivalent lexicon)`);
   out.lines = lines;
+  out.rows030 = rows.length;
   c.note(`block 2: ${rows.length} cases, ${dialogues.length} dialogues (${patientSteps} patient steps; ${labelledCarry} labelled carry steps; labelled refusals ${Object.entries(labelledRefusals).map(([k, v]) => `${k} ${v}`).join(", ") || "none"}); the Scribe emulation and the pure engine runner agree on ${agree}/${dialogues.length} dialogues`);
 }
 
@@ -1933,8 +2450,7 @@ function block3(c, scribe, vocab, module, x) {
     attempt(c, at(`/heardPrompts/builder/${it.id}`), null, () => {
       const others = {};
       for (const o of module.allItems) if (o.id !== it.id) others[o.id] = Array.isArray(o.scale) ? 0 : "no";
-      // scorable: false — the widened pool, domain activity not consulted (F12, AD18).
-      const sug = scribe.rankSuggestions(module, { answers: others, scorable: false }).list.filter((s) => s.kind === "scored")
+      const sug = scribe.rankSuggestions(module, { answers: others, scorable: true }).list.filter((s) => s.kind === "scored")
         .map((s) => ({ id: s.id, ask: s.ask, tag: s.tag, scale: s.scale }));
       const got = scribe.heardPrompts(module, { heard: [{ id: it.id, cueText: "q" }] })
         .map((s) => ({ id: s.id, ask: s.ask, tag: s.tag, scale: s.scale }));
@@ -2032,6 +2548,604 @@ function block3(c, scribe, vocab, module, x) {
     const got = attempt(c, at(`/strings/${label}`), null, fn);
     if (got !== undefined) c.diff(want, got, { at: at(`/strings/${label}`) });
   }
+  clarifyHelpers(c, scribe, vocab, module, x);
+  retractHelpers(c, scribe, module);
+}
+
+/**
+ * retractProbeAnswers and probeNoteList (release 0.4.8, follow-up; review fix) on MASQUE's probes with
+ * crafted probe answers: a change or a clear of an item in the Question review retracts exactly the
+ * probe answers whose chosen option wrote that item (an option that wrote two items included), leaves
+ * every other one, returns the same object when nothing is retracted and never mutates its input; the
+ * probe notes are the notes of the answers on record, in the order answered, read from the module.
+ */
+function retractHelpers(c, scribe, module) {
+  const at = (p) => `/block3/retract${p}`;
+  if (!c.check(typeof scribe.retractProbeAnswers === "function" && typeof scribe.probeNoteList === "function", at("/exports"), null, "retractProbeAnswers and probeNoteList", null)) return;
+  const probes = arr(module.logic && module.logic.probes && module.logic.probes.list);
+  const probe = (id) => probes.find((p) => p.id === id);
+  const noteOf = (id, k) => probe(id).opts[k].note;
+  const ready = ["pr_internal_vertigo", "pr_headmotion_nausea", "pr_photophono_only", "pr_dix_hallpike"].every((id) => !!probe(id));
+  if (!c.check(ready, at("/probes"), null, "the MASQUE probes used here", null)) return;
+  const R = (pa, item, label) => attempt(c, at(`/${label}`), { probeAns: pa, item }, () => scribe.retractProbeAnswers(module, deepFreeze(pa), item));
+  const base = { pr_internal_vertigo: 1, pr_headmotion_nausea: 1, pr_dix_hallpike: 1 };
+  c.diff({ pr_internal_vertigo: 1, pr_dix_hallpike: 1 }, R(base, "m_nausea", "writer"), { at: at("/writer") });
+  c.diff({ pr_headmotion_nausea: 1, pr_dix_hallpike: 1 }, R(base, "v_vertigo", "rescue-writer"), { at: at("/rescue-writer") });
+  c.diff({}, R({ pr_photophono_only: 1 }, "m_aura", "two-items"), { at: at("/two-items") });
+  c.diff({}, R({ pr_photophono_only: 1 }, "v_migfeat", "two-items-other"), { at: at("/two-items-other") });
+  const same = [
+    ["option-writes-other-item", { pr_photophono_only: 0 }, "m_aura"],
+    ["option-writes-nothing", { pr_internal_vertigo: 2 }, "v_vertigo"],
+    ["no-writer", base, "r_surg"],
+    ["exam-probe", { pr_dix_hallpike: 1 }, "v_vertigo"],
+    ["unknown-probe", { pr_nonexistent: 0 }, "m_nausea"],
+    ["not-an-index", { pr_headmotion_nausea: "1" }, "m_nausea"],
+    ["empty", {}, "m_nausea"],
+  ];
+  for (const [label, pa, item] of same) {
+    const out = R(pa, item, label);
+    c.check(out === pa, at(`/${label}/same`), { probeAns: pa, item }, "the same object back (nothing retracted)", out);
+  }
+  const N = (pa, label) => attempt(c, at(`/notes/${label}`), { probeAns: pa }, () => scribe.probeNoteList(module, deepFreeze(pa)));
+  c.diff([noteOf("pr_dix_hallpike", 1), noteOf("pr_headmotion_nausea", 1), noteOf("pr_internal_vertigo", 1)],
+    N({ pr_dix_hallpike: 1, pr_headmotion_nausea: 1, pr_internal_vertigo: 1 }, "order"), { at: at("/notes/order") });
+  c.diff([noteOf("pr_headmotion_nausea", 1)], N({ pr_internal_vertigo: 0, pr_headmotion_nausea: 1, pr_photophono_only: 1 }, "no-note-options"), { at: at("/notes/no-note-options") });
+  c.diff([], N({ pr_nonexistent: 0, pr_headmotion_nausea: "1" }, "ignored"), { at: at("/notes/ignored") });
+  const twice = R(R(base, "m_nausea", "notes-after-1") || {}, "v_vertigo", "notes-after-2");
+  c.diff([noteOf("pr_dix_hallpike", 1)], N(twice || {}, "after-retract"), { at: at("/notes/after-retract") });
+}
+
+/** clarifyPrompts and clarifyLabel (release 0.4.7) on MASQUE with crafted clarification cues. */
+function clarifyHelpers(c, scribe, vocab, module, x) {
+  const at = (p) => `/block3/clarify${p}`;
+  const K = vocab.CAPTURE_KIND || {};
+  c.diff("clarify", K.CLARIFY, { at: at("/CAPTURE_KIND/CLARIFY") });
+  const probes = arr(module.logic && module.logic.probes && module.logic.probes.list);
+  const probe = (id) => probes.find((p) => p.id === id);
+  const short = (id) => scribe.itemShort(module.itemById[id]);
+  const cue = (o) => ({ kind: "clarify", evidence: "Example clause.", clause: { start: 0, end: 15 }, cueText: "example", ...o });
+  const pPur = cue({ id: "cl_a", reason: "trigger", probe: "pr_purulence", cueIndex: 30, cueText: "runny nose" });
+  const iPur = cue({ id: "x_purulent", reason: "hedge", item: "x_purulent", cueIndex: 40 });
+  const iHead = cue({ id: "m_head", reason: "hedge", item: "m_head", cueIndex: 10, cueText: "headache" });
+  const pNeck = cue({ id: "cl_b", reason: "trigger", probe: "pr_neck", cueIndex: 20 });
+  const pRescue = cue({ id: "cl_c", reason: "trigger", probe: "pr_internal_vertigo", cueIndex: 50 });
+  const ph = cue({ id: "@placeholder", reason: "placeholder", cueIndex: 0, cueText: "***" });
+  const notACue = { id: "m_head", kind: "item", value: 1, evidence: "x", cueIndex: 0 };
+  const cp = (mod, cues, state, label) => attempt(c, at(`/prompts/${label}`), { state }, () => scribe.clarifyPrompts(mod, cues, state));
+  const ids = (xs) => arr(xs).map((q) => q && q.id);
+  const all = [pPur, iPur, iHead, pNeck, pRescue, ph, notACue];
+  // The engine's own rules on the module without the lexicon's chart data (the shipped lexicon 0.3.3
+  // carries a placeholderAsk, which adds the placeholder card: checked after these).
+  const bare = { ...module, lexicon: { ...module.lexicon } };
+  delete bare.lexicon.clauses;
+  delete bare.lexicon.clarify;
+  const r0 = cp(bare, all, {}, "order-and-one-per-target");
+  if (r0 !== undefined) {
+    c.diff(["m_head", "cl_b", "cl_a", "cl_c"], ids(r0), { at: at("/prompts/order-and-one-per-target") });
+    const pur = arr(r0).find((q) => q && q.id === "cl_a");
+    const pr = probe("pr_purulence");
+    c.diff({ kind: "probe", target: "pr_purulence", probeKind: pr && pr.kind, ask: pr && pr.say, labels: arr(pr && pr.opts).map((o) => o.l) },
+      pur ? { kind: pur.kind, target: pur.target, probeKind: pur.probeKind, ask: pur.ask, labels: arr(pur.opts).map((o) => o.label) } : null,
+      { at: at("/prompts/probe-card") });
+    const head = arr(r0).find((q) => q && q.id === "m_head");
+    const it = module.itemById.m_head;
+    c.diff({ kind: "item", target: "m_head", ask: it.ask ?? it.text, opts: it.scale.map((o, i) => ({ label: o.label, value: i })), evidence: "Example clause." },
+      head ? { kind: head.kind, target: head.target, ask: head.ask, opts: head.opts, evidence: head.evidence } : null, { at: at("/prompts/item-card") });
+  }
+  const r1 = cp(bare, all, { answers: { x_purulent: "no" } }, "target-answered");
+  if (r1 !== undefined) c.diff(["m_head", "cl_b", "cl_c"], ids(r1), { at: at("/prompts/target-answered") });
+  const r2 = cp(bare, all, { probeAns: { pr_neck: 0 }, skipped: { m_head: true } }, "probe-answered-and-skipped");
+  if (r2 !== undefined) c.diff(["cl_a", "cl_c"], ids(r2), { at: at("/prompts/probe-answered-and-skipped") });
+  const r3 = cp(bare, all, { dismissed: { cl_a: true, m_head: true } }, "dismissed");
+  if (r3 !== undefined) c.diff(["cl_b", "x_purulent", "cl_c"], ids(r3), { at: at("/prompts/dismissed") });
+  const r4 = cp(bare, [pRescue], { answers: { v_vertigo: 0 } }, "rescue-kept-while-negative");
+  if (r4 !== undefined) c.diff(["cl_c"], ids(r4), { at: at("/prompts/rescue-kept-while-negative") });
+  // Review round 1: a probe card is shown only while the probe is live (engine/probes.js liveProbes,
+  // its `when` included), so a rescue card leaves once its item is answered positive and can never
+  // overwrite that answer; a rescue's item and an item card for it are one target.
+  const r4b = cp(bare, [pRescue], { answers: { v_vertigo: 3 } }, "rescue-gone-once-answered");
+  if (r4b !== undefined) c.diff([], ids(r4b), { at: at("/prompts/rescue-gone-once-answered") });
+  const iVert = cue({ id: "v_vertigo", reason: "hedge", item: "v_vertigo", cueIndex: 60, cueText: "dizzy" });
+  const r4c = cp(bare, [pRescue, iVert], {}, "rescue-and-item-one-target");
+  if (r4c !== undefined) c.diff(["cl_c"], ids(r4c), { at: at("/prompts/rescue-and-item-one-target") });
+  const r4d = cp(bare, [pRescue, iVert], { answers: { v_vertigo: 3 } }, "rescue-and-item-both-gone");
+  if (r4d !== undefined) c.diff([], ids(r4d), { at: at("/prompts/rescue-and-item-both-gone") });
+  const r5 = cp(bare, [iPur], {}, "boolean-item-yes-no");
+  // The shipped module (lexicon 0.3.3): its placeholderAsk gives the placeholder card, first in text order.
+  const rs = cp(module, all, {}, "shipped-placeholder-card");
+  if (rs !== undefined) {
+    const pq = module.lexicon.clauses && module.lexicon.clauses.placeholderAsk;
+    c.diff([["@placeholder", "note", pq && pq.text], "m_head", "cl_b", "cl_a", "cl_c"], arr(rs).map((q, i) => (i === 0 ? [q.id, q.kind, q.ask] : q.id)), { at: at("/prompts/shipped-placeholder-card") });
+  }
+  if (r5 !== undefined) c.diff([{ label: "Yes", value: "yes" }, { label: "No", value: "no" }], r5[0] ? r5[0].opts : null, { at: at("/prompts/boolean-item-yes-no") });
+  // The lexicon's own wording: a clarify entry's ask, and placeholderAsk for the placeholder card.
+  const withData = { ...module, lexicon: { ...module.lexicon,
+    clarify: [{ id: "cl_a", ph: ["runny nose"], probe: "pr_purulence", ask: { text: "Example clarify ask?", source: "draft" }, source: "draft" }],
+    clauses: { placeholder: [{ ph: "***", source: "draft" }], placeholderAsk: { text: "Example placeholder ask?", source: "draft" } } } };
+  const r6 = cp(withData, [pPur, ph], {}, "lexicon-wording");
+  if (r6 !== undefined) {
+    c.diff([["@placeholder", "note", "Example placeholder ask?", 0], ["cl_a", "probe", "Example clarify ask?", arr(probe("pr_purulence") && probe("pr_purulence").opts).length]],
+      arr(r6).map((q) => [q.id, q.kind, q.ask, arr(q.opts).length]), { at: at("/prompts/lexicon-wording") });
+  }
+  // Labels: never "RED FLAG", never a value.
+  const LABELS = [
+    ["item", () => scribe.clarifyLabel(module, iHead), `clarify “headache” · ${short("m_head")}`],
+    ["probe-target", () => scribe.clarifyLabel(module, pPur), `clarify “runny nose” · ${short("x_purulent")}`],
+    ["placeholder", () => scribe.clarifyLabel(module, ph), "clarify “***”"],
+    ["probe-without-target", () => scribe.clarifyLabel(module, pNeck), "clarify “example”"],
+    ["captureLabel-delegates", () => scribe.captureLabel(module, iHead), `clarify “headache” · ${short("m_head")}`],
+    ["captureLabel-flag-id-is-not-a-red-flag", () => scribe.captureLabel(module, { id: "rf_pulsatile", kind: "clarify", cueText: "pulsatile" }), "clarify “pulsatile”"],
+  ];
+  for (const [label, fn, want] of LABELS) {
+    const got = attempt(c, at(`/label/${label}`), null, fn);
+    if (got !== undefined) c.diff(want, got, { at: at(`/label/${label}`) });
+  }
+  const state = { answers: { m_head: 1 }, ctx: {}, rf: {} };
+  const ing = attempt(c, at("/ingestCaptures/ignored"), null, () => scribe.ingestCaptures(state, [iHead, pPur]));
+  if (ing !== undefined) c.diff({ ...state, touchedDomainItemIds: [] }, ing, { at: at("/ingestCaptures/ignored") });
+  // The shipped lexicon's own entry (release 0.4.7, lexicon 0.3.3): the lead's example asks the lead's
+  // question with pr_purulence's answers.
+  const rn = attempt(c, at("/clarifyCues/shipped/runny-nose"), null, () => x.clarifyCues(module.lexicon, "Reports runny nose.", { chart: true }));
+  if (rn !== undefined) c.diff(["trigger:cl_rhinorrhea:pr_purulence@8"], arr(rn).map((q) => `${q.reason}:${q.id}:${q.probe || q.item || "-"}@${q.cueIndex}`), { at: at("/clarifyCues/shipped/runny-nose") });
+}
+
+// ------------------------------------------------------------- block 5: gold set 0.4.0 (release 0.4.7)
+
+/** How a gold set 0.4.0 chart case is read: typed chart text (opts.chart, as the Scribe reads it). */
+const CHART_OPTS = { includeHeard: true, chart: true };
+
+/**
+ * Review round 2, on the shipped lexicon as typed chart text, with explicit expectations (the gold
+ * chart labels are snapshots; these state the intent): [label, text, {has: capture tags that must be
+ * there, not: ids with no unsuppressed capture, cues: clarifyCues ids that must be there, noCues: ids
+ * that must not}]. The held-out cases of the review (H09, H11, H20-H22, H27), the unless rule (a stated
+ * dangerous detail raises its flag or leaves its card), treatment failure, chart notation, hedges,
+ * report headers and the exam section.
+ */
+const REVIEW2_CASES = [
+  ["heldout/H09", "Recurrent facial pressure and headaches over 2 years despite 4 rounds of antibiotics w/o lasting relief. Nasal endoscopy unremarkable, no purulence, no polyps. CT sinus 2023: clear sinuses, Lund-Mackay 0. Sense of smell intact.",
+    { has: ["r_abx=yes", "x_objective=no"], noCues: ["x_objective"] }],
+  ["heldout/H11", "Woke up 5 days ago with sudden hearing loss in the left ear and roaring tinnitus. Audiogram: 60 dB SNHL left, right normal.",
+    { has: ["rf_ssnhl=true"], cues: ["cl_laterality", "cl_hearing_onset"] }],
+  ["heldout/H20", "72-year-old woman with new temporal headaches x 3 weeks, scalp tenderness when brushing her hair and jaw pain with chewing. ESR pending.", { has: ["rf_gca=true"] }],
+  // The lead struck the rf_orbital phrases "periorbital swelling" and "pain on eye movement" (2026-10-12):
+  // nothing here raises rf_orbital now; "Afebrile." still raises no rf_systemic.
+  ["heldout/H21", "Left periorbital swelling and erythema x 2 days with pain on eye movement, following a week of sinus congestion. Afebrile.", { not: ["rf_systemic"] }],
+  ["heldout/H22", "Progressive right-sided nasal obstruction with recurrent right epistaxis over 4 months. Endoscopy: friable mass in the right nasal cavity.", { has: ["rf_mass=true"] }],
+  ["heldout/H27", "His headaches have been steadily worsening over 6 weeks, now waking him from sleep and worse with coughing and bending over.", { has: ["rf_progressive=true"] }],
+  ["heldout/H06-denied", "Denies any fever or chills. No vision loss, diplopia, facial droop, weakness, or slurred speech. No sudden hearing loss.",
+    { not: ["rf_systemic", "rf_vision", "rf_focal", "rf_ssnhl"] }],
+  ["unless/left", "Tinnitus in the left ear.", { cues: ["cl_laterality"] }],
+  ["unless/sudden", "Hearing loss came on suddenly.", { cues: ["cl_hearing_onset"], not: ["rf_ssnhl"] }],
+  ["unless/right", "Right-sided nasal congestion.", { cues: ["cl_nasal_side"] }],
+  ["unless/pulses-heartbeat", "Tinnitus pulses with her heartbeat.", { cues: ["cl_tinnitus_quality"], not: ["rf_pulsatile"] }],
+  ["unless/bloody", "Bloody nasal discharge.", { cues: ["cl_rhinorrhea"] }],
+  ["unless/kept-flag-phrase", "Whooshing tinnitus.", { has: ["rf_pulsatile=true"], noCues: ["cl_tinnitus_quality"] }],
+  ["unless/kept-safe-answer", "Tinnitus, bilateral.", { noCues: ["cl_laterality"] }],
+  ["failure/no-improvement", "No improvement with antibiotics.", { has: ["r_abx=yes"] }],
+  ["failure/no-benefit-after", "No benefit after sinus surgery.", { has: ["r_surg=yes"] }],
+  ["failure/despite", "Persistent facial pressure despite prednisone.", { has: ["r_abx=yes"] }],
+  ["failure/failed", "Failed 3 courses of antibiotics.", { has: ["r_abx=yes"] }],
+  ["failure/refractory", "Refractory to two courses of antibiotics.", { has: ["r_abx=yes"] }],
+  ["failure/plain-denial-still-denies", "No antibiotics to date.", { has: ["r_abx=no"] }],
+  ["notation/minus-before", "(-) aura, nausea.", { has: ["m_aura=no", "m_nausea=no"] }],
+  ["notation/minus-after", "Aura: (-)", { has: ["m_aura=no"] }],
+  ["notation/denies-label", "Nausea: denies", { has: ["m_nausea=no"] }],
+  ["notation/denied-label", "Nausea: denied", { has: ["m_nausea=no"] }],
+  ["notation/dash-no", "Nausea - no", { has: ["m_nausea=no"] }],
+  ["notation/plus-before", "(+) photophobia", { has: ["m_photo=yes"] }],
+  ["notation/plus-after", "Photophobia: (+)", { has: ["m_photo=yes"] }],
+  ["notation/signs-after", "Aura (-), nausea (+).", { has: ["m_aura=no", "m_nausea=yes"] }],
+  ["notation/empty-checkbox", "Nausea: [ ]", { not: ["m_nausea"], cues: ["@placeholder"] }],
+  ["notation/blank", "Nausea: ___", { not: ["m_nausea"], cues: ["@placeholder"] }],
+  ["hedge/maybe", "Nausea maybe sometimes.", { not: ["m_nausea"], cues: ["m_nausea"] }],
+  ["hedge/unsure", "Pt unsure about aura.", { not: ["m_aura"], cues: ["m_aura"] }],
+  ["hedge/uncertain", "Uncertain whether photophobia is present.", { not: ["m_photo"], cues: ["m_photo"] }],
+  ["hedge/not-sure-never-lowers-a-flag", "Not sure if the tinnitus is pulsatile.", { has: ["rf_pulsatile=true"], not: ["v_aural"] }],
+  ["hedge/might", "Might have nausea with the spells.", { not: ["m_nausea"], cues: ["m_nausea"] }],
+  ["report/ct-showed", "CT showed clear sinuses.", { not: ["x_objective"], cues: ["cl_scan_report"] }],
+  ["report/lund-mackay", "Lund-Mackay score 0.", { not: ["x_objective"], cues: ["cl_scan_report"] }],
+  ["report/audiogram-showed", "Audiogram showed normal hearing.", { not: ["x_lowfreq"], cues: ["cl_audiogram_report"] }],
+  // The lead's D8 answer (2026-10-12, "Rule-out cards stay") removed the positive-answer qualifiers, so the
+  // trigger is listed; x_objective is recorded from the same words, so the Scribe drops the card as answered.
+  ["report/result-still-captures", "CT showed mucosal thickening of both maxillary sinuses.", { has: ["x_objective=yes"], cues: ["cl_scan_report"] }],
+  ["exam/nothing-captured", "PHYSICAL EXAM:\nNose: no polyps.\nEars: TMs within normal limits.", { not: ["x_objective", "r_normal"] }],
+];
+/**
+ * Sign-off (the clinical lead's decision D9 of 2026-10-12): spoken lines on the shipped lexicon, with
+ * explicit expectations: [label, text, {has, not, typedHas?, typedNot?}] (typed*: the same text as typed
+ * chart text, where a register rule differs).
+ */
+const SPOKEN_CASES = [
+  ["reply-no/whooshing", "no it's more of a whooshing with my heartbeat", { has: ["rf_pulsatile=true"] }],
+  ["reply-no/hear-a-whooshing", "no I hear a whooshing sound", { has: ["rf_pulsatile=true"], typedNot: ["rf_pulsatile"] }],
+  ["direct/never-had", "No, I've never had double vision.", { not: ["rf_focal"] }],
+  ["direct/no-double-vision", "no double vision", { not: ["rf_focal"] }],
+  ["list/denied-in-speech", "I don't have nausea or photophobia", { has: ["m_nausea=no", "m_photo=no"] }],
+  ["pronoun/gates-in-speech", "Her tinnitus is bilateral.", { not: ["v_aural"], typedHas: ["v_aural=yes"] }],
+  ["hedge/maybe-in-speech", "maybe some nausea", { not: ["m_nausea"] }],
+  ["context/kept-in-speech", "they said it was anxiety and it's been going on for years", { has: ["c_dismiss=yes", "c_dur=>12mo", "r_dur=yes"], typedNot: ["c_dismiss", "c_dur"] }],
+  ["mask/report-header-in-speech", "my hearing test showed it drops during the spells", { not: ["x_lowfreq"] }],
+  // The records fixes after the sign-off: "+/-" (the D7 hedge row) hedges a spoken line as it does typed
+  // text (the README had kept it to typed text); a hedge never lowers a red flag.
+  ["hedge/plus-minus-in-speech", "+/- nausea and photophobia.", { not: ["m_nausea", "m_photo"], typedNot: ["m_nausea", "m_photo"] }],
+  ["hedge/plus-minus-flag-in-speech", "Tinnitus +/- pulsatile.", { has: ["rf_pulsatile=true"], not: ["v_aural"], typedHas: ["rf_pulsatile=true"], typedNot: ["v_aural"] }],
+];
+/** The qualifiers review round 2 removed from the safety entries (they state the dangerous answer). */
+const REVIEW2_REMOVED_QUALIFIERS = ["left", "right", "unilateral", "one ear", "same ear", "one side", "one-sided", "sudden", "pulsing", "pulses", "heartbeat", "bloody"];
+
+/**
+ * Review round 3, on the shipped lexicon as typed chart text, with explicit expectations (as REVIEW2_CASES):
+ * the round-3 review's texts, each the lead's decision or a team draft read conservatively.
+ */
+const REVIEW3_CASES = [
+  ["signs/minus-then-plus", "(-) aura (+) nausea", { has: ["m_aura=no", "m_nausea=yes"] }],
+  ["signs/plus-then-minus", "(+) nausea (-) photophobia", { has: ["m_nausea=yes", "m_photo=no"] }],
+  ["signs/ros-line", "ROS: (+) headache (-) aura (-) nausea", { has: ["m_aura=no", "m_nausea=no"] }],
+  ["signs/all-negative-flags", "(-) fever (-) chills (-) weight loss", { not: ["rf_systemic"] }],
+  ["signs/flags-denied", "(-) diplopia (-) dysarthria", { not: ["rf_focal"] }],
+  ["signs/plus-is-not-the-flag's", "(-) fever (+) nausea", { has: ["m_nausea=yes"], not: ["rf_systemic"] }],
+  ["signs/heldout-Q01", "ROS: (+) nausea (+) photophobia (-) vomiting (-) diplopia (-) dysarthria (-) weakness", { has: ["m_nausea=yes", "m_photo=yes"], not: ["rf_focal"] }],
+  ["abbrev/assoc", "No assoc. nausea.", { has: ["m_nausea=no"] }],
+  ["abbrev/hx", "Denies hx. of aura.", { has: ["m_aura=no"] }],
+  ["abbrev/sx", "No sx. of nausea.", { has: ["m_nausea=no"] }],
+  ["abbrev/e.g.", "Denies e.g. nausea or photophobia.", { has: ["m_nausea=no", "m_photo=no"] }],
+  ["abbrev/pt", "Pt. reports no assoc. nausea.", { has: ["m_nausea=no"] }],
+  ["abbrev/hpi-line", "Headaches without aura. No assoc. nausea or photophobia.", { has: ["m_aura=no", "m_nausea=no", "m_photo=no"] }],
+  ["abbrev/flag", "No assoc. diplopia.", { not: ["rf_focal"] }],
+  ["abbrev/lower-case-writer", "no aura. nausea present.", { has: ["m_aura=no", "m_nausea=yes"] }],
+  ["redflag/reported", "No nausea, double vision reported.", { has: ["rf_focal=true", "m_nausea=no"] }],
+  ["redflag/present", "No nausea, double vision present.", { has: ["rf_focal=true"] }],
+  ["redflag/plus", "No nausea, +double vision.", { has: ["rf_focal=true"] }],
+  ["redflag/noted", "No N/V, night sweats noted.", { has: ["rf_systemic=true"] }],
+  ["redflag/developed", "Without warning, she developed double vision.", { has: ["rf_focal=true"] }],
+  ["redflag/then", "No trauma, then nosebleeds.", { has: ["rf_mass=true"] }],
+  ["redflag/ssnhl-reported", "No nausea, sudden hearing loss reported.", { has: ["rf_ssnhl=true"], cues: ["cl_hearing_onset"] }],
+  ["redflag/exam-present", "PHYSICAL EXAM:\nEyes: no injection, proptosis present.", { has: ["rf_orbital=true"] }],
+  ["redflag/today", "No headache history, sudden severe headache today.", { has: ["rf_thunderclap=true"] }],
+  ["redflag/only", "No headache, only nosebleeds.", { has: ["rf_mass=true"] }],
+  ["redflag/pertinent-negatives", "No vision loss, diplopia, facial droop, weakness, or slurred speech.", { not: ["rf_vision", "rf_focal"] }],
+  ["complement/treatment", "No treatment yet for the nosebleeds.", { has: ["rf_mass=true"] }],
+  ["complement/workup", "No workup for the double vision.", { has: ["rf_focal=true"] }],
+  ["complement/change", "No change in the whooshing since last visit.", { has: ["rf_pulsatile=true"] }],
+  ["complement/other-than", "Denies complaints other than nosebleeds.", { has: ["rf_mass=true"] }],
+  ["complement/steroids", "No steroids given for sudden hearing loss.", { has: ["rf_ssnhl=true"], cues: ["cl_hearing_onset", "cl_laterality"] }],
+  ["complement/tinnitus-set-aside", "No change in pulsatile tinnitus since last visit.", { has: ["rf_pulsatile=true"], not: ["v_aural"], cues: ["cl_laterality"] }],
+  ["complement/ct", "No CT for diplopia.", { has: ["rf_focal=true"] }],
+  ["complement/none-of", "None of her epistaxis episodes needed packing.", { has: ["rf_mass=true"] }],
+  ["complement/everything-other-than", "Negative for everything other than fever.", { has: ["rf_systemic=true"] }],
+  ["complement/history-of-still-denies", "No history of malignancy.", { not: ["rf_systemic"] }],
+  ["list/plus-line", "Denies:\n- nausea\n+ night sweats", { has: ["rf_systemic=true", "m_nausea=no"] }],
+  ["list/plain-line-after-bullets", "Patient denies:\n- fever\n- chills\nNew nosebleed this week.", { has: ["rf_mass=true"], not: ["rf_systemic"] }],
+  ["list/plain-item-lines", "Patient denies:\nfever\nchills", { not: ["rf_systemic"] }],
+  ["qualifier/not-bilateral", "Tinnitus, not bilateral; left ear only.", { cues: ["cl_laterality"] }],
+  ["qualifier/not-gradual", "Hearing loss, not gradual.", { cues: ["cl_hearing_onset"] }],
+  ["qualifier/rather-than", "Hearing loss, abrupt rather than gradual.", { cues: ["cl_hearing_onset"] }],
+  ["qualifier/non-alternating", "Nasal obstruction, non-alternating, always the right side.", { cues: ["cl_nasal_side"] }],
+  ["qualifier/not-alternating", "Congestion, not alternating, left side only.", { cues: ["cl_nasal_side"] }],
+  ["qualifier/stated-still-resolves", "Tinnitus, bilateral.", { noCues: ["cl_laterality"] }],
+  ["items/reported", "No nausea, tinnitus reported.", { has: ["m_nausea=no"], not: ["v_aural"], cues: ["cl_tinnitus_quality", "cl_laterality"] }],
+  ["items/right-ear-only", "No dizziness, tinnitus in the right ear only.", { not: ["v_aural"], cues: ["cl_laterality"] }],
+  ["items/workup", "No workup for pulsatile tinnitus.", { has: ["rf_pulsatile=true"], not: ["v_aural"] }],
+  ["items/bare-later-item", "No nausea, tinnitus.", { has: ["v_aural=no"] }],
+  ["label/appetite", "No nausea - reports good appetite.", { has: ["m_nausea=no"] }],
+  ["label/sleeping", "Denies photophobia - has been sleeping well.", { has: ["m_photo=no"] }],
+  ["label/years", "No aura - has had headaches for years.", { has: ["m_aura=no"] }],
+  ["label/negative-positive", "ROS: negative for nausea - positive for photophobia.", { has: ["m_nausea=no", "m_photo=yes"] }],
+  ["label/en-dash", "No nausea – has been eating well.", { has: ["m_nausea=no"] }],
+  ["label/ssnhl-denied", "Denies sudden hearing loss - reports gradual decline over years.", { not: ["rf_ssnhl"] }],
+  ["label/diplopia-denied", "Denies diplopia - reports blurry vision when tired.", { not: ["rf_focal"] }],
+  ["label/non-pulsatile-yes", "Non-pulsatile tinnitus: yes.", { has: ["v_aural=yes"], not: ["rf_pulsatile"] }],
+  ["label/non-pulsatile-reports", "Non-pulsatile tinnitus - reports it is constant.", { not: ["rf_pulsatile"] }],
+  ["label/non-positional", "Non-positional vertigo - reports episodes lasting hours.", { not: ["v_head"] }],
+  ["label/second-label", "Nausea: no Photophobia: yes", { has: ["m_nausea=no", "m_photo=yes"] }],
+  ["label/headache-denies-list", "Headache: denies nausea, vomiting, photophobia, phonophobia.", { has: ["m_nausea=no", "m_photo=no"] }],
+  ["label/vertigo-denies-list", "Vertigo: denies nausea, vomiting, tinnitus, aural fullness, or hearing loss.", { has: ["m_nausea=no", "v_aural=no"] }],
+  ["label/headaches-no-list", "Headaches - no aura, nausea, vomiting, photophobia or phonophobia.", { has: ["m_aura=no", "m_nausea=no", "m_photo=no"] }],
+  ["label/dizziness-denies-flags", "Dizziness: denies hearing loss, tinnitus, diplopia or dysarthria.", { has: ["v_aural=no"], not: ["rf_focal"] }],
+  ["label/headache-no-gca", "Headache - no fever, weight loss, jaw claudication or scalp tenderness.", { not: ["rf_gca", "rf_systemic"] }],
+  ["label/headache-denies-focal", "Headache: denies vision loss, diplopia, facial droop, or slurred speech.", { not: ["rf_vision", "rf_focal"] }],
+  ["slash/between-findings", "Denies fever/chills/night sweats.", { not: ["rf_systemic"] }],
+  ["slash/between-words", "Denies visual/auditory auras.", { has: ["m_aura=no"] }],
+];
+/**
+ * The red-flag battery (review round 3): each template holds "{P}" (a red-flag phrase) or "{Pc}" (the
+ * phrase with a capital first letter). In RF_BATTERY_RAISE the text affirms the flag, so it must be
+ * raised; in RF_BATTERY_DENY it clearly denies it (the lead's decision: not raised, not listed).
+ */
+const RF_BATTERY_RAISE = ["{Pc}.", "No nausea, {P} reported.", "No nausea, {P} present.", "No nausea, {P} noted.", "No nausea, +{P}.",
+  "No nausea, then {P}.", "No headache, only {P}.", "Without warning, she developed {P}.", "No headache history, {P} today.", "No workup for {P}.",
+  "No steroids given for {P}.", "No change in {P} since last visit.", "No CT for {P}.", "Denies complaints other than {P}.",
+  "Negative for everything other than {P}.", "Denies:\n- nausea\n+ {P}", "Patient denies:\n- nausea\n- vomiting\nNew {P} this week.",
+  "(-) nausea (+) {P}", "(+) {P} (-) nausea", "Denies nausea - reports {P}.", "No nausea. {Pc}."];
+const RF_BATTERY_DENY = ["Denies {P}.", "No {P}.", "Patient denies {P}.", "Negative for {P}.", "(-) {P}", "{Pc}: denies.", "{Pc} denied.",
+  "No nausea, vomiting, or {P}.", "Denies nausea, {P}, or vomiting.", "Denies {P} or nausea.", "(-) nausea (-) {P}", "(+) nausea (-) {P}",
+  "Denies:\n- nausea\n- {P}", "ROS: (-) {P} (-) nausea", "No assoc. {P}.", "Denies {P} - reports nausea.", "Denies hx. of {P}."];
+
+/** The red-flag battery on the shipped lexicon (typed chart text); returns [phrases, texts]. */
+function redFlagBattery(c, x, lex, at) {
+  const cl = isObj(lex.clauses) ? lex.clauses : {};
+  const chartRf = isObj(cl.redFlags) ? cl.redFlags : {};
+  const flags = new Map();
+  for (const [id, ph] of Object.entries(isObj(lex.redFlags) ? lex.redFlags : {})) flags.set(id, [...arr(ph).filter(isPhrase)]);
+  for (const [id, rows] of Object.entries(chartRf)) flags.set(id, [...(flags.get(id) || []), ...arr(rows).map((r) => (isObj(r) ? r.ph : r)).filter(isPhrase)]);
+  let phrases = 0, texts = 0;
+  const raisedIn = (t, id) => arr(x.extract(lex, t, CHART_OPTS)).some((q) => isObj(q) && q.kind === "redflag" && q.id === id && q.suppressedBy === undefined);
+  const fill = (tpl, p) => tpl.replaceAll("{Pc}", p.charAt(0).toUpperCase() + p.slice(1)).replaceAll("{P}", p);
+  for (const [id, list] of flags) {
+    for (const p of list) {
+      phrases++;
+      const missed = [], wrong = [];
+      for (const tpl of RF_BATTERY_RAISE) { const t = fill(tpl, p); texts++; if (!raisedIn(t, id)) missed.push(t); }
+      for (const tpl of RF_BATTERY_DENY) { const t = fill(tpl, p); texts++; if (raisedIn(t, id)) wrong.push(t); }
+      c.diff([], missed, { at: at(`/round3/battery/${id}/${p}/raised`) });
+      c.diff([], wrong, { at: at(`/round3/battery/${id}/${p}/denied`) });
+    }
+  }
+  return [phrases, texts, flags.size];
+}
+
+/** A case's value pairs and heard ids, each sorted (what a label compares). */
+function valuesAndHeard(caps) {
+  return {
+    expect: [...new Set(arr(caps).filter(isValueCapture).map((cp) => pairKey(cp.id, cp.value)))].sort(),
+    heard: [...new Set(arr(caps).filter(isHeardCapture).map((cp) => cp.id))].sort(),
+  };
+}
+
+async function block5(c, h, x, scribe, module, lex, lex032, out) {
+  const at = (p) => `/block5${p}`;
+  const load = async (what, fn) => { try { return await fn(); } catch (err) { if (err && err.invalid) throw err; c.check(false, at(`/load/${what}`), null, what, `unreadable: ${err && err.message}`); return null; } };
+  const reference = await load("reference", async () => {
+    const bytes = await h.fetchBytes(REFERENCE_GOLD_PATH);
+    if ((await h.sha256(bytes)) !== REFERENCE_GOLD_SHA256) { const e = new Error(`reference gold set ${REFERENCE_GOLD_PATH}: sha256 differs from the pin`); e.invalid = true; throw e; }
+    return decodeJson(bytes);
+  });
+  const g30 = await load("gold 0.3.0", async () => { const bytes = await h.fixture(GOLD_0_3_0_FIXTURE, "bytes"); out.gold030For040 = await h.sha256(bytes); return decodeJson(bytes); });
+  const g40 = await load("gold 0.4.0", async () => { const bytes = await h.fixture(GOLD_0_4_0_FIXTURE, "bytes"); out.gold040Sha = await h.sha256(bytes); return decodeJson(bytes); });
+  if (!reference || !g30 || !g40) return;
+  const meta = isObj(g40._meta) ? g40._meta : {};
+  const inc = isObj(meta.includes) ? meta.includes : {};
+  const basedOn = isObj(meta.basedOn) ? meta.basedOn : {};
+  const goldSet = isObj(lex.goldSet) ? lex.goldSet : {};
+  c.diff(goldSet.version, meta.version, { at: at("/gold/_meta/version") });
+  c.diff(goldSet.lexiconVersion, meta.lexiconVersion, { at: at("/gold/_meta/lexiconVersion") });
+  c.diff(lex.version, meta.lexiconVersion, { at: at("/gold/_meta/lexiconVersion-is-the-shipped-lexicon") });
+  c.diff(GOLD_0_4_0_FIXTURE.split("/").pop(), goldSet.file, { at: at("/lexicon/goldSet/file") });
+  c.diff({ sha256: REFERENCE_GOLD_SHA256, cases: REFERENCE_CASES, version: isObj(reference._meta) ? reference._meta.version : undefined },
+    { sha256: basedOn.sha256, cases: basedOn.cases, version: basedOn.version }, { at: at("/gold/_meta/basedOn") });
+  c.diff({ sha256: GOLD_0_3_0_SHA256, served: GOLD_0_3_0_SHA256, version: isObj(lex032.goldSet) ? lex032.goldSet.version : undefined, cases: arr(g30.cases).length, dialogues: arr(g30.dialogues).length },
+    { sha256: inc.sha256, served: out.gold030For040, version: inc.version, cases: inc.cases, dialogues: inc.dialogues }, { at: at("/gold/_meta/includes") });
+  const n30 = arr(g30.cases).length;
+  same(c, g30.cases, arr(g40.cases).slice(0, n30), at("/gold/0.3.0-cases-verbatim"), null);
+  same(c, g30.dialogues, g40.dialogues, at("/gold/0.3.0-dialogues-verbatim"), null);
+  const chart = arr(g40.cases).slice(n30);
+  const badChart = chart.filter((k) => !isObj(k) || k.register !== "chart" || !/^k\d{3}$/.test(k.utteranceId) || k.labelStatus !== "draft" || typeof k.source !== "string");
+  c.check(chart.length > 0 && !badChart.length, at("/gold/chart-cases"), null, "chart cases (register chart, ids k…, labelStatus draft, a source)", { chart: chart.length, bad: badChart.map((k) => k && k.utteranceId) });
+  const refCases = arr(reference.cases);
+  const ids = [...refCases.map((k) => k.utteranceId), ...arr(g40.cases).map((k) => k.utteranceId), ...arr(g40.dialogues).map((d) => d.dialogueId)];
+  c.diff([], ids.filter((id, i) => typeof id !== "string" || ids.indexOf(id) !== i), { at: at("/gold/ids-unique") });
+
+  // The supersede table: each row's `was` is still the file's label; scoring uses `now`.
+  const byRef = new Map(refCases.map((k) => [k.utteranceId, k]));
+  const byG30 = new Map(arr(g30.cases).map((k) => [k.utteranceId, k]));
+  const byDlg = new Map(arr(g30.dialogues).map((d) => [d.dialogueId, d]));
+  const caseNow = new Map(), stepNow = new Map();
+  for (const row of arr(meta.supersede)) {
+    const key = isObj(row) ? `${row.id}${row.kind === "dialogue-step" ? `#${row.step}` : ""}` : "?";
+    const where = at(`/gold/_meta/supersede/${key}`);
+    const src = !isObj(row) ? undefined : row.set === "0.2.0" ? byRef.get(row.id) : row.set === "0.3.0" ? (row.kind === "case" ? byG30.get(row.id) : byDlg.get(row.id)) : undefined;
+    const shaped = !!src && (row.kind === "case" || (row.kind === "dialogue-step" && Number.isInteger(row.step))) && arr(row.cites).length > 0
+      && arr(row.cites).every((q) => typeof q === "string" && (q.includes("2026-10-11") || q.includes("2026-10-12")) || /^decisions\./.test(q)) && typeof row.rule === "string" && !!row.rule && typeof row.status === "string";
+    if (!c.check(shaped && !caseNow.has(key) && !stepNow.has(key), `${where}/shape`, { row }, "a case or dialogue step of 0.2.0 / 0.3.0, once, citing the lead's request or decisions of 2026-10-11 or the sign-off of 2026-10-12, with its rule", row)) continue;
+    if (row.kind === "case") {
+      c.diff({ expect: src.expect, expectHeard: arr(src.expectHeard) }, row.was, { at: `${where}/was` });
+      caseNow.set(row.id, row.now);
+    } else {
+      c.diff(arr(src.steps)[row.step], row.was, { at: `${where}/was` });
+      stepNow.set(key, row.now);
+    }
+  }
+
+  // Cases: the 44 reference cases, the 0.3.0 cases and the chart cases.
+  const rows = [];
+  let changedCases = 0;
+  for (const [origin, list] of [["0.2.0", refCases], ["0.3.0", arr(g30.cases)], ["chart", chart]]) {
+    for (const kase of list) {
+      const id = kase.utteranceId;
+      const text = kase.text;
+      // A chart case is typed chart text (release 0.4.7 review fixes): read with opts.chart, as the Scribe reads it.
+      const caps = attempt(c, at(`/cases/${id}`), { text }, () => x.extract(lex, text, origin === "chart" ? CHART_OPTS : { includeHeard: true }));
+      if (caps === undefined) continue;
+      const label = caseNow.has(id) ? caseNow.get(id) : { expect: kase.expect, expectHeard: kase.expectHeard };
+      const want = [...new Set(arr(label.expect).map((q) => pairKey(q[0], q[1])))].sort();
+      const wantHeard = [...new Set(arr(label.expectHeard))].sort();
+      const got = valuesAndHeard(caps);
+      c.diff(want, got.expect, { at: at(`/cases/${id}/expect`), input: { text } });
+      c.diff(wantHeard, got.heard, { at: at(`/cases/${id}/expectHeard`), input: { text } });
+      const wantSet = new Set(want), gotSet = new Set(got.expect);
+      rows.push({ origin, kase, tp: got.expect.filter((k) => wantSet.has(k)).length, fp: got.expect.filter((k) => !wantSet.has(k)).length,
+        fn: want.filter((k) => !gotSet.has(k)).length, labelled: want.length });
+      if (origin === "chart") {
+        const present = new Set(arr(caps).filter((cp) => isObj(cp) && cp.suppressedBy === undefined).map((cp) => cp.id));
+        c.diff([], arr(kase.expectAbsent).filter((q) => present.has(q)), { at: at(`/cases/${id}/expectAbsent`), input: { text } });
+        const cues = attempt(c, at(`/cases/${id}/clarifyCues`), { text }, () => x.clarifyCues(lex, text, { chart: true }));
+        if (cues !== undefined) c.diff(arr(kase.expectClarify), arr(cues).map((q) => [q.reason, q.id]), { at: at(`/cases/${id}/expectClarify`), input: { text } });
+        if (isObj(kase.expectEvidence)) {
+          const ev = {};
+          for (const cp of arr(caps)) if (isObj(cp) && cp.suppressedBy === undefined) ev[cp.id] = cp.evidence;
+          c.diff(kase.expectEvidence, ev, { at: at(`/cases/${id}/expectEvidence`), input: { text } });
+        }
+        // Review round 1: the clause also holds the capture's cue (start <= cueIndex < end).
+        const notClause = arr(caps).filter((cp) => !(isObj(cp) && isObj(cp.clause) && Number.isInteger(cp.clause.start) && Number.isInteger(cp.clause.end)
+          && cp.clause.start < cp.clause.end && cp.evidence === text.slice(cp.clause.start, cp.clause.end)
+          && Number.isInteger(cp.cueIndex) && cp.clause.start <= cp.cueIndex && cp.cueIndex < cp.clause.end));
+        c.diff([], notClause.map(tagOf), { at: at(`/cases/${id}/evidence-is-the-clause`), input: { text } });
+      } else {
+        // Exactly the superseded cases change against the 0.3.2-equivalent lexicon.
+        const before = attempt(c, at(`/changed/${id}`), { text }, () => x.extract(lex032, text, { includeHeard: true }));
+        if (before === undefined) continue;
+        const changed = JSON.stringify(valuesAndHeard(before)) !== JSON.stringify(got);
+        if (changed) changedCases++;
+        c.check(changed === caseNow.has(id), at(`/changed-exactly-the-superseded/${id}`), { text, before: tags(before), after: tags(caps) },
+          caseNow.has(id) ? "changed (superseded)" : "unchanged", changed ? "changed" : "unchanged");
+      }
+    }
+  }
+
+  // Dialogues, as the Scribe runs them; exactly the superseded steps change.
+  let dialoguesApplied = 0, dialoguesRefused = 0, changedSteps = 0;
+  for (const d of arr(g30.dialogues)) {
+    const did = d.dialogueId;
+    const turns = arr(d.turns);
+    const run = attempt(c, at(`/dialogues/${did}`), { turns }, () => runDialogue(x, lex, turns, true));
+    const before = attempt(c, at(`/dialogues/${did}/0.3.2`), { turns }, () => runDialogue(x, lex032, turns, true));
+    if (run === undefined) continue;
+    const carried = (st) => JSON.stringify(isObj(st) ? arr(st.captures).filter((t) => Array.isArray(t) && t[2] === "carry") : null);
+    let okApplied = true, okRefused = true;
+    turns.forEach((turn, k) => {
+      const key = `${did}#${k}`;
+      const want = stepNow.has(key) ? stepNow.get(key) : (arr(d.steps)[k] === undefined ? null : arr(d.steps)[k]);
+      c.diff(want, run[k], { at: at(`/dialogues/${did}/steps/${k}`), input: { turn } });
+      if (before !== undefined) {
+        const changed = JSON.stringify(before[k]) !== JSON.stringify(run[k]);
+        if (changed) changedSteps++;
+        c.check(changed === stepNow.has(key), at(`/changed-exactly-the-superseded/${key}`), { turn }, stepNow.has(key) ? "changed (superseded)" : "unchanged", changed ? "changed" : "unchanged");
+      }
+      if (run[k] === null) return;
+      if (carried(want) !== carried(run[k])) okApplied = false;
+      if (!isObj(want) || want.refused !== run[k].refused) okRefused = false;
+    });
+    if (okApplied) dialoguesApplied += 1;
+    if (okRefused) dialoguesRefused += 1;
+  }
+
+  // The lead's history and physical, rule by rule (spec 0.4.7 §6).
+  const hp = chart.find((k) => k.utteranceId === "k001");
+  if (c.check(!!hp && typeof hp.text === "string" && hp.text.includes("not pulsatile"), at("/hp/present"), null, "k001, the lead's history and physical", hp && hp.utteranceId)) {
+    const caps = arr(x.extract(lex, hp.text, CHART_OPTS));
+    const val = (id) => { const cp = caps.find((q) => isObj(q) && q.id === id && q.suppressedBy === undefined); return cp ? (cp.kind === "heard" ? "heard" : cp.value) : "(none)"; };
+    // Review round 2: nothing is captured inside the exam section, so no r_normal either. The sign-off
+    // (2026-10-12): the lead struck the mask "aural" and kept it struck after being told this effect:
+    // "aural fullness" states aura, "denies auras" denies it, so m_aura is not recorded (a conflict card).
+    c.diff({ rf_pulsatile: "(none)", m_aura: "(none)", x_purulent: "no", x_anosmia: "no", n_allo: "(none)", v_head: "(none)", m_photo: "yes", v_aural: "yes", r_normal: "(none)" },
+      { rf_pulsatile: val("rf_pulsatile"), m_aura: val("m_aura"), x_purulent: val("x_purulent"), x_anosmia: val("x_anosmia"), n_allo: val("n_allo"), v_head: val("v_head"), m_photo: val("m_photo"), v_aural: val("v_aural"), r_normal: val("r_normal") },
+      { at: at("/hp/the-lead's-checks") });
+    c.check(caps.length > 0 && caps.every((q) => isObj(q.clause) && q.evidence === hp.text.slice(q.clause.start, q.clause.end) && q.evidence !== hp.text
+        && q.clause.start <= q.cueIndex && q.cueIndex < q.clause.end),
+      at("/hp/evidence-is-the-clause"), null, "every capture's evidence is its clause (holding its cue), never the whole note", caps.map((q) => [q.id, q.cueIndex, q.clause]));
+    // Why each one is set aside (includeSuppressed): the denied flag, the attribute negation, the exam section.
+    const sup = arr(x.extract(lex, hp.text, { ...CHART_OPTS, includeSuppressed: true })).filter((q) => isObj(q) && q.suppressedBy !== undefined).map(tagOf);
+    c.diff(["rf_pulsatile=true [negated]", "m_aura=yes [conflict]", "v_head=yes [attribute]", "n_allo=yes [section]", "r_normal=yes [section]"], sup, { at: at("/hp/set-aside") });
+    const cards = attempt(c, at("/hp/cards"), null, () => scribe.clarifyPrompts(module, x.clarifyCues(lex, hp.text, { chart: true }), {}));
+    if (cards !== undefined) c.diff(HP_CARD_IDS, arr(cards).map((q) => q && q.id), { at: at("/hp/cards") });
+    // The cards stay with the note's own captures recorded (none of their targets is answered by it).
+    const answers = {};
+    for (const q of caps) if (isObj(q) && q.kind === "item" && answers[q.id] === undefined) answers[q.id] = q.value;
+    const cards2 = attempt(c, at("/hp/cards-after-ingest"), null, () => scribe.clarifyPrompts(module, x.clarifyCues(lex, hp.text, { chart: true }), { answers }));
+    if (cards2 !== undefined) c.diff(HP_CARD_IDS, arr(cards2).map((q) => q && q.id), { at: at("/hp/cards-after-ingest") });
+  }
+  // The lead's example: "runny nose" asks the lead's question verbatim with pr_purulence's answers;
+  // the card leaves once x_purulent is answered.
+  const probes = arr(module.logic && module.logic.probes && module.logic.probes.list);
+  const pur = probes.find((q) => q.id === "pr_purulence");
+  const rn = attempt(c, at("/runny-nose"), null, () => scribe.clarifyPrompts(module, x.clarifyCues(lex, "Reports runny nose.", { chart: true }), {}));
+  if (rn !== undefined) {
+    c.diff([{ id: "cl_rhinorrhea", kind: "probe", target: "pr_purulence", ask: "is the rhinorrhea clear or purulent?", labels: arr(pur && pur.opts).map((o) => o.l) }],
+      arr(rn).map((q) => ({ id: q.id, kind: q.kind, target: q.target, ask: q.ask, labels: arr(q.opts).map((o) => o.label) })), { at: at("/runny-nose") });
+  }
+  const rn2 = attempt(c, at("/runny-nose/answered"), null, () => scribe.clarifyPrompts(module, x.clarifyCues(lex, "Reports runny nose.", { chart: true }), { answers: { x_purulent: "no" } }));
+  if (rn2 !== undefined) c.diff([], arr(rn2).map((q) => q && q.id), { at: at("/runny-nose/answered") });
+
+  // D9 (2026-10-12): a text read as a spoken line on lexicon 0.3.2 and 0.3.3, audited under AD18 (rules P and
+  // X, typed chart text's, never fire in speech); review round 2 required the two to be identical.
+  const ad18 = allowedDifference("AD18");
+  const spokenAudit = (where, text) => {
+    const sp = attempt(c, at(`${where}/spoken`), { text }, () => ({ a: x.extract(lex032, text, { includeHeard: true }), b: x.extract(lex, text, { includeHeard: true }) }));
+    if (sp === undefined) return;
+    const [na, nb] = ad18.normalise(sp.a, sp.b, { AD18: { delta: LEXICON_DELTA_033, text, lexicon: lex, chart: false } }, "/extract033/spoken");
+    c.check(JSON.stringify(sp.a) === JSON.stringify(sp.b) || JSON.stringify(na) === JSON.stringify(nb), at(`${where}/spoken-audited-by-AD18`), { text, a: tags(sp.a), b: tags(sp.b) }, "lexicon 0.3.2 and 0.3.3 agree as spoken lines up to AD18", "a difference AD18 does not explain");
+  };
+  // Review round 2: explicit expectations on the shipped lexicon (typed chart text).
+  for (const [label, text, want] of REVIEW2_CASES) {
+    const caps = attempt(c, at(`/round2/${label}`), { text }, () => x.extract(lex, text, CHART_OPTS));
+    const cues = attempt(c, at(`/round2/${label}/cues`), { text }, () => x.clarifyCues(lex, text, { chart: true }));
+    if (caps === undefined || cues === undefined) continue;
+    const got = tags(arr(caps).filter((q) => isObj(q) && q.suppressedBy === undefined));
+    const present = new Set(arr(caps).filter((q) => isObj(q) && q.suppressedBy === undefined).map((q) => q.id));
+    const cueIds = arr(cues).map((q) => q.id);
+    c.diff([], arr(want.has).filter((t) => !got.includes(t)), { at: at(`/round2/${label}/has`), input: { text, got } });
+    c.diff([], arr(want.not).filter((id) => present.has(id)), { at: at(`/round2/${label}/not`), input: { text, got } });
+    c.diff([], arr(want.cues).filter((id) => !cueIds.includes(id)), { at: at(`/round2/${label}/cues`), input: { text, cues: cueIds } });
+    c.diff([], arr(want.noCues).filter((id) => cueIds.includes(id)), { at: at(`/round2/${label}/noCues`), input: { text, cues: cueIds } });
+    spokenAudit(`/round2/${label}`, text);
+  }
+  // No safety clarification entry (one naming a probe whose option raises a red flag) keeps a qualifier
+  // review round 2 removed: a stated dangerous detail never silences the card that would ask.
+  const probeById = new Map(arr(module.logic && module.logic.probes && module.logic.probes.list).filter(isObj).map((q) => [q.id, q]));
+  const safety = arr(lex.clarify).filter((e) => isObj(e) && typeof e.probe === "string" && arr((probeById.get(e.probe) || {}).opts).some((o) => isObj(o) && o.rf));
+  c.check(safety.length >= 4, at("/round2/safety-entries"), null, "≥ 4 safety clarification entries", safety.map((e) => e.id));
+  for (const e of safety) c.diff([], arr(e.unless).filter((u) => REVIEW2_REMOVED_QUALIFIERS.includes(u)), { at: at(`/round2/unless/${e.id}`) });
+  // Review round 3: the same for the round-3 review's texts, and the red-flag battery.
+  for (const [label, text, want] of REVIEW3_CASES) {
+    const caps = attempt(c, at(`/round3/${label}`), { text }, () => x.extract(lex, text, CHART_OPTS));
+    const cues = attempt(c, at(`/round3/${label}/cues`), { text }, () => x.clarifyCues(lex, text, { chart: true }));
+    if (caps === undefined || cues === undefined) continue;
+    const got = tags(arr(caps).filter((q) => isObj(q) && q.suppressedBy === undefined));
+    const present = new Set(arr(caps).filter((q) => isObj(q) && q.suppressedBy === undefined).map((q) => q.id));
+    const cueIds = arr(cues).map((q) => q.id);
+    c.diff([], arr(want.has).filter((t) => !got.includes(t)), { at: at(`/round3/${label}/has`), input: { text, got } });
+    c.diff([], arr(want.not).filter((id) => present.has(id)), { at: at(`/round3/${label}/not`), input: { text, got } });
+    c.diff([], arr(want.cues).filter((id) => !cueIds.includes(id)), { at: at(`/round3/${label}/cues`), input: { text, cues: cueIds } });
+    c.diff([], arr(want.noCues).filter((id) => cueIds.includes(id)), { at: at(`/round3/${label}/noCues`), input: { text, cues: cueIds } });
+    spokenAudit(`/round3/${label}`, text);
+  }
+  const [bPhrases, bTexts, bFlags] = redFlagBattery(c, x, lex, at);
+  c.check(bFlags >= 12 && bPhrases >= 150, at("/round3/battery/size"), null, "every flag (≥ 12) and every red-flag phrase (≥ 150)", { flags: bFlags, phrases: bPhrases });
+  // Sign-off (2026-10-12): spoken MASQUE lines with explicit expectations (D9).
+  for (const [label, text, want] of SPOKEN_CASES) {
+    const caps = attempt(c, at(`/spoken/${label}`), { text }, () => x.extract(lex, text, { includeHeard: true }));
+    if (caps === undefined) continue;
+    const got = tags(arr(caps).filter((q) => isObj(q) && q.suppressedBy === undefined));
+    const present = new Set(arr(caps).filter((q) => isObj(q) && q.suppressedBy === undefined).map((q) => q.id));
+    c.diff([], arr(want.has).filter((t) => !got.includes(t)), { at: at(`/spoken/${label}/has`), input: { text, got } });
+    c.diff([], arr(want.not).filter((id) => present.has(id)), { at: at(`/spoken/${label}/not`), input: { text, got } });
+    if (want.typedNot || want.typedHas) {
+      const ty = attempt(c, at(`/spoken/${label}/typed`), { text }, () => x.extract(lex, text, CHART_OPTS));
+      if (ty !== undefined) {
+        const tg = tags(arr(ty).filter((q) => isObj(q) && q.suppressedBy === undefined));
+        const tp = new Set(arr(ty).filter((q) => isObj(q) && q.suppressedBy === undefined).map((q) => q.id));
+        c.diff([], arr(want.typedHas).filter((t) => !tg.includes(t)), { at: at(`/spoken/${label}/typed-has`), input: { text, got: tg } });
+        c.diff([], arr(want.typedNot).filter((id) => tp.has(id)), { at: at(`/spoken/${label}/typed-not`), input: { text, got: tg } });
+      }
+    }
+  }
+  c.note(`block 5, sign-off (2026-10-12): ${SPOKEN_CASES.length} spoken MASQUE lines with explicit expectations (D9: the reply word, direct denials, the pronoun, hedges and context markers in speech)`);
+  c.note(`block 5, review round 3: ${REVIEW3_CASES.length} chart texts with explicit expectations, each also read as a spoken line, lexicon ${lex032.version} and ${lex.version} audited under AD18; red-flag battery: ${bPhrases} phrases of ${bFlags} flags × ${RF_BATTERY_RAISE.length} affirming and ${RF_BATTERY_DENY.length} denying templates (${bTexts} texts): every affirmed flag raised, no denied flag raised`);
+  c.note(`block 5, review round 2: ${REVIEW2_CASES.length} chart texts with explicit expectations (held-out H06, H09, H11, H20-H22, H27; the unless rule; treatment failure; notation; hedges; report headers; the exam section), each also read as a spoken line, lexicon ${lex032.version} and ${lex.version} audited under AD18; ${safety.length} safety clarification entries without a removed qualifier`);
+
+  // The 0.4.0 benchmark.
+  const micro = prf(sum(rows, "tp"), sum(rows, "fp"), sum(rows, "fn"));
+  const chartRows = rows.filter((r) => r.origin === "chart");
+  const catalogue = chartRows.filter((r) => isObj(r.kase.catalogue));
+  const chartAgree = catalogue.filter((r) => r.kase.catalogue.agrees === true).length;
+  out.benchmark040 = { tp: micro.tp, fp: micro.fp, fn: micro.fn, dialoguesApplied, dialoguesRefused, chartCases: chartRows.length, chartAgree, superseded: arr(meta.supersede).length };
+  out.lines040 = [
+    `lexicon ${lex.version} · ${x.EXTRACTOR_KIND} · features ${arr(x.EXTRACTOR_FEATURES).join(", ")} · development set ${meta.version}`,
+    `!! ${String(meta.provenance || "").split(".")[0]}.`,
+    "!! These are development figures, not validation results; every 0.4.0 label is a draft test expectation.",
+    `!! The 0.3.0 labels are the 0.3.2 extractor's own output and the chart labels the 0.3.3 extractor's (regression snapshots); P/R/F1 on them is tautological, not a measurement.`,
+    "",
+    `utterances ${rows.length} (${rows.filter((r) => r.origin === "0.2.0").length} from 0.2.0 + ${rows.filter((r) => r.origin === "0.3.0").length} from 0.3.0 + ${chartRows.length} chart) · labelled extractions ${sum(rows, "labelled")}`,
+    `  micro  P ${pct(micro.p)}  R ${pct(micro.r)}  F1 ${pct(micro.f1)}  (tp ${micro.tp} fp ${micro.fp} fn ${micro.fn})`,
+    `  supersede table ${arr(meta.supersede).length} labels (${caseNow.size} cases, ${stepNow.size} dialogue steps); outputs changed against lexicon ${lex032.version}: ${changedCases} cases, ${changedSteps} dialogue steps`,
+    `  chart-text catalogue: the 0.3.3 output agrees with the team's draft expectation on ${chartAgree}/${catalogue.length} rows`,
+    "",
+    `DIALOGUES (${arr(g30.dialogues).length})`,
+    `  carry applied as labelled   ${dialoguesApplied}/${arr(g30.dialogues).length}`,
+    `  refused as labelled         ${dialoguesRefused}/${arr(g30.dialogues).length}`,
+  ];
+  c.note(`block 5: gold set ${meta.version} on lexicon ${lex.version}: ${rows.length} cases (${chartRows.length} chart), ${arr(g30.dialogues).length} dialogues, ${arr(meta.supersede).length} superseded labels; ${changedCases} cases and ${changedSteps} dialogue steps change against lexicon ${lex032.version}, exactly the superseded ones; catalogue agreement ${chartAgree}/${catalogue.length}`);
 }
 
 // --------------------------------------------------------------------------- block 4: F4 property
@@ -2117,7 +3231,7 @@ export default {
     need(Number.isInteger(contract.LEXICON_CARRY_MAX), "waits on WP-C: contract.LEXICON_CARRY_MAX");
     const c = collector(h);
     const invalid = [];
-    const out = { goldSha: null, benchmark: null, lines: [] };
+    const out = { goldSha: null, benchmark: null, lines: [], gold040Sha: null, benchmark040: null, lines040: [] };
 
     await block1(c, h, x, contract.LEXICON_CARRY_MAX);
 
@@ -2125,9 +3239,48 @@ export default {
     c.note(validationNote(validation));
     need(isObj(module.lexicon), "the MASQUE rubric has no lexicon");
     const lex = module.lexicon;
-    c.diff(LEXICON_DELTA.to, lex.version, { at: "/lexicon/version" });
-    const lex031 = revertLexiconDelta(lex, LEXICON_DELTA);
-    c.check(lex031 !== null, "/lexicon031", { version: lex.version }, `the ${LEXICON_DELTA.from}-equivalent lexicon (revertLexiconDelta)`, null);
+    c.diff(LEXICON_DELTA_033.to, lex.version, { at: "/lexicon/version" });
+    // Release 0.4.7: the 0.3.2-equivalent lexicon (the 0.3.3 delta reverted) carries every 0.3.2
+    // check; the 0.3.1-equivalent one is the chain reverted.
+    const lex032 = revertLexiconDelta(lex, LEXICON_DELTA_033);
+    c.check(lex032 !== null, "/lexicon032", { version: lex.version }, `the ${LEXICON_DELTA_033.from}-equivalent lexicon (revertLexiconDelta by tests/harness/lexicon-delta-033.js)`, null);
+    const lex031 = lex032 === null ? null : revertLexiconChain(lex, [LEXICON_DELTA, LEXICON_DELTA_033]);
+    c.check(lex031 !== null, "/lexicon031", { version: lex.version }, `the ${LEXICON_DELTA.from}-equivalent lexicon (revertLexiconChain)`, null);
+    if (lex032) {
+      // The chart-reading fields are absent from the 0.3.2-equivalent lexicon, and inert there:
+      // clarifyCues gives nothing and every capture's evidence is the whole utterance.
+      c.diff([], ["clauses", "clarify"].filter((k) => lex032[k] !== undefined), { at: "/block1/default-off/lexicon032/new-fields" });
+      const rng = h.rng((h.seed ^ 0x4C583332) >>> 0); // "LX32"
+      const n = h.quick ? DEFAULT_OFF_UTTERANCES.quick : DEFAULT_OFF_UTTERANCES.full;
+      let k = 0;
+      for (const text of utterances(rng, lex032, n)) {
+        const where = `/block1/default-off/lexicon032/${k++}`;
+        attempt(c, where, { text }, () => {
+          same(c, [], x.clarifyCues(lex032, text), `${where}/clarifyCues`, { text });
+          const caps = x.extract(lex032, text, { includeHeard: true, includeSuppressed: true });
+          same(c, [], caps.filter((cp) => cp.evidence !== text || cp.clause !== undefined).map(tagOf), `${where}/evidence`, { text });
+        });
+        if (k % 500 === 0) await tick();
+      }
+      // opts.chart without lexicon.clauses (review round 1): extract is unchanged by it (the loop above
+      // and defaultOff), but extractInContext with opts.chart never carries, whatever the lexicon: a
+      // reply voice would carry into the open slot records nothing carried and the slot comes back as
+      // passed in (typed chart text, spec 0.4.7 §3.8).
+      const armed = attempt(c, "/block1/default-off/lexicon032/chart-slot/armed", null, () => x.extractInContext(lex032, "I get dizzy.", null));
+      const P = armed && armed.pending;
+      if (c.check(isObj(P), "/block1/default-off/lexicon032/chart-slot/armed", null, "a slot armed by a voice line", P)) {
+        const reply = "Usually for a few hours.";
+        const voice = attempt(c, "/block1/default-off/lexicon032/chart-slot/voice", null, () => x.extractInContext(lex032, reply, P));
+        const typed = attempt(c, "/block1/default-off/lexicon032/chart-slot/chart", null, () => x.extractInContext(lex032, reply, P, { chart: true }));
+        if (voice !== undefined) c.check(voice.carry.applied === true, "/block1/default-off/lexicon032/chart-slot/voice-carries", { reply }, "carried", voice.carry);
+        if (typed !== undefined) {
+          c.check(typed.pending === P && typed.carry.applied === false && typed.carry.refused === null && !arr(typed.captures).some((q) => q.via === "carry"),
+            "/block1/default-off/lexicon032/chart-slot/untouched", { reply }, "nothing carried, the slot passed in returned", { pending: typed.pending === P, carry: typed.carry, captures: tags(typed.captures) });
+          same(c, x.extract(lex032, reply, { includeHeard: true, pendingIds: [P.id] }), typed.captures, "/block1/default-off/lexicon032/chart-slot/captures", { reply });
+        }
+      }
+      c.note(`default-off (chart reading): ${k} seeded utterances on lexicon ${lex032.version} (the shipped lexicon with the 0.3.3 delta reverted): no clarification cue, no clause evidence; opts.chart there never carries (the slot returned untouched)`);
+    }
     if (lex031) {
       const extra = newFieldsOf(lex031);
       c.diff([], extra, { at: "/block1/default-off/lexicon031/new-fields" });
@@ -2139,9 +3292,10 @@ export default {
       }
     }
 
-    await block2(c, h, x, module, lex031, out);
+    if (lex032) await block2(c, h, x, module, lex032, lex031, out);
     block3(c, scribe, vocab, module, x);
-    await block4(c, h, x, lex, lex031);
+    if (lex032) await block4(c, h, x, lex032, lex031);
+    if (lex032) await block5(c, h, x, scribe, module, lex, lex032, out);
 
     // Pins (D6): never a silent pass.
     if (GOLD_0_3_0_SHA256 === PIN_AFTER_RUN) {
@@ -2156,13 +3310,29 @@ export default {
     } else {
       c.check(false, "/block2/benchmark", null, EXPECTED_BENCHMARK, "not computed (the gold sets did not load)");
     }
+    // Release 0.4.7: gold set 0.4.0 on lexicon 0.3.3, pinned the same way.
+    if (GOLD_0_4_0_SHA256 === PIN_AFTER_RUN) {
+      invalid.push(`INVALID until pinned: GOLD_0_4_0_SHA256 reads "${PIN_AFTER_RUN}"; the gold set 0.4.0 served now has sha256 ${out.gold040Sha || "(unreadable)"}`);
+    } else if (out.gold040Sha !== GOLD_0_4_0_SHA256) {
+      invalid.push(`gold set 0.4.0 tests/fixtures/${GOLD_0_4_0_FIXTURE}: sha256 ${String(out.gold040Sha).slice(0, 12)}… ≠ pinned ${GOLD_0_4_0_SHA256.slice(0, 12)}… (the cases changed after the pinned run: review them, then re-pin)`);
+    }
+    if (EXPECTED_BENCHMARK_040 === PIN_AFTER_RUN) {
+      invalid.push(`INVALID until pinned: EXPECTED_BENCHMARK_040 reads "${PIN_AFTER_RUN}"; this run computed ${JSON.stringify(out.benchmark040)}`);
+    } else if (out.benchmark040) {
+      c.diff(EXPECTED_BENCHMARK_040, out.benchmark040, { at: "/block5/benchmark" });
+    } else {
+      c.check(false, "/block5/benchmark", null, EXPECTED_BENCHMARK_040, "not computed (the gold sets did not load)");
+    }
     const pins = [
       `pin GOLD_0_3_0_SHA256 = ${JSON.stringify(out.goldSha)}`,
       `pin EXPECTED_BENCHMARK = ${JSON.stringify(out.benchmark)}`,
+      `pin GOLD_0_4_0_SHA256 = ${JSON.stringify(out.gold040Sha)}`,
+      `pin EXPECTED_BENCHMARK_040 = ${JSON.stringify(out.benchmark040)}`,
       "(pin only from the lead's browser run, and only when it reports no difference)",
     ];
     const block = out.lines.length ? ["benchmark block for app/modules/masque/CHANGELOG.md (one note per line):", ...out.lines] : [];
-    const res = c.result([...pins, ...block]);
+    const block040 = out.lines040 && out.lines040.length ? ["gold set 0.4.0 benchmark block for app/modules/masque/CHANGELOG.md (one note per line):", ...out.lines040] : [];
+    const res = c.result([...pins, ...block, ...block040]);
     if (!invalid.length) return res;
     const failing = c.count ? [`${c.count} failing comparison(s) as well (see the differences): the verdict is FAIL once pinned`] : [];
     return { ...res, verdict: "invalid", notes: [...invalid, ...failing, ...res.notes] };

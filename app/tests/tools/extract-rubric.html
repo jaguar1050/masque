@@ -78,7 +78,7 @@ importModule('./extract-rubric.js')
       : 'Differs from the committed file' + (r.committed.error ? ' (' + r.committed.error + ')' : ' (committed sha256 ' + r.committed.sha256 + ')') + '; extracted sha256 ' + r.sha256 + '.';
     v.appendChild(p);
     const h = document.createElement('p');
-    h.textContent = 'scoringHash ' + r.hashes.scoringHash + ' · instrumentHash ' + r.hashes.instrumentHash + ' · ' + r.checks.length + ' checks passed · ' + new TextEncoder().encode(r.text).length + ' bytes';
+    h.textContent = 'scoringHash ' + r.hashes.scoringHash + ' · instrumentHash ' + r.hashes.instrumentHash + ' · lexiconHash ' + r.hashes.lexiconHash + ' · contentHash ' + r.hashes.contentHash + ' · ' + r.checks.length + ' checks passed · ' + new TextEncoder().encode(r.text).length + ' bytes';
     v.appendChild(h);
     for (const c of r.checks) { const tr = document.createElement('tr'); cell(tr, c.ok ? 'ok' : 'FAIL', c.ok ? 'x-ok' : 'x-bad'); cell(tr, c.what); $('checks').appendChild(tr); }
     for (const s of r.sources) { const tr = document.createElement('tr'); cell(tr, s.path); cell(tr, s.file); cell(tr, s.lines); cell(tr, s.how); $('sources').appendChild(tr); }

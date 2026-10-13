@@ -143,6 +143,33 @@ export const LEXICON_SCALE_KEYS = ["id", "cue", "bands", "fallback", "heard", "c
  * on the apostrophe-folded text, so digits typed there are matched as digits.
  */
 export const LEXICON_NORMALIZE_KEYS = ["apostrophes", "numbers"];
+/**
+ * lexicon.clauses (release 0.4.7, chart reading; engine/extraction.js "Chart reading"): its keys
+ * (validator V28 rejects any other), the keys holding {ph, source} phrase lists, and the section
+ * kinds of clauses.sections. scopeEnd and the section kind "read" were added by the review fixes of
+ * release 0.4.7 (round 1): scopeEnd words end a list denial; a "read" header (history, assessment,
+ * plan …) is read normally and ends an exam, family-history or skip section. redFlags (review round 2)
+ * holds chart-register red-flag phrases by flag id ({ph, source} rows).
+ * complement (review round 3) holds words after which a denial no longer governs the finding ("No
+ * workup for diplopia."): a list denial does not reach past one and no denial lowers a red flag past one.
+ * Chart reading applies to typed chart text and, since the clinical lead's decision D9 of 2026-10-12,
+ * to spoken and demo lines too (review round 2 had kept it to typed chart text, extraction opts.chart).
+ */
+export const LEXICON_CLAUSES_KEYS = ["wordStart", "affirm", "deny", "post", "prefix", "breaks", "scopeEnd", "complement", "mask", "hedge",
+  "placeholder", "placeholderAsk", "thirdParty", "chartIgnoreThirdParty", "sections", "examItems", "strictConflict", "redFlags", "redFlagNegation"];
+export const LEXICON_CLAUSE_LISTS = ["affirm", "deny", "post", "prefix", "breaks", "scopeEnd", "complement", "mask", "hedge", "placeholder",
+  "thirdParty", "chartIgnoreThirdParty"];
+export const LEXICON_SECTION_KINDS = ["exam", "family", "skip", "read"];
+/**
+ * Where a clauses row or a clarify entry comes from: the clinical lead's own words, module text, a
+ * draft awaiting the lead's sign-off, or a draft the lead approved ("lead-approved": release 0.4.7,
+ * the sign-off of 2026-10-12; the drafting record stays with the module's own records). An ask written
+ * for a clarify entry, and the placeholder notice, is "lead", "draft" or "lead-approved".
+ */
+export const LEXICON_SOURCES = ["lead", "module", "draft", "lead-approved"];
+export const LEXICON_ASK_SOURCES = ["lead", "draft", "lead-approved"];
+/** Keys of a lexicon.clarify entry (validator V28 rejects any other). */
+export const LEXICON_CLARIFY_KEYS = ["id", "ph", "unless", "probe", "item", "ask", "source"];
 
 // ---------------------------------------------------------------------------------------
 // Rubric (JSON layer, design §3.2). R = required, O = optional; §3.5 gives the engine
@@ -219,6 +246,13 @@ export const LEXICON_NORMALIZE_KEYS = ["apostrophes", "numbers"];
  *                                                 line, "family" before the family-history placeholder (which then reads
  *                                                 "Other family history"); an item listed here leaves the review of
  *                                                 systems and may not also be a history row (V61)
+ * @property {Array<{text:string, source:string, decided:string}>} [planAdvice]
+ *                                                 release 0.4.8: plan lines printed verbatim ("- " and the text) right
+ *                                                 after the empiric-treatment reference lines, before the treatment-
+ *                                                 offered placeholders, only where those references print with no red
+ *                                                 flag open (never under an open flag's screen-based block); source and
+ *                                                 decided (a real YYYY-MM-DD date) record who decided the line and
+ *                                                 when, and are never printed (V61)
  */
 /** @typedef {{title:string, publisher:string, citation:string, url:string, accessed:string}} EmrCitation  url https, accessed YYYY-MM-DD */
 /**
@@ -433,6 +467,64 @@ export const LEXICON_NORMALIZE_KEYS = ["apostrophes", "numbers"];
  *                                                 carryRefuse and every gate window run on the apostrophe-folded
  *                                                 text. Needs lang "en" or "en-…" (absent lang = "en-US").
  *                                                 Reported indices stay in original-text coordinates.
+ * @property {{wordStart?:boolean, affirm?:PhraseRow[], deny?:PhraseRow[], post?:PhraseRow[], prefix?:PhraseRow[],
+ *             breaks?:PhraseRow[], scopeEnd?:PhraseRow[], complement?:PhraseRow[], mask?:PhraseRow[], hedge?:PhraseRow[],
+ *             placeholder?:PhraseRow[],
+ *             placeholderAsk?:{text:string, source:("lead"|"draft"|"lead-approved")}, thirdParty?:PhraseRow[],
+ *             chartIgnoreThirdParty?:PhraseRow[], sections?:{exam?:PhraseRow[], family?:PhraseRow[], skip?:PhraseRow[],
+ *             read?:PhraseRow[]},
+ *             examItems?:string[], strictConflict?:string[], redFlags?:Object<string, PhraseRow[]>,
+ *             redFlagNegation?:boolean}} [clauses]
+ *                                                 O chart reading (release 0.4.7), for typed chart text (opts.chart) and,
+ *                                                 since the clinical lead's decision D9 of 2026-10-12, for spoken and demo
+ *                                                 lines too (carry-over, the chart pronouns and context markers as the
+ *                                                 extractor's "Spoken lines" says); absent = none, and every family
+ *                                                 extracts exactly as without it. redFlags: chart-register red-flag
+ *                                                 phrases by red-flag id, read after lexicon.redFlags[flag] (V28: every
+ *                                                 key a red flag of the module). examItems may be empty
+ *                                                 (nothing is captured inside an exam section). PhraseRow = {ph, source}, source ∈
+ *                                                 LEXICON_SOURCES ("lead" | "module" | "draft" | "lead-approved": a draft row awaits the
+ *                                                 lead's sign-off). Keys ⊆ LEXICON_CLAUSES_KEYS (V28). Each list
+ *                                                 non-empty when present, phrases unique per list, lowercase (V29), at
+ *                                                 most one space at either end (" negative", ": no" and "no " are
+ *                                                 deliberate). wordStart: phrases and the lexicon's negation,
+ *                                                 attribution and history cues match only at a word start; the cue
+ *                                                 lists below (affirm, deny, post, prefix, breaks, scopeEnd, complement,
+ *                                                 hedge, placeholder, thirdParty) always match as whole words (a side ending in a character
+ *                                                 that is no letter or digit is unbounded: "has ", "non-", "?");
+ *                                                 phrases stay stems at their end. affirm: ends a denial (a nearer
+ *                                                 affirm cue wins). deny: opens a list denial up to the clause end (the
+ *                                                 lexicon's negation cues stay window-only, the window clipped to the
+ *                                                 clause). post: negates a phrase before it in the same list item.
+ *                                                 prefix: attribute negation glued before a phrase (the mention is
+ *                                                 dropped, never "no"). breaks: end a clause. scopeEnd (review round
+ *                                                 1): words that end a list denial and a window. complement (review
+ *                                                 round 3): words after which a denial no longer governs the finding
+ *                                                 (no list denial reaches past one, no denial lowers a flag past one). mask: a phrase hit inside
+ *                                                 one is no hit. hedge: a hedged clause records nothing (clarifyCues
+ *                                                 asks instead). placeholder: a clause holding one records nothing;
+ *                                                 placeholderAsk is the question of its one clarification card (none
+ *                                                 without it). thirdParty: added to the attribution gate.
+ *                                                 chartIgnoreThirdParty: cues of lexicon.thirdParty.cues (V28) that do
+ *                                                 not gate in typed chart text (opts.chart; pronouns that name the
+ *                                                 patient there). sections: header words per kind (exam: only examItems
+ *                                                 capture; family: third-party gated except thirdPartyExempt entries;
+ *                                                 skip: nothing), a word in one kind only. examItems: items (V28).
+ *                                                 strictConflict: yes/no items of a negative (rule-out) domain (V28)
+ *                                                 for which any affirmed and any denied mention is a conflict (no
+ *                                                 capture); for every other yes/no item a conflict needs the same
+ *                                                 phrase, or overlapping phrase spans, said both ways, and otherwise an
+ *                                                 affirmed mention wins. redFlagNegation: true lets a denial keep a red
+ *                                                 flag from being raised (never listed; the lead's decision of
+ *                                                 2026-10-11).
+ * @property {Array<{id:string, ph:string[], unless?:string[], probe?:string, item?:string,
+ *             ask?:{text:string, source:("lead"|"draft"|"lead-approved")}, source:("lead"|"module"|"draft"|"lead-approved")}>} [clarify]
+ *                                                 O clarification triggers (release 0.4.7), read by clarifyCues only,
+ *                                                 never by extract. Keys ⊆ LEXICON_CLARIFY_KEYS; id /^[a-z][a-z0-9_]*$/,
+ *                                                 unique; ph non-empty, unless non-empty when present (both lowercase,
+ *                                                 V29); exactly one of probe (a probe of the module's logic) or item (an
+ *                                                 item) (V28). Question: ask.text, else the probe's say, else the item's
+ *                                                 ask (else its text); answers: the probe's opts or the item's options.
  * @property {({version:string, lexiconVersion:string, file?:string}|null)} goldSet  R for built-ins; O otherwise (a lexicon
  *                                                 created in the editor has none: footer "gold set — (not benchmarked)")
  */
@@ -551,7 +643,7 @@ export const LEXICON_NORMALIZE_KEYS = ["apostrophes", "numbers"];
 
 /**
  * `acknowledged` = JSON pointers confirmed in the Apply dialog (§5.7).
- * @typedef {{date:string, kind:("reconciliation"|"extraction"|"derived"|"note"|"lexicon"|"translation"|"emr-template"|"sign-off"|"referral"|"emr-decisions"), note:string,
+ * @typedef {{date:string, kind:("reconciliation"|"extraction"|"derived"|"note"|"lexicon"|"translation"|"emr-template"|"sign-off"|"referral"|"emr-decisions"|"question"), note:string,
  *            author?:string, paths?:string[], axes?:Object<string,[string,string]>,
  *            acknowledged?:string[]}} ChangelogEntry
  */
@@ -830,5 +922,4 @@ export const LEXICON_NORMALIZE_KEYS = ["apostrophes", "numbers"];
  * @property {{screener:Object[], scribe:Object[]}} cohorts
  * @property {function(ScreenSnapshot):void} publish
  * @property {function(("screener"|"scribe"), Object):void} addRow
- * @property {function(("screener"|"scribe")):void} clearRows   drops that source's captured rows (Scribe Reset)
  */

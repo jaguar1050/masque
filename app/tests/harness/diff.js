@@ -66,6 +66,19 @@
 // ServiceRequest's code text, for the comparison's phenotype only (ctx.AD17 = {delta, complaint};
 // the delta travels in ctx, never through an import).
 //
+// Release 0.4.7: the lexicon deltas form a chain. tests/harness/lexicon-delta-033.js (0.3.2 → 0.3.3:
+// lexicon.clauses, lexicon.clarify, four negation cues, the gold-set reference) goes through the
+// same applyLexiconDelta / revertLexiconDelta after the 0.3.2 delta, which stays as it was;
+// revertLexiconChain(lex, [LEXICON_DELTA, LEXICON_DELTA_033]) gives the 0.3.1-equivalent lexicon.
+// AD18 excuses exactly that delta: at /lexicon and /module/versions as AD13 does (listed before AD13,
+// so AD13 then sees the 0.3.2 form), and in /extract033/… capture arrays by an evidence rule (the
+// clause evidence back to the whole text) and per-id rules that each state a superset of one
+// chart-reading mechanism (ad18Explain lists them for self-checks). Since the clinical lead's decision
+// D9 of 2026-10-12 chart reading applies to spoken and demo lines too, so a comparison without
+// opts.chart (ctx.AD18.chart false: a spoken line) is excused by the same rules, except the two that
+// belong to typed chart text: P (the chart pronouns) and X (no context marker from typed chart text,
+// D8). Review round 2 had kept every spoken comparison strict.
+//
 // applyEmrDecisionsDelta(rubric, delta) / revertEmrDecisionsDelta(rubric, delta) (release 0.4.6)
 // apply and invert the clinical lead's EMR-template answers of 2026-10-10 that add data
 // (tests/harness/emr-decisions-delta.js): each added row adds a key that must not exist yet to an
@@ -73,18 +86,40 @@
 // exactly what apply did and proves it by re-applying. The signed-off release 0.4.3 block of
 // tests/harness/emr-delta.js stays as it was under it.
 //
-// AD18-AD20 (release 0.4.7, the 2026-10-04 full audit; numbered AD13-AD15 on the audit branch
-// before the 0.4.6 merge): AD18 the Scribe suggestion pool widening while not scorable (decision
-// F12), AD19 valueDecimal for fractional QuestionnaireResponse points (F13), AD20 no referral
-// ServiceRequest and no CDS index card for a complaint that is not a declared phenotype value (F11).
+// applyQuestionDelta(rubric, delta) / revertQuestionDelta(rubric, delta) (release 0.4.8) apply and
+// invert the clinical lead's clinician question for item r_dur of 2026-10-12
+// (tests/harness/question-delta-048.js): each changed row replaces one item's `ask`, which must
+// still read its `from`, on the item its `item` names, under /domains/<i>/items/<j> only; revert
+// restores exactly that and proves it by re-applying. AD19 excuses exactly that question where the
+// baseline printed the old one (a suggestion or heard prompt of that item), never anywhere else.
+//
+// AD20 (release 0.4.8) excuses only the English version of the findings that a Spanish patient
+// summary adds for an English-speaking clinician (the clinical lead's request of 2026-10-12): in a
+// .txt the exact block ad20Block builds (the two titles, the English caveat lines of the view,
+// ad20EnglishNotices of the English .txt, and the English findings, ad20EnglishBody of the English
+// .txt of the same answers) right before the footer rule; in rendered text the exact text of the
+// English version section right before the disclaimer. Never in English. The built-in module has no
+// English caveat lines, so its block is the titles and the findings.
+//
+// Release 0.4.8, follow-up: the clinical lead's EMR plan line (tests/harness/emr-plan-delta-048.js)
+// adds one key under /emrTemplate and goes through applyEmrDecisionsDelta / revertEmrDecisionsDelta
+// unchanged (the shape of the 0.4.6 answers). AD21 excuses only the Ambient Scribe's added
+// "Question review" tab (the clinical lead's request of 2026-10-12, "to the right of "Ask Next""):
+// in the text of the Scribe's right card in the Safety, Ask-next and Note views, the tab's own text
+// right after the Ask next tab's text and right before the Note tab's, exactly once. The review
+// view itself is never part of a parity comparison (the baseline has none).
 
 /** The release string the frozen baseline prints, and the one screenAIr prints (AD4). */
 export const BASELINE_RELEASE = "0.3.0";
-export const NEW_RELEASE = "0.4.7";
+export const NEW_RELEASE = "0.4.8";
 const RELEASE_RE = /(?<![\d.])0\.3\.0(?![\d.])/g;
 
 /** The dated caveat line that closes every Patient .txt export (AD10, §4.12). */
 export const DATED_CAVEAT_RE = /^Prototype · not for clinical use · \d{4}-\d{2}-\d{2}$/;
+
+/** The footer rule of a Patient .txt (Pat L1115) and the rule around its English version (AD20, release 0.4.8). */
+export const AD20_FOOTER_RULE = "-".repeat(40);
+const AD20_RULE = "=".repeat(40);
 
 const unchanged = (a, b) => [a, b];
 const isObj = (x) => x !== null && typeof x === "object" && !Array.isArray(x) && !(x instanceof Date);
@@ -333,13 +368,16 @@ const DELTA_APPEND = [
 /**
  * The keys a lexicon delta may add (no `from`) or replace (`from` present): the version, the
  * per-entry scale fields of design 05 §1-§4 (carryExclude: lead decision 2026-10-04, round 2 R3a),
- * the top-level carryRefuse and normalize (lead decision D4) and the gold-set reference.
+ * the top-level carryRefuse and normalize (lead decision D4), the top-level clauses and clarify
+ * (release 0.4.7, tests/harness/lexicon-delta-033.js) and the gold-set reference.
  */
 const DELTA_FIELDS = [
   [/^\/version$/, null],
   [new RegExp(`^/scale/${IDX}/(?:heard|carry|yieldTo|anchor|carryExclude)$`), "scale"],
   [/^\/carryRefuse$/, null],
   [/^\/normalize$/, null],
+  [/^\/clauses$/, null],
+  [/^\/clarify$/, null],
   [/^\/goldSet$/, null],
 ];
 
@@ -408,6 +446,13 @@ function checkDelta(delta) {
       throw new Error(`lexicon delta: field "${row.path}" must be a list of distinct non-empty lowercase phrases`);
     }
     if (own(row, "from") && row.from === undefined) throw new Error(`lexicon delta: field "${row.path}" has an undefined "from"`);
+    // Release 0.4.7: the chart-reading object and the clarification list (their full shape is the
+    // validator's, V28/V29; here only what apply and revert rely on).
+    if (row.path === "/clauses" && !isObj(row.to)) throw new Error(`lexicon delta: field "${row.path}" must be an object`);
+    if (row.path === "/clarify" && (!Array.isArray(row.to) || !row.to.length || row.to.some((e) => !isObj(e) || typeof e.id !== "string" || !e.id)
+      || new Set(row.to.map((e) => e.id)).size !== row.to.length)) {
+      throw new Error(`lexicon delta: field "${row.path}" must be a non-empty list of entries with distinct ids`);
+    }
   }
   const v = delta.fields.find((row) => row.path === "/version");
   if (!v || !own(v, "from") || v.from !== delta.from || v.to !== delta.to) {
@@ -538,6 +583,26 @@ export function revertLexiconDelta(lex, delta) {
     }
   }
   return null;
+}
+
+/**
+ * The lexicon before the first delta of a chain (release 0.4.7): `deltas` in application order
+ * (tests/harness/lexicon-delta.js, then tests/harness/lexicon-delta-033.js), reverted last first with
+ * revertLexiconDelta, so each step proves its own delta exact and a lexicon still at a delta's
+ * `from` passes that step unchanged (staged landing). null when any step gives null, or for an
+ * empty or malformed chain. Never throws and never mutates its arguments.
+ * @param {object} lex
+ * @param {object[]} deltas
+ * @returns {object|null}
+ */
+export function revertLexiconChain(lex, deltas) {
+  if (!Array.isArray(deltas) || !deltas.length) return null;
+  let r = lex;
+  for (const d of [...deltas].reverse()) {
+    r = revertLexiconDelta(r, d);
+    if (r === null) return null;
+  }
+  return r;
 }
 
 // ---------------------------------------------------------------------------------------
@@ -740,6 +805,114 @@ export function emrSignOffComplete(signOff) {
   if (typeof d !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
   const t = new Date(`${d}T00:00:00Z`);
   return !Number.isNaN(t.getTime()) && t.toISOString().slice(0, 10) === d;
+}
+
+/**
+ * The clinical lead's sign-off of the lexicon delta 0.3.2 → 0.3.3 (release 0.4.7; signOff of
+ * tests/harness/lexicon-delta-033.js, decided 2026-10-12) against the lexicon the delta gives: [] when
+ * it is complete and applied, else the problems found (strings). Complete and applied:
+ *   - the record: by, scope, channel non-empty and date a real calendar date (emrSignOffComplete); rows
+ *     (the sign-off list, ids unique, each decision "approve", "strike" or "lead's own words"), totals
+ *     equal to those counts; partD the 19 questions D1-D19 in order, each answer one of its options;
+ *     d8FollowUp part1 and part2, each answer (comma-joined) among the options shown;
+ *   - no plain draft left: no clauses row (lists, sections, chart red-flag phrases), clarify entry or
+ *     placeholderAsk with source "draft", and no appended row of the delta marked "draft";
+ *   - every struck row absent from its clauses list, and `struck` naming exactly those rows;
+ *   - every approved clauses row present with source "lead-approved" and every lead row with "lead";
+ *     every approved appended negation cue in lexicon.negation.cues; every clarify entry of the list
+ *     present, approved ones "lead-approved" and the lead's "lead";
+ *   - every row `added` at the sign-off at its pointer with its phrase and source "lead-approved", and
+ *     every qualifier in `removedQualifiers` gone from its entry's unless list.
+ * Pure; never throws for object inputs.
+ * @param {object} delta
+ * @param {object} lexicon
+ * @returns {string[]}
+ */
+export function lexicon033SignOffProblems(delta, lexicon) {
+  const out = [];
+  const so = isObj(delta) ? delta.signOff : null;
+  if (!isObj(so)) return ["no signOff record"];
+  if (!emrSignOffComplete(so)) out.push("signOff: by, scope, channel and a real calendar date are required");
+  if (!isObj(lexicon)) return [...out, "no lexicon"];
+  const cl = isObj(lexicon.clauses) ? lexicon.clauses : {};
+  const rows = arr(so.rows).filter(isObj);
+  const DECISIONS = ["approve", "strike", "lead's own words"];
+  if (!rows.length || rows.length !== arr(so.rows).length) out.push("signOff.rows: a non-empty list of row records");
+  const ids = rows.map((r) => r.id);
+  if (new Set(ids).size !== ids.length) out.push("signOff.rows: ids must be unique");
+  const bad = rows.filter((r) => !DECISIONS.includes(r.decision) || typeof r.list !== "string");
+  if (bad.length) out.push(`signOff.rows: unknown decision or list (${bad.map((r) => r.id).join(", ")})`);
+  const count = (d) => rows.filter((r) => r.decision === d).length;
+  const t = isObj(so.totals) ? so.totals : {};
+  if (t.rows !== rows.length || t.approved !== count("approve") || t.struck !== count("strike") || t.leadOwnWords !== count("lead's own words")) {
+    out.push("signOff.totals must equal the counts of signOff.rows");
+  }
+  const pd = arr(so.partD);
+  if (pd.length !== 19 || pd.some((q, i) => !isObj(q) || q.id !== `D${i + 1}` || typeof q.question !== "string" || !arr(q.options).includes(q.answer))) {
+    out.push("signOff.partD: the 19 questions D1-D19 in order, each answer one of its options");
+  }
+  const fu = isObj(so.d8FollowUp) ? so.d8FollowUp : {};
+  for (const k of ["part1", "part2"]) {
+    const p = fu[k];
+    const ok = isObj(p) && isObj(p.options) && typeof p.answer === "string" && p.answer.split(",").every((a) => own(p.options, a));
+    if (!ok) out.push(`signOff.d8FollowUp.${k}: the question, its options and an answer among them`);
+  }
+  // No plain draft left.
+  const listOf = (name) => {
+    const parts = String(name).split(".");
+    if (parts[0] !== "clauses") return undefined;
+    let x = cl;
+    for (const p of parts.slice(1)) x = isObj(x) ? x[p] : undefined;
+    return Array.isArray(x) ? x : undefined;
+  };
+  const allRows = [];
+  for (const [k, v] of Object.entries(cl)) {
+    if (Array.isArray(v)) v.forEach((r, i) => allRows.push([`/clauses/${k}/${i}`, r]));
+    else if ((k === "sections" || k === "redFlags") && isObj(v)) for (const [kk, vv] of Object.entries(v)) arr(vv).forEach((r, i) => allRows.push([`/clauses/${k}/${kk}/${i}`, r]));
+  }
+  const drafts = allRows.filter(([, r]) => isObj(r) && r.source === "draft").map(([p]) => p);
+  arr(lexicon.clarify).forEach((e, i) => { if (isObj(e) && (e.source === "draft" || (isObj(e.ask) && e.ask.source === "draft"))) drafts.push(`/clarify/${i}`); });
+  if (isObj(cl.placeholderAsk) && cl.placeholderAsk.source === "draft") drafts.push("/clauses/placeholderAsk");
+  arr(delta.appended).forEach((r, i) => { if (!isObj(r) || r.source === "draft") drafts.push(`appended/${i}`); });
+  if (drafts.length) out.push(`plain drafts left: ${drafts.join(", ")}`);
+  // Struck rows absent; approved and lead rows present with their source.
+  const struck = rows.filter((r) => r.decision === "strike");
+  for (const r of struck) {
+    const l = listOf(r.list);
+    if (!l) out.push(`struck row ${r.id}: no clauses list ${r.list}`);
+    else if (l.some((x) => isObj(x) && x.ph === r.text)) out.push(`struck row ${r.id} (${r.list} "${r.text}") is still in the lexicon`);
+  }
+  const named = arr(so.struck).filter(isObj).map((x) => `${x.id}:${x.ph}`).sort();
+  if (JSON.stringify(named) !== JSON.stringify(struck.map((r) => `${r.id}:${r.text}`).sort())) out.push("signOff.struck must name exactly the struck rows");
+  const clar = arr(lexicon.clarify).filter(isObj);
+  for (const r of rows.filter((x) => x.decision !== "strike")) {
+    const want = r.decision === "approve" ? "lead-approved" : "lead";
+    if (r.list.startsWith("clauses.")) {
+      const l = listOf(r.list);
+      const hit = l ? l.find((x) => isObj(x) && x.ph === r.text) : undefined;
+      if (!hit || hit.source !== want) out.push(`row ${r.id} (${r.list} "${r.text}"): not in the lexicon with source "${want}"`);
+    } else if (r.list === "negation.cues (appended)") {
+      if (!arr(lexicon.negation && lexicon.negation.cues).includes(r.text)) out.push(`row ${r.id}: the negation cue "${r.text}" is not in the lexicon`);
+    } else if (r.list === "clarify") {
+      const id = isObj(r.text) ? r.text.id : undefined;
+      const e = clar.find((x) => x.id === id);
+      if (!e || e.source !== want) out.push(`row ${r.id}: clarify entry ${id} not in the lexicon with source "${want}"`);
+    }
+  }
+  // Rows added at the sign-off, and qualifiers removed.
+  for (const a of arr(so.added)) {
+    const segs = isObj(a) && typeof a.path === "string" ? a.path.split("/").slice(1) : [];
+    let x = lexicon;
+    for (const sg of segs) x = x === null || typeof x !== "object" ? undefined : x[sg];
+    if (!segs.length || !isObj(x) || x.ph !== a.ph || x.source !== "lead-approved") out.push(`added row ${isObj(a) ? a.path : "?"} ("${isObj(a) ? a.ph : "?"}") is not at its pointer as a lead-approved row`);
+  }
+  for (const q of arr(so.removedQualifiers)) {
+    const e = isObj(q) ? clar.find((x) => x.id === q.entry) : undefined;
+    if (!e) { out.push(`removedQualifiers: no clarify entry ${isObj(q) ? q.entry : "?"}`); continue; }
+    const left = arr(q.removed).filter((w) => arr(e.unless).includes(w));
+    if (left.length || !arr(q.removed).length) out.push(`removedQualifiers ${q.entry}: still holds ${left.join(", ") || "(nothing listed)"}`);
+  }
+  return out;
 }
 
 /**
@@ -993,6 +1166,98 @@ export function revertEmrDecisionsDelta(rubric, delta) {
   if (!delta.added.every((row) => valueAt(rubric, row.path) === undefined)) return null;
   try {
     applyEmrDecisionsDelta(rubric, delta);
+    return rubric;
+  } catch (e) {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------------------
+// The question delta (release 0.4.8, tests/harness/question-delta-048.js): the clinical lead's
+// clinician question for an item, as a changed `ask` under /domains/<i>/items/<j> only
+// ---------------------------------------------------------------------------------------
+
+const QUESTION_PATH_RE = /^\/domains\/(0|[1-9]\d*)\/items\/(0|[1-9]\d*)\/ask$/;
+
+/** Shape checks shared by apply and revert; throws on the first failure. */
+function checkQuestionDelta(delta) {
+  if (!isObj(delta)) throw new Error("question delta: not an object");
+  if (!Array.isArray(delta.changed) || !delta.changed.length) throw new Error("question delta: changed must be a non-empty list");
+  const paths = [];
+  for (const row of delta.changed) {
+    if (!isObj(row) || typeof row.path !== "string" || !QUESTION_PATH_RE.test(row.path)) {
+      throw new Error(`question delta: every path is /domains/<i>/items/<j>/ask (${JSON.stringify(isObj(row) ? row.path : row)})`);
+    }
+    if (paths.includes(row.path)) throw new Error(`question delta: ${row.path} is changed twice`);
+    paths.push(row.path);
+    if (typeof row.item !== "string" || !row.item) throw new Error(`question delta: ${row.path}: no item id`);
+    if (typeof row.from !== "string" || typeof row.to !== "string" || !row.from.trim() || !row.to.trim() || row.from === row.to) {
+      throw new Error(`question delta: ${row.path}: from and to must be two different non-empty strings`);
+    }
+  }
+  if (!isObj(delta.basis) || !Object.keys(delta.basis).length) throw new Error("question delta: records no basis");
+}
+
+/** The item a question row addresses ({item, key: "ask"}), or null when the path does not reach an item. */
+function questionItem(root, path) {
+  const m = QUESTION_PATH_RE.exec(path);
+  if (!m || !isObj(root) || !Array.isArray(root.domains)) return null;
+  const d = root.domains[Number(m[1])];
+  const items = isObj(d) && Array.isArray(d.items) ? d.items : null;
+  const it = items ? items[Number(m[2])] : undefined;
+  return isObj(it) ? it : null;
+}
+
+/**
+ * rubric + delta → the rubric with the question delta applied (release 0.4.8). Deep copy; never
+ * mutates either argument. Each `changed` row replaces the `ask` of the item at its path, which
+ * must be the item its `item` names and must still read its `from`; nothing else changes (no key
+ * is added or removed, so key order is kept). Throws on a malformed delta or a rubric that does
+ * not show the delta's preconditions.
+ * @param {object} rubric0
+ * @param {{changed: Array<{path, item, from, to}>, basis: object}} delta
+ * @returns {object}
+ */
+export function applyQuestionDelta(rubric0, delta) {
+  checkQuestionDelta(delta);
+  if (!isObj(rubric0)) throw new Error("question delta: the rubric is not an object");
+  const r = clone(rubric0);
+  for (const row of delta.changed) {
+    const it = questionItem(r, row.path);
+    if (!it) throw new Error(`question delta: ${row.path} does not reach an item of the rubric`);
+    if (it.id !== row.item) throw new Error(`question delta: ${row.path} is the item ${JSON.stringify(it.id)}, not ${JSON.stringify(row.item)}`);
+    if (!own(it, "ask") || it.ask !== row.from) throw new Error(`question delta: ${row.path} is ${JSON.stringify(it.ask)}, not ${JSON.stringify(row.from)}`);
+    it.ask = row.to;
+  }
+  return r;
+}
+
+/**
+ * The rubric without the question delta, or null (release 0.4.8). Never throws and never mutates
+ * its arguments.
+ *   applied   → a reverted deep copy, only when every changed item is the row's item and reads its
+ *               `to`, and JSON.stringify(applyQuestionDelta(result, delta)) === JSON.stringify(rubric);
+ *   not applied (every changed item reads its `from`, and the delta applies) → `rubric` itself
+ *               (the same reference: staged landing);
+ *   otherwise (or a malformed delta) → null.
+ * @returns {object|null}
+ */
+export function revertQuestionDelta(rubric, delta) {
+  if (!isObj(rubric) || !isObj(delta)) return null;
+  try { checkQuestionDelta(delta); } catch (e) { return null; }
+  const askAt = (root, row) => { const it = questionItem(root, row.path); return it && it.id === row.item && own(it, "ask") ? it.ask : undefined; };
+  if (delta.changed.every((row) => askAt(rubric, row) === row.to)) {
+    try {
+      const r = clone(rubric);
+      for (const row of delta.changed) questionItem(r, row.path).ask = row.from;
+      return JSON.stringify(applyQuestionDelta(r, delta)) === JSON.stringify(rubric) ? r : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  if (!delta.changed.every((row) => askAt(rubric, row) === row.from)) return null;
+  try {
+    applyQuestionDelta(rubric, delta);
     return rubric;
   } catch (e) {
     return null;
@@ -1441,6 +1706,235 @@ function ad17Change(p) {
   return hit.length === 1 ? { phenotype: hit[0].phenotype, reason: hit[0].reason, from: hit[0].from, to: hit[0].to } : null;
 }
 
+// ------------------------------------------------------------------------------- AD18 chart reading
+
+const AD18_WORD_RE = /[\p{L}\p{N}]/u;
+const ad18Word = (ch) => typeof ch === "string" && ch !== "" && AD18_WORD_RE.test(ch);
+const AD18_WORD_G = /[\p{L}\p{N}]/u;
+/** The phrases of a list of strings or {ph, source} rows. */
+const ad18List = (xs) => arr(xs).map((e) => (isObj(e) ? e.ph : e)).filter((p) => typeof p === "string" && p !== "");
+/** Every occurrence of every phrase in `hay`, as {start, end}. */
+function ad18Occ(hay, phrases) {
+  const out = [];
+  for (const p of phrases) for (let k = hay.indexOf(p); k !== -1; k = hay.indexOf(p, k + 1)) out.push({ start: k, end: k + p.length, phrase: p });
+  return out;
+}
+const ad18AtWordStart = (hay, o) => !(ad18Word(o.phrase[0]) && o.start > 0 && ad18Word(hay[o.start - 1]));
+/** A label at the start of a one-line text, as the engine reads one (engine/extraction.js LABEL_LINE). */
+const AD18_LABEL_RE = /^[ \t]*([A-Za-z][A-Za-z0-9 /&()'-]{0,40}?)[ \t]*:(?=\s|$)/;
+/** The ids a capture of kind "ctx" can carry in `lexicon`: lexicon.ctx ids and the multi targets of kind ctx. */
+function ad18CtxIds(lexicon) {
+  const out = new Set();
+  for (const e of arr(lexicon.ctx)) if (isObj(e) && typeof e.id === "string") out.add(e.id);
+  for (const e of arr(lexicon.multi)) if (isObj(e)) for (const t of arr(e.ids)) if (isObj(t) && t.kind === "ctx" && typeof t.id === "string") out.add(t.id);
+  return out;
+}
+const ad18Key = (s) => s.toLowerCase().replace(/\s+/g, " ").trim();
+
+/**
+ * The phrases through which each id can be captured in `lexicon`: bool ph, ctx ph, scale cue, band
+ * phrases and anchors (and carryRefuse for an entry with heard: true), multi ph (for every id of
+ * the entry) and red-flag phrases. Map id → phrases.
+ */
+function ad18IdPhrases(lexicon) {
+  const m = new Map();
+  const add = (id, xs) => { if (typeof id !== "string") return; if (!m.has(id)) m.set(id, []); m.get(id).push(...ad18List(xs)); };
+  for (const e of arr(lexicon.bool)) if (isObj(e)) add(e.id, e.ph);
+  for (const e of arr(lexicon.ctx)) if (isObj(e)) add(e.id, e.ph);
+  for (const e of arr(lexicon.scale)) {
+    if (!isObj(e)) continue;
+    add(e.id, e.cue);
+    for (const b of arr(e.bands)) if (isObj(b)) add(e.id, b.ph);
+    add(e.id, e.anchor);
+    if (e.heard === true) add(e.id, lexicon.carryRefuse);
+  }
+  for (const e of arr(lexicon.multi)) if (isObj(e)) for (const t of arr(e.ids)) if (isObj(t)) add(t.id, e.ph);
+  if (isObj(lexicon.redFlags)) for (const [id, ph] of Object.entries(lexicon.redFlags)) add(id, ph);
+  // Review round 2: the chart-register red-flag phrases (clauses.redFlags) of each flag.
+  const cl = isObj(lexicon.clauses) ? lexicon.clauses : {};
+  if (isObj(cl.redFlags)) for (const [id, rows] of Object.entries(cl.redFlags)) add(id, rows);
+  return m;
+}
+
+/**
+ * AD18's rules for one utterance (release 0.4.7; design 06 / 03 §8.4): the ids whose captures the
+ * 0.3.2 → 0.3.3 delta (tests/harness/lexicon-delta-033.js: chart reading, lexicon.clauses, and four
+ * appended negation cues) may change in `text`, each rule a stated superset of one chart-reading
+ * mechanism of engine/extraction.js, read on the lowercased text with typographic apostrophes folded
+ * and every whitespace character read as a space. A "sentence" is the span between two sentence
+ * ends (. ! ? ; followed by whitespace or the end; a "?" with no letter or digit since the last end
+ * ends nothing, as in the engine), a superset of every clause of a one-line text.
+ *   S0  the text holds a whitespace character other than a space (a line break, a tab): lines,
+ *       headers, sections and wrapped lines are read, so every id on either side;
+ *   G   a one-line text that is a section word of clauses.sections, or opens with one as a label
+ *       ("Allergies: …"): every id on either side;
+ *   W   an occurrence of one of the id's phrases that is not at a word start, or lies inside an
+ *       occurrence of a clauses.mask word (wordStart, mask);
+ *   Wc  a negation, attribution or history cue (the lexicon's, clauses.thirdParty included) occurs
+ *       not at a word start: every id with an occurrence after it (that cue no longer reads). Not a
+ *       negation cue lying at the end of a word-start negation cue that holds it ("n't" in "didn't"):
+ *       the engine measures that cue from it, so its reach is the 0.3.2 one (review round 1);
+ *   S   a cue of those lists occurs before an occurrence of the id with a sentence end, a ": " or a
+ *       clauses.breaks cue between them (the window is clipped to the clause);
+ *   L   in the occurrence's sentence: a clauses.deny or (review round 1) clauses.scopeEnd cue before
+ *       it, a clauses.affirm cue anywhere (review round 2: after it, an affirm cue may answer it as a
+ *       label), a clauses.post cue after it, or a clauses.prefix cue ending at it;
+ *   H   in the occurrence's sentence: a clauses.hedge or clauses.placeholder cue;
+ *   T   a clauses.thirdParty cue before the occurrence;
+ *   N   a negation cue the delta appends before the occurrence;
+ *   M   the id has occurrences at two or more offsets (every mention in text order; a yes/no
+ *       entry's mentions decide together: one finding affirmed and denied, or any mixed mentions of
+ *       a clauses.strictConflict item, record nothing, and otherwise an affirmed mention wins);
+ *   RF  with clauses.redFlagNegation, a red flag with a negation cue of the lexicon before an
+ *       occurrence (a denied flag is not raised);
+ *   B   a scale entry with heard: true, a band or carryRefuse phrase of it occurring, in a text with
+ *       more than one sentence, a ": " or a clauses.breaks cue (its duration comes from its cue's
+ *       clause only);
+ *   P   typed chart text only (p.chart true, the extraction ran with opts.chart): a
+ *       clauses.chartIgnoreThirdParty cue before the occurrence (it gates in 0.3.2, never in chart
+ *       text);
+ *   C   (review round 2) an occurrence of one of the flag's clauses.redFlags phrases (chart-register
+ *       red-flag wording; read in every line since D9, 2026-10-12).
+ *   X   typed chart text only (p.chart true; the clinical lead's D8 answer of 2026-10-12): every id a
+ *       capture of kind "ctx" can carry (lexicon.ctx and the multi targets of kind ctx): typed chart
+ *       text sets no context marker.
+ * The normaliser applies them to typed chart text and, since the lead's decision D9 of 2026-10-12, to
+ * spoken lines (p.chart not true), where P and X never fire; ad18Explain reports them for any p.
+ * A spoken line's heard band choice and yields are release 0.4.6's (the carry-over D9 keeps), its red
+ * flags are read with the reply-word rule (a reply-opening deny cue lowers none): both can only keep a
+ * spoken capture at its 0.3.2 value, so no rule is needed for them.
+ * Every clauses cue list is read here wherever it occurs (no word start or end): a superset of the
+ * engine's whole-word matching of those lists.
+ * `p` = ctx.AD18 = {delta, text, lexicon (the shipped 0.3.3 lexicon), chart?}; `a`, `b` the two
+ * capture arrays (S0 and G list their ids). Returns the sets per rule.
+ */
+function ad18Rules(p, a, b) {
+  const { delta, text, lexicon } = p;
+  const cl = isObj(lexicon.clauses) ? lexicon.clauses : {};
+  const R = { S0: new Set(), G: new Set(), W: new Set(), Wc: new Set(), S: new Set(), L: new Set(), H: new Set(), T: new Set(),
+    N: new Set(), M: new Set(), RF: new Set(), B: new Set(), P: new Set(), C: new Set(), X: new Set() };
+  if (p.chart === true) for (const id of ad18CtxIds(lexicon)) if ([...a, ...b].some((c) => c.id === id)) R.X.add(id);
+  const all = [...a, ...b];
+  if (/[^\S ]/.test(text)) for (const c of all) R.S0.add(c.id);
+  const hay = text.toLowerCase().replace(AD13_FOLDED_G, "'").replace(/\s/g, " ");
+  const sec = new Set();
+  if (isObj(cl.sections)) for (const k of Object.keys(cl.sections)) for (const w of ad18List(cl.sections[k])) sec.add(ad18Key(w));
+  const trimmed = text.trim();
+  const bare = trimmed.endsWith(":") ? trimmed.slice(0, -1) : trimmed;
+  const label = AD18_LABEL_RE.exec(text);
+  if (sec.has(ad18Key(bare)) || (label && sec.has(ad18Key(label[1])))) for (const c of all) R.G.add(c.id);
+  const ends = [];
+  // A "?" with no letter or digit since the last sentence end (chart shorthand "? aura") ends nothing,
+  // as in the engine (review round 1): it belongs to the words after it.
+  for (let k = 0, last = 0; k < hay.length; k++) {
+    if (!".!?;".includes(hay[k]) || !(k + 1 === hay.length || hay[k + 1] === " ")) continue;
+    if (hay[k] === "?" && !AD18_WORD_G.test(hay.slice(last, k))) continue;
+    ends.push(k);
+    last = k + 1;
+  }
+  const sentence = (pos) => ends.filter((e) => e < pos).length;
+  const cueOf = (x) => ad18List(isObj(x) ? x.cues : null);
+  const gates = ad18Occ(hay, [...cueOf(lexicon.negation), ...cueOf(lexicon.thirdParty), ...cueOf(lexicon.historical), ...ad18List(cl.thirdParty)]);
+  const breaks = ad18Occ(hay, ad18List(cl.breaks));
+  const colons = [];
+  for (let k = hay.indexOf(": "); k !== -1; k = hay.indexOf(": ", k + 1)) colons.push(k);
+  const masks = ad18Occ(hay, ad18List(cl.mask));
+  const deny = ad18Occ(hay, ad18List(cl.deny)), affirm = ad18Occ(hay, ad18List(cl.affirm)), post = ad18Occ(hay, ad18List(cl.post));
+  const scopeEnd = ad18Occ(hay, ad18List(cl.scopeEnd));
+  const prefix = ad18Occ(hay, ad18List(cl.prefix)), hedge = ad18Occ(hay, [...ad18List(cl.hedge), ...ad18List(cl.placeholder)]);
+  const tp = ad18Occ(hay, ad18List(cl.thirdParty));
+  const pronouns = p.chart === true ? ad18Occ(hay, ad18List(cl.chartIgnoreThirdParty)) : [];
+  const appended = ad18Occ(hay, arr(delta.appended).filter((row) => isObj(row) && row.path === "/negation/cues").flatMap((row) => arr(row.phrases)));
+  const negCues = ad18Occ(hay, cueOf(lexicon.negation));
+  const negWordStart = negCues.filter((n) => ad18AtWordStart(hay, n));
+  const negList = cueOf(lexicon.negation);
+  const measuredFrom = (g) => negList.includes(g.phrase)
+    && negWordStart.some((n) => n.end === g.end && n.start < g.start && n.phrase.endsWith(g.phrase));
+  const midWord = gates.filter((g) => !ad18AtWordStart(hay, g) && !measuredFrom(g));
+  const boundaryBetween = (from, to) => ends.some((e) => e >= from && e < to) || colons.some((k) => k >= from && k < to)
+    || breaks.some((x) => x.start > from && x.start < to);
+  const multiSentence = ends.some((e) => e < hay.length - 1) || colons.length > 0 || breaks.length > 0;
+  const flags = isObj(lexicon.redFlags) ? new Set(Object.keys(lexicon.redFlags)) : new Set();
+  const heardIds = new Set(arr(lexicon.scale).filter((e) => isObj(e) && e.heard === true).map((e) => e.id));
+  if (isObj(cl.redFlags)) {
+    for (const [id, rows] of Object.entries(cl.redFlags)) if (ad18Occ(hay, ad18List(rows)).length) R.C.add(id);
+  }
+  for (const [id, phrases] of ad18IdPhrases(lexicon)) {
+    const occ = ad18Occ(hay, phrases);
+    if (!occ.length) continue;
+    if (new Set(occ.map((o) => o.start)).size > 1) R.M.add(id);
+    if (heardIds.has(id) && multiSentence) R.B.add(id);
+    for (const o of occ) {
+      const s = sentence(o.start);
+      const inS = (x) => sentence(x.start) === s;
+      if (!ad18AtWordStart(hay, o) || masks.some((m) => m.start <= o.start && o.end <= m.end)) R.W.add(id);
+      if (midWord.some((g) => g.start <= o.start)) R.Wc.add(id);
+      if (gates.some((g) => g.start < o.start && boundaryBetween(g.start, o.start))) R.S.add(id);
+      if (deny.some((x) => x.start < o.start && inS(x)) || affirm.some(inS) || scopeEnd.some((x) => x.start < o.start && inS(x))
+        || post.some((x) => x.start >= o.end && inS(x)) || prefix.some((x) => x.end === o.start)) R.L.add(id);
+      if (hedge.some(inS)) R.H.add(id);
+      if (tp.some((x) => x.start < o.start)) R.T.add(id);
+      if (appended.some((x) => x.start < o.start)) R.N.add(id);
+      if (cl.redFlagNegation === true && flags.has(id) && negCues.some((x) => x.start < o.start)) R.RF.add(id);
+      if (pronouns.some((x) => x.start < o.start)) R.P.add(id);
+    }
+  }
+  return R;
+}
+
+/**
+ * AD18's evidence rule (E): the 0.3.3 side's captures with their evidence put back to the whole
+ * text and `clause` removed, or null when any capture does not carry clause {start, end} as its
+ * last key, with integer offsets inside the text and the evidence exactly text.slice(start, end)
+ * (the 0.3.2 side must carry no clause at all). The clause must also hold the capture's cueIndex
+ * (start <= cueIndex < end) and neither start nor end inside a word (review round 1): a clause
+ * attached to the wrong part of the text is not excused. A value carried into a spoken reply (via
+ * "carry", D9 keeping carry-over as it was) has the whole reply as its evidence and no clause, and
+ * passes as it is.
+ */
+function ad18Unclause(text, a, b) {
+  if (a.some((c) => Object.prototype.hasOwnProperty.call(c, "clause"))) return null;
+  const out = [];
+  for (const c of b) {
+    const keys = Object.keys(c);
+    // A value carried into a spoken reply (via "carry") keeps the whole reply as its evidence and has no
+    // clause, as in release 0.4.6 (D9 keeps carry-over as it was).
+    if (c.via === "carry" && !Object.prototype.hasOwnProperty.call(c, "clause")) {
+      if (c.evidence !== text) return null;
+      out.push(c);
+      continue;
+    }
+    const k = c.clause;
+    if (keys[keys.length - 1] !== "clause" || !isObj(k) || !same(Object.keys(k), ["start", "end"]) || !Number.isInteger(k.start) || !Number.isInteger(k.end)
+      || k.start < 0 || k.end > text.length || k.start >= k.end || c.evidence !== text.slice(k.start, k.end)) return null;
+    if (!Number.isInteger(c.cueIndex) || c.cueIndex < k.start || c.cueIndex >= k.end
+      || (ad18Word(text[k.start - 1]) && ad18Word(text[k.start])) || (ad18Word(text[k.end - 1]) && ad18Word(text[k.end]))) return null;
+    const x = { ...c, evidence: text };
+    delete x.clause;
+    out.push(x);
+  }
+  return out;
+}
+
+/**
+ * AD18's extraction rules for one comparison, by rule, for self-checks: {E (true when the evidence
+ * rule holds), S0, G, W, Wc, S, L, H, T, N, M, RF, B, P, C, X} with the ids sorted. `p` is the extraction
+ * ctx.AD18 ({delta, text, lexicon, chart?}); `a` and `b` the two capture arrays. null for a
+ * malformed `p`.
+ * Pure; never throws for array inputs.
+ * @param {{delta: object, text: string, lexicon: object, chart?: boolean}} p
+ * @param {object[]} [a]
+ * @param {object[]} [b]
+ */
+export function ad18Explain(p, a = [], b = []) {
+  if (!isObj(p) || !isObj(p.delta) || typeof p.text !== "string" || !isObj(p.lexicon)) return null;
+  const xa = arr(a).filter(isObj), xb = arr(b).filter(isObj);
+  const R = ad18Rules(p, xa, xb);
+  const out = { E: ad18Unclause(p.text, xa, xb) !== null };
+  for (const k of Object.keys(R)) out[k] = [...R[k]].filter((x) => x !== undefined).sort();
+  return out;
+}
+
 /**
  * The §8.4 table. Owners name the suites that exercise each AD; the normalisers themselves
  * all live here (WP13).
@@ -1522,9 +2016,9 @@ export const ALLOWED_DIFFERENCES = [
     id: "AD4",
     ready: true,
     owner: "WP13",
-    what: "every printed release string: 0.3.0 → 0.4.7",
+    what: "every printed release string: 0.3.0 → 0.4.8",
     // Only a standalone "0.3.0" token is rewritten (not 0.3.1, 10.3.0 or 0.3.0.1), and only
-    // when the new side prints 0.4.7 (NEW_RELEASE, moved together with policy.APP_VERSION).
+    // when the new side prints 0.4.8 (NEW_RELEASE, moved together with policy.APP_VERSION).
     appliesTo: () => true,
     normalise(a, b) {
       if (typeof a !== "string" || typeof b !== "string") return [a, b];
@@ -1876,108 +2370,233 @@ export const ALLOWED_DIFFERENCES = [
       const m = p && typeof input.baseline === "string" ? AD17_REFERRAL_RE.exec(input.baseline) : null;
       return !!(m && m[1] === p.from && m[2] === p.reason);
     },
-  },  {
+  },
+  {
     id: "AD18",
     ready: true,
-    owner: "rules (WP5)",
-    what: "Scribe suggestions: the pool widens to every unanswered item while the screen is NOT scorable (Scb L856-860 comment); the baseline code tests `scorable ||` (decision F12)",
-    // ctx.AD18 = {intended}: the baseline `suggestions` slice evaluated with the scorable flag
-    // inverted, i.e. the filter its own comment describes. The new list is accepted only when it
-    // equals that list exactly.
-    appliesTo: (path, ctx) => !!(ctx && ctx.AD18),
-    normalise(a, b, ctx) {
-      if (!Array.isArray(a) || !Array.isArray(b)) return [a, b];
-      return !same(a, b) && same(b, ctx.AD18.intended) ? [b, b] : [a, b];
+    owner: "values / extraction / capture (release 0.4.7)",
+    what: "MASQUE lexicon 0.3.2 → 0.3.3: exactly the delta of tests/harness/lexicon-delta-033.js (chart reading, clarification triggers, four negation cues; signed off by the clinical lead on 2026-10-12); in extraction, comparisons of typed chart text (opts.chart) and, since the lead's decision D9 of 2026-10-12, of spoken lines (rules P and X typed only)",
+    // values:      ctx.AD18 = {delta, full}   full = the whole shipped lexicon (rubric.lexicon); list
+    //              it before AD13 (allow ["AD18", "AD13"]): it hands AD13 the 0.3.2 projection, and
+    //              ctx.AD13.full is then the 0.3.2-equivalent lexicon
+    // extraction:  ctx.AD18 = {delta, text, lexicon, chart}   lexicon = the shipped (0.3.3) lexicon;
+    //              chart true when both sides ran with opts.chart (typed chart text); without it the
+    //              comparison is a spoken line's (D9, 2026-10-12: chart reading reads it too; rules P
+    //              and X never fire there)
+    appliesTo: (path, ctx) => !!(ctx && ctx.AD18) &&
+      (path === "/lexicon" || path === "/module/versions" || /^\/extract033\//.test(path)),
+    normalise(a, b, ctx, path) {
+      const p = ctx.AD18;
+      const delta = p.delta;
+      if (!isObj(delta) || typeof delta.from !== "string" || typeof delta.to !== "string") return [a, b];
+      if (path === "/lexicon") {
+        // Projection objects: only when b.version === to and every key of b deep-equals full[key];
+        // the revert proves the whole delta exact (clauses, clarify, goldSet and the appended cues
+        // included); b becomes the reverted lexicon projected onto b's keys, in b's key order.
+        if (!isObj(a) || !isObj(b) || !isObj(p.full) || b.version !== delta.to) return [a, b];
+        if (!Object.keys(b).every((k) => same(b[k], p.full[k]))) return [a, b];
+        const r = revertLexiconDelta(p.full, delta);
+        if (r === null) return [a, b];
+        const proj = {};
+        for (const k of Object.keys(b)) proj[k] = r[k];
+        return [a, proj];
+      }
+      if (path === "/module/versions") {
+        if (!isObj(a) || !isObj(b)) return [a, b];
+        return b.lexicon === delta.to ? [a, { ...b, lexicon: delta.from }] : [a, b];
+      }
+      // /extract033/… capture arrays (0.3.2 side a, 0.3.3 side b): the evidence rule E first (every
+      // b capture's evidence back to the whole text and its clause removed; refused unless every b
+      // capture carries an exact clause), then the captures of every id an ad18Rules rule names
+      // dropped from both sides; equal afterwards (key order included) with something changed →
+      // [b, b]. Only for the shipped lexicon at the delta's `to` version.
+      if (!Array.isArray(a) || !Array.isArray(b) || typeof p.text !== "string") return [a, b];
+      if (!isObj(p.lexicon) || p.lexicon.version !== delta.to) return [a, b];
+      if (!a.every(isObj) || !b.every(isObj) || same(a, b)) return [a, b];
+      const b1 = ad18Unclause(p.text, a, b);
+      if (b1 === null) return [a, b];
+      const R = ad18Rules(p, a, b1);
+      const ids = new Set(Object.values(R).flatMap((s) => [...s]));
+      const a2 = a.filter((c) => !ids.has(c.id)), b2 = b1.filter((c) => !ids.has(c.id));
+      return same(a2, b2) ? [b, b] : [a, b];
     },
-    // input = {baseline, intended}: the two filters disagree on this state
-    detector: (input) => !!(input && !same(input.baseline, input.intended)),
+    // input = {differs: boolean} — the raw (un-normalised) comparison showed a difference
+    detector: (input) => !!(input && input.differs),
   },
   {
     id: "AD19",
     ready: true,
-    owner: "golden (WP4)",
-    what: "QuestionnaireResponse domain group answer: valueDecimal for fractional points (the baseline writes valueInteger with a non-integer value) (decision F13)",
-    // ctx.AD19 = {} (presence enables it). Only {valueInteger: x} → {valueDecimal: x} with the
-    // same non-integer x, at a QuestionnaireResponse group's answer.
-    appliesTo: (path, ctx) => !!(ctx && ctx.AD19) && /\/item\/\d+\/answer\/\d+$/.test(path),
-    normalise(a, b) {
-      if (!isObj(a) || !isObj(b)) return [a, b];
-      const ka = Object.keys(a), kb = Object.keys(b);
-      if (ka.length !== 1 || kb.length !== 1 || ka[0] !== "valueInteger" || kb[0] !== "valueDecimal") return [a, b];
-      const x = a.valueInteger, y = b.valueDecimal;
-      return typeof x === "number" && x === y && !Number.isInteger(y) ? [b, b] : [a, b];
+    owner: "rules (release 0.4.8)",
+    what: "the clinical lead's question for item r_dur (chat, 2026-10-12): exactly the changed asks of tests/harness/question-delta-048.js (\"How long has this been going on?\" → \"Have symptoms persisted over 3 months despite trials of medical management?\"), in a Scribe suggestion or heard prompt of that item",
+    // ctx.AD19 = {delta: QUESTION_DELTA}. Only at one suggestion or heard prompt object
+    //   (…/rankSuggestions/<k> or …/heardPrompts/<k>) whose id is a changed row's item on both sides,
+    //   whose baseline ask is that row's `from` and whose new ask is its `to`, and only when the
+    //   question is the one difference (with the new side's ask put back to `from` the two are equal,
+    //   tag, scale, kind and key order included): then the pair is excused whole. A malformed delta
+    //   excuses nothing; any other item, question, field, direction or place stays a difference.
+    appliesTo: (path, ctx) => !!(ctx && ctx.AD19) && /\/(?:rankSuggestions|heardPrompts)\/(?:0|[1-9]\d*)$/.test(path),
+    normalise(a, b, ctx) {
+      if (!isObj(a) || !isObj(b) || typeof a.id !== "string" || a.id !== b.id) return [a, b];
+      const row = ad19Rows(ctx.AD19).find((r) => r.item === a.id);
+      if (!row || a.ask !== row.from || b.ask !== row.to) return [a, b];
+      // All or nothing: excused only when the question is the one difference (key order included).
+      return same(a, { ...b, ask: row.from }) ? [a, a] : [a, b];
     },
-    // input = {domains: computeScore domains} — some domain's points are fractional
-    detector: (input) => !!(input && input.domains && Object.values(input.domains).some((d) => typeof d.pts === "number" && !Number.isInteger(d.pts))),
+    // input = {p: ctx.AD19, list: a baseline suggestion list} — it holds a changed row's item with
+    // that row's `from` as its ask
+    detector: (input) => {
+      if (!input || !Array.isArray(input.list)) return false;
+      const rows = ad19Rows(input.p);
+      return input.list.some((s) => isObj(s) && rows.some((r) => r.item === s.id && r.from === s.ask));
+    },
   },
   {
     id: "AD20",
     ready: true,
-    owner: "golden / rules (WP3, WP4)",
-    what: "no referral ServiceRequest and no CDS index card when the complaint is not a declared phenotype value (\"\" included); the baseline fell back to the default phenotype (decision F11)",
-    // ctx.AD20 = {complaint, declared: [phenotype values], indexSrc: the index card's src,
-    //            cardText?: the baseline index card's rendered text, cardShape?: its DOM shape
-    //            (the list of tag.class entries a rendered region reports)}.
-    // Applies only when the complaint is not declared. Exact forms: the bundle entry array
-    // without its one routine ServiceRequest; the CDS preview text "" where the baseline rendered
-    // the index card (never the safety card); referralFor's undefined where the baseline issued
-    // a referral; and, for a rendered region, the baseline text with `cardText` removed once and
-    // the baseline shape with the contiguous `cardShape` run removed once.
-    // Release 0.4.7, composition with AD15 (the EMR Friendly Template button on the same result
-    // card): when ctx.AD15 is present and AD15 applies at this path, a rendered region whose
-    // baseline, once the card is removed, differs from the new side by exactly AD15's button is
-    // handed on as [baseline without the card, new]; AD15 (listed after AD20) must then close the
-    // gap exactly, so both are observed and anything else stays a difference.
-    appliesTo: (path, ctx) => !!(ctx && ctx.AD20) && !(ctx.AD20.declared || []).includes(ctx.AD20.complaint),
-    normalise(a, b, ctx, path) {
-      const p = ctx.AD20;
-      const ad15 = ctx.AD15 ? ALLOWED_DIFFERENCES.find((d) => d.id === "AD15") : null;
-      // [b, b] when the card's removal alone explains the difference; [a2, b] when AD15 closes the rest exactly.
-      const settle = (a2) => {
-        if (same(a2, b)) return [b, b];
-        if (ad15 && ad15.appliesTo(path, ctx)) {
-          const [x, y] = ad15.normalise(a2, b, ctx, path);
-          if ((x !== a2 || y !== b) && same(x, y)) return [a2, b];
-        }
-        return null;
-      };
-      const isRef = (e) => !!(e && e.resource && e.resource.resourceType === "ServiceRequest" && e.resource.priority === "routine");
-      if (Array.isArray(a) && Array.isArray(b) && a.every((x) => typeof x === "string") && b.every((x) => typeof x === "string")) {
-        const run = p.cardShape;
-        if (!Array.isArray(run) || !run.length || a.length < run.length) return [a, b];
-        for (let i = 0; i + run.length <= a.length; i++) {
-          if (!same(a.slice(i, i + run.length), run)) continue;
-          const r = settle([...a.slice(0, i), ...a.slice(i + run.length)]);
-          if (r) return r;
-        }
-        return [a, b];
-      }
-      if (Array.isArray(a) && Array.isArray(b)) {
-        if (b.some(isRef) || a.filter(isRef).length !== 1 || a.length !== b.length + 1) return [a, b];
-        return [a.filter((e) => !isRef(e)), b];
-      }
-      if (typeof a === "string" && b === "") {
-        const src = p.indexSrc;
-        return typeof src === "string" && src && a.startsWith(src) ? [b, b] : [a, b];
-      }
-      if (typeof a === "string" && typeof b === "string" && typeof p.cardText === "string" && p.cardText && p.cardText.startsWith(p.indexSrc || "\u0000")) {
-        const i = a.indexOf(p.cardText);
-        return (i >= 0 && settle(a.slice(0, i) + a.slice(i + p.cardText.length))) || [a, b];
-      }
-      if (isObj(a) && b === undefined && Object.keys(a).length === 1 && typeof a.text === "string" && a.text.startsWith("Referral: ")) return [b, b];
-      return [a, b];
+    owner: "patient / golden / render-patient (release 0.4.8)",
+    what: "Spanish patient output (release 0.4.8, the clinical lead's request of 2026-10-12): the English version of the same findings added to the es summary — in the .txt the block [rule, the es and the English englishVersion titles upper-cased, rule, blank, the English caveat lines and a blank when the view has any (none for the built-in module), the English findings] right before the footer rule; on screen the English version section's text right before the disclaimer",
+    // ctx.AD20 = {locale, block} for a .txt, or {locale, text, before} for rendered text (exactly one form):
+    //   block        the exact inserted lines (ad20Block of the two titles, ad20EnglishNotices and
+    //                ad20EnglishBody of the English .txt of the same answers): excused only when the new side holds them
+    //                exactly once, as one run that ends right before its last footer rule, and they are
+    //                removed there;
+    //   text/before  the exact textContent of the English version section (the two titles, the English
+    //                caveat lines and the English findings as the English companion renders them) and the text that must
+    //                follow it (the locale's disclaimer): excused only when the new side holds
+    //                text + before exactly once, and `text` is removed there.
+    // Applies only where ctx.loc is the parameter's locale, never "en". List it right after AD4 and
+    // before AD14, AD10 and AD16 (allow order is application order): it hands them the new side
+    // without the English version, which the baseline never had. Nothing else is touched.
+    appliesTo: (path, ctx) => !!ctx && ad20Usable(ctx.AD20) && typeof ctx.loc === "string" && ctx.loc === ctx.AD20.locale,
+    normalise(a, b, ctx) {
+      if (typeof a !== "string" || typeof b !== "string") return [a, b];
+      const b2 = ad20Strip(ctx.AD20, b);
+      return b2 === null ? [a, b] : [a, b2];
     },
-    // input = {complaint, declared, baselineIssued}: the baseline issued a referral or an index
-    // card for a complaint that is not declared
-    detector: (input) => !!(input && input.baselineIssued && !(input.declared || []).includes(input.complaint)),
+    // input = {p: ctx.AD20, text: the new side} — it holds the English version where AD20 excuses it
+    detector: (input) => !!input && ad20Usable(input.p) && typeof input.text === "string" && ad20Strip(input.p, input.text) !== null,
+  },
+  {
+    id: "AD21",
+    ready: true,
+    owner: "render-scribe (release 0.4.8, follow-up)",
+    what: "the Ambient Scribe's Question review tab (the clinical lead's request of 2026-10-12): one tab added to the view switch, right after Ask next and before Note, in the right card's text of the Safety, Ask-next and Note views",
+    // ctx.AD21 = {text, before}: text is the exact textContent of the added tab (" Question review"),
+    //   before the text that must follow it (the Note tab's, " Note"). Excused only when the new side
+    //   holds text + before exactly once, right after the Ask next tab's text ("Ask next " and its
+    //   count), and `text` is removed there. Only at …/view_safety, …/view_prompts and …/view_note.
+    //   Nothing else is touched; list it before AD15 and AD5, which need the rest to match.
+    appliesTo: (path, ctx) => !!ctx && ad21Usable(ctx.AD21) && /\/view_(?:safety|prompts|note)$/.test(path),
+    normalise(a, b, ctx) {
+      if (typeof a !== "string" || typeof b !== "string") return [a, b];
+      const b2 = ad21Strip(ctx.AD21, b);
+      return b2 === null ? [a, b] : [a, b2];
+    },
+    // input = {p: ctx.AD21, text: the new side} — it holds the tab where AD21 excuses it
+    detector: (input) => !!input && ad21Usable(input.p) && typeof input.text === "string" && ad21Strip(input.p, input.text) !== null,
   },
 ];
+
+// ---------------------------------------------------------------------------------------
+// AD21 (release 0.4.8, follow-up): the Scribe's Question review tab
+// ---------------------------------------------------------------------------------------
+
+/** The Ask next tab's text as it ends the run before AD21's tab: "Ask next", its count, the trailing space. */
+const AD21_AFTER_RE = /Ask next (?:\((?:0|[1-9]\d*)\))?$/;
+
+function ad21Usable(p) {
+  return isObj(p) && typeof p.text === "string" && p.text.trim() !== "" && typeof p.before === "string" && p.before.trim() !== "";
+}
+
+/** The new side without AD21's tab text, or null when it does not hold it exactly once where it belongs. */
+function ad21Strip(p, b) {
+  const needle = p.text + p.before;
+  const i = b.indexOf(needle);
+  if (i < 0 || b.indexOf(needle, i + 1) >= 0 || !AD21_AFTER_RE.test(b.slice(0, i))) return null;
+  return b.slice(0, i) + b.slice(i + p.text.length);
+}
+
+/**
+ * The exact .txt lines a non-English summary inserts for its English version (release 0.4.8): a
+ * rule, the locale's title and the English title (both upper-cased as the .txt prints headings), a
+ * rule, a blank line, then the English caveat lines `englishNotices` and a blank line when there are
+ * any (ad20EnglishNotices of the English .txt of the same view; none for the built-in module), then
+ * the English findings `englishBody` (ad20EnglishBody of the English .txt of the same answers).
+ */
+export function ad20Block(titleLoc, titleEn, englishBody, englishNotices = []) {
+  const notes = Array.isArray(englishNotices) ? englishNotices : [];
+  return [AD20_RULE, String(titleLoc).toUpperCase(), String(titleEn).toUpperCase(), AD20_RULE, "",
+    ...(notes.length ? [...notes, ""] : []), ...(Array.isArray(englishBody) ? englishBody : [])];
+}
+
+/**
+ * The caveat lines of an English Patient .txt (release 0.4.8, final review): its lines after the
+ * footer line that follows its last footer rule, before the dated caveat line that closes it (the
+ * patient provenance, edited-wording and stale-translation lines, AD10). [] when it has none; null
+ * when the text has no footer rule or no dated last line.
+ */
+export function ad20EnglishNotices(txt) {
+  if (typeof txt !== "string") return null;
+  const lines = txt.split("\n");
+  const end = lines.lastIndexOf(AD20_FOOTER_RULE);
+  if (end < 0 || lines.length < end + 3 || !DATED_CAVEAT_RE.test(lines[lines.length - 1])) return null;
+  return lines.slice(end + 2, -1);
+}
+
+/**
+ * The findings of an English Patient .txt: its lines after the header (title, rule, blank, and the
+ * unreviewed line with its blank when `unreviewed` names it) and before its last footer rule.
+ * Null when the text has no footer rule.
+ */
+export function ad20EnglishBody(txt, { unreviewed = null } = {}) {
+  if (typeof txt !== "string") return null;
+  const lines = txt.split("\n");
+  const start = unreviewed && lines[3] === unreviewed && lines[4] === "" ? 5 : 3;
+  const end = lines.lastIndexOf(AD20_FOOTER_RULE);
+  return end >= start ? lines.slice(start, end) : null;
+}
+
+function ad20Usable(p) {
+  if (!isObj(p) || typeof p.locale !== "string" || !p.locale || p.locale === "en") return false;
+  const block = Array.isArray(p.block) && p.block.length >= 6 && p.block.every((x) => typeof x === "string") && p.block[0] === AD20_RULE && p.block[3] === AD20_RULE && p.block[4] === "";
+  const text = typeof p.text === "string" && p.text !== "" && typeof p.before === "string" && p.before !== "";
+  return block !== text; // exactly one form
+}
+
+/** The new side without the English version AD20 names, or null when it does not hold it exactly once where it belongs. */
+function ad20Strip(p, b) {
+  if (Array.isArray(p.block)) {
+    const lines = b.split("\n");
+    const n = p.block.length;
+    const at = [];
+    for (let i = 0; i + n <= lines.length; i++) {
+      let ok = true;
+      for (let k = 0; k < n && ok; k++) ok = lines[i + k] === p.block[k];
+      if (ok) at.push(i);
+    }
+    if (at.length !== 1 || lines.lastIndexOf(AD20_FOOTER_RULE) !== at[0] + n) return null;
+    return [...lines.slice(0, at[0]), ...lines.slice(at[0] + n)].join("\n");
+  }
+  const needle = p.text + p.before;
+  const i = b.indexOf(needle);
+  if (i < 0 || b.indexOf(needle, i + 1) >= 0) return null;
+  return b.slice(0, i) + b.slice(i + p.text.length);
+}
+
+/** The well-formed rows of AD19's delta ({item, from, to}, from ≠ to), or [] for a malformed delta. */
+function ad19Rows(p) {
+  const rows = isObj(p) && isObj(p.delta) && Array.isArray(p.delta.changed) ? p.delta.changed : null;
+  if (!rows || !rows.length) return [];
+  const ok = rows.every((r) => isObj(r) && typeof r.item === "string" && r.item && typeof r.from === "string" && typeof r.to === "string"
+    && r.from.trim() && r.to.trim() && r.from !== r.to);
+  return ok ? rows : [];
+}
 
 const AD_BY_ID = new Map(ALLOWED_DIFFERENCES.map((d) => [d.id, d]));
 
 export function allowedDifference(id) {
   const d = AD_BY_ID.get(id);
-  if (!d) throw new Error(`unknown allowed difference "${id}" (design §8.4 lists AD1-AD17; the orchestrator decisions F11-F13 add AD18-AD20)`);
+  if (!d) throw new Error(`unknown allowed difference "${id}" (design §8.4 lists AD1-AD21)`);
   return d;
 }
 

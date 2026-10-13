@@ -20,7 +20,7 @@
           "w": 3,
           "text": "Symptoms have persisted or recurred for more than 3 months",
           "short": ">3 mo",
-          "ask": "How long has this been going on?",
+          "ask": "Have symptoms persisted over 3 months despite trials of medical management?",
           "patientClin": "Symptoms persisting or recurring > 3 months"
         },
         {
@@ -1270,7 +1270,7 @@
     ]
   },
   "lexicon": {
-    "version": "0.3.2",
+    "version": "0.3.3",
     "lang": "en-US",
     "negation": {
       "window": 14,
@@ -1289,7 +1289,11 @@
         "isn't",
         "denies",
         "negative for",
-        "fewer than"
+        "fewer than",
+        "wasn't",
+        "weren't",
+        "aren't",
+        "hadn't"
       ]
     },
     "thirdParty": {
@@ -2008,10 +2012,1354 @@
       "apostrophes": true,
       "numbers": "en"
     },
+    "clauses": {
+      "wordStart": true,
+      "affirm": [
+        {
+          "ph": "endorses",
+          "source": "lead"
+        },
+        {
+          "ph": "reports",
+          "source": "lead"
+        },
+        {
+          "ph": "has ",
+          "source": "lead"
+        },
+        {
+          "ph": "yes",
+          "source": "lead"
+        },
+        {
+          "ph": "endorsed",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "reported",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "admits",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "positive for",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "complains of",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "c/o",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "describes",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "presents with",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "(+)",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "no improvement",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "no relief",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "no response",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "no benefit",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "without improvement",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "without relief",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "without benefit",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "failed",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "refractory to",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "despite",
+          "source": "lead-approved"
+        }
+      ],
+      "deny": [
+        {
+          "ph": "denies",
+          "source": "lead"
+        },
+        {
+          "ph": "no ",
+          "source": "lead"
+        },
+        {
+          "ph": "lacks",
+          "source": "lead"
+        },
+        {
+          "ph": "doesn't have",
+          "source": "lead"
+        },
+        {
+          "ph": "denied",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "negative for",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "without",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "does not have",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "don't have",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "do not have",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "haven't had",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "hasn't had",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "(-)",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "rather than",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "not associated with",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "not accompanied by",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "neg for",
+          "source": "lead-approved"
+        }
+      ],
+      "post": [
+        {
+          "ph": " negative",
+          "source": "lead-approved"
+        },
+        {
+          "ph": " denied",
+          "source": "lead-approved"
+        },
+        {
+          "ph": " absent",
+          "source": "lead-approved"
+        },
+        {
+          "ph": " not present",
+          "source": "lead-approved"
+        },
+        {
+          "ph": ": no",
+          "source": "lead-approved"
+        },
+        {
+          "ph": ": none",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "(-)",
+          "source": "lead-approved"
+        },
+        {
+          "ph": ": denies",
+          "source": "lead-approved"
+        },
+        {
+          "ph": " - no",
+          "source": "lead-approved"
+        }
+      ],
+      "prefix": [
+        {
+          "ph": "non-",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "non ",
+          "source": "lead-approved"
+        }
+      ],
+      "breaks": [
+        {
+          "ph": "but ",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "however",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "although",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "though ",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "except ",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "whereas",
+          "source": "lead-approved"
+        },
+        {
+          "ph": " — ",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "other than",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "besides",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "apart from",
+          "source": "lead-approved"
+        }
+      ],
+      "scopeEnd": [
+        {
+          "ph": "with",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "so",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "now",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "until",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "is",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "are",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "was",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "were",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "to",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "from",
+          "source": "lead-approved"
+        }
+      ],
+      "complement": [
+        {
+          "ph": "for",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "in",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "about",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "after",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "since",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "on",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "none of",
+          "source": "lead-approved"
+        }
+      ],
+      "mask": [
+        {
+          "ph": "number",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "ct showed",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "scope showed",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "lund-mackay",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "audiogram showed",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "hearing test showed",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "hay fever",
+          "source": "lead-approved"
+        }
+      ],
+      "hedge": [
+        {
+          "ph": "reportedly",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "possible",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "possibly",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "probable",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "questionable",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "suspected",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "unclear whether",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "unclear if",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "rule out",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "r/o",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "?",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "maybe",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "unsure",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "uncertain",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "not sure",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "might",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "+/-",
+          "source": "lead-approved"
+        }
+      ],
+      "placeholder": [
+        {
+          "ph": "***",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "___",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "[ ]",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "[]",
+          "source": "lead-approved"
+        }
+      ],
+      "placeholderAsk": {
+        "text": "This line holds unfilled template text (***).",
+        "source": "lead-approved"
+      },
+      "thirdParty": [
+        {
+          "ph": "mother",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "father",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "mom ",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "dad ",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "sister",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "brother",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "daughter",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "son ",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "parents",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "sibling",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "aunt",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "uncle ",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "cousin",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "grandmother",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "grandfather",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "family history of",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "family hx of",
+          "source": "lead-approved"
+        }
+      ],
+      "chartIgnoreThirdParty": [
+        {
+          "ph": "her ",
+          "source": "lead-approved"
+        },
+        {
+          "ph": "his ",
+          "source": "lead-approved"
+        }
+      ],
+      "sections": {
+        "exam": [
+          {
+            "ph": "physical exam",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "physical examination",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "exam",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "examination",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "otoscopic exam",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "otoscopy",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "objective",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "vital signs",
+            "source": "lead-approved"
+          }
+        ],
+        "family": [
+          {
+            "ph": "family history",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "family hx",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "fhx",
+            "source": "lead-approved"
+          }
+        ],
+        "skip": [
+          {
+            "ph": "allergies",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "allergy",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "medications",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "medication",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "meds",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "current medications",
+            "source": "lead-approved"
+          }
+        ],
+        "read": [
+          {
+            "ph": "hpi",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "history of present illness",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "interval history",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "ros",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "review of systems",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "past medical history",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "pmh",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "past surgical history",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "psh",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "social history",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "assessment",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "plan",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "assessment and plan",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "assessment/plan",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "a/p",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "impression",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "impression and plan",
+            "source": "lead-approved"
+          }
+        ]
+      },
+      "examItems": [],
+      "strictConflict": [
+        "x_purulent",
+        "x_objective",
+        "x_lowfreq",
+        "x_anosmia"
+      ],
+      "redFlags": {
+        "rf_thunderclap": [
+          {
+            "ph": "sudden severe headache",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "sudden onset severe headache",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "sudden-onset severe headache",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "maximal at onset",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "maximum intensity within",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "peak intensity within",
+            "source": "lead-approved"
+          }
+        ],
+        "rf_focal": [
+          {
+            "ph": "diplopia",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "facial droop",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "facial weakness",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "dysarthria",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "dysphagia",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "hemiparesis",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "unilateral weakness",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "focal weakness",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "focal deficit",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "focal neurologic deficit",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "slurred speech",
+            "source": "lead-approved"
+          }
+        ],
+        "rf_vision": [
+          {
+            "ph": "loss of vision",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "papilledema",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "papilloedema",
+            "source": "lead-approved"
+          }
+        ],
+        "rf_gca": [
+          {
+            "ph": "scalp tenderness",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "jaw claudication",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "temporal artery tenderness",
+            "source": "lead-approved"
+          }
+        ],
+        "rf_orbital": [
+          {
+            "ph": "proptosis",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "painful eye movement",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "restricted eye movement",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "ophthalmoplegia",
+            "source": "lead-approved"
+          }
+        ],
+        "rf_ssnhl": [
+          {
+            "ph": "sudden hearing loss",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "sudden sensorineural",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "ssnhl",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "sudden snhl",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "sudden deafness",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "sudden onset hearing loss",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "sudden-onset hearing loss",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "sudden loss of hearing",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "sudden drop in hearing",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "sudden decrease in hearing",
+            "source": "lead-approved"
+          }
+        ],
+        "rf_asym": [
+          {
+            "ph": "unilateral hearing loss",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "unilateral tinnitus",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "unilateral snhl",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "unilateral sensorineural",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "asymmetric hearing",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "asymmetrical hearing",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "asymmetric snhl",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "asymmetric sensorineural",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "left-sided hearing loss",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "right-sided hearing loss",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "asymmetric hearing loss",
+            "source": "lead-approved"
+          }
+        ],
+        "rf_pulsatile": [
+          {
+            "ph": "pulse-synchronous",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "pulse synchronous",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "pulsing tinnitus",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "pulsating tinnitus",
+            "source": "lead-approved"
+          }
+        ],
+        "rf_progressive": [
+          {
+            "ph": "steadily worsening",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "worsening headache",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "progressive headache",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "worse on waking",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "worse upon waking",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "worse with cough",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "worse with valsalva",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "worse with strain",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "worse lying flat",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "worse when lying flat",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "worse when supine",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "wakes from sleep",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "waking from sleep",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "wakes him from sleep",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "wakes her from sleep",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "waking him from sleep",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "waking her from sleep",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "awakens from sleep",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "progressively worse",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "progressively worsening",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "worse each week",
+            "source": "lead-approved"
+          }
+        ],
+        "rf_new50": [
+          {
+            "ph": "new headache over 50",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "new headache after 50",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "new headache after age 50",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "new onset headache after 50",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "new-onset headache after 50",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "new onset headache after age 50",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "new-onset headache after age 50",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "first-ever severe headache",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "first ever severe headache",
+            "source": "lead-approved"
+          }
+        ],
+        "rf_mass": [
+          {
+            "ph": "epistaxis",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "unilateral nasal obstruction",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "one-sided nasal obstruction",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "right-sided nasal obstruction",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "left-sided nasal obstruction",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "right nasal obstruction",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "left nasal obstruction",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "nasal mass",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "intranasal mass",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "sinonasal mass",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "nasal cavity mass",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "cheek numbness",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "v2 numbness",
+            "source": "lead-approved"
+          }
+        ],
+        "rf_systemic": [
+          {
+            "ph": "fever",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "febrile",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "weight loss",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "immunosuppress",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "immunocompromised",
+            "source": "lead-approved"
+          },
+          {
+            "ph": "malignancy",
+            "source": "lead-approved"
+          }
+        ]
+      },
+      "redFlagNegation": true
+    },
+    "clarify": [
+      {
+        "id": "cl_rhinorrhea",
+        "ph": [
+          "runny nose",
+          "rhinorrhea",
+          "rhinorrhoea",
+          "nasal discharge",
+          "nasal drainage",
+          "post-nasal drip",
+          "postnasal drip",
+          "post nasal drip",
+          "drippy nose"
+        ],
+        "unless": [
+          "clear",
+          "watery",
+          "thin "
+        ],
+        "probe": "pr_purulence",
+        "ask": {
+          "text": "is the rhinorrhea clear or purulent?",
+          "source": "lead"
+        },
+        "source": "lead"
+      },
+      {
+        "id": "cl_tinnitus_quality",
+        "ph": [
+          "tinnitus",
+          "ringing",
+          "ear ring",
+          "ears ring",
+          "roaring",
+          "buzzing",
+          "hissing"
+        ],
+        "unless": [
+          "pulsatile",
+          "whooshing"
+        ],
+        "probe": "pr_tinnitus_quality",
+        "source": "lead-approved"
+      },
+      {
+        "id": "cl_laterality",
+        "ph": [
+          "tinnitus",
+          "ringing",
+          "ear full",
+          "ears feel full",
+          "fullness in my ear",
+          "plugged",
+          "hearing loss",
+          "decreased hearing"
+        ],
+        "unless": [
+          "bilateral",
+          "both ears",
+          "alternat"
+        ],
+        "probe": "pr_laterality",
+        "source": "lead-approved"
+      },
+      {
+        "id": "cl_hearing_onset",
+        "ph": [
+          "hearing loss",
+          "decreased hearing",
+          "muffled hearing",
+          "trouble hearing",
+          "hard of hearing"
+        ],
+        "unless": [
+          "gradual",
+          "slowly"
+        ],
+        "probe": "pr_sudden_drop",
+        "source": "lead-approved"
+      },
+      {
+        "id": "cl_audiogram",
+        "ph": [
+          "hearing loss",
+          "decreased hearing",
+          "fluctuating hearing"
+        ],
+        "probe": "pr_audiogram",
+        "source": "lead-approved"
+      },
+      {
+        "id": "cl_dizziness_kind",
+        "ph": [
+          "dizziness",
+          "dizzy"
+        ],
+        "unless": [
+          "vertigo",
+          "spinning",
+          "room spins",
+          "lightheaded",
+          "light-headed",
+          "imbalance",
+          "unsteady",
+          "off balance",
+          "rocking",
+          "swaying",
+          "bobbing"
+        ],
+        "probe": "pr_internal_vertigo",
+        "source": "lead-approved"
+      },
+      {
+        "id": "cl_otalgia",
+        "ph": [
+          "ear pain",
+          "otalgia",
+          "ear hurts",
+          "ear discomfort"
+        ],
+        "item": "n_otalgia",
+        "source": "lead-approved"
+      },
+      {
+        "id": "cl_smell",
+        "ph": [
+          "hyposmia",
+          "anosmia",
+          "loss of smell",
+          "decreased smell",
+          "reduced smell"
+        ],
+        "unless": [
+          "only during"
+        ],
+        "probe": "pr_smell",
+        "source": "lead-approved"
+      },
+      {
+        "id": "cl_nasal_side",
+        "ph": [
+          "nasal obstruction",
+          "nasal congestion",
+          "congestion",
+          "stuffy",
+          "blocked nose",
+          "stuffed up"
+        ],
+        "unless": [
+          "bilateral",
+          "both sides",
+          "alternat"
+        ],
+        "probe": "pr_nasal_mass",
+        "source": "lead-approved"
+      },
+      {
+        "id": "cl_hints",
+        "ph": [
+          "hints negative",
+          "hints normal",
+          "hints positive",
+          "hints benign"
+        ],
+        "unless": [
+          "saccade",
+          "skew",
+          "direction-changing",
+          "head impulse"
+        ],
+        "probe": "pr_head_impulse",
+        "source": "lead-approved"
+      },
+      {
+        "id": "cl_neck",
+        "ph": [
+          "cervicalgia",
+          "neck pain",
+          "neck ache",
+          "neck stiffness"
+        ],
+        "unless": [
+          "during",
+          "before",
+          "after",
+          "with the episodes",
+          "attack"
+        ],
+        "probe": "pr_neck",
+        "source": "lead-approved"
+      },
+      {
+        "id": "cl_viral_onset",
+        "ph": [
+          "upper respiratory infection",
+          "respiratory infection",
+          "covid",
+          "influenza",
+          "viral"
+        ],
+        "unless": [
+          "after",
+          "since",
+          "following",
+          "post"
+        ],
+        "item": "n_viral",
+        "source": "lead-approved"
+      },
+      {
+        "id": "cl_scan_report",
+        "ph": [
+          "ct showed",
+          "scope showed",
+          "lund-mackay"
+        ],
+        "probe": "pr_scan_detail",
+        "source": "lead-approved"
+      },
+      {
+        "id": "cl_audiogram_report",
+        "ph": [
+          "audiogram showed",
+          "hearing test showed"
+        ],
+        "probe": "pr_audiogram",
+        "source": "lead-approved"
+      }
+    ],
     "goldSet": {
-      "version": "0.3.0",
-      "lexiconVersion": "0.3.2",
-      "file": "masque_extraction_goldset_0.3.0.json"
+      "version": "0.4.0",
+      "lexiconVersion": "0.3.3",
+      "file": "masque_extraction_goldset_0.4.0.json"
     }
   },
   "locales": {
@@ -3725,6 +5073,13 @@
         "item": "m_fhx",
         "group": "family"
       }
+    ],
+    "planAdvice": [
+      {
+        "text": "recommend a trial of migraine abortives if not contra-indicated due to other conditions.",
+        "source": "lead",
+        "decided": "2026-10-12"
+      }
     ]
   },
   "changelog": [
@@ -3897,6 +5252,34 @@
       "paths": [
         "/emrTemplate/pastHistory",
         "/emrTemplate/examRows/14/optionPlaceholders"
+      ]
+    },
+    {
+      "date": "2026-10-12",
+      "kind": "lexicon",
+      "note": "Lexicon 0.3.2 → 0.3.3 (release 0.4.7), from the clinical lead's request and decisions of 2026-10-11, signed off by the clinical lead on 2026-10-12 (sign-off page and chat): every row the team drafted and the lead approved is marked lead-approved; the 18 rows the lead struck are gone (the mask aural, kept struck after the lead was told that \"aural fullness\" then reads as aura; the chart red-flag phrases sudden onset headache, sudden-onset headache, facial numbness, aphasia, vision loss, visual loss, visual obscuration, jaw pain with chewing, jaw pain when chewing, jaw pain on chewing, periorbital swelling, periorbital edema, periorbital oedema, orbital swelling, eye pain, pain with eye movement and pain on eye movement); and the rows the lead approved at the sign-off are added (deny: not associated with, not accompanied by, neg for; hedge: +/-; rf_progressive: progressively worse, progressively worsening, worse each week; rf_asym: left-sided hearing loss, right-sided hearing loss, asymmetric hearing loss). Chart reading (clauses) applies to every line, typed chart text, spoken and demo lines alike (the lead's decision D9 of 2026-10-12; review round 2 had kept it to typed chart text): a statement, a pasted chart note or a spoken line is read clause by clause; a clause ends at . ! ? or ; followed by whitespace (a \"?\" opening a clause belongs to the words after it, so \"? aura\" is hedged; since review round 3 the \".\" of an abbreviation inside a sentence ends nothing: \"No assoc. nausea.\"), at a line end that is not a wrapped line, after a section label, before a second \"Label:\" on a line of labels and before a break word, and never crosses a header. Every phrase and every negation, attribution and history cue matches only at a word start (wordStart); the clauses cue lists match as whole words, so \"yes\" never reads at the start of \"yesterday\"; and a phrase lying inside a mask word is no hit (mask: number, and since review round 2 the report headers ct showed, scope showed, lund-mackay, audiogram showed, hearing test showed, which name a test rather than its result, and hay fever). A mention is denied by a negation cue within the window inside its clause with no scopeEnd word between (a negation cue holding another at its end, as \"didn't\" holds \"n't\", is measured from that cue, so a contraction keeps its 0.3.2 reach), by a deny cue earlier in its clause, or on a line heading its list (\"Patient denies:\" over bullets or short lines), with no affirm cue between (a list denial, which a scopeEnd word or, since review round 3, a complement word ends, and which reaches a later list item only when that item is the finding alone: a mention it does not reach is set aside, recorded neither yes nor no; a window cue reaches a later item on the same terms), or by a post cue that closes the mention's item right after it (a \":\", one word, or a list of findings it closes, between); an affirm cue between a negation cue and the mention keeps it affirmed, and one governing the mention keeps a post cue from denying it; a prefix cue glued to it drops the mention without recording a denial. A negation, deny, post or prefix cue lying inside a longer affirm or hedge cue is no cue (\"no relief\" holds \"no \", \"not sure\" holds \"not \"); an affirm cue right after a finding (only a \":\" or \"-\" between, or nothing before a sign such as \"(+)\") that closes the item answers it as a label and affirms it unless a denial in the label's own item governs it, and a deny cue so placed answers its label only and opens no list; a sign between two findings with only spaces around it is the prefix of the finding after it, and a plus sign before a word affirms it (review round 3). affirm (lead: endorses, reports, has, yes; lead-approved: endorsed, reported, admits, positive for, complains of, c/o, describes, presents with, (+), and the failed-treatment cues no improvement, no relief, no response, no benefit, without improvement, without relief, without benefit, failed, refractory to, despite); deny (lead: denies, no, lacks, doesn't have; lead-approved: denied, negative for, without, does not have, don't have, do not have, haven't had, hasn't had, (-), rather than, and since the sign-off not associated with, not accompanied by, neg for); post (lead-approved: negative, denied, absent, not present, : no, : none, (-), : denies, - no); prefix (lead-approved: non-, non); breaks (lead-approved: but, however, although, though, except, whereas, —, other than, besides, apart from); scopeEnd (lead-approved: with, so, now, until, is, are, was, were, to, from); complement (lead-approved, review round 3: for, in, about, after, since, on, none of). A yes/no item mentioned only affirmed records yes and only denied records no; one finding (the same phrase) both affirmed and denied records nothing and is asked instead, while different phrases of one item that disagree record yes (the affirmed mention wins: \"It's not the weather … it's when I skip meals.\"), except for the rule-out items (strictConflict, lead-approved: x_purulent, x_objective, x_lowfreq, x_anosmia), where a \"yes\" lowers the index, so any affirmed and denied mention records nothing and is asked; context, scale and multi-answer entries take their first undenied mention in text order; in typed chart text a heard entry takes its duration only from its cue's own clause (a spoken line keeps release 0.4.6's band choice). A hedged clause (hedge: reportedly, possible, possibly, probable, questionable, suspected, unclear whether, unclear if, rule out, r/o, ?, maybe, unsure, uncertain, not sure, might, and since the sign-off +/-) and a clause holding unfilled template text (placeholder: ***, ___, [ ], []) record nothing; each is asked instead. Attribution and history windows stop at the clause; relatives named in chart wording are attribution cues (thirdParty: mother, father, mom, dad, sister, brother, daughter, son, parents, sibling, aunt, uncle, cousin, grandmother, grandfather, family history of, family hx of); in typed chart text the attribution cues \"her \" and \"his \" name the patient when a finding follows them and then do not gate (chartIgnoreThirdParty, lead-approved; a spoken line reads every cue, D19), while before any other word (\"Her husband has tinnitus.\"), relatives and every other cue still gate. Section headers (sections; exam: physical exam, physical examination, exam, examination, otoscopic exam, otoscopy, objective, vital signs; family: family history, family hx, fhx; skip: allergies, allergy, medications, medication, meds, current medications; read: hpi, history of present illness, interval history, ros, review of systems, past medical history, pmh, past surgical history, psh, social history, assessment, plan, assessment and plan, assessment/plan, a/p, impression, impression and plan): nothing captures under an allergy or medication header, every capture under a family-history header is attributed to someone else (m_fhx excepted), and under an exam header nothing captures (examItems, empty since review round 2); a read header is read normally and ends any section, an exam's own sub-labels (\"HEENT:\", \"Neuro:\") keep the exam, any other header ends a skip or family-history section, and a section word as an inline label (\"Allergies: NKDA\") holds for its line only. Red flags (redFlagNegation; the lead's decision of 2026-10-11): a red flag whose every mention is denied is not raised and not listed; one undenied mention still raises it, and hedges, placeholders and sections never lower one. Only a denial that governs the flag phrase directly denies it (narrowed in review round 3): a prefix; in its own list item, a window or deny cue before it with only plain words between (no complement or scopeEnd word, affirm cue or plus sign); a deny cue heading its list when its later item is the bare flag phrase; or a closing post cue right after it; a list denial that does not reach it this way (\"Migraine without aura, now with worst headache of her life.\") or a distant post cue (\"Reports pulsatile tinnitus with negative CTA.\") never lowers one. Each flag also reads chart-register phrases (clauses.redFlags, review round 2, lead-approved: e.g. sudden hearing loss, ssnhl, unilateral hearing loss, slurred speech, pulsatile wording, epistaxis, nasal mass, proptosis, painful eye movement, diplopia, facial droop, dysarthria, worse with cough, wakes from sleep, steadily worsening, scalp tenderness, jaw claudication, new headache over 50, fever, weight loss), a hit inside a longer hit of the same flag being part of it. Spoken and demo lines keep their carry-over (heard slots, carryRefuse, yieldTo) exactly as before, and in a spoken line a deny cue that opens its clause before a word starting no finding answers the clinician's question (\"no it's more of a whooshing with my heartbeat\") and lowers no red flag; typed chart text sets no context marker, which the clinician sets (the lead's D8 answer). Negation cues appended (lead-approved): wasn't, weren't, aren't, hadn't. Clarification prompts (clarify), read only by the clarification section, for typed chart text only, and never by extraction: when a mention lacks its qualifier the clinician is asked the module's own question with its own answers: cl_rhinorrhea → pr_purulence; cl_tinnitus_quality → pr_tinnitus_quality; cl_laterality → pr_laterality; cl_hearing_onset → pr_sudden_drop; cl_audiogram → pr_audiogram; cl_dizziness_kind → pr_internal_vertigo; cl_otalgia → n_otalgia; cl_smell → pr_smell; cl_nasal_side → pr_nasal_mass; cl_hints → pr_head_impulse; cl_neck → pr_neck; cl_viral_onset → n_viral; cl_scan_report → pr_scan_detail and cl_audiogram_report → pr_audiogram (review round 2: a masked report header asks what the report showed). Since review round 3 a qualifier the text denies resolves nothing (\"not bilateral\"), and a trigger set aside as uncertain still asks. Review round 2 removed from the safety entries' qualifiers every word that states the dangerous answer without raising its flag (left, right, unilateral, one ear, same ear, one side, one-sided, sudden, pulsing, pulses, heartbeat, bloody) and the test names audiogram, audiometry and hearing test. The sign-off removed the qualifiers deep (cl_otalgia), clicking and steady (cl_tinnitus_quality), progressive (cl_hearing_onset) and the positive-answer qualifiers of the rule-out entries (cl_rhinorrhea: purulent, thick, green, yellow, cloudy, discolored, discoloured, colored, coloured, culture; cl_audiogram: low-frequency, low frequency; cl_smell: between episodes, between flares, persistent, constant, all the time; cl_scan_report: scan showed inflammation, opacification, mucosal thickening, polyps; cl_audiogram_report: low frequency loss, hearing drops during, hearing comes back). cl_rhinorrhea asks the lead's question \"is the rhinorrhea clear or purulent?\" with pr_purulence's answers; every trigger and qualifier is lead-approved. Instrument 0.2 and probe set 1.0.0 unchanged. Gold set 0.3.0 → 0.4.0: the 0.3.0 cases and dialogues verbatim, the chart cases (the lead's history and physical, 50 catalogue rows, 14 review-fix cases k052-k065, 57 review-round-1 cases k066-k122, 64 review-round-2 cases k123-k186, 73 review-round-3 cases k187-k259 and 14 sign-off cases k260-k273) and a supersede table for the 0.2.0 and 0.3.0 outputs that lexicon 0.3.3 changes (since the lead's decision D9 five cases, each read now as a spoken line under chart reading: e16, r02, f02, t007, w019; no dialogue step).",
+      "paths": [
+        "/lexicon/version",
+        "/lexicon/clauses",
+        "/lexicon/clarify",
+        "/lexicon/goldSet",
+        "/lexicon/negation/cues"
+      ]
+    },
+    {
+      "date": "2026-10-12",
+      "kind": "question",
+      "note": "Clinician question of item r_dur, recorded in release 0.4.8 from the clinical lead's request in chat of 2026-10-12 (\"Fix 2: Question: recalcitrance / How long has this been going on? / Is a yes/no, if phrasing it as such it should ask \"Have symptoms persisted over 3 months despite trials of medical management?\"\"): the item's ask \"How long has this been going on?\" becomes the lead's sentence, verbatim, \"Have symptoms persisted over 3 months despite trials of medical management?\". Its answers stay Yes / No. The item's statement, weight, short label and patient wording, and the patient context question c_dur, are unchanged; ask is outside instrumentHash and scoringHash, so instrument 0.2 and the calibration stand; contentHash changes. Lexicon 0.3.3, probe set 1.0.0 and gold set 0.4.0 unchanged.",
+      "paths": [
+        "/domains/0/items/0/ask"
+      ]
+    },
+    {
+      "date": "2026-10-12",
+      "kind": "emr-plan",
+      "note": "Plan advice of the EMR Friendly Template, recorded in release 0.4.8 from the clinical lead's request in chat of 2026-10-12 (\"Also recommendations in the plan should also add \"recommend a trial of migraine abortives if not contra-indicated due to other conditions.\" so that a primary doctor can offer this as an option to the patient for relief in the interim.\") and the lead's answers of the same day (when: \"With the treatment refs, no red flag (Recommended)\"; outputs: \"EMR template note (Recommended)\"): emrTemplate.planAdvice holds the lead's sentence, verbatim, \"recommend a trial of migraine abortives if not contra-indicated due to other conditions.\", with its source and date. The EMR template's plan prints it right after the empiric-treatment reference lines, before the treatment-offered placeholders, only where those references print and no red flag is open; never under an open red flag's screen-based block, and never in the encounter note, the FHIR bundle or the Screener's result cards. The signed-off emrTemplate block of release 0.4.3 and the 0.4.6 additions are unchanged. Recorded in tests/harness/emr-plan-delta-048.js. Instrument 0.2, lexicon 0.3.3, probe set 1.0.0 and gold set 0.4.0 are unchanged; only contentHash changes.",
+      "paths": [
+        "/emrTemplate/planAdvice"
       ]
     }
   ]

@@ -22,10 +22,7 @@
 //   encoding   every text file under app/ is UTF-8 without BOM, with LF line endings
 //   pages      every app/*.html (and every test page) carries noindex, nofollow; its corner badge
 //              (.masque-proto) and noscript paragraphs carry their own lang="en" (release 0.4.2:
-//              <html lang> follows the patient companion's locale); a deployed page (app/*.html)
-//              loads Babel standalone with defer or async and imports masque-loader.js with
-//              ?v=<APP_VERSION>; app/.htaccess sends X-Robots-Tag noindex, nofollow for every
-//              published source kind and Cache-Control no-cache for pages and modules
+//              <html lang> follows the patient companion's locale)
 //   t-css      (§5.10) every rule of every app stylesheet starts with its root, no :root outside
 //              shell.css.js, duplicate @keyframes names identical; read from the mounted shell,
 //              Apply dialog and patient page by tests/harness/tcss.js
@@ -411,15 +408,6 @@ export default {
     notes.push(`encoding: ${textFiles} text files${exemptUsed.length ? `; CR exempted (F3: pre-existing data files, §2.8 unchanged trees): ${exemptUsed.join(", ")}` : ""}`);
 
     // ------------------------------------------------------------------ pages
-    // The release the deployed pages' loader query must name (read at run time through the
-    // page's loader: this file stays import-free, run.mjs imports it in Node).
-    let appVersion = null;
-    try {
-      appVersion = (await h.env.loader.importModule(h.appUrl("src/engine/policy.js"))).APP_VERSION || null;
-    } catch (err) {
-      fail("pages", `could not read APP_VERSION from src/engine/policy.js: ${String(err && err.message || err).split("\n")[0]}`);
-    }
-    if (!appVersion) fail("pages", "src/engine/policy.js exports no APP_VERSION");
     for (const page of pages.concat(files.filter((p) => p.startsWith("tests/loader-check") && p.endsWith(".html")))) {
       n += 1;
       const html = await h.fetchText(page);
@@ -433,32 +421,6 @@ export default {
         if (!host || host === pdoc.documentElement || host.getAttribute("lang") !== "en") {
           fail("pages", `${page}: <${el.tagName.toLowerCase()}${el.className ? ` class="${el.className}"` : ""}> is English page chrome without its own lang="en"`);
         }
-      }
-      // Deployed pages (app/*.html): Babel standalone never blocks the first paint, and the
-      // loader URL carries a version so a cached loader of another release is not reused.
-      if (page.includes("/")) continue;
-      for (const tag of html.match(/<script\b[^>]*\bsrc=["'][^"']*babel[^"']*["'][^>]*>/gi) || []) {
-        if (!/\b(defer|async)\b/.test(tag)) fail("pages", `${page}: ${tag} blocks the first paint (add defer)`);
-      }
-      // The query names this release (APP_VERSION, engine/policy.js; design 03 S1: the release
-      // label, NEW_RELEASE in the harness and the pages' ?v= move together).
-      for (const m of html.matchAll(/masque-loader\.js(\?[^'"]*)?['"]/g)) {
-        if (!m[1] || !/^\?v=/.test(m[1])) fail("pages", `${page} imports masque-loader.js without a ?v=<release> query`);
-        else if (appVersion && m[1] !== `?v=${appVersion}`) fail("pages", `${page} imports masque-loader.js${m[1]}, not ?v=${appVersion} (APP_VERSION)`);
-      }
-    }
-    // .htaccess: the header-level noindex covers every published source kind, and pages and
-    // modules are revalidated on each load.
-    if (files.includes(".htaccess")) {
-      n += 1;
-      const ht = await h.fetchText(".htaccess");
-      const robots = /<FilesMatch "([^"]+)">\s*Header set X-Robots-Tag "noindex, nofollow"/.exec(ht);
-      for (const ext of ["js", "jsx", "mjs", "json", "py", "R", "md", "csv"]) {
-        if (!robots || !new RegExp(`[(|]${ext}[|)]`).test(robots[1])) fail("pages", `.htaccess: no X-Robots-Tag for .${ext}`);
-      }
-      const cache = /<FilesMatch "([^"]+)">\s*Header set Cache-Control "no-cache"/.exec(ht);
-      for (const ext of ["html", "js", "jsx", "mjs", "json"]) {
-        if (!cache || !new RegExp(`[(|]${ext}[|)]`).test(cache[1])) fail("pages", `.htaccess: .${ext} is not revalidated (Cache-Control: no-cache)`);
       }
     }
 

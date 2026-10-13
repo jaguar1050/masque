@@ -105,6 +105,16 @@
 //              line with its recorded state before "Other family history: [ ]", the item out of the
 //              review of systems); the HINTS placeholder under the exam row only when the Scribe
 //              records the central option. Every state of the matrix, the flags and the fuzz.
+//   0.4.8      the clinical lead's plan line of 2026-10-12 (emrTemplate.planAdvice, written out here):
+//              "- " and the lead's sentence, verbatim, right after the empiric-treatment reference lines
+//              and before the treatment-offered placeholders, exactly once, wherever the references
+//              print with no red flag open (every phenotype, both surfaces, the Scribe's derived
+//              pictures); never under an open flag (each flag alone, every tier, every Scribe capture
+//              source, under the screen-based block that keeps the references), never at the lowest
+//              band, unscorable, with the Scribe review unrecorded or after a rule error; never in the
+//              encounter note (buildNote), the FHIR bundle, or a module without the key (the neutral
+//              template); no app or other engine file reads the key; V61 on the new key. The verify
+//              oracle expects it from the data in every state of the matrix, the flags and the fuzz.
 //   fuzz       seeded random states (1,500 per surface; 300 with ?quick=1): no throw, deterministic,
 //              inputs untouched, every invariant above, the referral equal to the bundle's; since
 //              release 0.4.5 pr_internal_vertigo is answered often (Scribe, and Screener to prove
@@ -156,6 +166,8 @@ const PAST_OTHER = ["Current medications and doses: [ ]", "Drug allergies — ag
 /** Release 0.4.6: the lead's approved wording, written out here (not read from the module). */
 const MODIFYING_ROW = "Modifying conditions (asthma, cystic fibrosis, immunocompromise, aspirin-exacerbated respiratory disease, ciliary dyskinesia): [ ]";
 const HINTS_PLACEHOLDER = "  [clinician interpretation of HINTS and any imaging decision]";
+/** Release 0.4.8: the clinical lead's plan line as the plan prints it, written out here (not read from the module). */
+const PLAN_LINE = "- recommend a trial of migraine abortives if not contra-indicated due to other conditions.";
 /**
  * Release 0.4.5: the clinical lead's referral rule for dizziness cases as the note must print it,
  * written out here (not read from the module): the rule and the clarification verbatim, the
@@ -600,6 +612,16 @@ export default {
         ok(assessment.includes(`Considerations: ${heads.join("; ")}`) && heads.every((hd) => plan.some((l) => l.startsWith(`- ${hd}. `))), "/assessment/considerations/in-plan",
           "in the assessment, each heading a recommendation the plan prints", heads);
       }
+      // Release 0.4.8: the data's plan advice right after the reference lines, before the
+      // treatment-offered placeholders, only where the references print with no red flag open; never
+      // under a flag's screen-based block, never without the references, and nowhere else.
+      const adviceAll = tpl ? arr(tpl.planAdvice).filter((r) => isObj(r) && nonEmpty(r.text)) : [];
+      const adviceWant = x.state === "open" && wantRefs.length ? adviceAll.map((r) => `- ${r.text}`) : [];
+      for (const r of adviceAll) {
+        const n = L.filter((l) => l.includes(r.text)).length;
+        ok(n === adviceWant.filter((l) => l === `- ${r.text}`).length && (n === 0 || plan.includes(`- ${r.text}`)), "/plan/advice/count",
+          adviceWant.length ? "the plan line once, in the plan" : "no plan line (references closed or a red flag open)", n);
+      }
       if (full && wantRefs.length) {
         const want = [REFS_HEADING];
         for (const r of wantRefs) {
@@ -607,6 +629,7 @@ export default {
           if (r.label !== undefined) { if (cs.length === 1) want.push(`- ${r.label}: ${cs[0]}`); else { want.push(`- ${r.label}:`); for (const l of cs) want.push(`  ${l}`); } }
           else { want.push(`- ${r.note}`); for (const l of cs) want.push(`  Ref: ${l}`); }
         }
+        want.push(...adviceWant);
         want.push(...OFFERED);
         const i = plan.indexOf(REFS_HEADING);
         c.diff(want, plan.slice(i, i + want.length), { at: `${at}/plan/references/lines`, input });
@@ -1439,24 +1462,14 @@ export default {
             noEscalation(t, `/release045/${surface}/${complaint}/${name}`);
           }
         }
-        // Not a dizziness case: no rule, whatever the probe answers. For a declared non-dizziness
-        // phenotype (sinonasal) the destination is the module's default (the lead's rule); with no
-        // complaint, which is not a declared phenotype value, no referral is issued and the plan
-        // prints the clinician placeholder, agreeing with the bundle (decision F11, AD20).
+        // Not a dizziness case: no rule, whatever the probe answers; the destination is the module's default.
         for (const v of ["sinonasal", ""]) {
           if (v === "" && surface === "scribe") continue;
           const t = build(M, surface, stateOf(routed, { complaint: v, probeAns: { pr_internal_vertigo: 0 } }));
           c.check(!L5(t).some((l) => LEAD_RULE_BLOCK.includes(l) || l === SUPERSEDED_INTERNAL_VERTIGO || l.startsWith("Referral rule") || l.startsWith("Clarification")), `/release045/${surface}/${v || "(none)"}/no-rule`, null, "no referral rule",
             L5(t).filter((l) => LEAD_RULE_BLOCK.includes(l)));
-          if (v === "") {
-            c.check(plan5(t)[0] === "Referral: [clinician decision]", `/release045/${surface}/(none)/referral`, null,
-              "Referral: [clinician decision] (no declared complaint, no referral; F11, AD20)", plan5(t)[0]);
-            c.check(!L5(t).includes(REFS_HEADING), `/release045/${surface}/(none)/no-references`, null,
-              "no references without a referral (F11, AD20)", L5(t).filter((l) => l === REFS_HEADING));
-          } else {
-            c.check(plan5(t)[0] === "Referral: Headache medicine / Neurology — evaluate for mid-facial / migrainous cause", `/release045/${surface}/${v}/referral`, null,
-              "Referral: Headache medicine / Neurology — evaluate for mid-facial / migrainous cause", plan5(t)[0]);
-          }
+          c.check(plan5(t)[0] === "Referral: Headache medicine / Neurology — evaluate for mid-facial / migrainous cause", `/release045/${surface}/${v || "(none)"}/referral`, null,
+            "Referral: Headache medicine / Neurology — evaluate for mid-facial / migrainous cause", plan5(t)[0]);
         }
       }
       // A Scribe complaint derived by the module's rule: the otologic sample without the answers that
@@ -1513,7 +1526,9 @@ export default {
           const iRecs = p0.findIndex((l) => x0.routing.recs.some((r) => l === `- ${r.h}. ${r.p}`));
           const iRefs = p0.indexOf(REFS_HEADING);
           c.check(iRecs > 0 && iRefs > iRecs, `${at}/@unflagged`, null, "recommendations, then the references, in the unflagged plan", { iRecs, iRefs });
-          const want = [...p0.slice(0, iRecs), ...p0.slice(iRefs)];
+          // Release 0.4.8: the lead's plan line is the one line of the unflagged references the flagged
+          // block leaves out (asserted on its own in the release 0.4.8 block below).
+          const want = [...p0.slice(0, iRecs), ...p0.slice(iRefs)].filter((l) => l !== PLAN_LINE);
           const iAlso = p1.indexOf(ALSO);
           c.diff(want, iAlso >= 0 ? p1.slice(iAlso + 1) : null, { at: `${at}/also`, input: { surface, complaint, flag: urgent.id } });
           c.check(iAlso >= 2 && p1[iAlso - 1] === WITHHELD && p1[iAlso - 2] === WORKUP, `${at}/also/heading`, null, [WORKUP, WITHHELD, ALSO], p1.slice(Math.max(0, iAlso - 2), iAlso + 1));
@@ -1590,6 +1605,100 @@ export default {
       await v61((t) => { t.examRows[14].optionPlaceholders[0].option = 7; }, "option", "/emrTemplate/examRows/14/optionPlaceholders/0/option");
       await v61((t) => { t.examRows[14].optionPlaceholders.push({ option: 0, placeholder: "again" }); }, "option-twice", "/emrTemplate/examRows/14/optionPlaceholders/1/option");
       await v61((t) => { t.examRows[0].optionPlaceholders = [{ option: 0, placeholder: "x" }]; }, "no-probe", "/emrTemplate/examRows/0/optionPlaceholders");
+    }
+
+    // ------------------------------------------------------------------ release 0.4.8: the clinical lead's plan line
+    {
+      c.check(Array.isArray(T.planAdvice) && T.planAdvice.length === 1 && `- ${T.planAdvice[0].text}` === PLAN_LINE, "/release048/data", null, PLAN_LINE, T.planAdvice);
+      const refsCount = (complaint) => arr(T.references).filter((r) => isObj(r) && (r.showFor === undefined || arr(r.showFor.phenotypes).includes(complaint)))
+        .reduce((n, r) => n + 1 + (r.label !== undefined ? (arr(r.citations).length === 1 ? 0 : arr(r.citations).length) : arr(r.citations).length), 0);
+      const urgent = M.redFlags.find((f) => vocab.TIER_RANK[f.tier] !== 0);
+      const emergentF = M.redFlags.find((f) => vocab.TIER_RANK[f.tier] === 0);
+      const noLine = (t, at, what) => c.check(!linesOf(t).some((l) => l.includes(T.planAdvice[0].text)), at, null, `no plan line (${what})`, linesOf(t).filter((l) => l.includes(T.planAdvice[0].text)));
+      for (const surface of SURFACES) {
+        const how = surface === "scribe" ? "md" : true;
+        // (a) Placement, line-exact, for every phenotype: after the last reference line, before the
+        // first treatment-offered placeholder; once.
+        const pictures = [...M.phenotypes.values.map((v) => [v.value, stateOf(routed, { complaint: v.value })])];
+        if (surface === "scribe") pictures.push(["derived", { ...stateOf(routed), complaint: undefined }]);
+        for (const [name, st] of pictures) {
+          const at = `/release048/${surface}/${name}`;
+          const x = expectFor(M, surface, st);
+          const p = sectionOf(linesOf(build(M, surface, st)), "PLAN") || [];
+          const iH = p.indexOf(REFS_HEADING);
+          const iL = p.indexOf(PLAN_LINE);
+          const n = refsCount(x.complaint);
+          c.check(x.state === "open" && iH >= 0 && n > 0 && iL === iH + 1 + n && p[iL + 1] === OFFERED[0] && p.filter((l) => l === PLAN_LINE).length === 1
+              && (p[iL - 1].startsWith("- ") || p[iL - 1].startsWith("  ")) && p[iL - 1] !== PLAN_LINE, at, { complaint: x.complaint },
+            [`(the last of ${n} reference lines)`, PLAN_LINE, OFFERED[0]], p.slice(Math.max(0, iL - 1), iL + 2));
+        }
+        // (b) Never under an open red flag: each flag alone, both tiers together, every Scribe capture
+        // source; the screen-based block under the heading keeps the references without the line.
+        for (const f of M.redFlags) {
+          for (const src of surface === "scribe" ? ["md", "nlp"] : [true]) {
+            const t = build(M, surface, { ...stateOf(routed, { complaint: "otologic" }), rf: { [f.id]: src } });
+            const p = sectionOf(linesOf(t), "PLAN") || [];
+            const iAlso = p.indexOf(ALSO), iH = p.indexOf(REFS_HEADING);
+            c.check(iAlso >= 0 && iH > iAlso && p[iH + 1 + refsCount("otologic")] === OFFERED[0], `/release048/${surface}/flag/${f.id}/${src}/references`, null, "the references under the screen-based heading, then the offered lines", p.slice(iH, iH + 2));
+            noLine(t, `/release048/${surface}/flag/${f.id}/${src}`, "an open red flag");
+          }
+        }
+        noLine(build(M, surface, { ...stateOf(routed), rf: { [urgent.id]: how, [emergentF.id]: how } }), `/release048/${surface}/flag/@both-tiers`, "both tiers open");
+        if (surface === "scribe") {
+          const tap = M.redFlags.find((f) => arr(probeById.pr_temporal_artery && probeById.pr_temporal_artery.opts).some((o) => o.rf === f.id));
+          if (tap) noLine(build(M, surface, { ...stateOf(routed), rf: { [tap.id]: "probe" }, probeAns: { pr_temporal_artery: probeById.pr_temporal_artery.opts.findIndex((o) => o.rf === tap.id) } }), `/release048/${surface}/flag/@probe`, "a flag a probe raised");
+          noLine(build(M, surface, { ...stateOf(routed), rf: { [urgent.id]: "md" }, safetyReviewed: false }), `/release048/${surface}/flag/@unreviewed`, "an open flag, review unrecorded");
+        }
+        // (c) Never where the references do not print: lowest band, unscorable, unreviewed (Scribe), rule errors.
+        noLine(build(M, surface, { answers: allNegative, ctx: {}, complaint: "otologic", rf: {}, safetyReviewed: true }), `/release048/${surface}/closed`, "the lowest band");
+        noLine(build(M, surface, { answers: {}, ctx: {}, complaint: "otologic", rf: {}, safetyReviewed: true }), `/release048/${surface}/unscorable`, "not scorable");
+        noLine(build(badRouting, surface, stateOf(routed)), `/release048/${surface}/error/routing`, "a routing rule error");
+        if (surface === "scribe") {
+          noLine(build(M, surface, stateOf(routed, { safetyReviewed: false })), `/release048/${surface}/unreviewed`, "the review unrecorded");
+          noLine(build(badDerive, surface, { ...stateOf(routed), complaint: undefined }), `/release048/${surface}/error/derive`, "a derive rule error");
+        }
+        // (d) Never in the bundle (both surfaces) or the encounter note (Scribe).
+        const x = expectFor(M, surface, stateOf(routed, { complaint: "otologic" }));
+        c.check(x.state === "open" && !JSON.stringify(x.bundle).includes(T.planAdvice[0].text), `/release048/${surface}/bundle`, null, "no plan line in the FHIR bundle", null);
+      }
+      {
+        const scribeEngine = await h.engine("scribe.js");
+        const st = stateOf(routed, { complaint: "otologic" });
+        const score = scoring.computeScore(M, st.answers);
+        const routing = rules.routingRecs(M, rules.buildRoutingState(M, { surface: "scribe", answers: st.answers, ctx: st.ctx, complaint: "otologic", phenotypeError: null, score, activeFlags: [], safetyReviewed: true }));
+        const note = scribeEngine.buildNote(M, { patient: M.demo.patient, answers: st.answers, ctx: st.ctx, vmp: {}, score, recs: routing.recs, routingError: routing.error, activeFlags: [], safetyReviewed: true, probeNotes: [] });
+        c.check(typeof note === "string" && note.length > 0 && !note.includes(T.planAdvice[0].text), "/release048/note", null, "no plan line in the encounter note", typeof note === "string" ? note.slice(0, 80) : note);
+      }
+      // (e) Only engine/emr.js reads the key (and the validator and the contract describe it).
+      for (const f of ["src/apps/Screener.jsx", "src/apps/Scribe.jsx", "src/apps/PatientCompanion.jsx", "src/engine/scribe.js", "src/engine/fhir.js", "src/engine/patient.js", "src/engine/rules.js"]) {
+        let text = "";
+        try { text = await h.fetchText(f); } catch (err) { text = `unreadable: ${err && err.message}`; }
+        c.check(!text.startsWith("unreadable") && !text.includes("planAdvice"), `/release048/readers/${f}`, null, "does not read planAdvice", text.startsWith("unreadable") ? text : "reads it");
+      }
+      // (f) A module without the key prints no line; V61 on the key.
+      const noKey = JSON.parse(JSON.stringify(M.rubric));
+      delete noKey.emrTemplate.planAdvice;
+      const modNoKey = await bind.bindModule(noKey, M.logic, meta("fixture:emr-048-no-plan-advice"));
+      for (const surface of SURFACES) {
+        const t0 = build(modNoKey, surface, stateOf(routed, { complaint: "otologic" }));
+        const t1 = build(M, surface, stateOf(routed, { complaint: "otologic" }));
+        c.check(t0 === linesOf(t1).filter((l) => l !== PLAN_LINE).join("\n"), `/release048/${surface}/without-key`, null, "the same template without the one line", "differs elsewhere");
+      }
+      const v61 = async (mutate, name, wantPath) => {
+        const r = JSON.parse(JSON.stringify(M.rubric));
+        mutate(r.emrTemplate);
+        let errs = [];
+        try {
+          const mod = await bind.bindModule(r, M.logic, meta(`fixture:emr-048-${name}`));
+          errs = (await validate.validateModule({ module: mod, loaded: [] })).errors.filter((e) => e.code === "V61");
+        } catch (err) { errs = [{ path: "(bind threw)", msg: String(err && err.message || err) }]; }
+        c.check(errs.some((e) => e.path.startsWith(wantPath)), `/release048/v61/${name}`, null, `a V61 error at ${wantPath}`, errs.map((e) => `${e.path}: ${e.msg}`).slice(0, 3));
+      };
+      await v61((t) => { t.planAdvice[0].text = ""; }, "blank", "/emrTemplate/planAdvice/0/text");
+      await v61((t) => { t.planAdvice[0].text = "recommend a [trial]"; }, "brackets", "/emrTemplate/planAdvice/0/text");
+      await v61((t) => { delete t.planAdvice[0].source; }, "source", "/emrTemplate/planAdvice/0/source");
+      await v61((t) => { t.planAdvice[0].decided = "2026-13-01"; }, "decided", "/emrTemplate/planAdvice/0/decided");
+      await v61((t) => { t.planAdvice = "recommend"; }, "not-a-list", "/emrTemplate/planAdvice");
     }
 
     // ------------------------------------------------------------------ determinism

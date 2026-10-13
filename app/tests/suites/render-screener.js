@@ -19,13 +19,6 @@
 //             context answers, a red-flag case, and an empty walk), every card compared.
 //   layout    the panel the baseline mounts under the screen is replaced by the Research link
 //             card in the same place (AD8); the tab note leads the panel (AD12 chrome).
-//   F13, F11  (release 0.4.7) the bundle allows AD19 (valueDecimal for fractional domain points);
-//             for a sample whose complaint is not a declared phenotype value (the sim-* scenarios,
-//             complaint "") the card text, card DOM and bundle allow AD20 (no referral and no CDS
-//             index card), with the baseline's own index card (its text and DOM run) as the
-//             parameter. On a result card AD20 is listed before AD15 (the EMR button): AD20 removes
-//             the index card from the baseline only when AD15 then closes the remaining gap exactly.
-//             Everything else stays strict.
 // Beyond parity (§9.8 done-when): capture appends a row with module_id through onCapture; the
 // spec and cohort downloads are named per fhir.filePrefix and byte-equal to the engine
 // builders; nine rail buttons in two groups; the snapshot carries safetyReviewed,
@@ -238,40 +231,22 @@ export default {
       shape: { anchor: ["button.btn", "svg"], added: ["button.btn.ghost", "svg"] } } };
     let ad15Pre = 0, ad15Seen = 0;
 
-    const declared = ((masque.phenotypes && masque.phenotypes.values) || []).map((v) => v.value);
-    const INDEX_SRC = "CDS Hooks card · order-select";
-    /** AD20 parameters for `complaint` against the baseline container, or null when declared. */
-    const ad20For = (complaint, bc) => {
-      if (declared.includes(complaint)) return null;
-      const cds = bc.querySelector(".mq-wrap > .card .cds");
-      const index = cds && (textOf(cds) || "").startsWith(INDEX_SRC) ? cds : null;
-      return {
-        complaint, declared, indexSrc: INDEX_SRC,
-        cardText: index ? textOf(index) : undefined,
-        cardShape: index ? [`${index.tagName.toLowerCase()}.${(index.getAttribute("class") || "").trim().split(/\s+/).filter(Boolean).join(".")}`, ...shapeOf(index)] : undefined,
-      };
-    };
-    let ad19Pre = 0, ad19Seen = 0, ad20Pre = 0, ad20Seen = 0;
-
     /** Compare every region of the two mounted screens. */
-    const compare = (bc, nc, at, input, complaint = null) => {
+    const compare = (bc, nc, at, input) => {
       const a = regions(bc), b = regions(nc);
-      const p20 = complaint === null ? null : ad20For(complaint, bc);
-      const cardAllow = p20 ? { allow: ["AD20", "AD15"], ctx: { ...ad15, AD20: p20 } } : { allow: ["AD15"], ctx: ad15 };
       const r11 = c.diff(a.bannerButtons, b.bannerButtons, { at: `${at}/banner/buttons`, input, allow: ["AD11"], ctx: { AD11: ad11 } });
       if (r11.observed.has("AD11")) observedAD11 = true;
       c.diff(a.bannerText, b.bannerText, { at: `${at}/banner/text`, input });
       c.diff(a.brand, b.brand, { at: `${at}/brand`, input, allow: ["AD4"] });
       c.diff(a.rail, b.rail, { at: `${at}/rail`, input });
-      const rt = c.diff(a.card, b.card, { at: `${at}/card/text`, input, ...cardAllow });
-      const rd = c.diff(a.cardShape, b.cardShape, { at: `${at}/card/dom`, input, ...cardAllow });
+      const rt = c.diff(a.card, b.card, { at: `${at}/card/text`, input, allow: ["AD15"], ctx: ad15 });
+      const rd = c.diff(a.cardShape, b.cardShape, { at: `${at}/card/dom`, input, allow: ["AD15"], ctx: ad15 });
       // The button is on every result card; there AD15 must be what excuses both the text and the shape.
       if (nc.querySelector(".mq-wrap > .card [data-testid=scr-emr-toggle]")) {
         ad15Pre++;
         if (rt.observed.has("AD15") && rd.observed.has("AD15")) ad15Seen++;
         h.expect("AD15", { precondition: true, observed: rt.observed.has("AD15") && rd.observed.has("AD15") });
       }
-      if (p20 && p20.cardText) { ad20Pre++; if (rt.observed.has("AD20") && rd.observed.has("AD20")) ad20Seen++; }
       if (a.zones || b.zones) {
         const r7 = c.diff(a.zones, b.zones, { at: `${at}/card/meter/zones`, input, allow: ["AD7"], ctx: { AD7 } });
         if (r7.observed.has("AD7")) observedAD7 = true;
@@ -306,7 +281,7 @@ export default {
           const btn = railButtons(nc).find((b) => b.dataset.sample === sc.id);
           if (!c.check(!!btn, `${at}/rail/button`, input, "a rail button", "none")) return;
           click(btn);
-          compare(bc, nc, `${at}/result`, input, sc.complaint ?? "");
+          compare(bc, nc, `${at}/result`, input);
           c.check(textOf(nc.querySelector("[data-testid=tab-note]")) === common.TAB_NOTES.clinician, `${at}/tabNote`, input, common.TAB_NOTES.clinician, textOf(nc.querySelector("[data-testid=tab-note]")));
           const lb = layout(bc), ln = layout(nc);
           c.diff(lb, ln, { at: `${at}/layout`, input });
@@ -333,19 +308,12 @@ export default {
           click(cardButton(bc, /FHIR bundle$/)); click(cardButton(nc, /FHIR bundle$/));
           const ba = JSON.parse(textOf(bc.querySelector("pre.code"))), bb = JSON.parse(textOf(nc.querySelector("pre.code")));
           const pre = !score.scorable && score.floor < score.total;
-          const complaint = sc.complaint ?? "";
-          const undeclared = !declared.includes(complaint);
-          const p17 = { delta: REFERRAL_DELTA, complaint };
-          const r1 = c.diff(ba, bb, { at: `${at}/bundle`, input, allow: ["AD1", "AD17", "AD19", ...(undeclared ? ["AD20"] : [])],
-            ctx: { AD1: { total: score.total, floor: score.floor }, AD17: p17, AD19: {}, ...(undeclared ? { AD20: { complaint, declared, indexSrc: INDEX_SRC } } : {}) } });
+          const p17 = { delta: REFERRAL_DELTA, complaint: sc.complaint ?? "" };
+          const r1 = c.diff(ba, bb, { at: `${at}/bundle`, input, allow: ["AD1", "AD17"], ctx: { AD1: { total: score.total, floor: score.floor }, AD17: p17 } });
           if (pre) { sawAD1Pre = true; if (r1.observed.has("AD1")) sawAD1 = true; }
-          const ad19Here = Object.values(score.domains).some((d) => typeof d.pts === "number" && !Number.isInteger(d.pts));
-          if (ad19Here) { ad19Pre++; if (r1.observed.has("AD19")) ad19Seen++; }
           h.expect("AD1", { precondition: pre, observed: r1.observed.has("AD1") });
           // Release 0.4.5: the baseline refers the otologic or both phenotype to the destination the lead's rule changed.
-          const baseRef = (ba.entry || []).map((e) => e && e.resource).find((r) => r && r.resourceType === "ServiceRequest" && r.priority === "routine");
-          // Release 0.4.7 (F11): an undeclared complaint's baseline referral is gone (AD20).
-          if (undeclared && baseRef) { ad20Pre++; if (r1.observed.has("AD20")) ad20Seen++; }
+          const baseRef = (ba.entry || []).map((e) => e.resource).find((r) => r.resourceType === "ServiceRequest" && r.priority === "routine");
           const pre17 = AD17.detector({ p: p17, baseline: baseRef ? baseRef.code.text : null });
           if (pre17) { ad17Pre++; if (r1.observed.has("AD17")) ad17Seen++; }
           h.expect("AD17", { precondition: pre17, observed: r1.observed.has("AD17") });
@@ -353,7 +321,7 @@ export default {
 
           // Capture.
           click(cardButton(bc, /^Append this screen$/)); click(cardButton(nc, /^Append this screen$/));
-          compare(bc, nc, `${at}/captured`, input, sc.complaint ?? "");
+          compare(bc, nc, `${at}/captured`, input);
           const row = spies.rows[spies.rows.length - 1];
           c.check(!!row && row.source === "screener" && row.row.module_id === masque.id && row.row.instrument_version === masque.instrumentVersion,
             `${at}/capture/row`, input, { source: "screener", module_id: masque.id }, row && { source: row.source, module_id: row.row.module_id });
@@ -365,7 +333,7 @@ export default {
           // Back through every step.
           for (let s = masque.steps.screener.length - 2; s >= 0; s--) {
             click(navButton(bc, "Back")); click(navButton(nc, "Back"));
-            compare(bc, nc, `${at}/step/${masque.steps.screener[s].key}`, input, sc.complaint ?? "");
+            compare(bc, nc, `${at}/step/${masque.steps.screener[s].key}`, input);
             nSteps++;
           }
         });
@@ -393,9 +361,6 @@ export default {
       } finally { nm.unmount(); }
     }
     h.expect("AD11", { precondition: scenarios.length > 0, observed: observedAD11 });
-    h.expect("AD19", { precondition: ad19Pre > 0, observed: ad19Pre > 0 && ad19Seen === ad19Pre });
-    h.expect("AD20", { precondition: ad20Pre > 0, observed: ad20Pre > 0 && ad20Seen === ad20Pre });
-    c.note(`AD19 on the bundle ${ad19Seen}/${ad19Pre}; AD20 on the card and bundle ${ad20Seen}/${ad20Pre}`);
     c.check(ad17Pre > 0 && ad17Seen === ad17Pre, "/samples/@AD17", null, "AD17 at every referral of a dizziness case (otologic or both) shown (at least one sample)", `${ad17Seen} of ${ad17Pre}`);
     h.expect("AD7", { precondition: true, observed: observedAD7 });
 

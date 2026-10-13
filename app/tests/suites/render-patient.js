@@ -21,6 +21,12 @@
 //             The summary's action row is compared as its own region: the baseline's
 //             [print, download, startOver] becomes [print, download (.txt), download (.html),
 //             startOver] (AD10's new .html export; §5.5 labels), asserted exactly.
+//             Release 0.4.8 (the clinical lead's request of 2026-10-12): an es summary adds, after its
+//             findings, the English version of the same findings (section lang="en", titled in Spanish
+//             and in English); its findings are the English summary of the same answers rendered by the
+//             companion's own SummaryBody (innerHTML equal), and AD20 (right after AD4) excuses exactly
+//             that section's text right before the disclaimer, expected on every es summary; an en
+//             summary has no such section.
 //   exports   for every parity set that reaches a summary, the .txt and .html files the buttons
 //             save (URL.createObjectURL stubbed) are byte-equal to the engine's summaryText /
 //             summaryHtml for that summary, dated by the fixed clock, and named t.fileName and
@@ -45,6 +51,22 @@
 //             Intro's "What it isn't" box, data-testid patient-what-it-isnt, is excluded);
 //             the PatientCompanion module graph excludes the scoring/clinician files;
 //   other     the "not available" notice for a module without patient wording; onDirty.
+//   video     (release 0.4.8, the clinical lead's request of 2026-10-12) with a `video`, en and es: the
+//             panel right above the instructions card on the first step only, noprint; its button
+//             (aria-expanded, aria-controls) reads the locale's videoHide / videoShow; the iframe is
+//             the frame page, sandbox allow-same-origin (no scripts), allow fullscreen, titled with
+//             videoTitle; hiding removes the iframe and is remembered for the tab (sessionStorage),
+//             also across a remount, and showing forgets it; the es DOM scan passes; no panel without
+//             a video; the print CSS hides it; the frame page holds one <video controls
+//             preload="none" playsinline> (no autoplay) with its poster and the MP4, no script,
+//             noindex and the English prototype marker; the MP4 and the poster are served (HEAD).
+//   english   (release 0.4.8, final review) for the shape fixture (an upload) and the derivation, the es
+//             summary's English version repeats, right under its title, the caveat lines English mode
+//             shows for the same view (its provenance block and its banner notices), untagged inside the
+//             section and printed; the built-in shows none; the companion's print stylesheet keeps the
+//             English version's title whole and with the block under it (.mp .enver-title{break-inside:
+//             avoid;break-after:avoid}) and its urgent box whole (.mp .enver .call{break-inside:avoid}),
+//             read through the CSSOM.
 import React from "react";
 import { flushSync } from "react-dom";
 import { collector, guarded, loadMasque, need, validationNote } from "../harness/kit.js";
@@ -74,6 +96,17 @@ function textOf(el, drop = []) {
 }
 
 const wrapOf = (container) => container.querySelector(".mp .wrap");
+
+/** The declarations of `selector` inside the @media print rules of a stylesheet text (CSSOM), or null. */
+function printRule(cssText, selector) {
+  const sheet = new CSSStyleSheet();
+  sheet.replaceSync(cssText);
+  for (const r of sheet.cssRules) {
+    if (!(r instanceof CSSMediaRule) || !/\bprint\b/.test(r.media.mediaText)) continue;
+    for (const x of r.cssRules) if (x.selectorText === selector) return x.style;
+  }
+  return null;
+}
 /** The comparable page text: the whole .wrap minus the summary action row. */
 const snap = (container) => textOf(wrapOf(container), [".card > .nav.noprint"]);
 const actionLabels = (container) => qa(wrapOf(container), ".card > .nav.noprint button").map((b) => textOf(b).trim());
@@ -253,15 +286,19 @@ export default {
     let scans = 0, scanTexts = 0;
     /** The es DOM scan of a mounted companion (`container`), as a named check. */
     const scanEs = (at, container, corpus, input = null) => {
-      const r = englishScan(container, { corpus, docLang: "es", allowEn: (el) => el.matches('[data-testid="patient-locale-en"]') });
+      // Release 0.4.8: the English version of the findings is a section tagged lang="en" (its own tag only).
+      const r = englishScan(container, { corpus, docLang: "es", allowEn: (el) => el.matches('[data-testid="patient-locale-en"], [data-testid="patient-english-version"]') });
       scans += 1; scanTexts += r.texts;
-      c.check(!r.langEn.length, `${at}/@scan/langEn`, input, "no lang=\"en\" inside the Companion but the English button", r.langEn.slice(0, 5));
+      c.check(!r.langEn.length, `${at}/@scan/langEn`, input, "no lang=\"en\" inside the Companion but the English button and the English version", r.langEn.slice(0, 5));
       c.check(!r.english.length, `${at}/@scan/english`, input, "no English outside lang=\"en\"", r.english.slice(0, 5));
       return r;
     };
     /** The clinician lines of a summary on screen: tagged per line outside English, the list untagged (D3). */
     const clinLang = (at, container, loc, input = null) => {
-      const lis = qa(wrapOf(container), ".clin li");
+      // Release 0.4.8: the English version's clinician lines (inside the section lang="en") are untagged.
+      const enLis = qa(wrapOf(container), '[data-testid="patient-english-version"] .clin li');
+      if (enLis.length) c.check(loc !== "en" && enLis.every((li) => !li.hasAttribute("lang")), `${at}/english/clin/li/@lang`, input, "untagged inside the English version (es only)", enLis.map((li) => li.getAttribute("lang")).slice(0, 4));
+      const lis = qa(wrapOf(container), ".clin li").filter((li) => !li.closest('[data-testid="patient-english-version"]'));
       if (!lis.length) return;
       const ul = wrapOf(container).querySelector(".clin ul");
       c.check(!ul.hasAttribute("lang"), `${at}/clin/ul/@lang`, input, "no lang on the list", ul.getAttribute("lang"));
@@ -301,7 +338,9 @@ export default {
       locales: ["en", "es"],
     };
     const plans = { en: planFor(view, "en", patient), es: planFor(view, "es", patient) };
-    let sets = 0, checkpoints = 0, ad10Pre = 0, ad10Seen = 0, ad4Seen = 0, exportsChecked = 0;
+    let sets = 0, checkpoints = 0, ad10Pre = 0, ad10Seen = 0, ad4Seen = 0, exportsChecked = 0, ad20Pre = 0, ad20Seen = 0, enSummaries = 0;
+    const AD20 = allowedDifference("AD20");
+    const tEsChrome = patient.chromeFor("es"), tEnChrome = patient.chromeFor("en");
     const ledes = { es: [[pat.UI.en.thin, pat.UI.es.thin], ["Worth checking my records or asking directly:", pat.UI.es.notSureLede]] };
 
     for (const s of patientStream(rng, spec, nSets)) {
@@ -320,16 +359,46 @@ export default {
           });
           for (const p of wb.problems) c.check(false, `${at}/drive/baseline`, input, "drivable", p);
           for (const p of wn.problems) c.check(false, `${at}/drive/new`, input, "drivable", p);
+          const built = patient.buildPatientSummary(view, s.loc, { a: Object.fromEntries(Object.entries(s.a).filter(([id, v]) => !(v === "unsure" && spec.items.find((it) => it.id === id && it.scale)))), ctx: s.ctx, flags: s.rf });
+          // Release 0.4.8: the English version of an es summary, checked on the DOM and turned into
+          // AD20's exact parameter (its text and the disclaimer that follows it).
+          let p20 = null;
+          const enSec = n.container.querySelector('.card [data-testid="patient-english-version"]');
+          if (s.loc === "es" && built.summary && wn.out.some((x) => x.at === "summary")) {
+            enSummaries += 1;
+            const sb = h.mount(React.createElement(ns.SummaryBody, { view, summary: built.summary.english, t: tEnChrome, loc: "en", fbLang: () => undefined, txLang: () => undefined }));
+            try {
+              const want = sb.container.firstElementChild;
+              const title = enSec ? enSec.querySelector(":scope > h3") : null;
+              const spans = title ? [...title.children].map((x) => [x.textContent, x.getAttribute("lang")]) : [];
+              const body = enSec ? enSec.querySelector(':scope > [data-testid="patient-summary-body"]') : null;
+              c.check(!!enSec && enSec.getAttribute("lang") === "en" && !!want && !!body && body.innerHTML === want.innerHTML
+                && JSON.stringify(spans) === JSON.stringify([[tEsChrome.englishVersion, "es"], [tEnChrome.englishVersion, null]])
+                && enSec.nextElementSibling && enSec.nextElementSibling.matches(".nav.noprint"),
+              `${at}/summary/english`, input, "a section lang en, titled in Spanish (lang es) and English, holding the English findings of the same answers, before the actions",
+              enSec ? { lang: enSec.getAttribute("lang"), spans, same: !!body && !!want && body.innerHTML === want.innerHTML } : "absent");
+              // The section's text: the two titles, English's caveat lines (none for the built-in), the findings.
+              if (want) p20 = { locale: "es", text: tEsChrome.englishVersion + tEnChrome.englishVersion + patient.englishVersionNotices(view).join("") + textOf(want), before: tEsChrome.disclaimer };
+            } finally {
+              sb.unmount();
+            }
+          } else if (s.loc === "en") {
+            c.check(!enSec, `${at}/summary/english/@none`, input, "no English version in English", "present");
+          }
           const len = Math.min(wb.out.length, wn.out.length);
           c.check(wb.out.length === wn.out.length, `${at}/checkpoints`, input, wb.out.map((x) => x.at), wn.out.map((x) => x.at));
           for (let i = 0; i < len; i++) {
             const x = wb.out[i], y = wn.out[i];
             checkpoints += 1;
-            const ctx = s.loc === "es" ? { AD10: { ledes: ledes.es }, AD14: P14, loc: s.loc } : { loc: s.loc };
             const isSummary = x.at === "summary";
-            const r = c.diff(x.text, y.text, { at: `${at}/${x.at}`, input, allow: s.loc === "es" ? ["AD4", "AD14", "AD10"] : ["AD4"], ctx });
+            const ctx = s.loc === "es" ? { AD10: { ledes: ledes.es }, AD14: P14, loc: s.loc, ...(isSummary && p20 ? { AD20: p20 } : {}) } : { loc: s.loc };
+            const r = c.diff(x.text, y.text, { at: `${at}/${x.at}`, input, allow: s.loc === "es" ? ["AD4", "AD20", "AD14", "AD10"] : ["AD4"], ctx });
             if (r.observed.has("AD4")) ad4Seen += 1;
-            if (s.loc === "es" && typeof x.text === "string" && typeof y.text === "string") t14.add(P14, AD4.normalise(x.text, y.text)[0], y.text);
+            if (isSummary && s.loc === "es") { ad20Pre += 1; if (r.observed.has("AD20")) ad20Seen += 1; }
+            if (s.loc === "es" && typeof x.text === "string" && typeof y.text === "string") {
+              const yEs = isSummary && p20 ? AD20.normalise("", y.text, { AD20: p20, loc: "es" })[1] : y.text;
+              t14.add(P14, AD4.normalise(x.text, y.text)[0], yEs);
+            }
             if (isSummary && s.loc === "es") {
               const hasLede = x.text.includes(pat.UI.en.thin) || x.text.includes("Worth checking my records or asking directly:");
               if (hasLede) { ad10Pre += 1; if (r.observed.has("AD10")) ad10Seen += 1; }
@@ -341,7 +410,6 @@ export default {
             }
           }
           // Exports from the buttons: byte-equal to the engine builders, dated, named.
-          const built = patient.buildPatientSummary(view, s.loc, { a: Object.fromEntries(Object.entries(s.a).filter(([id, v]) => !(v === "unsure" && spec.items.find((it) => it.id === id && it.scale)))), ctx: s.ctx, flags: s.rf });
           if (c.check(!built.error && !!built.summary, `${at}/exports/summary`, input, "a summary", built.error)) {
             const t = patient.chromeFor(s.loc);
             const btn = (id) => n.container.querySelector(`[data-testid="${id}"]`);
@@ -374,8 +442,10 @@ export default {
     }
     h.expect("AD4", { precondition: checkpoints > 0, observed: ad4Seen === checkpoints });
     h.expect("AD10", { precondition: ad10Pre > 0, observed: ad10Seen === ad10Pre });
+    h.expect("AD20", { precondition: ad20Pre > 0, observed: ad20Seen === ad20Pre });
+    c.check(ad20Pre > 0 && ad20Pre === enSummaries, "/parity/es/@AD20", null, "every es summary checkpoint carries the English version", { checkpoints: ad20Pre, summaries: enSummaries, excused: ad20Seen });
     t14.expect(h, c, "/parity/es", { need: ["P", "C", "Q"] });
-    c.note(`parity: ${sets} answer sets (seed 0x${(h.seed >>> 0).toString(16)}), ${checkpoints} checkpoints; AD4 on ${ad4Seen}; AD10 es ledes ${ad10Seen}/${ad10Pre}; AD14 (es) per rule ${t14.note()}; ${exportsChecked} .txt/.html export pairs byte-checked; ${scans} es DOM scans (${scanTexts} text nodes)`);
+    c.note(`parity: ${sets} answer sets (seed 0x${(h.seed >>> 0).toString(16)}), ${checkpoints} checkpoints; AD4 on ${ad4Seen}; AD10 es ledes ${ad10Seen}/${ad10Pre}; AD20 (es English version) ${ad20Seen}/${ad20Pre}; AD14 (es) per rule ${t14.note()}; ${exportsChecked} .txt/.html export pairs byte-checked; ${scans} es DOM scans (${scanTexts} text nodes)`);
 
     // ------------------------------------------------------------------ errors (fail closed)
     const thrower = (msg) => () => { throw new Error(msg); };
@@ -457,6 +527,9 @@ export default {
       const m = sub.module;
       const v = patient.projectForPatient(m);
       const at = `/subjects/${sub.name}`;
+      // Release 0.4.8, final review: the caveat lines English mode shows for this view (its provenance
+      // block, then its banner notices), which the es summary's English version must repeat.
+      let enModeLines = null;
       const flagStrings = (m.redFlags || []).flatMap((f) => [f.text, f.points, f.action]).filter(Boolean);
       const allA = {};
       for (const d of v.domains) for (const it of d.items) allA[it.id] = it.scaleLen !== null ? it.scaleLen - 1 : "yes";
@@ -549,6 +622,25 @@ export default {
           }
           if (pv) c.check(!pv.closest(".noprint"), `${at}/${loc}/provenance/printed`, null, "printed", "noprint");
           c.check(m.origin === "builtin" ? v.provenanceLines.length === 0 : v.provenanceLines.length > 0, `${at}/provenance/expected`, null, m.origin, v.provenanceLines);
+          // Release 0.4.8, final review: the English version of an es summary repeats, right under its
+          // title, the caveat lines English mode shows for this view; English mode has no English version.
+          const enSec = n.container.querySelector('[data-testid="patient-english-version"]');
+          if (loc === "en") {
+            enModeLines = [...(pv ? qa(pv, "p").map((x) => x.textContent) : []), ...(bn ? qa(bn, "p.notice").map((x) => x.textContent) : [])];
+            c.check(!enSec, `${at}/en/english/@none`, null, "no English version in English", "present");
+          } else {
+            const enNotes = enSec ? enSec.querySelector(':scope > [data-testid="patient-english-notices"]') : null;
+            c.check(!!enSec && enModeLines !== null, `${at}/${loc}/english`, null, "the English version, and English mode's caveat lines to compare", { section: !!enSec, enMode: enModeLines });
+            c.diff(enModeLines || [], enNotes ? qa(enNotes, "p").map((x) => x.textContent) : [], { at: `${at}/${loc}/english/notices` });
+            c.check(m.origin === "builtin" ? !enNotes : !!enNotes, `${at}/${loc}/english/notices/expected`, null, m.origin === "builtin" ? "none for the built-in" : "present", !!enNotes);
+            if (enNotes) {
+              const prev = enNotes.previousElementSibling;
+              c.check(!!prev && prev.matches("h3.enver-title") && !enNotes.closest(".noprint") && !enNotes.hasAttribute("lang") && !qa(enNotes, "[lang]").length
+                && enNotes.nextElementSibling && enNotes.nextElementSibling.matches('[data-testid="patient-summary-body"]'),
+              `${at}/${loc}/english/notices/place`, null, "right under the title, before the findings, printed, untagged inside the section lang en",
+              { prev: prev && prev.className, lang: enNotes.getAttribute("lang") });
+            }
+          }
           // Dirty: set by answering; cleared by Start over.
           c.check(dirty.length > 0 && dirty[dirty.length - 1][0] === "patient" && dirty[dirty.length - 1][1] === "answers in progress", `${at}/${loc}/onDirty`, null, "answers in progress", dirty.slice(-1));
           click(n.container.querySelector('[data-testid="patient-start-over"]'));
@@ -577,6 +669,121 @@ export default {
       }
     } catch (err) {
       c.check(false, "/unavailable", null, "a module without locales binds", String(err.message).split("\n")[0]);
+    }
+
+    // ------------------------------------------------------------------ the introduction video (release 0.4.8)
+    // The clinical lead's request of 2026-10-12 ("Add the attached video above the patient companion
+    // instructions, make it a collapsible/hideable iframe"). With a `video` the first step shows,
+    // right above the instructions card, a panel whose button hides and shows a script-free iframe
+    // of the frame page; without one (every parity mount above) nothing is added.
+    {
+      const VKEY = ns.VIDEO_HIDDEN_KEY;
+      const frameUrl = h.appUrl("modules/masque/media/patient-companion-intro.html");
+      const ssGet = () => { try { return sessionStorage.getItem(VKEY); } catch (_) { return "blocked"; } };
+      const ssClear = () => { try { sessionStorage.removeItem(VKEY); } catch (_) { /* blocked */ } };
+      c.check(VKEY === "screenair.patient.introVideoHidden", "/video/key", null, "screenair.patient.introVideoHidden (sessionStorage)", VKEY);
+      for (const loc of ["en", "es"]) {
+        const at = `/video/${loc}`;
+        const t = patient.chromeFor(loc);
+        ssClear();
+        const n = mountNew(view, { video: frameUrl });
+        try {
+          if (loc !== "en") click(localeButton(n.container, loc));
+          const wrap = wrapOf(n.container);
+          const panel = wrap.querySelector(':scope > [data-testid="patient-video"]');
+          if (!c.check(!!panel, `${at}/panel`, null, "the video panel on the first step", "absent")) continue;
+          const intro = wrap.querySelector(':scope > [data-testid="patient-section"][data-section="intro"]');
+          c.check(!!intro && panel.nextElementSibling === intro, `${at}/above-instructions`, null, "right above the instructions card", panel.nextElementSibling && panel.nextElementSibling.outerHTML.slice(0, 80));
+          c.check(panel.classList.contains("noprint"), `${at}/noprint`, null, "noprint (never printed)", panel.className);
+          const btn = panel.querySelector('button[data-testid="patient-video-toggle"]');
+          const box = panel.querySelector('[data-testid="patient-video-box"]');
+          const frame = () => panel.querySelector("iframe");
+          c.check(!!btn && btn.getAttribute("type") === "button" && btn.getAttribute("aria-expanded") === "true" && !!box && btn.getAttribute("aria-controls") === box.id && !!box.id,
+            `${at}/toggle`, null, "a button, aria-expanded true, aria-controls naming the frame box", btn && btn.outerHTML.slice(0, 160));
+          c.check(!!btn && textOf(btn).trim() === t.videoHide, `${at}/toggle/text`, null, t.videoHide, btn && textOf(btn).trim());
+          const f = frame();
+          c.check(!!f && f.getAttribute("src") === frameUrl && f.getAttribute("sandbox") === "allow-same-origin" && f.getAttribute("allow") === "fullscreen"
+            && f.getAttribute("title") === t.videoTitle && !f.hasAttribute("srcdoc") && !/allow-scripts/.test(f.getAttribute("sandbox") || ""),
+          `${at}/frame`, null, `the frame page, sandbox allow-same-origin (no scripts), allow fullscreen, title ${JSON.stringify(t.videoTitle)}`, f && f.outerHTML);
+          if (loc !== "en") scanEs(at, n.container, corpusMasque);
+          // Hide: the iframe goes (a playing video stops), the box is hidden, the choice is remembered for this tab.
+          click(btn);
+          c.check(btn.getAttribute("aria-expanded") === "false" && !frame() && box.hidden && textOf(btn).trim() === t.videoShow && ssGet() === "1",
+            `${at}/hide`, null, `aria-expanded false, no iframe, box hidden, ${JSON.stringify(t.videoShow)}, remembered`, { expanded: btn.getAttribute("aria-expanded"), frame: !!frame(), hidden: box.hidden, text: textOf(btn).trim(), stored: ssGet() });
+          if (loc !== "en") scanEs(`${at}/hidden`, n.container, corpusMasque);
+          // The next step carries no panel.
+          click(nextButton(n.container));
+          c.check(!wrapOf(n.container).querySelector('[data-testid="patient-video"]'), `${at}/first-step-only`, null, "no panel after the first step", "shown");
+        } finally {
+          n.unmount();
+        }
+        // Remembered on a new mount in the same tab; shown again with the button, which forgets it.
+        const m2 = mountNew(view, { video: frameUrl });
+        try {
+          const panel = wrapOf(m2.container).querySelector('[data-testid="patient-video"]');
+          const btn = panel && panel.querySelector('[data-testid="patient-video-toggle"]');
+          c.check(!!btn && btn.getAttribute("aria-expanded") === "false" && !panel.querySelector("iframe"), `${at}/remembered`, null, "still hidden after a remount", btn && btn.getAttribute("aria-expanded"));
+          if (btn) click(btn);
+          c.check(!!panel && !!panel.querySelector("iframe") && ssGet() === null, `${at}/show-again`, null, "shown again, nothing stored", { frame: !!(panel && panel.querySelector("iframe")), stored: ssGet() });
+        } finally {
+          m2.unmount();
+          ssClear();
+        }
+      }
+      // No video, no panel (a module whose host passes none: an upload, a derivation).
+      {
+        const n = mountNew(view);
+        try {
+          c.check(!n.container.querySelector('[data-testid="patient-video"]'), "/video/none", null, "no panel without a video", "shown");
+        } finally { n.unmount(); }
+        const n2 = mountNew(view, { video: "" });
+        try {
+          c.check(!n2.container.querySelector('[data-testid="patient-video"]'), "/video/empty", null, "no panel for an empty video", "shown");
+        } finally { n2.unmount(); }
+      }
+      // The print stylesheet hides the panel too.
+      c.check(/@media print\{\s*\.mp \.vid\{display:none!important\}\s*\}/.test(await h.fetchText("src/apps/PatientCompanion.jsx")),
+        "/video/print-css", null, "@media print hides .mp .vid", "absent");
+      // The frame page: a video with controls, preload none, playsinline, no autoplay, the MP4 and its
+      // poster; no script; noindex; the prototype marker tagged English.
+      const html = await h.fetchText("modules/masque/media/patient-companion-intro.html");
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const vids = [...doc.querySelectorAll("video")];
+      const v0 = vids[0];
+      const srcs = v0 ? [...v0.querySelectorAll("source")].map((s) => [s.getAttribute("src"), s.getAttribute("type")]) : [];
+      c.check(vids.length === 1 && v0.hasAttribute("controls") && v0.getAttribute("preload") === "none" && v0.hasAttribute("playsinline") && !v0.hasAttribute("autoplay")
+        && !v0.hasAttribute("loop") && !v0.hasAttribute("src") && v0.getAttribute("poster") === "patient-companion-intro-poster.jpg"
+        && JSON.stringify(srcs) === JSON.stringify([["patient-companion-intro.mp4", "video/mp4"]]),
+      "/video/page/video", null, "one <video controls preload=none playsinline> (no autoplay, no loop), its poster and the MP4", v0 && v0.outerHTML);
+      c.check(!doc.querySelector("script") && /<meta\s+name="robots"\s+content="noindex, nofollow">/.test(html) && doc.documentElement.getAttribute("lang") === "en",
+        "/video/page/head", null, "no script, noindex, lang en", { scripts: doc.querySelectorAll("script").length });
+      const proto = doc.querySelector(".masque-proto");
+      c.check(!!proto && proto.getAttribute("lang") === "en" && proto.textContent === policy.CAVEATS.prototype, "/video/page/marker", null, policy.CAVEATS.prototype, proto && proto.textContent);
+      // The media files are served, by size (HEAD: nothing is downloaded).
+      for (const [file, size] of [["patient-companion-intro.mp4", 14783849], ["patient-companion-intro-poster.jpg", 78113]]) {
+        let got = null;
+        try { const res = await fetch(h.appUrl(`modules/masque/media/${file}`), { method: "HEAD", cache: "no-cache" }); got = res.ok ? Number(res.headers.get("content-length")) : `HTTP ${res.status}`; } catch (err) { got = String(err && err.message); }
+        c.check(got === size, `/video/page/${file}`, null, `${size} bytes`, got);
+      }
+    }
+
+    // ------------------------------------------------------------------ the English version in print (release 0.4.8, final review)
+    // The final review printed a Spanish summary whose page 2 ended with the English version's title
+    // and nothing under it. The companion's print stylesheet (as mounted, read through the CSSOM) keeps
+    // that title with the block under it and the section's urgent box whole; the summary blocks stay
+    // unbreakable as before.
+    {
+      const n = mountNew(view);
+      try {
+        const css = qa(n.container, "style").map((x) => x.textContent).join("\n");
+        const title = printRule(css, ".mp .enver-title"), call = printRule(css, ".mp .enver .call"), sum = printRule(css, ".mp .sum");
+        c.check(!!title && title.getPropertyValue("break-after") === "avoid" && title.getPropertyValue("break-inside") === "avoid" && !!call && call.getPropertyValue("break-inside") === "avoid"
+          && !!sum && sum.getPropertyValue("break-inside") === "avoid",
+        "/english/print-css", null, "@media print: .mp .enver-title{break-inside:avoid;break-after:avoid}, .mp .enver .call{break-inside:avoid}, .mp .sum{break-inside:avoid}",
+        { title: title && title.cssText, call: call && call.cssText, sum: sum && sum.cssText });
+      } finally {
+        n.unmount();
+      }
     }
 
     // Module graph (§5.5): nothing that can compute or name a score.

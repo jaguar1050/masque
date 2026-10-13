@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Introduction video &middot; Patient Companion &middot; Prototype</title>
+<!-- Release 0.4.8: the clinical lead's introduction video (2026-10-12), shown in a collapsible,
+     sandboxed iframe above the Patient Companion's instructions. No script, no autoplay; the video
+     loads only when the viewer presses play (preload="none"). Its captions are in English. -->
+<meta name="robots" content="noindex, nofollow">
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; background: #12302F; overflow: hidden; }
+  video { display: block; width: 100%; height: 100%; object-fit: contain; background: #12302F; }
+  .masque-proto {
+    position: absolute; left: 8px; top: 8px; margin: 0; pointer-events: none;
+    font: 10px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: .04em; text-transform: uppercase;
+    color: #8E3520; background: #fbe4d8; border: 1px solid #f0c3ad;
+    padding: 3px 8px; border-radius: 999px;
+  }
+</style>
+</head>
+<body>
+  <video controls preload="none" playsinline poster="patient-companion-intro-poster.jpg" aria-label="Introduction video (English captions)">
+    <source src="patient-companion-intro.mp4" type="video/mp4">
+  </video>
+  <p class="masque-proto" lang="en">Prototype &middot; not for clinical use</p>
+</body>
+</html>

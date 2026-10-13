@@ -5,6 +5,14 @@
 // compute or name a score, band or probability (D15, the `omissions` graph test).
 //
 // What lives here:
+//   Release 0.4.8 (the clinical lead's request of 2026-10-12): outside English a summary carries
+//   `english`, the English summary of the same answers, and the .txt and .html add it after the
+//   locale's findings under the bilingual title chrome.englishVersion, so an English-speaking
+//   clinician can read them, with the English caveat lines English output prints for the same view
+//   (englishVersionNotices: the patient provenance and the edited-wording notice; none for the
+//   built-in module); the .html carries the English version's styles (ENVER_CSS) only when it holds
+//   that section. English output is unchanged byte for byte (.txt, .html and screen).
+//
 //   PATIENT_CHROME   the locale-keyed chrome of Pat `UI` (Pat L379-424) minus the module-owned
 //                    keys (sub, sections[2..7]) and the shell caveats (reviewBanner, txtUnreviewed,
 //                    which are policy.js CAVEATS.unreviewed), moved verbatim; plus the English
@@ -17,7 +25,8 @@
 //                    the 0.4.2 Spanish fixes ("¿" opens a question, "e" before an /i/ sound).
 //   projectForPatient, localeText, flagCopy, buildPatientSummary, askForm (and askFormLang, the
 //   lang of an English fallback question), joinList,
-//   summaryText, summaryHtml, richText (§4.12), plus chromeFor (the en-fallback chrome view),
+//   summaryText, summaryHtml, richText (§4.12), englishVersionNotices (release 0.4.8), plus
+//   chromeFor (the en-fallback chrome view),
 //   localeFallback (whether a locale string is English standing in for a translation),
 //   patientProvenanceFor (the patient caveats in a locale), prototypeMarker /
 //   prototypeMarkerText (the English marker plus a locale's companion line), patientPrintHeader
@@ -54,6 +63,13 @@ import { APP_VERSION, CAVEATS } from "./policy.js";
  *   seenToday, seenWeek               L1025
  *   disclaimer                        L1087-1091
  *   footer                            L753-754, with {name}, {appVersion}, {instrument}
+ *   videoShow, videoHide, videoTitle  release 0.4.8 (not baseline): the toggle and the frame title of
+ *                                     a module's introduction video (the clinical lead's request of
+ *                                     2026-10-12); the English by the team, the Spanish an AI
+ *                                     translation, unreviewed (tests/harness/patient-chrome-048.js)
+ *   englishVersion                    release 0.4.8 (not baseline): the title of the English version
+ *                                     of the findings in a non-English summary, printed in the
+ *                                     locale and in English (same record)
  * JSX text is given as React renders it: each line trimmed, line breaks joined by one space.
  */
 export const PATIENT_CHROME = deepFreeze({
@@ -94,6 +110,12 @@ export const PATIENT_CHROME = deepFreeze({
     seenWeek: "Get seen this week",
     disclaimer: "This is a research prototype and not medical advice. It doesn't diagnose, and it hasn't been validated in a clinical study. If something feels wrong or is getting worse, contact a clinician regardless of what this page says.",
     footer: "{name} patient companion v{appVersion} · instrument v{instrument} · research prototype · nothing you type leaves this device",
+    // Release 0.4.8: the introduction video panel (not baseline chrome; see the key table above).
+    videoShow: "Watch a 1-minute introduction",
+    videoHide: "Hide the video",
+    videoTitle: "Introduction video",
+    // Release 0.4.8: the English version of a non-English summary (never shown in English itself).
+    englishVersion: "English version, for an English-speaking clinician",
   },
   es: {
     title: "Preparándose para su consulta",
@@ -136,6 +158,14 @@ export const PATIENT_CHROME = deepFreeze({
     seenWeek: "Busque atención esta semana",
     disclaimer: "Este es un prototipo de investigación, no es consejo médico. No diagnostica. No ha sido validado en un estudio clínico. Si siente que algo no está bien, o si algo está empeorando, comuníquese con un médico, sin importar lo que diga esta página.",
     footer: "Guía {name} v{appVersion} para el paciente · instrumento v{instrument} · prototipo de investigación · nada de lo que escriba sale de este dispositivo",
+    // Release 0.4.8: the introduction video panel. An AI translation (Claude), UNREVIEWED, 2026-10-12,
+    // recorded in tests/harness/patient-chrome-048.js; the video's captions are English, which the
+    // Spanish toggle and title say. Pending the same bilingual clinical reviewer as the 0.4.2 Spanish.
+    videoShow: "Ver una introducción de 1 minuto (video en inglés)",
+    videoHide: "Ocultar el video",
+    videoTitle: "Video de introducción (en inglés)",
+    // Release 0.4.8: the title of the English version of the findings (same record, unreviewed).
+    englishVersion: "Versión en inglés, para un médico de habla inglesa",
   },
 });
 
@@ -744,6 +774,13 @@ function runRules(rules, state, list) {
  * brackets; lang is the locale for an own line, else "en"), ordered by |w|. Any throw withholds
  * the summary: {summary: null, error}.
  *
+ * Release 0.4.8: outside English (and when the view has English wording) the summary also carries
+ * `english`, buildPatientSummary(view, "en", …) of the same answers, context and flags (by id) and
+ * the same urgency: the English findings the .txt, the .html and the screen add after the locale's
+ * for an English-speaking clinician. If the English summary is withheld, so is this one (its
+ * error is returned), so no bilingual summary is ever handed over without its English part. An
+ * English summary carries no `english`.
+ *
  * @param {Object} view   projectForPatient(module)
  * @param {string} loc
  * @param {{a?:Object, ctx?:Object, flags?:(Array|Object), urgent?:boolean}} input
@@ -853,6 +890,12 @@ export function buildPatientSummary(view, loc, { a = {}, ctx = {}, flags = [], u
   clin.sort((x, y) => y.w - x.w);
 
   const summary = { said, ask, gapLine, unsureList, clin, flags: flagList, urgent: isUrgent, ctx: context, loc, clinNote };
+  if (loc !== "en" && view && isObj(view.locales) && view.locales.en) {
+    const ids = Object.fromEntries(flagList.filter(f => isObj(f) && typeof f.id === "string").map(f => [f.id, true]));
+    const twin = buildPatientSummary(view, "en", { a: answers, ctx: context, flags: ids, urgent: isUrgent });
+    if (twin.error || !twin.summary) return { summary: null, error: twin.error || patientError("english", new Error("the English summary was withheld")) };
+    summary.english = twin.summary;
+  }
   return { summary: deepFreeze(summary), error: null };
 }
 
@@ -870,6 +913,20 @@ function patientNotices(view, loc) {
   if (e && e.editedLocally) out.push(caveatIn(CAVEATS.editedWording, loc));
   if (e && e.stale) out.push(caveatIn(CAVEATS.staleTranslation, loc));
   return out;
+}
+
+/**
+ * The caveat lines of the English version of a non-English summary (release 0.4.8, final review):
+ * exactly the lines English output prints for the same view (patientNotices(view, "en"): the patient
+ * provenance of a non-built-in module, the edited-wording notice when the English wording was edited
+ * locally, the stale notice when English is stale), as English strings, in that order. Empty for the
+ * built-in module. The screen, the .txt and the .html print them right under the English version's
+ * title, so the English findings never reach a reader without the caveats English mode gives them.
+ * @param {Object} view   projectForPatient(module)
+ * @returns {string[]}
+ */
+export function englishVersionNotices(view) {
+  return patientNotices(view, "en").map((line) => line.text);
 }
 
 function unreviewedCaveat(view, loc) {
@@ -922,7 +979,12 @@ export function patientPrintHeader(view, printContext) {
  * edited-wording and stale-translation lines where they apply (in the locale where the caveat
  * has it, release 0.4.2), and last the dated caveat line `Prototype · not for clinical use ·
  * YYYY-MM-DD` (in es: `Prototype · not for clinical use — Prototipo · no apto para uso clínico ·
- * YYYY-MM-DD`, prototypeMarkerText).
+ * YYYY-MM-DD`, prototypeMarkerText). Release 0.4.8: a non-English summary that carries `english`
+ * adds, after its own findings and before the footer rule, a rule, the title chrome.englishVersion
+ * upper-cased in the locale and in English, a rule, a blank line, the English caveat lines
+ * (englishVersionNotices: the lines the English .txt of the same view prints after its footer line)
+ * followed by a blank line when there are any, and the English findings (the lines the English .txt
+ * of the same answers prints between its header and its footer rule).
  * @param {Object} view
  * @param {string} loc
  * @param {Object} summary   buildPatientSummary(...).summary
@@ -931,13 +993,45 @@ export function patientPrintHeader(view, printContext) {
  */
 export function summaryText(view, loc, summary, { appVersion = APP_VERSION, generatedAt } = {}) {
   if (!summary || typeof summary !== "object") throw new TypeError("summaryText: a summary is required");
-  const { said, ask, gapLine, unsureList, clin, flags, urgent } = summary;
   const t = chromeFor(loc);
   const up = x => String(x).toUpperCase();
   const L = [];
   L.push(up(t.summaryTitle), "=".repeat(40), "");
   const unrev = unreviewedCaveat(view, loc);
   if (unrev && unrev.txt) L.push(unrev.txt, "");
+  L.push(...summaryTextBody(view, loc, summary));
+  // Release 0.4.8: outside English, the English version of the same findings follows, under the
+  // title in the locale and in English, each between rules, with English's own caveat lines first;
+  // the footer stays the locale's.
+  const english = englishTwin(loc, summary);
+  if (english) {
+    L.push("=".repeat(40), up(t.englishVersion), up(chromeFor("en").englishVersion), "=".repeat(40), "");
+    const notes = englishVersionNotices(view);
+    if (notes.length) L.push(...notes, "");
+    L.push(...summaryTextBody(view, "en", english));
+  }
+  L.push("-".repeat(40), `${view.name} v${appVersion} — ${t.txtFooter}`);
+  for (const line of patientNotices(view, loc)) L.push(line.text);
+  L.push(`${prototypeMarkerText(loc)} · ${isoDate(generatedAt)}`);
+  return L.join("\n");
+}
+
+/** The English summary a non-English summary carries (release 0.4.8), or null. */
+function englishTwin(loc, summary) {
+  return loc !== "en" && summary && isObj(summary.english) ? summary.english : null;
+}
+
+/**
+ * The findings of a summary as .txt lines, in `loc`'s chrome (Pat L1096-1125 between the header and
+ * the footer rule, with AD16's thin warning and not-sure lede): the thin warning, the flags, the
+ * opening line, the said and ask lists, the not-sure list and the clinician lines, each section
+ * followed by a blank line.
+ */
+function summaryTextBody(view, loc, summary) {
+  const { said, ask, gapLine, unsureList, clin, flags, urgent } = summary;
+  const t = chromeFor(loc);
+  const up = x => String(x).toUpperCase();
+  const L = [];
   // A near-empty summary says so, as on screen and in the .html (Pat L999-1001; AD16).
   if (!arr(said).length && !arr(clin).length && !arr(flags).length) L.push(up(t.thinTitle), "  " + t.thin, "");
   if (arr(flags).length) {
@@ -963,10 +1057,7 @@ export function summaryText(view, loc, summary, { appVersion = APP_VERSION, gene
     clin.forEach(c => L.push("  " + (c.neg ? "- " : "+ ") + c.t));
     L.push("");
   }
-  L.push("-".repeat(40), `${view.name} v${appVersion} — ${t.txtFooter}`);
-  for (const line of patientNotices(view, loc)) L.push(line.text);
-  L.push(`${prototypeMarkerText(loc)} · ${isoDate(generatedAt)}`);
-  return L.join("\n");
+  return L;
 }
 
 const HTML_ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
@@ -997,10 +1088,6 @@ function richHtml(str) {
 }
 
 // A subset of the on-screen summary styles (Pat L559-628), plus the repeating caveat header.
-// Release 0.4.7: in print the header cell drops its letter-spacing and steps down to 10.5px, so
-// the 0.4.2 es header ("… · Traducción sin revisar") stays on one line at Letter/A4 width with a
-// wider fallback monospace; at 11.5px/.03em it wrapped and the repeated page header lost
-// "revisar" (print spec /export-es/pageN/header, failing on cb5b834 alone). Presentation only.
 const EXPORT_CSS = `:root{--ink:#12302F;--muted:#5E7573;--line:#DCE5E3;--petrol:#1C6B63;--coral:#C4553A;--coralbg:#FBEDE9;--amber:#B26C1F;--amberbg:#FBF2E2;--mono:ui-monospace,"SF Mono",Menlo,monospace}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#fff;color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.55;padding:16px}
@@ -1027,14 +1114,31 @@ h3{font-size:16px;margin-bottom:7px}
 .disc{border:1px dashed var(--line);border-radius:12px;padding:14px 16px;margin-top:16px;font-size:14px;color:var(--muted)}
 .foot{font-family:var(--mono);font-size:11.5px;color:var(--muted);text-align:center;margin-top:28px;letter-spacing:.03em}
 @page{margin:16mm}
-@media print{body{padding:0;font-size:12pt}.sum,.call{break-inside:avoid}table.frame th{letter-spacing:0;font-size:10.5px}}
+@media print{body{padding:0;font-size:12pt}.sum,.call{break-inside:avoid}}
+`;
+
+// Release 0.4.8: the English version section's styles, appended to EXPORT_CSS only in an .html that
+// holds that section (so an English .html keeps release 0.4.7's stylesheet byte for byte). The title
+// carries the section's dashed rule; in print it is kept whole (its two lines never part) and with
+// the first block under it (the caveat lines or the first finding, which `.sum,.call{break-inside:
+// avoid}` keeps whole), so it never ends a page alone.
+const ENVER_CSS = `.enver{margin-top:24px}
+.enver-title{font-size:18px;line-height:1.3;margin:0 0 4px;padding-top:14px;border-top:2px dashed var(--line)}
+.enver-title span{display:block}
+.enver-title .enver-en{font-weight:600;color:var(--muted)}
+@media print{.enver-title{break-inside:avoid;break-after:avoid}}
 `;
 
 /**
  * The self-contained HTML summary (§5.5): no scripts, no URLs, no fonts. One table whose
  * <thead> holds the caveat header, so a browser printing the saved file repeats it on every
  * page; in the body the unreviewed banner, the patient notices, the summary sections in
- * on-screen order, the disclaimer and a dated footer. Every text is HTML-escaped.
+ * on-screen order, the disclaimer and a dated footer. Every text is HTML-escaped. Release 0.4.8: a
+ * non-English summary that carries `english` adds, before the disclaimer, a <section lang="en">
+ * titled chrome.englishVersion in the locale (tagged) and in English, holding the English caveat
+ * lines (englishVersionNotices, each a <p class="notice">, as the English .html of the same view
+ * prints them before its title) and the English findings as the English .html of the same answers
+ * shows them; only then does the stylesheet carry ENVER_CSS.
  * @param {Object} view
  * @param {string} loc
  * @param {Object} summary
@@ -1043,7 +1147,6 @@ h3{font-size:16px;margin-bottom:7px}
  */
 export function summaryHtml(view, loc, summary, { appVersion = APP_VERSION, generatedAt } = {}) {
   if (!summary || typeof summary !== "object") throw new TypeError("summaryHtml: a summary is required");
-  const { said, ask, gapLine, unsureList, clin, flags, urgent } = summary;
   const t = chromeFor(loc);
   const fb = new Set(t.fallbackKeys || []);
   const docLang = langTag(loc);
@@ -1058,8 +1161,6 @@ export function summaryHtml(view, loc, summary, { appVersion = APP_VERSION, gene
   const unrev = unreviewedCaveat(view, loc);
   const notices = patientNotices(view, loc);
   const markers = patientProvenanceFor(view, loc).markers;
-  const flagList = arr(flags);
-  const thin = arr(said).length === 0 && arr(clin).length === 0 && flagList.length === 0;
 
   const header = [marker];
   if (unrev && unrev.title) header.push(`<span lang="${esc(docLang)}">${esc(unrev.title)}</span>`);
@@ -1071,7 +1172,57 @@ export function summaryHtml(view, loc, summary, { appVersion = APP_VERSION, gene
   }
   for (const line of notices) body.push(`<p class="notice" lang="${esc(line.lang)}">${esc(line.text)}</p>`);
   body.push(`<h1>${esc(t.summaryTitle)}</h1>`);
+  body.push(...summaryHtmlBody(view, loc, summary));
+  // Release 0.4.8: outside English, the English version of the same findings, as one section in
+  // English under the title in the locale and in English (English's own caveat lines first), before
+  // the locale's disclaimer.
+  const english = englishTwin(loc, summary);
+  if (english) {
+    const enBlocks = [...englishVersionNotices(view).map((text) => `<p class="notice">${esc(text)}</p>`), ...summaryHtmlBody(view, "en", english)];
+    body.push(`<section class="enver" lang="en"><h2 class="enver-title"><span lang="${esc(docLang)}">${esc(t.englishVersion)}</span><span class="enver-en">${esc(chromeFor("en").englishVersion)}</span></h2>${enBlocks.join("\n")}</section>`);
+  }
+  body.push(`<div class="disc">${chrome("disclaimer")}</div>`);
+  body.push(`<p class="foot">${esc(`${view.name} v${appVersion} — `)}${chrome("txtFooter")} · ${marker} · ${esc(date)}</p>`);
 
+  return [
+    "<!doctype html>",
+    `<html lang="${esc(docLang)}">`,
+    "<head>",
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    '<meta name="robots" content="noindex, nofollow">',
+    `<title>${esc(t.summaryTitle)}</title>`,
+    `<style>\n${EXPORT_CSS}${english ? ENVER_CSS : ""}</style>`,
+    "</head>",
+    "<body>",
+    '<table class="frame">',
+    `<thead><tr><th>${header.join(" · ")}</th></tr></thead>`,
+    "<tbody><tr><td>",
+    ...body,
+    "</td></tr></tbody>",
+    "</table>",
+    "</body>",
+    "</html>",
+    "",
+  ].join("\n");
+}
+
+/**
+ * The findings of a summary as .html blocks in `loc`'s chrome, in on-screen order: the thin box, the
+ * flags, the opening line, the said and ask lists, the not-sure list and the clinician block. In a
+ * non-English `loc` an English fallback is tagged lang="en"; in English nothing is tagged (inside a
+ * non-English document the English version's section carries lang="en" itself).
+ */
+function summaryHtmlBody(view, loc, summary) {
+  const { said, ask, gapLine, unsureList, clin, flags, urgent } = summary;
+  const t = chromeFor(loc);
+  const fb = new Set(t.fallbackKeys || []);
+  const isEn = langTag(loc) === "en";
+  const en = html => (isEn ? html : `<span lang="en">${html}</span>`);
+  const chrome = key => (fb.has(key) ? en(esc(t[key])) : esc(t[key]));
+  const flagList = arr(flags);
+  const thin = arr(said).length === 0 && arr(clin).length === 0 && flagList.length === 0;
+  const body = [];
   if (thin) {
     body.push(`<div class="sum ask"><h3>${chrome("thinTitle")}</h3><p>${chrome("thin")}</p></div>`);
   }
@@ -1103,28 +1254,5 @@ export function summaryHtml(view, loc, summary, { appVersion = APP_VERSION, gene
     const clinLang = (c) => (isEn ? "" : ` lang="${esc(langTag(c.lang || "en"))}"`);
     body.push(`<div class="sum clin"><h3>${chrome("forClinician")}</h3>${ledeHtml}<ul>${clin.map(c => `<li${clinLang(c)}>${esc((c.neg ? "− " : "+ ") + c.t)}</li>`).join("")}</ul></div>`);
   }
-  body.push(`<div class="disc">${chrome("disclaimer")}</div>`);
-  body.push(`<p class="foot">${esc(`${view.name} v${appVersion} — `)}${chrome("txtFooter")} · ${marker} · ${esc(date)}</p>`);
-
-  return [
-    "<!doctype html>",
-    `<html lang="${esc(docLang)}">`,
-    "<head>",
-    '<meta charset="utf-8">',
-    '<meta name="viewport" content="width=device-width, initial-scale=1">',
-    '<meta name="robots" content="noindex, nofollow">',
-    `<title>${esc(t.summaryTitle)}</title>`,
-    `<style>\n${EXPORT_CSS}</style>`,
-    "</head>",
-    "<body>",
-    '<table class="frame">',
-    `<thead><tr><th>${header.join(" · ")}</th></tr></thead>`,
-    "<tbody><tr><td>",
-    ...body,
-    "</td></tr></tbody>",
-    "</table>",
-    "</body>",
-    "</html>",
-    "",
-  ].join("\n");
+  return body;
 }

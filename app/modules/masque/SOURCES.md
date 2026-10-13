@@ -7,12 +7,16 @@ constants, the outputs of the baseline builders and JSX/template text cut from t
 source at the lines below. JSX cuts are compiled with Babel, so whitespace and entities come out
 as React renders them. The tool writes `JSON.stringify(rubric, null, 2) + "\n"`: UTF-8 without
 BOM, LF, no `\u` escapes. Opening the page shows whether a regeneration is byte-identical to the
-committed file, and it runs 157 cross-checks, every one of which must pass (123 until release
+committed file, and it runs 181 cross-checks, every one of which must pass (123 until release
 0.4.2, which added six for the Spanish delta; 129 until release 0.4.3, which added eight for the
 EMR template data; 137 until release 0.4.4, which added one for the sign-off change-log entry;
 138 until release 0.4.5, which added nine for the clinical lead's referral rule and, on
 2026-10-10, a tenth for the lead's amendment of its definition; 148 until release 0.4.6, which
-added nine for the clinical lead's answers on the EMR template's open items).
+added nine for the clinical lead's answers on the EMR template's open items; 157 until release
+0.4.7, which added ten for the lexicon change 0.3.2 → 0.3.3: nine, and a tenth for the clinical
+lead's sign-off record of 2026-10-12; 167 until release 0.4.8, which added six for the clinical
+lead's question for item `r_dur`; 173 until the 0.4.8 follow-up, which added eight for the clinical
+lead's plan line for the EMR template).
 After the baseline extraction it applies the
 clinical-lead-approved lexicon delta 0.3.1 → 0.3.2 (`app/tests/harness/lexicon-delta.js`, design
 05 §6.2; see "Approved lexicon delta" below) and, since release 0.4.2, the unreviewed Spanish
@@ -24,7 +28,15 @@ clinical lead in 0.4.4)" below) and, since release 0.4.5, the clinical lead's re
 dizziness cases (`app/tests/harness/referral-delta.js`; see "Referral rule for dizziness cases
 (release 0.4.5)" below) and, since release 0.4.6, the clinical lead's answers on the EMR
 template's open items (`app/tests/harness/emr-decisions-delta.js`; see "EMR template: the clinical
-lead's answers (release 0.4.6)" below).
+lead's answers (release 0.4.6)" below) and, since release 0.4.7, the lexicon change 0.3.2 → 0.3.3
+for chart text and clarification prompts, applied right after the 0.3.2 delta
+(`app/tests/harness/lexicon-delta-033.js`; signed off by the clinical lead on 2026-10-12; see
+"Lexicon delta 0.3.2 → 0.3.3 (release 0.4.7; signed off by the clinical lead on 2026-10-12)"
+below) and, since release 0.4.8, the clinical lead's question for item `r_dur`, applied last
+(`app/tests/harness/question-delta-048.js`; see "Clinician question for item r_dur (release 0.4.8)"
+below). Release 0.4.8 also adds engine chrome and module media that are not rubric data: see
+"Patient chrome of release 0.4.8 (AI translation, unreviewed)" and "Patient introduction video
+(release 0.4.8)" below.
 
 This file restates the extractor's map (design 03 §3.8, §9.2). Line numbers refer to
 `app/tests/baseline/src/` (identical to `app/src` at the WP0 commit).
@@ -51,7 +63,7 @@ Everything else is read from the baseline. Each value here is typed once in `HAN
 | `id`, `name`, `icon` | `masque`, `MASQUE`, `Stethoscope` | Module identity. `icon` matches the Screener brand mark (Scr L1003). |
 | `logicBinding` | `{moduleId: "masque"}` | The registry pairs the rubric and logic files, so there is no SHA pin (§3.8). |
 | `fhir.questionnaireUrl`, `codeSystem`, `answerSystem`, `criteriaSystem`, `weightExtension`, `indexCode`, `screenIdPrefix`, `filePrefix`; `cds.serviceId`, `safetyCardUuid`, `indexCardUuid`, `source.url` | `{id}`/`{instrument}` templates | Identity templates (D8, V9). Each one is rendered with `id = "masque"` and `instrument = "0.2"` and compared with the literal it replaces: `QUESTIONNAIRE_URL` (Scr L80), the Questionnaire code systems (Scr L447, L467), `ANSWER_SYSTEM` and `WEIGHT_EXT` (Scr L421-422), the index Observation code (Scr L1537, Scb L1425), the `screen_id` prefix (Scr L574), the download-name prefix (Scr L966, L1407-1413), the CDS service id, card uuids and source url (Scr L479, L496-511). |
-| `lexicon.goldSet.lexiconVersion`, `lexicon.goldSet.file` | `0.3.1`, `masque_extraction_goldset.json` | The goldSet of the baseline 0.3.1 lexicon: the lexicon the reference gold set was benchmarked against, and its file name. `goldSet.version` is read from that file's `_meta.version` in `reference/MASQUE_v0.3.1/`, after its SHA-256 is checked against that folder's `MANIFEST.sha256`. The approved delta then replaces the whole `goldSet` (exact `from` match) with `{version: "0.3.0", lexiconVersion: "0.3.2", file: "masque_extraction_goldset_0.3.0.json"}`. That file lives in `app/tests/fixtures/goldset/` (local-only, never deployed); it is a superset of reference v0.2.0 by reference (its `_meta.basedOn` pins the reference file's SHA-256 and its 44 cases, which are not copied) and is SHA-256 pinned in `tests/suites/capture.js` (`GOLD_0_3_0_SHA256`). The extractor checks its `_meta` against `goldSet` and the reference pin. |
+| `lexicon.goldSet.lexiconVersion`, `lexicon.goldSet.file` | `0.3.1`, `masque_extraction_goldset.json` | The goldSet of the baseline 0.3.1 lexicon: the lexicon the reference gold set was benchmarked against, and its file name. `goldSet.version` is read from that file's `_meta.version` in `reference/MASQUE_v0.3.1/`, after its SHA-256 is checked against that folder's `MANIFEST.sha256`. The approved delta then replaces the whole `goldSet` (exact `from` match) with `{version: "0.3.0", lexiconVersion: "0.3.2", file: "masque_extraction_goldset_0.3.0.json"}`. That file lives in `app/tests/fixtures/goldset/` (local-only, never deployed); it is a superset of reference v0.2.0 by reference (its `_meta.basedOn` pins the reference file's SHA-256 and its 44 cases, which are not copied) and is SHA-256 pinned in `tests/suites/capture.js` (`GOLD_0_3_0_SHA256`). The extractor checks its `_meta` against `goldSet` and the reference pin. Release 0.4.7: the 0.3.3 delta replaces `goldSet` again (exact `from` match) with `{version: "0.4.0", lexiconVersion: "0.3.3", file: "masque_extraction_goldset_0.4.0.json"}`. That file, in the same folder, copies the 0.3.0 cases and dialogues verbatim and pins the 0.3.0 file by its SHA-256 in `_meta.includes` (the 0.3.0 file stays, unchanged and pinned); it adds 273 chart cases (`k001` the lead's history and physical, `k002`-`k051` the chart-text catalogue, `k052`-`k065` the fixes before review, `k066`-`k122` review round 1, `k123`-`k186` review round 2, `k187`-`k259` review round 3, `k260`-`k273` the clinical lead's sign-off of 2026-10-12) and a supersede table: five 0.2.0 / 0.3.0 case outputs (e16, r02, f02, t007, w019) that change since the lead's decision D9 of 2026-10-12 reads spoken lines with chart reading too (empty from review round 2 until then), and is pinned in `capture.js` (`GOLD_0_4_0_SHA256`). The extractor checks its `_meta` against `goldSet`, the reference pin and the 0.3.0 file's SHA-256. |
 | `changelog[].note`, `date` | 2026-10-02 | The reconciliation, extraction and open-question entries (§3.8). |
 | `changelog[8]` | 2026-10-04 | The approved lexicon change, `LEXICON_DELTA.changelog` in `tests/harness/lexicon-delta.js` (design 05 §6.3), appended after the 2026-10-02 notes. Its note was reworded in rounds 2 and 3 of release 0.4.1 (design 05 §12.7, §13.5) so that it states only what the extractor does. |
 | `changelog[9]` | 2026-10-06 | The Spanish translation (kind `translation`, release 0.4.2), `LOCALE_DELTA.changelog` in `tests/harness/locale-delta.js`, appended after the lexicon entry. It names the 36 added paths. |
@@ -59,6 +71,9 @@ Everything else is read from the baseline. Each value here is typed once in `HAN
 | `changelog[11]` | 2026-10-07 | The clinical lead's sign-off of that data (kind `sign-off`, release 0.4.4), `EMR_DELTA.signOffChangelog` in the same file, appended right after it. It states the sign-off's scope and what it does not cover. |
 | `changelog[12]` | 2026-10-10 | The clinical lead's referral rule for dizziness cases (kind `referral`, release 0.4.5), `REFERRAL_DELTA.changelog` in `tests/harness/referral-delta.js`, appended after the sign-off entry and dated as the last of the lead's decisions (2026-10-07 to 2026-10-10; it was dated 2026-10-09 until the lead amended the definition on 2026-10-10). It names the changed and the two added paths. |
 | `changelog[13]` | 2026-10-10 | The clinical lead's answers on the EMR template's open items (kind `emr-decisions`, release 0.4.6), `EMR_DECISIONS_DELTA.changelog` in `tests/harness/emr-decisions-delta.js`, appended after the referral entry. It names the two added paths. |
+| `changelog[14]` | 2026-10-12 | The lexicon change 0.3.2 → 0.3.3 (kind `lexicon`, release 0.4.7: chart text and clarification prompts), `LEXICON_DELTA_033.changelog` in `tests/harness/lexicon-delta-033.js`, appended after the emr-decisions entry. Its note states the outcome of the clinical lead's sign-off of 2026-10-12 (the approved rows marked lead-approved, the struck rows gone, the rows added), quotes the lead's question and names the five paths the delta touches. It is dated 2026-10-12, as that sign-off (until then 2026-10-11, as the lead's request and decisions). |
+| `changelog[15]` | 2026-10-12 | The clinical lead's question for item `r_dur` (kind `question`, release 0.4.8), `QUESTION_DELTA.changelog` in `tests/harness/question-delta-048.js`, appended after the lexicon entry. It quotes the lead's request and names the one changed path, `/domains/0/items/0/ask`. |
+| `changelog[16]` | 2026-10-12 | The clinical lead's plan line for the EMR template (kind `emr-plan`, release 0.4.8, follow-up), `EMR_PLAN_DELTA.changelog` in `tests/harness/emr-plan-delta-048.js`, appended after the question entry. It quotes the lead's request and answers of 2026-10-12 and names the one added path, `/emrTemplate/planAdvice`. |
 
 ### Approved lexicon delta 0.3.1 → 0.3.2 (design 05 §6.2)
 
@@ -952,6 +967,269 @@ The extractor's nine checks for this delta:
 9. the change-log entry (kind `emr-decisions`, dated as the decision, paths the added paths) is
    the last, right after the 0.4.5 referral entry.
 
+### Lexicon delta 0.3.2 → 0.3.3 (release 0.4.7; signed off by the clinical lead on 2026-10-12)
+
+These values are typed once, in `app/tests/harness/lexicon-delta-033.js` (`LEXICON_DELTA_033`), not
+in `HAND` and not in `lexicon-delta.js`, whose approved 0.3.1 → 0.3.2 record is untouched. They rest
+on the clinical lead's request and three answers in chat of 2026-10-11 (`request`, `decisions`:
+the message, each question, the chosen option's description and the answer, verbatim):
+
+- red flags: "Don't raise, no listing";
+- answers: "Clickable answers (Recommended)";
+- wording: "Draft, you sign off (Recommended)".
+
+`extract-rubric.js` applies the delta right after the 0.3.2 delta with `applyLexiconDelta`. `clauses`
+and `clarify` are new top-level keys, inserted just before `goldSet`; the four negation cues are
+appended at the end of `negation.cues`; `version` and `goldSet` are replaced in place (exact `from`
+match). `revertLexiconDelta` must give back the 0.3.2 lexicon exactly, and `revertLexiconChain` the
+baseline 0.3.1 lexicon, key order included. The `lexicon` change-log entry (`changelog[14]`) is the
+last.
+
+**Source tags.** Every `clauses` row and every `clarify` entry carries `source`:
+
+- `lead`: the lead's own words in the request, verbatim. These are the affirm cues `endorses`,
+  `reports`, `has ` and `yes`, the deny cues `denies`, `no `, `lacks` and `doesn't have`, and the
+  question "is the rhinorrhea clear or purulent?". `has` and `no` carry their boundary space.
+- `module`: module text. No row uses it in 0.3.3: the module's questions are read from the probe or
+  item at run time, never copied into the lexicon.
+- `draft`: drafted by the team, awaiting the lead's sign-off. None is left since the sign-off of
+  2026-10-12.
+- `lead-approved`: drafted by the team and approved by the lead on the sign-off page or, for the rows
+  added at the sign-off, in the lead's chat answers of 2026-10-12. The row's basis keeps its drafting
+  record ("Draft …").
+
+The switches carry no source key in the data: `wordStart`, `placeholderAsk`, `examItems` and
+`strictConflict` were drafts, approved on 2026-10-12, and `redFlagNegation` is the lead's decision. Review round 1 added two
+draft lists, `clauses.scopeEnd` (words that end a list denial) and `clauses.sections.read` (headers
+read normally, which end an exam, family-history or skip section), each row with its basis. Review
+round 2 made chart reading apply to typed chart text only (the lead's decision D9 of 2026-10-12
+extended it to spoken and demo lines again), and added:
+- the draft list `clauses.redFlags`: chart-register red-flag phrases by flag id, for every flag of
+  the module;
+- draft rows in `affirm` (the sign "(+)" and the treatment-failure cues), `deny` ("(-)"), `post`,
+  `mask` (report headers, "hay fever"), `hedge` and `placeholder` (empty checkboxes);
+- two draft clarify entries (`cl_scan_report`, `cl_audiogram_report`).
+
+Review round 3 added the draft list `clauses.complement` (words after which a denial no longer
+governs the finding: for, in, about, after, since, on, none of) and draft rows in `deny` ("rather
+than"), `breaks` ("other than", "besides", "apart from") and `clauses.redFlags.rf_focal` ("slurred
+speech"). Round 2 also emptied `examItems`, changed the `placeholderAsk` text (the template-text notice) and
+removed from six clarify entries the qualifiers that state the dangerous answer or name a test.
+`LEXICON_DELTA_033.basis` holds one basis per row, switch, entry and appended negation cue (286
+since the sign-off; 294 after review round 3; 282 after review round 2; 142 after review round 1),
+and `CHANGELOG.md` (release 0.4.7, "SIGN-OFF") lists every row of the sign-off list with its basis and
+the lead's decision.
+
+**The sign-off (2026-10-12).** The clinical lead decided every row of the sign-off list (306 rows,
+read from commit `cd34934`) on the sign-off page and answered the 19 Part D questions and two D8
+follow-up questions in chat. `LEXICON_DELTA_033.signOff` records it (by "clinical lead", date
+2026-10-12, channel "sign-off page + chat"): 278 rows approved, 18 struck, 10 the lead's own words or
+decision; every row's outcome; the struck rows with the basis they had; every Part D answer and the
+follow-up answers verbatim. Applied: the 18 struck rows are gone (the mask `aural`, which the lead
+kept struck after being told its effect on the history and physical, and 17 chart red-flag phrases of
+`rf_thunderclap`, `rf_focal`, `rf_vision`, `rf_gca` and `rf_orbital`); every drafted row left is
+`lead-approved`; the rows the lead approved at the sign-off are added, `lead-approved` (D7: the hedge
+`"+/-"`; D8: the deny cues `"not associated with"`, `"not accompanied by"`, `"neg for"`, the
+`rf_progressive` phrases `"progressively worse"`, `"progressively worsening"`, `"worse each week"`
+and the `rf_asym` phrases `"left-sided hearing loss"`, `"right-sided hearing loss"`, `"asymmetric
+hearing loss"`; the option's `"unilateral tinnitus"` was already a row); and the D8 answers removed
+clarification qualifiers (`deep` from `cl_otalgia`; `clicking`, `steady` from `cl_tinnitus_quality`;
+`progressive` from `cl_hearing_onset`; the positive-answer qualifiers of the rule-out entries
+`cl_rhinorrhea`, `cl_audiogram`, `cl_smell`, `cl_scan_report`, `cl_audiogram_report`). The answers
+D7, D8 and D9 also changed engine rules (`engine/extraction.js`, "Spoken lines"): chart reading reads
+spoken and demo lines too (D9), typed chart text sets no context marker (D8), and "+/-" is read
+as a hedge through its row (D7). The gold set 0.4.0 chart cases and their expectations are team
+drafts; only case `k001` is the lead's own text.
+
+| Field | Value (each phrase with its source tag) | Source |
+|---|---|---|
+| `lexicon.version` | `0.3.3` (replaces `0.3.2`) | `lexicon-delta-033.js` `fields[0]` |
+| `lexicon.negation.cues` (appended at the end, after the 0.3.2 cue `fewer than`) | `"wasn't"` (lead-approved), `"weren't"` (lead-approved), `"aren't"` (lead-approved), `"hadn't"` (lead-approved) | `lexicon-delta-033.js` `appended[0]` |
+| `lexicon.clauses.wordStart` | `true` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.wordStart` |
+| `lexicon.clauses.affirm` | `"endorses"` (lead), `"reports"` (lead), `"has "` (lead), `"yes"` (lead), `"endorsed"` (lead-approved), `"reported"` (lead-approved), `"admits"` (lead-approved), `"positive for"` (lead-approved), `"complains of"` (lead-approved), `"c/o"` (lead-approved), `"describes"` (lead-approved), `"presents with"` (lead-approved), `"(+)"` (lead-approved), `"no improvement"` (lead-approved), `"no relief"` (lead-approved), `"no response"` (lead-approved), `"no benefit"` (lead-approved), `"without improvement"` (lead-approved), `"without relief"` (lead-approved), `"without benefit"` (lead-approved), `"failed"` (lead-approved), `"refractory to"` (lead-approved), `"despite"` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.affirm` |
+| `lexicon.clauses.deny` | `"denies"` (lead), `"no "` (lead), `"lacks"` (lead), `"doesn't have"` (lead), `"denied"` (lead-approved), `"negative for"` (lead-approved), `"without"` (lead-approved), `"does not have"` (lead-approved), `"don't have"` (lead-approved), `"do not have"` (lead-approved), `"haven't had"` (lead-approved), `"hasn't had"` (lead-approved), `"(-)"` (lead-approved), `"rather than"` (lead-approved), `"not associated with"` (lead-approved), `"not accompanied by"` (lead-approved), `"neg for"` (lead-approved) (the last three added at the sign-off, D8) | `lexicon-delta-033.js` `fields[1].to.deny` |
+| `lexicon.clauses.post` | `" negative"` (lead-approved), `" denied"` (lead-approved), `" absent"` (lead-approved), `" not present"` (lead-approved), `": no"` (lead-approved), `": none"` (lead-approved), `"(-)"` (lead-approved), `": denies"` (lead-approved), `" - no"` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.post` |
+| `lexicon.clauses.prefix` | `"non-"` (lead-approved), `"non "` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.prefix` |
+| `lexicon.clauses.breaks` | `"but "` (lead-approved), `"however"` (lead-approved), `"although"` (lead-approved), `"though "` (lead-approved), `"except "` (lead-approved), `"whereas"` (lead-approved), `" — "` (lead-approved), `"other than"` (lead-approved), `"besides"` (lead-approved), `"apart from"` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.breaks` |
+| `lexicon.clauses.scopeEnd` | `"with"` (lead-approved), `"so"` (lead-approved), `"now"` (lead-approved), `"until"` (lead-approved), `"is"` (lead-approved), `"are"` (lead-approved), `"was"` (lead-approved), `"were"` (lead-approved), `"to"` (lead-approved), `"from"` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.scopeEnd` |
+| `lexicon.clauses.complement` | `"for"` (lead-approved), `"in"` (lead-approved), `"about"` (lead-approved), `"after"` (lead-approved), `"since"` (lead-approved), `"on"` (lead-approved), `"none of"` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.complement` |
+| `lexicon.clauses.mask` | `"number"` (lead-approved), `"ct showed"` (lead-approved), `"scope showed"` (lead-approved), `"lund-mackay"` (lead-approved), `"audiogram showed"` (lead-approved), `"hearing test showed"` (lead-approved), `"hay fever"` (lead-approved) (the lead struck `"aural"`, 2026-10-12) | `lexicon-delta-033.js` `fields[1].to.mask` |
+| `lexicon.clauses.hedge` | `"reportedly"` (lead-approved), `"possible"` (lead-approved), `"possibly"` (lead-approved), `"probable"` (lead-approved), `"questionable"` (lead-approved), `"suspected"` (lead-approved), `"unclear whether"` (lead-approved), `"unclear if"` (lead-approved), `"rule out"` (lead-approved), `"r/o"` (lead-approved), `"?"` (lead-approved), `"maybe"` (lead-approved), `"unsure"` (lead-approved), `"uncertain"` (lead-approved), `"not sure"` (lead-approved), `"might"` (lead-approved), `"+/-"` (lead-approved) (`"+/-"` added at the sign-off, D7) | `lexicon-delta-033.js` `fields[1].to.hedge` |
+| `lexicon.clauses.placeholder` | `"***"` (lead-approved), `"___"` (lead-approved), `"[ ]"` (lead-approved), `"[]"` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.placeholder` |
+| `lexicon.clauses.thirdParty` | `"mother"` (lead-approved), `"father"` (lead-approved), `"mom "` (lead-approved), `"dad "` (lead-approved), `"sister"` (lead-approved), `"brother"` (lead-approved), `"daughter"` (lead-approved), `"son "` (lead-approved), `"parents"` (lead-approved), `"sibling"` (lead-approved), `"aunt"` (lead-approved), `"uncle "` (lead-approved), `"cousin"` (lead-approved), `"grandmother"` (lead-approved), `"grandfather"` (lead-approved), `"family history of"` (lead-approved), `"family hx of"` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.thirdParty` |
+| `lexicon.clauses.chartIgnoreThirdParty` | `"her "` (lead-approved), `"his "` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.chartIgnoreThirdParty` |
+| `lexicon.clauses.placeholderAsk` | `"This line holds unfilled template text (***)."` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.placeholderAsk` |
+| `lexicon.clauses.sections.exam` | `"physical exam"` (lead-approved), `"physical examination"` (lead-approved), `"exam"` (lead-approved), `"examination"` (lead-approved), `"otoscopic exam"` (lead-approved), `"otoscopy"` (lead-approved), `"objective"` (lead-approved), `"vital signs"` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.sections.exam` |
+| `lexicon.clauses.sections.family` | `"family history"` (lead-approved), `"family hx"` (lead-approved), `"fhx"` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.sections.family` |
+| `lexicon.clauses.sections.skip` | `"allergies"` (lead-approved), `"allergy"` (lead-approved), `"medications"` (lead-approved), `"medication"` (lead-approved), `"meds"` (lead-approved), `"current medications"` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.sections.skip` |
+| `lexicon.clauses.sections.read` | `"hpi"` (lead-approved), `"history of present illness"` (lead-approved), `"interval history"` (lead-approved), `"ros"` (lead-approved), `"review of systems"` (lead-approved), `"past medical history"` (lead-approved), `"pmh"` (lead-approved), `"past surgical history"` (lead-approved), `"psh"` (lead-approved), `"social history"` (lead-approved), `"assessment"` (lead-approved), `"plan"` (lead-approved), `"assessment and plan"` (lead-approved), `"assessment/plan"` (lead-approved), `"a/p"` (lead-approved), `"impression"` (lead-approved), `"impression and plan"` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.sections.read` |
+| `lexicon.clauses.examItems` | `[]`: none (lead-approved; review round 2 removed `r_normal` and `x_objective`; the lead's D10 answer: nothing is captured inside an exam section) | `lexicon-delta-033.js` `fields[1].to.examItems` |
+| `lexicon.clauses.redFlags.rf_thunderclap` | `"sudden severe headache"` (lead-approved), `"sudden onset severe headache"` (lead-approved), `"sudden-onset severe headache"` (lead-approved), `"maximal at onset"` (lead-approved), `"maximum intensity within"` (lead-approved), `"peak intensity within"` (lead-approved) (the lead struck sudden onset headache, sudden-onset headache, 2026-10-12) | `lexicon-delta-033.js` `fields[1].to.redFlags.rf_thunderclap` |
+| `lexicon.clauses.redFlags.rf_focal` | `"diplopia"` (lead-approved), `"facial droop"` (lead-approved), `"facial weakness"` (lead-approved), `"dysarthria"` (lead-approved), `"dysphagia"` (lead-approved), `"hemiparesis"` (lead-approved), `"unilateral weakness"` (lead-approved), `"focal weakness"` (lead-approved), `"focal deficit"` (lead-approved), `"focal neurologic deficit"` (lead-approved), `"slurred speech"` (lead-approved) (the lead struck facial numbness, aphasia, 2026-10-12) | `lexicon-delta-033.js` `fields[1].to.redFlags.rf_focal` |
+| `lexicon.clauses.redFlags.rf_vision` | `"loss of vision"` (lead-approved), `"papilledema"` (lead-approved), `"papilloedema"` (lead-approved) (the lead struck vision loss, visual loss, visual obscuration, 2026-10-12) | `lexicon-delta-033.js` `fields[1].to.redFlags.rf_vision` |
+| `lexicon.clauses.redFlags.rf_gca` | `"scalp tenderness"` (lead-approved), `"jaw claudication"` (lead-approved), `"temporal artery tenderness"` (lead-approved) (the lead struck jaw pain with chewing, jaw pain when chewing, jaw pain on chewing, 2026-10-12) | `lexicon-delta-033.js` `fields[1].to.redFlags.rf_gca` |
+| `lexicon.clauses.redFlags.rf_orbital` | `"proptosis"` (lead-approved), `"painful eye movement"` (lead-approved), `"restricted eye movement"` (lead-approved), `"ophthalmoplegia"` (lead-approved) (the lead struck periorbital swelling, periorbital edema, periorbital oedema, orbital swelling, eye pain, pain with eye movement, pain on eye movement, 2026-10-12) | `lexicon-delta-033.js` `fields[1].to.redFlags.rf_orbital` |
+| `lexicon.clauses.redFlags.rf_ssnhl` | `"sudden hearing loss"` (lead-approved), `"sudden sensorineural"` (lead-approved), `"ssnhl"` (lead-approved), `"sudden snhl"` (lead-approved), `"sudden deafness"` (lead-approved), `"sudden onset hearing loss"` (lead-approved), `"sudden-onset hearing loss"` (lead-approved), `"sudden loss of hearing"` (lead-approved), `"sudden drop in hearing"` (lead-approved), `"sudden decrease in hearing"` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.redFlags.rf_ssnhl` |
+| `lexicon.clauses.redFlags.rf_asym` | `"unilateral hearing loss"` (lead-approved), `"unilateral tinnitus"` (lead-approved), `"unilateral snhl"` (lead-approved), `"unilateral sensorineural"` (lead-approved), `"asymmetric hearing"` (lead-approved), `"asymmetrical hearing"` (lead-approved), `"asymmetric snhl"` (lead-approved), `"asymmetric sensorineural"` (lead-approved), `"left-sided hearing loss"` (lead-approved), `"right-sided hearing loss"` (lead-approved), `"asymmetric hearing loss"` (lead-approved) (the last three added at the sign-off, D8) | `lexicon-delta-033.js` `fields[1].to.redFlags.rf_asym` |
+| `lexicon.clauses.redFlags.rf_pulsatile` | `"pulse-synchronous"` (lead-approved), `"pulse synchronous"` (lead-approved), `"pulsing tinnitus"` (lead-approved), `"pulsating tinnitus"` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.redFlags.rf_pulsatile` |
+| `lexicon.clauses.redFlags.rf_progressive` | `"steadily worsening"` (lead-approved), `"worsening headache"` (lead-approved), `"progressive headache"` (lead-approved), `"worse on waking"` (lead-approved), `"worse upon waking"` (lead-approved), `"worse with cough"` (lead-approved), `"worse with valsalva"` (lead-approved), `"worse with strain"` (lead-approved), `"worse lying flat"` (lead-approved), `"worse when lying flat"` (lead-approved), `"worse when supine"` (lead-approved), `"wakes from sleep"` (lead-approved), `"waking from sleep"` (lead-approved), `"wakes him from sleep"` (lead-approved), `"wakes her from sleep"` (lead-approved), `"waking him from sleep"` (lead-approved), `"waking her from sleep"` (lead-approved), `"awakens from sleep"` (lead-approved), `"progressively worse"` (lead-approved), `"progressively worsening"` (lead-approved), `"worse each week"` (lead-approved) (the last three added at the sign-off, D8) | `lexicon-delta-033.js` `fields[1].to.redFlags.rf_progressive` |
+| `lexicon.clauses.redFlags.rf_new50` | `"new headache over 50"` (lead-approved), `"new headache after 50"` (lead-approved), `"new headache after age 50"` (lead-approved), `"new onset headache after 50"` (lead-approved), `"new-onset headache after 50"` (lead-approved), `"new onset headache after age 50"` (lead-approved), `"new-onset headache after age 50"` (lead-approved), `"first-ever severe headache"` (lead-approved), `"first ever severe headache"` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.redFlags.rf_new50` |
+| `lexicon.clauses.redFlags.rf_mass` | `"epistaxis"` (lead-approved), `"unilateral nasal obstruction"` (lead-approved), `"one-sided nasal obstruction"` (lead-approved), `"right-sided nasal obstruction"` (lead-approved), `"left-sided nasal obstruction"` (lead-approved), `"right nasal obstruction"` (lead-approved), `"left nasal obstruction"` (lead-approved), `"nasal mass"` (lead-approved), `"intranasal mass"` (lead-approved), `"sinonasal mass"` (lead-approved), `"nasal cavity mass"` (lead-approved), `"cheek numbness"` (lead-approved), `"v2 numbness"` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.redFlags.rf_mass` |
+| `lexicon.clauses.redFlags.rf_systemic` | `"fever"` (lead-approved), `"febrile"` (lead-approved), `"weight loss"` (lead-approved), `"immunosuppress"` (lead-approved), `"immunocompromised"` (lead-approved), `"malignancy"` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.redFlags.rf_systemic` |
+| `lexicon.clauses.strictConflict` | `x_purulent`, `x_objective`, `x_lowfreq`, `x_anosmia` (lead-approved) | `lexicon-delta-033.js` `fields[1].to.strictConflict` |
+| `lexicon.clauses.redFlagNegation` | `true` (lead: the decision of 2026-10-11, "Don't raise, no listing") | `lexicon-delta-033.js` `fields[1].to.redFlagNegation` |
+| `lexicon.clarify[0]` `cl_rhinorrhea` (lead) | probe `pr_purulence`; ask `"is the rhinorrhea clear or purulent?"` (lead, verbatim); ph `"runny nose"`, `"rhinorrhea"`, `"rhinorrhoea"`, `"nasal discharge"`, `"nasal drainage"`, `"post-nasal drip"`, `"postnasal drip"`, `"post nasal drip"`, `"drippy nose"` (triggers drafted by the team under the lead's entry); unless `"clear"`, `"watery"`, `"thin "` (triggers drafted by the team under the lead's entry); the sign-off (D8) removed purulent, thick, green, yellow, cloudy, discolored, discoloured, colored, coloured, culture | `lexicon-delta-033.js` `fields[2].to[0]` |
+| `lexicon.clarify[1]` `cl_tinnitus_quality` (lead-approved) | probe `pr_tinnitus_quality`; question and answers the module's; ph `"tinnitus"`, `"ringing"`, `"ear ring"`, `"ears ring"`, `"roaring"`, `"buzzing"`, `"hissing"` (lead-approved); unless `"pulsatile"`, `"whooshing"` (lead-approved); the sign-off (D8) removed clicking, steady | `lexicon-delta-033.js` `fields[2].to[1]` |
+| `lexicon.clarify[2]` `cl_laterality` (lead-approved) | probe `pr_laterality`; question and answers the module's; ph `"tinnitus"`, `"ringing"`, `"ear full"`, `"ears feel full"`, `"fullness in my ear"`, `"plugged"`, `"hearing loss"`, `"decreased hearing"` (lead-approved); unless `"bilateral"`, `"both ears"`, `"alternat"` (lead-approved) | `lexicon-delta-033.js` `fields[2].to[2]` |
+| `lexicon.clarify[3]` `cl_hearing_onset` (lead-approved) | probe `pr_sudden_drop`; question and answers the module's; ph `"hearing loss"`, `"decreased hearing"`, `"muffled hearing"`, `"trouble hearing"`, `"hard of hearing"` (lead-approved); unless `"gradual"`, `"slowly"` (lead-approved); the sign-off (D8) removed progressive | `lexicon-delta-033.js` `fields[2].to[3]` |
+| `lexicon.clarify[4]` `cl_audiogram` (lead-approved) | probe `pr_audiogram`; question and answers the module's; ph `"hearing loss"`, `"decreased hearing"`, `"fluctuating hearing"` (lead-approved); no qualifier; the sign-off (D8) removed low-frequency, low frequency | `lexicon-delta-033.js` `fields[2].to[4]` |
+| `lexicon.clarify[5]` `cl_dizziness_kind` (lead-approved) | probe `pr_internal_vertigo`; question and answers the module's; ph `"dizziness"`, `"dizzy"` (lead-approved); unless `"vertigo"`, `"spinning"`, `"room spins"`, `"lightheaded"`, `"light-headed"`, `"imbalance"`, `"unsteady"`, `"off balance"`, `"rocking"`, `"swaying"`, `"bobbing"` (lead-approved) | `lexicon-delta-033.js` `fields[2].to[5]` |
+| `lexicon.clarify[6]` `cl_otalgia` (lead-approved) | item `n_otalgia`; question and answers the module's; ph `"ear pain"`, `"otalgia"`, `"ear hurts"`, `"ear discomfort"` (lead-approved); no qualifier; the sign-off (D8) removed deep | `lexicon-delta-033.js` `fields[2].to[6]` |
+| `lexicon.clarify[7]` `cl_smell` (lead-approved) | probe `pr_smell`; question and answers the module's; ph `"hyposmia"`, `"anosmia"`, `"loss of smell"`, `"decreased smell"`, `"reduced smell"` (lead-approved); unless `"only during"` (lead-approved); the sign-off (D8) removed between episodes, between flares, persistent, constant, all the time | `lexicon-delta-033.js` `fields[2].to[7]` |
+| `lexicon.clarify[8]` `cl_nasal_side` (lead-approved) | probe `pr_nasal_mass`; question and answers the module's; ph `"nasal obstruction"`, `"nasal congestion"`, `"congestion"`, `"stuffy"`, `"blocked nose"`, `"stuffed up"` (lead-approved); unless `"bilateral"`, `"both sides"`, `"alternat"` (lead-approved) | `lexicon-delta-033.js` `fields[2].to[8]` |
+| `lexicon.clarify[9]` `cl_hints` (lead-approved) | probe `pr_head_impulse`; question and answers the module's; ph `"hints negative"`, `"hints normal"`, `"hints positive"`, `"hints benign"` (lead-approved); unless `"saccade"`, `"skew"`, `"direction-changing"`, `"head impulse"` (lead-approved) | `lexicon-delta-033.js` `fields[2].to[9]` |
+| `lexicon.clarify[10]` `cl_neck` (lead-approved) | probe `pr_neck`; question and answers the module's; ph `"cervicalgia"`, `"neck pain"`, `"neck ache"`, `"neck stiffness"` (lead-approved); unless `"during"`, `"before"`, `"after"`, `"with the episodes"`, `"attack"` (lead-approved) | `lexicon-delta-033.js` `fields[2].to[10]` |
+| `lexicon.clarify[11]` `cl_viral_onset` (lead-approved) | item `n_viral`; question and answers the module's; ph `"upper respiratory infection"`, `"respiratory infection"`, `"covid"`, `"influenza"`, `"viral"` (lead-approved); unless `"after"`, `"since"`, `"following"`, `"post"` (lead-approved) | `lexicon-delta-033.js` `fields[2].to[11]` |
+| `lexicon.clarify[12]` `cl_scan_report` (lead-approved) | probe `pr_scan_detail`; question and answers the module's; ph `"ct showed"`, `"scope showed"`, `"lund-mackay"` (lead-approved); no qualifier; the sign-off (D8) removed scan showed inflammation, opacification, mucosal thickening, polyps | `lexicon-delta-033.js` `fields[2].to[12]` |
+| `lexicon.clarify[13]` `cl_audiogram_report` (lead-approved) | probe `pr_audiogram`; question and answers the module's; ph `"audiogram showed"`, `"hearing test showed"` (lead-approved); no qualifier; the sign-off (D8) removed low frequency loss, hearing drops during, hearing comes back | `lexicon-delta-033.js` `fields[2].to[13]` |
+| `lexicon.goldSet` | `{version: "0.4.0", lexiconVersion: "0.3.3", file: "masque_extraction_goldset_0.4.0.json"}` (replaces the 0.3.0 value) | `lexicon-delta-033.js` `fields[3]` |
+
+The extractor's ten checks for this delta:
+
+1. the delta applies after the 0.3.2 delta (its `from` is that delta's `to`); `revertLexiconDelta`
+   gives back the 0.3.2 lexicon and `revertLexiconChain` the baseline lexicon exactly, key order
+   included; `clauses` and `clarify` sit just before `goldSet`;
+2. release 0.4.7; the lead's request (dated 2026-10-11, by the clinical lead) and the three answers
+   of that date are recorded, the answers exactly "Don't raise, no listing", "Clickable answers
+   (Recommended)" and "Draft, you sign off (Recommended)"; `signOff` is the clinical lead's of
+   2026-10-12;
+3. the `lead` rows of `clauses` are exactly the verbs the request names (affirm `endorses`,
+   `reports`, `has `, `yes`; deny `denies`, `no `, `lacks`, `doesn't have`), each found in the
+   request, and every other row is `lead-approved` (no plain draft is left);
+4. exactly one `clarify` entry is the lead's: it asks "is the rhinorrhea clear or purulent?",
+   verbatim and found quoted in the request; every other entry is `lead-approved` with no `ask` of
+   its own (it asks the module's question);
+5. every `clarify` entry names exactly one probe of the logic or one item; every `examItems` id is
+   an item; `redFlagNegation` and `wordStart` are on; every `chartIgnoreThirdParty` cue is a cue of
+   `lexicon.thirdParty.cues`; `strictConflict` is exactly the yes/no entries of the negative
+   (rule-out) domains, in item order (release 0.4.7 fixes before review); `clauses.redFlags` names
+   every red flag of the module and nothing else (review round 2);
+6. one basis per `clauses` row (the `clauses.redFlags` rows included), switch, `clarify` entry and
+   appended negation cue (review round 1; the empty `examItems` has one basis of its own since review
+   round 2), none stray; a lead row's basis cites the lead and a lead-approved row's keeps its
+   drafting record ("Draft …"); the
+   `redFlagNegation` basis cites the lead's decision of 2026-10-11;
+7. the one appended row (negation cues) is `lead-approved`;
+8. gold set 0.4.0 carries `_meta.version` and `lexiconVersion` equal to `lexicon.goldSet`,
+   `basedOn` pins the reference file and its 44 cases, and `includes` pins gold set 0.3.0 by its
+   SHA-256, 218 cases and 93 dialogues;
+9. the change-log entry (kind `lexicon`, dated as the sign-off, 2026-10-12, paths exactly the paths
+   the delta touches, the note saying the lead signed it off and quoting the lead's question) is the
+   last;
+10. the sign-off record is complete and applied (`lexicon033SignOffProblems` of
+   `app/tests/harness/diff.js`): by, date, scope and channel; every row's outcome, the totals equal to
+   them; the 19 Part D answers and the D8 follow-up answers among their options; no plain draft left;
+   every struck row absent; every approved row present as `lead-approved`; the rows added and the
+   qualifiers removed at the sign-off in place.
+
+### Clinician question for item r_dur (release 0.4.8)
+
+This value is typed once, in `app/tests/harness/question-delta-048.js` (`QUESTION_DELTA`), not in
+`HAND`. It rests on the clinical lead's request in chat of 2026-10-12, kept verbatim in
+`QUESTION_DELTA.request`: "Fix 2: Question: recalcitrance / How long has this been going on? / Is a
+yes/no, if phrasing it as such it should ask "Have symptoms persisted over 3 months despite trials
+of medical management?"". `extract-rubric.js` applies it last, with `applyQuestionDelta`, under
+`/domains/<i>/items/<j>/ask` only: the item at the path must be the row's item and its `ask` must
+still be the row's `from` (the baseline Scribe's `ASK`), and `revertQuestionDelta` must give back
+the rubric without the change exactly, key order included. The `question` change-log entry follows
+the 0.4.7 `lexicon` entry.
+
+| Path | Value | Basis |
+|---|---|---|
+| `/domains/0/items/0/ask` (`r_dur`) | `Have symptoms persisted over 3 months despite trials of medical management?` (was `How long has this been going on?`, Scb L242-273 `ASK.r_dur`) | L: the clinical lead's sentence, verbatim (request, chat, 2026-10-12), replacing the baseline Scribe question, which asked for a duration while the item's answers are Yes / No. Shown wherever the item's clinician question is shown: the Scribe's Ask-next card and heard card, and the Rubric Editor's ask field. The scored statement, weight and patient wording are unchanged; `ask` is outside `instrumentHash` and `scoringHash`. |
+
+The extractor's six checks for this delta:
+
+1. the change is exact: one item question changed from its baseline value, nothing else, and
+   `revertQuestionDelta` gives back the rubric without it, key order included;
+2. release 0.4.8, requested by the clinical lead in chat on a real calendar date (2026-10-12), the
+   request recorded as written;
+3. each new question is a sentence the lead quoted, verbatim, on the yes / no item the request names
+   by its card tag (its domain label, lowercased), and each old one is the baseline Scribe `ASK` the
+   request quotes;
+4. `instrumentHash`, `scoringHash` and `lexiconHash` are unchanged by it and `contentHash` changes;
+   the instrument and lexicon versions are unchanged;
+5. one basis per changed question;
+6. the change-log entry (kind `question`, dated as the request, paths the changed paths, quoting the
+   new question) follows the 0.4.7 lexicon entry; since the 0.4.8 follow-up the `emr-plan` entry
+   follows it.
+
+### Plan line of the EMR template (release 0.4.8, follow-up)
+
+This value is typed once, in `app/tests/harness/emr-plan-delta-048.js` (`EMR_PLAN_DELTA`), not in
+`HAND` and not in `emr-delta.js` or `emr-decisions-delta.js`, which are untouched. It rests on the
+clinical lead's request in chat of 2026-10-12, kept verbatim in `EMR_PLAN_DELTA.request` ("Also
+recommendations in the plan should also add "recommend a trial of migraine abortives if not
+contra-indicated due to other conditions." so that a primary doctor can offer this as an option to
+the patient for relief in the interim."), and on the lead's two answers of the same day
+(`EMR_PLAN_DELTA.quotes`: each question, the chosen option's label and its description, verbatim; the
+options not chosen were not kept with the answers): "With the treatment refs, no red flag
+(Recommended)" and "EMR template note (Recommended)". `extract-rubric.js` applies it last, with the
+0.4.6 answers' `applyEmrDecisionsDelta`, under `/emrTemplate` only: its one `added` row adds
+`planAdvice` at the end of `emrTemplate`, a key that must not exist yet, and
+`revertEmrDecisionsDelta` must give back the rubric without it exactly, key order included. The
+`emr-plan` change-log entry follows the 0.4.8 `question` entry.
+
+| Path | Value | Basis |
+|---|---|---|
+| `/emrTemplate/planAdvice/0` | `{text: "recommend a trial of migraine abortives if not contra-indicated due to other conditions.", source: "lead", decided: "2026-10-12"}` | L: the clinical lead's sentence, verbatim (request, chat, 2026-10-12), stored and printed exactly as written. Printed by `engine/emr.js` as a plan line ("- " and the text) right after the empiric-treatment reference lines and before the treatment-offered placeholders, only where those references print with no red flag open (quotes.when), in the EMR Friendly Template only, on the Screener and the Scribe (quotes.outputs). Under an open red flag the screen-based block keeps the references but not this line. No citation: the line is the lead's recommendation, not a reference. `source` and `decided` are the line's record and are not printed. |
+
+The extractor's eight checks for this delta:
+
+1. the addition is exact: `planAdvice` added last in `emrTemplate`, nothing else, and
+   `revertEmrDecisionsDelta` gives back the rubric without it, key order included;
+2. release 0.4.8, requested by the clinical lead in chat on a real calendar date (2026-10-12), the
+   request recorded as written;
+3. the two answers recorded with their questions and the chosen options' descriptions (when: with
+   the treatment refs, no red flag; outputs: the EMR template note);
+4. `planAdvice` is exactly one line, the sentence the lead quoted (in the request and in the
+   question), verbatim, with `source` "lead" and `decided` the request's date;
+5. every added string is non-empty and carries no `[ ] { }`;
+6. `instrumentHash`, `scoringHash` and `lexiconHash` are unchanged by it and `contentHash` changes;
+   the instrument and lexicon versions are unchanged;
+7. one basis per plan-advice line;
+8. the change-log entry (kind `emr-plan`, dated as the request, paths the added path, quoting the
+   line) is the last, right after the 0.4.8 question entry.
+
+### Patient chrome of release 0.4.8 (AI translation, unreviewed)
+
+Not rubric data: engine chrome in `app/src/engine/patient.js` (`PATIENT_CHROME`), recorded with a
+basis each in `app/tests/harness/patient-chrome-048.js` and pinned byte for byte by the `values`
+suite (`PATIENT_CHROME.es` carries exactly the baseline `UI.es` keys, the 0.4.2 chrome keys and
+these). The English was written by the team as interface labels for the clinical lead's requests of
+2026-10-12 (Fix 1 and Fix 3); the Spanish is an AI translation, not reviewed by a qualified medical
+translator or a bilingual clinician. `locales.es.reviewed` stays `false`.
+
+| Key | English | Spanish (unreviewed) | Use |
+|---|---|---|---|
+| `videoShow` | Watch a 1-minute introduction | Ver una introducción de 1 minuto (video en inglés) | the video panel's button while the video is hidden |
+| `videoHide` | Hide the video | Ocultar el video | the button while the video is shown |
+| `videoTitle` | Introduction video | Video de introducción (en inglés) | the frame's title (accessible name) |
+| `englishVersion` | English version, for an English-speaking clinician | Versión en inglés, para un médico de habla inglesa | the title of the English version of a Spanish summary (screen, print, `.txt`, `.html`), in both languages |
+
+### Patient introduction video (release 0.4.8)
+
+Not rubric data: media of the built-in module, named on its entry in `app/modules/registry.json`
+(`patientVideo`), shown by the Patient Companion above its instructions at the clinical lead's
+request of 2026-10-12 ("Add the attached video above the patient companion instructions, make it a
+collapsible/hideable iframe."). None of it is in a hash of the rubric.
+
+| File (under `app/modules/masque/media/`) | Bytes | SHA-256 | Source |
+|---|---|---|---|
+| `patient-companion-intro.mp4` | 14,783,849 | `3ce9088b6c26bcb4d3c370c8d20f0269d8d7a973d8f4be3ab2d745eb89800a28` | the clinical lead's video, as supplied (60.04 s, 1280 × 720 H.264 + AAC, moov at the front; English captions burned in); not re-encoded |
+| `patient-companion-intro-poster.jpg` | 78,113 | `d3c0a2c2dd2e0a7ec50a7734b6401f5cc198f4b364dc250449d182a40ebb5c4b` | the video's frame at 0.5 s, drawn at 1280 × 720 and saved as JPEG (quality 0.8) |
+| `patient-companion-intro.html` | — | — | the frame page, written by the team: no script, `noindex, nofollow`, the prototype marker, one `<video controls preload="none" playsinline>` with the poster and the MP4 |
+
 ## Field map
 
 | Field | Baseline source | Notes and reconciliation choice |
@@ -959,7 +1237,7 @@ The extractor's nine checks for this delta:
 | `instrumentVersion` | Scr L45 `INSTRUMENT_VERSION` | Checked equal to Scb L153 and Pat L54. |
 | `domains[]` `key`, `label`, `max`, `negative`, `items[]` `id`, `w`, `text`, `scale`, `ref` | Scr L172-255 `ITEMS`, L257 `DOMAIN_ORDER` | Copied in the Screener's key order. **Canonical: the Screener** (Inv §2). It is checked deep-equal to the Scribe's `ITEMS` (Scb L51-134). The Simulator's item copy (Sim L31-74, with no `f` factors and linear scoring) is dropped (changelog). |
 | `domains[].items[].short` | Scb L1309-1322 `shortLabel` | `shortLabel({id})` for every item. It has 29 entries; `n_allo` returns its own id, so it gets no `short` and the id is shown, as today (Q24, V12 warning). |
-| `domains[].items[].ask` | Scb L242-273 `ASK` | Covers all 30 items. |
+| `domains[].items[].ask` | Scb L242-273 `ASK` | Covers all 30 items. Since release 0.4.8 `r_dur`'s is the clinical lead's question of 2026-10-12 (`question-delta-048.js`). |
 | `domains[].items[].tag` | Scb L275-280 `VMPATHI_TAG` | 4 items. |
 | `domains[].items[].patientClin` | Pat L63-124 `ITEMS[].items[].c` | Weight, domain and scale length are checked against the Screener. The Patient domain `label`/`clinical` fields are never read and are dropped (changelog). |
 | `domains[vestibular].shortTag` | Scb L872 | `it.domain === "vestibular" ? "vestibular" : label.toLowerCase()`. Other domains fall back to `label.toLowerCase()`. |
@@ -984,7 +1262,7 @@ The extractor's nine checks for this delta:
 | `sampleCases[4..8]` | Sim L314-330 `SCENARIOS`, L308-312 `FULL_HIGH` | `sim-<id>`, `group: "scenario"`, icon by name, `why` kept, `answers` from `apply()` (FULL_HIGH inlined), `rf` only when not empty, `complaint: ""`, `step` dropped. `buttonLabel` = `label`, which is what Sim L652 renders (Q3, changelog). |
 | `demo.patient` | Scr L314-317 `DEMO_PATIENT` | Checked deep-equal to Scb L587 `PATIENT`. It has no DOB (V50). |
 | `demo.transcript` | Scb L569-584 `SCRIPT` | The Simulator's 7-turn transcript is not carried. |
-| `lexicon` | Ext L24 `LEXICON_VERSION`; L38-48 `NEGATION`; L57-62 `THIRD_PARTY`; L69-73 `HISTORICAL`; L79-106 `BOOL_EX`; L108-110 `CTX_EX`; L112-134 `SCALE_EX`; L136-141 `MULTI_EX`; L153-166 `RF_PHRASES`; then `tests/harness/lexicon-delta.js` | Keys are renamed only (`negation`, `thirdParty`, `historical`, `bool`, `ctx`, `scale`, `multi`, `redFlags`). `lang` comes from Voice L47 `VOICE_LANG`. `goldSet` is described under the hand-written values. The Simulator's cue lists (Sim L1028-1041) are not carried. That is the baseline lexicon 0.3.1; the approved delta then gives 0.3.2: phrases appended at list ends, `heard`, `carry` and `carryExclude` added at the end of `scale[1]`, `yieldTo` and `anchor` at the end of `scale[2]`, `carryRefuse` and `normalize` inserted just before `goldSet`, and `version` and `goldSet` replaced in place (see "Approved lexicon delta"). |
+| `lexicon` | Ext L24 `LEXICON_VERSION`; L38-48 `NEGATION`; L57-62 `THIRD_PARTY`; L69-73 `HISTORICAL`; L79-106 `BOOL_EX`; L108-110 `CTX_EX`; L112-134 `SCALE_EX`; L136-141 `MULTI_EX`; L153-166 `RF_PHRASES`; then `tests/harness/lexicon-delta.js` | Keys are renamed only (`negation`, `thirdParty`, `historical`, `bool`, `ctx`, `scale`, `multi`, `redFlags`). `lang` comes from Voice L47 `VOICE_LANG`. `goldSet` is described under the hand-written values. The Simulator's cue lists (Sim L1028-1041) are not carried. That is the baseline lexicon 0.3.1; the approved delta then gives 0.3.2: phrases appended at list ends, `heard`, `carry` and `carryExclude` added at the end of `scale[1]`, `yieldTo` and `anchor` at the end of `scale[2]`, `carryRefuse` and `normalize` inserted just before `goldSet`, and `version` and `goldSet` replaced in place (see "Approved lexicon delta"). Release 0.4.7: `tests/harness/lexicon-delta-033.js` then gives 0.3.3: four negation cues appended at the end of `negation.cues`, `clauses` and `clarify` inserted just before `goldSet`, and `version` and `goldSet` replaced in place (see "Lexicon delta 0.3.2 → 0.3.3"). |
 | `locales.en.items` / `locales.es.items` | Pat L137-188 `P` / L297-348 `ES_P` | Copied verbatim; P key order = item order (checked). |
 | `locales.es.items.<id>.clin` (30 items; release 0.4.2) | `tests/harness/locale-delta.js` | The Spanish clinician line for the "Para mi médico" block, one per item, inserted after the item's last existing key. Its English source is the item's `patientClin` (checked). Unreviewed team translation; see "Spanish translation delta (unreviewed)". English has no `clin`. |
 | `locales.en.redFlags` / `locales.es.redFlags` | Pat L225-262 `RED_FLAGS` `{q, say}` / L350-375 `ES_RF` | The Patient's `now`/`soon` tiers are checked to be emergent→now and urgent→soon; the rubric keeps the clinician tier, and `TIER_DISPLAY` maps it. |
@@ -1015,7 +1293,7 @@ The extractor's nine checks for this delta:
 | `cds.hook`, `title`, `description`, `source.label` | Scr L478-483, L500 | Taken from the baseline `buildCdsHooks()` output; checked identical to the Scribe's. |
 | `cds.examples.redFlagPresent` | Scr L494-504 | `flagId` = the one flag whose `action` the example detail names (`rf_asym`); `summary` verbatim. The detail sentence and the indicator stay engine-owned (§3.6). |
 | `cds.examples.settled` | Scr L505-513 | `summary`, `detail` verbatim; `score` and `band` are read from the summary and checked against `bandFor`. |
-| `emrTemplate` (release 0.4.3) | `tests/harness/emr-delta.js` `EMR_DELTA.value` | Not from the baseline: the EMR template data (citations, references, instrument recs, red-flag references and placeholders, history, checklist, exam rows), inserted just before `changelog` and proven exact by `revertEmrDelta`. AI agents assembled it from verified sources; the clinical lead signed it off on 2026-10-07 (recorded in release 0.4.4); see "EMR template data (release 0.4.3, signed off by the clinical lead in 0.4.4)". Clinician surfaces only; locked in the Rubric Editor. **Release 0.4.6:** then `pastHistory` and the HINTS row's `optionPlaceholders` are added by `applyEmrDecisionsDelta` (`tests/harness/emr-decisions-delta.js`; see "EMR template: the clinical lead's answers (release 0.4.6)"). |
+| `emrTemplate` (release 0.4.3) | `tests/harness/emr-delta.js` `EMR_DELTA.value` | Not from the baseline: the EMR template data (citations, references, instrument recs, red-flag references and placeholders, history, checklist, exam rows), inserted just before `changelog` and proven exact by `revertEmrDelta`. AI agents assembled it from verified sources; the clinical lead signed it off on 2026-10-07 (recorded in release 0.4.4); see "EMR template data (release 0.4.3, signed off by the clinical lead in 0.4.4)". Clinician surfaces only; locked in the Rubric Editor. **Release 0.4.6:** then `pastHistory` and the HINTS row's `optionPlaceholders` are added by `applyEmrDecisionsDelta` (`tests/harness/emr-decisions-delta.js`; see "EMR template: the clinical lead's answers (release 0.4.6)"). **Release 0.4.8, follow-up:** then `planAdvice` is added the same way (`tests/harness/emr-plan-delta-048.js`; see "Plan line of the EMR template (release 0.4.8, follow-up)"). |
 
 ### Copy slots (§3.6)
 
@@ -1071,7 +1349,11 @@ The changelog also records the extraction itself and the open-question defaults 
 and, dated 2026-10-06, the unreviewed Spanish translation of release 0.4.2 (kind `translation`)
 and the EMR template data of release 0.4.3 (kind `emr-template`), and, dated 2026-10-07, the
 clinical lead's sign-off of that data (kind `sign-off`, release 0.4.4), and, dated 2026-10-10,
-the clinical lead's referral rule for dizziness cases (kind `referral`, release 0.4.5).
+the clinical lead's referral rule for dizziness cases (kind `referral`, release 0.4.5), and, dated
+2026-10-10, the lead's answers on the EMR template's open items (kind `emr-decisions`, release
+0.4.6), and, dated 2026-10-12, the lexicon change 0.3.2 → 0.3.3 (kind `lexicon`, release 0.4.7),
+the clinical lead's question for item `r_dur` (kind `question`, release 0.4.8) and the clinical
+lead's plan line for the EMR template (kind `emr-plan`, release 0.4.8, follow-up).
 
 ## Regenerating
 
@@ -1123,3 +1405,30 @@ past-history row and per option placeholder, and the rubric is regenerated here.
 runs the nine checks listed under "EMR template: the clinical lead's answers", and the `values`
 suite pins the record, the added data, the signed-off block under it (`fb63a2b9…`) and the shipped
 block (`0152cfd8…`).
+
+The lexicon change of release 0.4.7 goes through `tests/harness/lexicon-delta-033.js`, the second
+link of the delta chain, never through `lexicon-delta.js`. Each `clauses` row and `clarify` entry
+carries its source (`lead`, `module` or `draft`) and one basis. The lead's sign-off is recorded
+there (`signOff`, with its date) before any upload; a struck draft row is removed, the gold set
+0.4.0 cases it affects are relabelled and the rubric is regenerated here. A new phrase is appended,
+never inserted, so the 0.3.2 positions the delta's paths use stay valid. The extractor runs the nine
+checks listed under "Lexicon delta 0.3.2 → 0.3.3", and the `values` suite proves the shipped lexicon
+exactly 0.3.1 plus both deltas (AD13, AD18) and exempts exactly the delta's leaves from the
+provenance sweep.
+
+A change to an item's clinician question (`ask`) goes through `tests/harness/question-delta-048.js`
+(release 0.4.8), only with the lead's dated request recorded there (`requested`, `request`): a
+`changed` row names the item, the pointer of its `ask` and the current value as `from`, with one
+basis per row, and the rubric is regenerated here. The extractor runs the six checks listed under
+"Clinician question for item r_dur", and the `values` suite reads the baseline `ASK` pin on the
+reverted rubric and pins the record. An `ask` is outside the instrument's identity; a change to an
+item's statement, weight or scale is not a question change: it moves `instrumentHash` and needs a
+new instrument version.
+
+A plan line the clinical lead asks the EMR template to print goes through
+`tests/harness/emr-plan-delta-048.js` (release 0.4.8, follow-up), only with the lead's dated request
+and answers recorded there (`requested`, `request`, `quotes`): the line is the lead's own sentence,
+verbatim, with its `source` and `decided` date, one basis per line, and the rubric is regenerated
+here. The extractor runs the eight checks listed under "Plan line of the EMR template", and the
+`values` suite pins the record, the line, the block of release 0.4.6 under it (`0152cfd8…`), the
+signed-off block under every delta (`fb63a2b9…`) and the shipped block (`5f740853…`).

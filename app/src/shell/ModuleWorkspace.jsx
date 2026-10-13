@@ -63,6 +63,12 @@ function Panels({
   }, [shown]);
 
   const view = useMemo(() => projectForPatient(module), [module]);
+  // Release 0.4.8: a built-in's patient introduction video (registry.json `patientVideo`, on its
+  // registry entry only), as an absolute URL against the app/ folder; null for any other module.
+  const patientVideo = useMemo(() => {
+    const rel = entry && typeof entry.patientVideo === "string" ? entry.patientVideo : null;
+    try { return rel && env && typeof env.appBase === "string" ? new URL(rel, env.appBase).href : null; } catch (_) { return null; }
+  }, [entry, env]);
 
   // Patient mode: the patient panel's label is the companion's title in its locale (release 0.4.2);
   // the clinician tab label everywhere else.
@@ -106,7 +112,7 @@ function Panels({
       {panel("patient", (
         <>
           {mode === "clinician" ? <PatientModeBar key="bar" module={module} appBase={env.appBase} onHand={onHandToPatient} /> : null}
-          <PatientCompanion key={`companion-${patientSession}`} view={view} appVersion={appVersion} onDirty={onDirty} onModuleError={onModuleError} onPrintContext={onPrintContext} />
+          <PatientCompanion key={`companion-${patientSession}`} view={view} appVersion={appVersion} video={patientVideo} onDirty={onDirty} onModuleError={onModuleError} onPrintContext={onPrintContext} />
         </>
       ))}
       {panel("research", <ResearchTab module={module} appVersion={appVersion} env={env} onDirty={onDirty} />)}

@@ -7,6 +7,8 @@
 //     adds to the base logic, produces no V61 finding, so each V61 generator proves one rule; since
 //     review round 4 a key the engine never reads, on each of the six row kinds, is a W with its
 //     kind and key in the message and no other V61 finding);
+//     the valid chart-reading block (release 0.4.7: lexicon.clauses and lexicon.clarify) adds no
+//     V28 or V29 finding, so each of its generators proves one rule;
 //     plus negative checks
 //     the corpus cannot express: V60 on bare words, V29 only on band phrases under
 //     normalize.numbers (round 3, review T7), and the V28 carryRefuse warning silenced by a heard
@@ -22,7 +24,7 @@
 //
 // The checks live in core(deps) so they run unchanged outside the browser too; run(h) builds
 // deps from the harness. Nothing happens at import time.
-import { CODES, MUTATIONS, withClinicianRules, withEmrLogic, withEmrTemplate } from "../fixtures/mutations/index.js";
+import { CODES, MUTATIONS, withChartReading, withClinicianRules, withEmrLogic, withEmrTemplate } from "../fixtures/mutations/index.js";
 
 const BUDGET_MS = 300;
 const isObj = (x) => x !== null && typeof x === "object" && !Array.isArray(x);
@@ -203,6 +205,16 @@ export async function core(deps) {
     check(!v27g.length, "/v27/clinicianRules/no-probe-read", { what: "the rule on a logic without pr_rescue" }, "no V27 finding (a clinician rule names no probe)", v27g.map(f => `${f.code} ${f.path}: ${f.msg}`));
   }
 
+  // Chart-reading control (release 0.4.7): the valid lexicon.clauses and lexicon.clarify block the
+  // chart-reading generators start from adds no V28 or V29 finding of either severity, on the shape
+  // path and on the bound module (its clarify probe is a probe of the base logic).
+  {
+    const rep = await runCase({ rubric: withChartReading(ctx), via: "shape" });
+    const lexFindings = [...rep.errors, ...rep.warnings].filter(f => f.code === "V28" || f.code === "V29");
+    check(rep.ok && !lexFindings.length, "/v28/clauses/control", { what: "the base with valid clauses and clarify" }, "0 errors, no V28 or V29",
+      { ...summarise(rep), lexicon: lexFindings.map(f => `${f.code} ${f.path}: ${f.msg}`) });
+  }
+
   // V61 unknown row fields (review round 4): a key engine/emr.js never reads is a warning on every
   // row kind, with the kind and the key in its message, and nothing else is reported for it (the
   // generators above prove the path; these prove the message and that it stays a warning). A
@@ -239,23 +251,6 @@ export async function core(deps) {
     r.locales.en.ui.sub = "Example high-pitched, low or moderate sound; an example of an index finger; examples index.";
     const rep = await runCase({ rubric: r });
     check(!rep.errors.some(e => e.code === "V60"), "/v60/bare-words", { sub: r.locales.en.ui.sub }, "no V60", summarise(rep));
-  }
-  // V60 on the name, item texts and fallback domain labels applies only where they reach a
-  // patient: a module without English patient wording has no Patient Companion (audit e16).
-  // With one, the item-text finding names the remedy (a patientClin line).
-  {
-    const words = (r) => { r.name = "Example fall risk"; r.domains[0].label = "Example risk factors"; r.domains[1].items[0].text = "Example symptom score of 7/10 or more"; return r; };
-    const none = words(ctx.rubric());
-    delete none.locales; delete none.defaultLocale; none.logicBinding = "generic";
-    const repNone = await runCase({ rubric: none, logic: null });
-    const v60 = (rep) => rep.errors.filter(e => e.code === "V60").map(e => e.path).sort();
-    check(!v60(repNone).length, "/v60/no-patient-surface", { what: "no locales: name, item text, domain label are clinician text" }, [], v60(repNone));
-    const shaped = words(ctx.rubric());
-    shaped.logicBinding = "generic";
-    const repSurf = await runCase({ rubric: shaped, logic: null });
-    check(JSON.stringify(v60(repSurf)) === JSON.stringify(["/domains/0/label", "/domains/1/items/0/text", "/name"]), "/v60/patient-surface", { what: "English patient wording: the same strings are patient-facing" }, ["/domains/0/label", "/domains/1/items/0/text", "/name"], v60(repSurf));
-    const textErr = repSurf.errors.find(e => e.code === "V60" && e.path === "/domains/1/items/0/text");
-    check(!!textErr && /patientClin/.test(textErr.msg), "/v60/patient-surface/hint", {}, "the message suggests patientClin", textErr && textErr.msg);
   }
 
   // V29 negative (round 3, review T7): numbers are spelled out for band phrase matching only

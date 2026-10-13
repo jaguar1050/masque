@@ -20,7 +20,7 @@ Where the module's content now lives:
   templates, and the probe set, with a header that maps each block to its source lines.
 - `CHANGELOG.md` — the module's change log.
 
-Version axes: instrument 0.2, lexicon 0.3.2, probe set 1.0.0, gold set 0.3.0 (the release is
+Version axes: instrument 0.2, lexicon 0.3.3, probe set 1.0.0, gold set 0.4.0 (the release is
 screenAIr's own, `app/src/engine/policy.js`).
 
 Since lexicon 0.3.2 (screenAIr 0.4.1) the Ambient Scribe shows a cue heard without its value and,
@@ -95,6 +95,75 @@ pattern puts a clinician placeholder under the HINTS exam row. The DZ4 audiogram
 indication clause. The two data additions (`emrTemplate.pastHistory` and the HINTS row's
 `optionPlaceholders`) sit on top of the signed-off 0.4.3 block, which is unchanged;
 `CHANGELOG.md` (release 0.4.6) and `SOURCES.md` give the details. No version axis but the release
+moves.
+
+screenAIr 0.4.7 (lexicon 0.3.3, gold set 0.4.0) follows the clinical lead's request of 2026-10-11
+and the lead's sign-off of 2026-10-12. The Ambient Scribe's capture box is now a large scrollable
+text area that takes a patient statement or a pasted chart note (Ctrl+Enter captures). Text is read
+clause by clause (typed text as chart text and, since the lead's decision of 2026-10-12, spoken and
+demo lines too), with the lead's endorsement and denial words ("endorses", "reports", "has", "yes"; "denies", "no",
+"lacks", "doesn't have"). A denial in a list reaches the items of the list that are the finding
+alone (and the lines under "Patient denies:"), until a word such as "with", "so" or "for" ends it;
+an item that says more ("No nausea, tinnitus reported.") is left unrecorded and, where a card
+exists, asked. "non-" drops an attribute, a phrase inside another word no longer counts, and an
+abbreviation such as "assoc." or "hx." no longer ends the sentence. Allergy, medication and family-history sections are
+read as such, and nothing is captured inside an exam section. Chart signs ("(-) aura",
+"Photophobia: (+)", "Nausea: denies", "(+) nausea (-) photophobia") and empty checkboxes ("[ ]") are
+read, and a failed treatment
+("no improvement with antibiotics") stays a treatment that was given. A report header that names a
+test ("CT showed …") records nothing by itself; a card asks what it showed. In a typed chart note
+"her" and "his" name the patient when a finding follows them, while a named relative or another
+person still makes the finding theirs. A red flag in chart wording ("sudden hearing loss",
+"proptosis", "epistaxis") is raised, and one the chart clearly denies ("not pulsatile")
+is not (the lead's decision). A denial of something else does not lower it ("No steroids given
+for sudden hearing loss.", "No nausea, double vision reported."); `CHANGELOG.md` (release 0.4.7,
+Part D) states exactly when a flag is lowered and lists the cases still known to be lowered. In a
+spoken line an opening "no" that answers the clinician's question ("no it's more of a whooshing with
+my heartbeat") lowers no flag, while a direct denial ("No, I've never had double vision.") does
+(the lead's decision of 2026-10-12; its known cost is that some unpunctuated spoken denials, such
+as "no I haven't noticed any slurred speech", still raise their flag for the clinician to clear). Spoken lines keep their carry-over as before, and the pronoun exception and the
+Clarify section stay with typed text. "+/-" is a hedge (the lead's decision) in spoken and typed
+lines alike: its clause records nothing. Typed text sets no context marker (prior dismissal, duration,
+clinicians seen): the clinician sets them. Each capture shows its clause as evidence. A Clarify section
+under the box then asks about unclear wording, each card with the module's own question and
+answers, which the clinician answers with a click. A generic "runny nose" asks the lead's question,
+"is the rhinorrhea clear or purulent?". Hedged wording (including "+/-") and a finding stated both ways are asked too,
+never recorded, and unfilled template text shows a notice to dismiss. A stated dangerous detail
+raises its flag or keeps its safety card, and a safe answer the chart denies ("not bilateral")
+never silences the card. Apart from the lead's own words and decision, every cue word, red-flag
+phrase, trigger and qualifier was drafted by the team, and the lead decided each one on 2026-10-12
+(the `cl_rhinorrhea` triggers and qualifiers in chat the same day, after the final review):
+278 approved (marked lead-approved), 18 struck (the mask "aural" and 17 chart red-flag phrases), and a
+few added or removed in the lead's answers (`CHANGELOG.md`, release 0.4.7, "Clinical-lead sign-off
+(2026-10-12)"). `SOURCES.md` gives each row's source.
+
+screenAIr 0.4.8 makes the clinical lead's three fixes of 2026-10-12. The Ambient Scribe's question
+for item `r_dur` (its Ask-next card "recalcitrance", answered Yes / No) is now the lead's sentence,
+"Have symptoms persisted over 3 months despite trials of medical management?"; it read "How long
+has this been going on?". The item's statement, weight and patient wording are unchanged, and the
+question is outside the instrument's identity, so instrument 0.2 and the calibration stand. The
+Patient Companion shows the lead's one-minute introduction video above its instructions, in a panel
+the patient can hide; the video loads only when played, has English captions, and is never printed
+or exported. It is this built-in module's media (`media/`, named in `registry.json`), so an uploaded
+or edited module does not show it. When the companion runs in Spanish, the summary (on screen,
+printed, and in the `.txt` and `.html`) adds after the Spanish findings an English version of the
+same findings, titled in both languages, so an English-speaking clinician can read them (for an
+uploaded or edited questionnaire it carries the English caveats too); no score, band or probability
+is added. The new Spanish strings are AI translations, unreviewed.
+`CHANGELOG.md` (release 0.4.8) and `SOURCES.md` give the details.
+
+Two follow-up requests of the clinical lead (also 2026-10-12) are in the same release. The EMR
+Friendly Template's plan now prints the lead's line "recommend a trial of migraine abortives if not
+contra-indicated due to other conditions." right after the empiric-treatment references, wherever
+they print with no red flag open, on the Screener and the Scribe; never under an open red flag, and
+not in the encounter note, the FHIR bundle or the Screener's result cards. It is this module's data
+(`emrTemplate.planAdvice`, the lead's words with their date), so another module prints no such line.
+The Ambient Scribe gains a Question review tab, right of Ask next: every scored item with its current
+answer and where the encounter recorded it (heard in encounter, typed chart text, a probe, a Clarify
+card, Ask next or a review edit); the clinician can change or clear any answer there, and the score,
+the coverage, the encounter note and the EMR template follow. Changing or clearing an answer a probe
+wrote withdraws that probe's answer, so its note and EMR checklist entry never contradict the
+correction. An unanswered item reads "not answered", never no. No version axis but the release
 moves.
 
 ## Clinician Screener — file header
